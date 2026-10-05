@@ -15,7 +15,7 @@ import { useUser } from '../../contexts/UserContext';
 import { useVoluntaryLogout } from '../../hooks/useVoluntaryLogout';
 import { LogoutConfirmDialog } from './LogoutConfirmDialog';
 import { useTheme } from '../../contexts/ThemeContext';
-import { useLangPref, LANG_FLAGS, LANG_LABELS, type AppLang } from '../../hooks/useLangPref';
+import { useLangPref, LANG_FLAGS, LANG_LABELS, langueDisponible, type AppLang } from '../../hooks/useLangPref';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { IdentificateurPinChangeSection } from '../identificateur/IdentificateurPinChangeSection';
 import { VoiceLevelSelector } from './VoiceLevelSelector';
@@ -26,7 +26,9 @@ import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuth
 import { marquerBiometrie } from '../../services/comptesMemorises';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
 import { API_URL } from '../../utils/api';
+import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
+import { t } from '../../i18n/voice/runtime';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -442,21 +444,35 @@ function ModalLang({ isOpen, onClose, lang, setLang, color }: {
             className="bg-white rounded-t-3xl w-full p-6 pb-10"
           >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5" />
-            <h3 className="text-xl font-bold encre mb-2">Langue de Tata Nanti Lou</h3>
+            <h3 className="text-xl font-bold encre mb-2">Langue de Tantie Nanti Lou</h3>
             <p className="text-sm encre-3 mb-6">Dans quelle langue tu veux me parler aujourd&apos;hui ?</p>
             <div className="space-y-3">
               {LANGS.map(id => {
                 const isActive = lang === id;
+                // LOT A6 — une langue dont l'audio humain n'est pas validé se voit,
+                // mais ne se choisit pas : elle est grisée et le dit. Promettre une
+                // langue qu'on ne sait pas encore parler serait pire que l'absence.
+                const disponible = langueDisponible(id);
                 return (
-                  <motion.button key={id} onClick={() => { setLang(id); onClose(); }}
-                    whileTap={{ scale: 0.98 }}
+                  <motion.button key={id}
+                    disabled={!disponible}
+                    aria-disabled={!disponible}
+                    onClick={() => { if (disponible) { setLang(id); onClose(); } }}
+                    whileTap={disponible ? { scale: 0.98 } : undefined}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left"
-                    style={{ borderColor: isActive ? color : '#E5E7EB', backgroundColor: isActive ? `${color}08` : 'white' }}
+                    style={{
+                      borderColor: isActive ? color : '#E5E7EB',
+                      backgroundColor: isActive ? `${color}08` : 'white',
+                      opacity: disponible ? 1 : 0.72,
+                      cursor: disponible ? 'pointer' : 'not-allowed',
+                      minHeight: 68,
+                    }}
                   >
                     <span className="text-3xl">{LANG_FLAGS[id]}</span>
-                    <div>
+                    <div className="flex-1">
                       <p className="font-bold encre">{LANG_LABELS[id]}</p>
                       {isActive && <p className="text-xs mt-0.5" style={{ color }}>Langue actuelle</p>}
+                      {!disponible && <p className="text-sm mt-1 encre-3">Audio humain en préparation</p>}
                     </div>
                     {isActive && <Check className="w-5 h-5 ml-auto" style={{ color }} strokeWidth={3} />}
                   </motion.button>
@@ -481,7 +497,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const cfg = ROLE_CONFIG[role];
   const { color } = cfg;
 
-  const { speak, isOnline, user, setUser } = useApp();
+  const { speak, isOnline, user, setUser, niveauVoix, setNiveauVoix } = useApp();
   const { updateUser } = useUser();
   // Déconnexion volontaire — orchestration centralisée (hook réutilisable).
   const logout = useVoluntaryLogout();
@@ -717,6 +733,25 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <ModeAccesSwitcher />
             <RowToggle label="Mode soleil" sublabel="Tout plus grand et plus lisible dehors"
               value={soleil} onChange={basculerSoleil} color={color} />
+            {/* NIVEAU DE VOIX (B5). « Complet » par défaut : on ne retire la
+                parole à personne sans qu'elle l'ait demandé. Et « Moins bavard »
+                NE PEUT PAS taire une phrase d'argent — la décision vient du
+                catalogue, clé par clé (i18n/voice/niveauVoix.ts), jamais des
+                mots de la phrase. C'est pourquoi il n'existe pas de troisième
+                position « silence ». */}
+            <RowToggle
+              label="Moins bavard"
+              sublabel="Tantie ne dit plus que l'argent et les comptes. Elle dira toujours les montants."
+              value={niveauVoix === 'essentiel'}
+              onChange={(v) => {
+                setNiveauVoix(v ? 'essentiel' : 'complet');
+                // La confirmation vient du CATALOGUE, jamais d'une chaîne écrite
+                // ici : deux copies d'une même phrase divergent à la première
+                // retouche de formulation. Une seule vérité.
+                speak(v ? t('REGLAGE_VOIX_ESSENTIEL') : t('REGLAGE_VOIX_COMPLET'));
+              }}
+              color={color}
+            />
           </Section>
 
           <Section title="Notifications" icon={Bell} color={color}>
@@ -932,7 +967,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
             <RowToggle color={color} label="Réduire les animations" sublabel="Améliore les performances sur téléphones bas de gamme" value={reduceAnimations} onChange={setReduceAnimations} />
             <RowToggle color={color} label="Vibrations" sublabel="Retour haptique lors des actions" value={vibrations} onChange={setVibrations} />
             {role !== 'institution' && (
-              <RowAction label="Langue de Tata Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
+              <RowAction label="Langue de Tantie Nanti Lou" sublabel={LANG_FLAGS[lang] + ' ' + LANG_LABELS[lang]} icon={Globe} onClick={() => setShowLang(true)} />
             )}
           </Section>
 
@@ -965,6 +1000,44 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
           <div className="flex items-center justify-center gap-2 py-2">
             <Smartphone className="w-4 h-4 encre-4" />
             <p className="text-xs encre-4">{cfg.version} · Projet DGE × ANSUT · édité par Icone Solution</p>
+          </div>
+
+          {/* VOICE-01 — « Rapport de test » atteignable SANS se déconnecter (celui de
+              l'écran de connexion obligeait à perdre la session). Même rapport, même
+              source (vlogPartager) : version/build, appareil, voix retenue, journal de
+              voix (ce qui a été dit et entendu, moteurs, intentions), dernier
+              transcript brut. Rendu volontairement minimal — à habiller par Manus. */}
+          {/* AGRANDI POUR LA DURÉE DE LA RECETTE — demande de Patrick, 27/09.
+              Ce bouton est le seul moyen de récupérer la transcription BRUTE
+              (STT_FIN) et l'intention retenue (INTENTION) après une anomalie :
+              sans lui, on diagnostique au récit. Il était en 12 px souligné,
+              au milieu des mentions légales — introuvable sur un téléphone,
+              au moment précis où on en a besoin.
+              C'EST UN RÉGLAGE DE PÉRIODE, pas un choix de charte : à ramener à
+              sa taille discrète quand le pilote sera qualifié. */}
+          <div className="flex flex-col items-stretch gap-1 pb-3 px-2">
+            <button
+              type="button"
+              aria-label="Rapport de test"
+              onClick={async () => {
+                const r = await vlogPartager();
+                if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
+                else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                width: '100%', minHeight: 64, padding: '14px 20px',
+                fontSize: 20, lineHeight: '26px', fontWeight: 800, fontFamily: 'inherit',
+                color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A',
+                borderRadius: 16, cursor: 'pointer',
+              }}
+            >
+              <span aria-hidden="true" style={{ fontSize: 26 }}>🐞</span>
+              Rapport de test
+            </button>
+            <p className="text-xs encre-4 text-center" style={{ margin: 0 }}>
+              Touche ici après un problème, puis colle le rapport dans la conversation.
+            </p>
           </div>
 
           {/* ATTRIBUTION OBLIGATOIRE — ce n'est pas une politesse.

@@ -95,7 +95,7 @@ export function uniteSeule(quantite: number, unite?: string | null): string {
  * de dire ce qu'il en fait (la ligne libre pose « unité »), pas à ce module
  * d'inventer une unité qu'elle n'a pas prononcée.
  */
-const GRAPHIES_CANONIQUES: Record<string, string[]> = {
+export const GRAPHIES_CANONIQUES: Record<string, string[]> = {
   unité: ['unite', 'unites'],
   tas: ['tas'],
   kg: ['kg', 'kilo', 'kilos', 'kilogramme', 'kilogrammes'],

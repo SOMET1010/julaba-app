@@ -22,6 +22,7 @@
 // Une seule chaîne audio dans l'application (Constitution, principe 1).
 // ──────────────────────────────────────────────────────────────────────────
 
+import * as vtrace from '../utils/voiceTrace'; // VOICE-01 : on note si la synthèse native est là
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Any = any;
 
@@ -57,6 +58,7 @@ let disponibiliteConnue: boolean | null = null;
 export async function ttsNatifDisponible(): Promise<boolean> {
   if (disponibiliteConnue !== null) return disponibiliteConnue;
   const p = getPlugin();
+  if (!p || typeof p.isAvailable !== 'function') vtrace.info('TTS_NATIF_SONDE', { moteur: 'SherpaTts (Piper/SIWIS)', disponible: false, raison: 'plugin absent (web, ou APK sans plugin)' });
   if (!p || typeof p.isAvailable !== 'function') {
     disponibiliteConnue = false;
     return false;
@@ -64,7 +66,9 @@ export async function ttsNatifDisponible(): Promise<boolean> {
   try {
     const res = await p.isAvailable();
     disponibiliteConnue = Boolean(res?.available);
+    vtrace.info('TTS_NATIF_SONDE', { moteur: 'SherpaTts (Piper/SIWIS)', disponible: disponibiliteConnue });
   } catch {
+    vtrace.info('TTS_NATIF_SONDE', { moteur: 'SherpaTts (Piper/SIWIS)', disponible: false, raison: 'isAvailable() a échoué' });
     disponibiliteConnue = false;
   }
   return disponibiliteConnue;

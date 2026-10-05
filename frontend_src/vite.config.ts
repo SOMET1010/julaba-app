@@ -21,6 +21,31 @@ try {
   /* pas de repo git en CI ou environnement restreint */
 }
 
+// ── LES DEUX DRAPEAUX DE CONSTRUCTION DU DIOULA ────────────────────────────
+// Éteints par défaut : un build ordinaire ne change pas d'un octet.
+//
+//   JULABA_VOIX_DYU=1    voix MMS dioula embarquée (le MÊME interrupteur que
+//                        android/scripts/installer-voix.sh), « Dioula »
+//                        sélectionnable, locale `dyu-ci` peuplée du décor de
+//                        travail du dépôt. L'ARGENT RESTE EN FRANÇAIS.
+//   JULABA_DYU_ARGENT=1  EN PLUS, et seulement avec le premier : les montants
+//                        peuvent être dits en dioula. Pour juger le SON,
+//                        jamais le COMPTE — jamais dans un build remis à une
+//                        marchande.
+//
+// POURQUOI DES `define` ET PAS DES VARIABLES LUES AU RUNTIME : ce sont des
+// constantes de BUILD. Elles n'existent dans aucun processus Node, donc ni
+// `verify`, ni `test:ci`, ni la CI ne les voient : le garde B7 continue de
+// mesurer la configuration LIVRABLE, intact. Il interdit de LIVRER une demi-
+// langue, pas de la tester. Raisonnement complet :
+// src/app/i18n/voice/drapeauxDeTest.ts
+const voixDyu = process.env.JULABA_VOIX_DYU === "1"
+const dyuArgent = voixDyu && process.env.JULABA_DYU_ARGENT === "1"
+if (voixDyu) {
+  console.warn("[vite] BUILD D'ESSAI : voix dioula MMS embarquée (CC-BY-NC-4.0, non commerciale) — ne pas distribuer.")
+  if (dyuArgent) console.warn("[vite] BUILD D'ESSAI : les MONTANTS seront dits en DIOULA (nombres non validés) — ne JAMAIS remettre cet APK à une marchande.")
+}
+
 // Date de build (AAAA-MM-JJ HH:mm en UTC) — lisible par un humain.
 const buildDate = new Date().toISOString().slice(0, 16).replace("T", " ")
 // Identifiant de version compact injecté partout : « <hash> · <date> ».
@@ -53,6 +78,28 @@ function stampServiceWorker(outDir: string): Plugin {
               try { return statSync(join(assetsDir, f)).size <= PRECACHE_MAX_BYTES } catch { return false }
             })
             .map((f) => `/assets/${f}`)
+          // LES POLICES ENTRENT AU PRÉ-CACHE — B6, 21/09/2026.
+          //
+          // Sans elles, un PREMIER lancement hors ligne — le cas d'une marchande
+          // qui installe au marché, réseau mort — s'affiche dans la police de
+          // repli du téléphone. Tout le travail de lisibilité (mode soleil,
+          // tailles de texte, cibles tactiles) est réglé sur Inter : la page
+          // change de métrique, les libellés débordent ou rétrécissent.
+          //
+          // Le coût est MESURÉ, pas supposé : 10 fichiers, 271 Ko, soit 2,7 % du
+          // pré-cache existant. Elles sont hachées et immuables comme le reste
+          // d'`assets/`, donc jamais re-téléchargées. `check:precache-budget`
+          // tient le compte et refuse le dépassement.
+          //
+          // CE QU'ON N'AJOUTE PAS, et c'est l'essentiel du lot : le « tout
+          // précacher ». Les 4 gros chunks volontairement exclus pèsent 1,84 Mo,
+          // et la reprise telle quelle aurait porté l'installation à 13–18 Mo
+          // sur des données mobiles.
+          precache = precache.concat(
+            readdirSync(assetsDir)
+              .filter((f) => /\.(woff2?|ttf|otf)$/i.test(f))
+              .map((f) => `/assets/${f}`),
+          )
         } catch (e) {
           console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
         }
@@ -91,6 +138,8 @@ export default defineConfig({
     __BUILD_HASH__: JSON.stringify(gitHash),
     __BUILD_DATE__: JSON.stringify(buildDate),
     __BUILD_ID__: JSON.stringify(buildId),
+    __JULABA_VOIX_DYU__: JSON.stringify(voixDyu),
+    __JULABA_DYU_ARGENT__: JSON.stringify(dyuArgent),
   },
   resolve: {
     alias: {

@@ -5,6 +5,7 @@ import { User } from '../users/entities/user.entity';
 import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { encaisserCredit, EncaissementInvalide } from './encaisser-credit';
+import { exigerJourneeOuverte } from './journee-ouverte';
 
 @UseGuards(JwtAuthGuard)
 @Controller('caisse/credits')
@@ -82,6 +83,15 @@ export class CreditsController {
       const credit = result[0];
 
       if (acompteParsed > 0) {
+        // CAI-09 — UN ACOMPTE À LA CRÉATION EST UN ENCAISSEMENT COMME UN AUTRE.
+        //
+        // Il produit une ligne `acompte_credit`, donc une des natures que la
+        // clôture additionne. La journée fermée le refuse, exactement comme
+        // elle refuse une vente. Le crédit LUI-MÊME reste créable sans acompte :
+        // une dette qui naît ne déplace pas d'argent, et interdire de la noter
+        // ferait perdre l'information plutôt que la protéger.
+        await exigerJourneeOuverte(qr, user.id);
+
         // Clé dérivée du crédit : un rejeu hors connexion de la MÊME création
         // ne peut pas encaisser l'acompte initial une seconde fois.
         await encaisserCredit(qr, {
@@ -142,6 +152,11 @@ export class CreditsController {
     await qr.connect();
     await qr.startTransaction();
     try {
+      // CAI-09 — la lecture de la journée vit DANS la transaction qui écrit :
+      // hors d'elle, il reste une fenêtre où la clôture tombe entre le contrôle
+      // et l'INSERT, et l'argent passe quand même.
+      await exigerJourneeOuverte(qr, user.id);
+
       const r = await encaisserCredit(qr, {
         creditId: id,
         marchandId: user.id,
@@ -188,6 +203,9 @@ export class CreditsController {
     await qr.connect();
     await qr.startTransaction();
     try {
+      // CAI-09 — même règle, même place : dans la transaction.
+      await exigerJourneeOuverte(qr, user.id);
+
       const r = await encaisserCredit(qr, {
         creditId: id,
         marchandId: user.id,

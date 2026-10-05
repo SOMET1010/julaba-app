@@ -6,29 +6,21 @@
  * au tsx et réutilisé à l'identique par la voix (clips/synthèse) et le tactile.
  */
 import { quantiteAvecUnite } from '../utils/unite.utils';
+import { plurielNom, plurielUnite } from './accordFrancais';
 import type { LigneProvisoire } from './ligneProvisoire.js';
+import { t, tParle } from '../i18n/voice/runtime';
 
-function fr(n: number): string {
-  return Math.round(n).toLocaleString('fr-FR');
-}
+// Les phrases viennent du catalogue i18n (clés TATA_*). On arrondit ici comme
+// avant ; le formatage « fr-FR » est celui de la locale (runtime). Ce qui
+// reste français dans ce fichier, c'est la GRAMMAIRE (pluriels, accords) —
+// une langue qui accorde autrement devra fournir sa propre composition.
+const r = (n: number) => Math.round(n);
 
-/** Pluriel français simple : +s sauf si le mot finit déjà par s, x ou z. */
-function pluriel(mot: string): string {
-  return /[sxz]$/i.test(mot) ? mot : `${mot}s`;
-}
-/** Abréviations d'unité invariables (« 2 kg », pas « 2 kgs »). */
-const UNITES_INVARIABLES = new Set(['kg', 'g', 'mg', 'l', 'cl', 'ml', 'dl', 'm', 'cm', 'mm', 'km']);
-function plurielUnite(u: string): string {
-  return UNITES_INVARIABLES.has(u.toLowerCase()) ? u : pluriel(u);
-}
-/** Pluralise le DERNIER mot d'un libellé (« banane plantain » → « banane plantains »).
- *  Exporté : la confirmation de vente d'intentLocal (« Vente de 2 tomates ») l'utilise aussi. */
-export function plurielNom(nom: string): string {
-  const mots = nom.trim().split(' ');
-  if (mots.length === 0) return nom;
-  mots[mots.length - 1] = pluriel(mots[mots.length - 1]);
-  return mots.join(' ');
-}
+// VOIX-07 — l'accord vit maintenant dans `accordFrancais.ts`, un module PUR.
+// Il était ici, donc inaccessible à `ecouteCaisse` qui n'importe rien : les
+// deux accordaient différemment la même vente. Réexporté pour ne rien casser
+// chez ceux qui l'importaient d'ici.
+export { plurielNom } from './accordFrancais';
 
 /**
  * « 3 tas de tomate » / « 2 tomates » (unité omise si « unité » générique).
@@ -40,28 +32,30 @@ export function resumeQuantite(ligne: LigneProvisoire): string {
   const uniteVisible = ligne.unite && ligne.unite !== 'unité' && ligne.unite !== 'unite';
   if (uniteVisible) {
     const u = multiple ? plurielUnite(ligne.unite) : ligne.unite;
-    return `${ligne.quantite} ${u} de ${ligne.nomAffiche}`.replace(/\s+/g, ' ').trim();
+    return t('TATA_QUANTITE_UNITE_PRODUIT', { quantite: String(ligne.quantite), unite: u, produit: ligne.nomAffiche }).replace(/\s+/g, ' ').trim();
   }
   const nom = multiple ? plurielNom(ligne.nomAffiche) : ligne.nomAffiche;
-  return `${ligne.quantite} ${nom}`.replace(/\s+/g, ' ').trim();
+  return t('TATA_QUANTITE_PRODUIT', { quantite: String(ligne.quantite), produit: nom }).replace(/\s+/g, ' ').trim();
 }
 
 /** Résumé chiffré selon l'interprétation : « … à 500 F » (unitaire) / « … pour 1 500 F » (total). */
 export function resumeLigne(ligne: LigneProvisoire): string {
   const base = resumeQuantite(ligne);
   if (ligne.interpretationPrix === 'unitaire' && ligne.prixUnitaire != null) {
-    return `${base} à ${fr(ligne.prixUnitaire)} F`;
+    return t('TATA_RESUME_PRIX_UNITAIRE', { resume: base, prix: r(ligne.prixUnitaire) });
   }
   if (ligne.interpretationPrix === 'total' && ligne.total != null) {
-    return `${base} pour ${fr(ligne.total)} F`;
+    return t('TATA_RESUME_PRIX_TOTAL', { resume: base, total: r(ligne.total) });
   }
   return base; // prix non résolu
 }
 
-export const INVITE = 'Touche-moi et dis ce que tu as vendu.';
-export const RIEN_COMPRIS = "Je n'ai pas bien entendu. Rapproche le téléphone et redis lentement.";
-export const AJOUT_PANIER = "C'est dans le panier. Tu ajoutes autre chose, ou tu encaisses ?";
-export const ANNULATION_ETAPE = "D'accord, on oublie ça. Le panier n'a pas bougé.";
+// Phrases FIXES : des fonctions, pas des constantes — la langue active peut
+// changer après le chargement du module.
+export const invite = (): string => t('TATA_INVITE');
+export const rienCompris = (): string => t('TATA_RIEN_COMPRIS');
+export const ajoutPanier = (): string => t('TATA_AJOUT_PANIER');
+export const annulationEtape = (): string => t('TATA_ANNULATION_ETAPE');
 
 /**
  * Relecture de ce qui a été COMPRIS, dite AVANT de confirmer.
@@ -100,9 +94,48 @@ export function phraseCompris(args: {
   // un reçu qu'elle ne lira jamais.
   const nom = args.quantite > 1 ? plurielNom(args.nom) : args.nom;
   const quantite = uniteParlable(args.unite)
-    ? `${quantiteAvecUnite(args.quantite, args.unite)} de ${args.nom}`
-    : `${args.quantite} ${nom}`;
-  return `J'ai compris : ${quantite} pour ${fr(args.total)} francs. ${AJOUT_PANIER}`;
+    ? t('TATA_MESURE_DE_PRODUIT', { mesure: quantiteAvecUnite(args.quantite, args.unite), produit: args.nom })
+    : t('TATA_QUANTITE_PRODUIT', { quantite: String(args.quantite), produit: nom });
+  // DITE UNIQUEMENT (vendreVocalUnifie l'envoie à `speak`) : on prend la forme
+  // PARLÉE. `t(...)` rendrait la forme ÉCRAN, avec son espace fine — et la
+  // synthèse épellerait « 2 zéro zéro zéro ». Terrain du 24/09.
+  return tParle('TATA_COMPRIS', { quantite, montant: r(args.total), suite: ajoutPanier() });
+}
+
+/**
+ * DEUX FORMES, UN SEUL APPEL — terrain du 24/09.
+ *
+ * `ConfirmationLigne` AFFICHE la phrase de Tantie autant qu'il la dit, et
+ * revendique « impossible de diverger ». C'est juste — mais une seule forme ne
+ * peut pas servir les deux : à l'œil « 2 000 F » se lit, à l'oreille il
+ * s'épelle « 2 zéro zéro zéro ».
+ *
+ * La réponse existait déjà dans ce dépôt (`relectureDeuxFormes`) : rendre les
+ * DEUX formes du MÊME appel. L'écran prend `texte`, le moteur prend
+ * `texteParle`, et elles ne peuvent pas diverger puisqu'elles sortent d'ici.
+ */
+export interface PhraseDeuxFormes { texte: string; texteParle: string; }
+
+/** La phrase de confirmation, pour l'œil et pour l'oreille. */
+export function confirmationDeuxFormes(ligne: LigneProvisoire): PhraseDeuxFormes {
+  const base = resumeQuantite(ligne);
+  if (ligne.interpretationPrix === 'unitaire' && ligne.prixUnitaire != null && ligne.total != null) {
+    const v = { quantite: base, prixUnitaire: r(ligne.prixUnitaire), total: r(ligne.total) };
+    return { texte: t('TATA_CONFIRMATION_UNITAIRE', v), texteParle: tParle('TATA_CONFIRMATION_UNITAIRE', v) };
+  }
+  if (ligne.interpretationPrix === 'total' && ligne.total != null) {
+    const v = { quantite: base, total: r(ligne.total) };
+    return { texte: t('TATA_CONFIRMATION_TOTAL', v), texteParle: tParle('TATA_CONFIRMATION_TOTAL', v) };
+  }
+  // Sans prix, il n'y a aucun montant à dire : les deux formes coïncident.
+  const p = phrasePrixManquant();
+  return { texte: p, texteParle: p };
+}
+
+/** La question d'ambiguïté, pour l'œil et pour l'oreille. */
+export function ambiguiteDeuxFormes(quantite: number, montant: number): PhraseDeuxFormes {
+  const v = { montant: r(montant), quantite: String(quantite) };
+  return { texte: t('TATA_AMBIGUITE', v), texteParle: tParle('TATA_AMBIGUITE', v) };
 }
 
 /** Une unité mérite-t-elle d'être prononcée ? « unité » n'apprend rien. */
@@ -111,19 +144,19 @@ function uniteParlable(u?: string | null): boolean {
   const n = String(u).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return n !== '' && n !== 'unite' && n !== 'unites';
 }
-export const ERREUR_MOTEUR = "Ma voix ne marche pas ici. Tape ta vente, je t'accompagne.";
+export const erreurMoteur = (): string => t('TATA_ERREUR_MOTEUR');
 
 /** Question quand le prix manque (§6). */
-export function phrasePrixManquant(): string { return 'Et c\'est à combien ?'; }
+export function phrasePrixManquant(): string { return t('TATA_PRIX_MANQUANT'); }
 
 /** Question quand la quantité manque (§6). */
 export function phraseQuantiteManquante(nomProduit: string): string {
-  return `Combien de ${nomProduit || 'ce produit'} ?`;
+  return t('TATA_QUANTITE_MANQUANTE', { produit: nomProduit || t('TATA_CE_PRODUIT') });
 }
 
 /** Question d'ambiguïté prix unitaire/total (§5/§6) : « 1 500 francs, c'est le prix d'un seul, ou de tous les 3 ? » */
 export function phraseAmbiguite(quantite: number, montant: number): string {
-  return `${fr(montant)} francs, c'est le prix d'un seul, ou de tous les ${quantite} ?`;
+  return t('TATA_AMBIGUITE', { montant: r(montant), quantite: String(quantite) });
 }
 
 /**
@@ -135,15 +168,15 @@ export function phraseAmbiguite(quantite: number, montant: number): string {
 export function phraseConfirmation(ligne: LigneProvisoire): string {
   const base = resumeQuantite(ligne);
   if (ligne.interpretationPrix === 'unitaire' && ligne.prixUnitaire != null && ligne.total != null) {
-    return `J'ai compris : ${base} à ${fr(ligne.prixUnitaire)} francs. Total : ${fr(ligne.total)} francs. C'est bon ?`;
+    return t('TATA_CONFIRMATION_UNITAIRE', { quantite: base, prixUnitaire: r(ligne.prixUnitaire), total: r(ligne.total) });
   }
   if (ligne.interpretationPrix === 'total' && ligne.total != null) {
-    return `J'ai compris : ${base} pour ${fr(ligne.total)} francs. C'est bon ?`;
+    return t('TATA_CONFIRMATION_TOTAL', { quantite: base, total: r(ligne.total) });
   }
   return phrasePrixManquant();
 }
 
 /** Après une correction (§6) : « D'accord : {résumé}. C'est bon ? » */
 export function phraseCorrectionRecue(ligne: LigneProvisoire): string {
-  return `D'accord : ${resumeLigne(ligne)}. C'est bon ?`;
+  return t('TATA_CORRECTION_RECUE', { resume: resumeLigne(ligne) });
 }

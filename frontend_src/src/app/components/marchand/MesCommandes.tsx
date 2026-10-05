@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ShoppingBag, Clock, CheckCircle, XCircle,
   MapPin, Calendar, TrendingUp, Package,
   MessageSquare, ThumbsUp, ThumbsDown, ChevronRight,
+  Eye, EyeOff, WifiOff, SlidersHorizontal,
 } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useCommande } from '../../contexts/CommandeContext';
@@ -18,6 +20,9 @@ import {
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { NoterCommande } from '../shared/NoterCommande';
 import { toast } from 'sonner';
+import { t } from '../../i18n/voice/runtime';
+import { causeEchec, reseauIndisponible, type CauseEchecReseau } from '../../services/actionReseauRequis';
+import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -58,22 +63,24 @@ const STATUT_LABELS: Record<string, string> = {
 };
 
 const NEG_STATUT_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  en_attente:   { label: 'En attente',      color: '#f59e0b', bg: '#fef3c7' },
-  accepte:      { label: 'Acceptée',        color: '#10b981', bg: '#d1fae5' },
-  refuse:       { label: 'Refusée',         color: '#ef4444', bg: '#fee2e2' },
-  contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: '#f3e8ff' },
+  en_attente:   { label: 'En attente',      color: 'var(--herite-ambre)', bg: 'var(--herite-creme)' },
+  accepte:      { label: 'Acceptée',        color: 'var(--herite-vert-menthe)', bg: 'var(--color-green-100)' },
+  refuse:       { label: 'Refusée',         color: 'var(--color-red-500)', bg: 'var(--color-red-100)' },
+  contre_offre: { label: 'Contre-offre',    color: '#8b5cf6', bg: 'var(--color-purple-100)' },
 };
 
 // ── Composant principal ────────────────────────────────────────────────────────
 
 export function MesCommandes() {
   const { commandes, annulerCommande, updateCommande, refreshCommandes, recupererPaiement } = useCommande();
-  const { speak, user } = useApp();
+  const { speak, user, isOnline } = useApp();
+  const { montantsMasques, basculerMontants } = useMontantsPrives();
   const [filtreStatut, setFiltreStatut] = useState<string>('tous');
   const [filtreType, setFiltreType] = useState<'tous' | 'achat' | 'vente'>('tous');
   const [showMontantModal, setShowMontantModal] = useState(false);
   const [commandeReception, setCommandeReception] = useState<any>(null);
   const [confirmAnnulerCmd, setConfirmAnnulerCmd] = useState<string | null>(null);
+  const [showFiltres, setShowFiltres] = useState(false);
   // Flux paiement actif : cloture hors enum (statut_paiement/paye_at), paiement cash via /paiement.
   const RECEPTION_PAIEMENT_ACTIF = true;
 
@@ -162,41 +169,74 @@ export function MesCommandes() {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
+  // SANS RÉSEAU, ON REFUSE ET ON LE DIT — B4, 21/09/2026.
+  //
+  // Ces actions partaient droit au serveur. Sans réseau, `fetch` lève
+  // « TypeError: Failed to fetch » et l'écran disait `e.message` : la marchande
+  // entendait « Failed to fetch ». Elle ne pouvait ni comprendre, ni savoir que
+  // son geste n'était pas parti, ni savoir qu'il fallait recommencer.
+  //
+  // RIEN N'EST MIS EN FILE, et c'est un choix : une action de commande se
+  // négocie à deux, son sens dépend de l'état du serveur au moment où elle
+  // part. La rejouer plus tard sans que la marchande le sache serait pire que
+  // de lui dire non maintenant. Aucune commande ne peut donc être perdue ni
+  // comptée deux fois : hors ligne, on n'appelle simplement pas le serveur.
+  //
+  // Le bandeau « Hors connexion » repris de Manus ci-dessous rend ce refus
+  // VISIBLE ; il ne le remplace pas. Les boutons ne sont pas désactivés : un
+  // bouton grisé ne dit rien à une marchande qui ne lit pas, le refus parlé si.
+  const direEchecReseau = (cause: CauseEchecReseau) => {
+    if (cause === 'hors_ligne') speak(t('MARCHAND_HORS_LIGNE_ACTION'));
+    else speak(t('MARCHAND_ENVOI_TOMBE_ACTION'));
+  };
+
   const handleAnnuler = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await annulerCommande(id);
       speak('Commande annulée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleConfirmerVente = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'confirmee' });
       speak('Vente confirmée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleRefuserVente = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'annulee' });
       speak('Vente refusée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
   };
 
   const handleMarquerLivree = async (id: string) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     try {
       await updateCommande(id, { statut: 'livree' });
       speak('Commande marquée comme livrée');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(message);
     }
@@ -208,13 +248,16 @@ export function MesCommandes() {
 
   const handleAccepterContreOffre = async (neg: Negociation) => {
     if (!neg.prixContreOffre) return;
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'accepte' });
-      speak(`Contre-offre acceptée : ${neg.prixContreOffre.toLocaleString('fr-FR')} FCFA/${neg.unite}`);
+      speak(montantsMasques ? 'Contre-offre acceptée.' : `Contre-offre acceptée : ${nombreEnMotsFr(neg.prixContreOffre)} FCFA/${neg.unite}`);
       const { negociations: data } = await fetchNegociations();
       setNegociations((data ?? []).map(mapNegociation));
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(`Erreur : ${message}`);
     } finally {
@@ -223,12 +266,15 @@ export function MesCommandes() {
   };
 
   const handleRefuserContreOffre = async (neg: Negociation) => {
+    if (reseauIndisponible()) { direEchecReseau('hors_ligne'); return; }
     setSubmittingNeg(neg.id);
     try {
       await marchandRepondreNegociation(neg.id, { statut: 'refuse' });
       setNegociations(prev => prev.filter(n => n.id !== neg.id));
       speak('Contre-offre refusée.');
     } catch (e: unknown) {
+      const cause = causeEchec(e);
+      if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
       speak(`Erreur : ${message}`);
     } finally {
@@ -242,17 +288,23 @@ export function MesCommandes() {
     <SubPageLayout
       role="marchand"
       title="Mes commandes"
-      subtitle="Suivez vos achats en temps réel"
-      rightContent={<NotificationButton />}
+      subtitle="Achats, ventes et livraisons"
+      rightContent={<div className="flex items-center gap-2"><button type="button" onClick={basculerMontants} aria-label={montantsMasques ? 'Afficher les montants' : 'Cacher les montants'} className="w-11 h-11 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center">{montantsMasques ? <EyeOff className="w-5 h-5 text-white" /> : <Eye className="w-5 h-5 text-white" />}</button><NotificationButton /></div>}
     >
+      {!isOnline && (
+        <div role="status" className="mt-3 rounded-2xl border-2 border-amber-300 bg-amber-50 p-3 flex items-start gap-3">
+          <WifiOff className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-900"><strong>Hors connexion.</strong> Tu peux relire les commandes déjà chargées. Attends le réseau pour confirmer, refuser ou marquer une livraison.</p>
+        </div>
+      )}
       {/* KPIs */}
       <div style={{ padding: '14px 0 0' }}>
         <KPIGrid cols={2}>
           <UniversalKPI
             label="Total commandes"
-            animatedTarget={statsCommandes.total}
+            value={statsCommandes.total.toLocaleString('fr-FR')}
             icon={ShoppingBag}
-            color="#ea580c"
+            color="var(--color-orange-600)"
             bgColor="rgba(255,247,237,0.85)"
             borderColor="rgba(249,115,22,0.4)"
             iconAnimation="bounce"
@@ -260,29 +312,30 @@ export function MesCommandes() {
           />
           <UniversalKPI
             label="En cours"
-            animatedTarget={statsCommandes.enCours}
+            value={statsCommandes.enCours.toLocaleString('fr-FR')}
             icon={Clock}
-            color="#2563eb"
+            color="var(--herite-bleu-vif)"
             bgColor="rgba(239,246,255,0.85)"
             borderColor="rgba(59,130,246,0.4)"
             iconAnimation="pulse"
           />
           <UniversalKPI
             label="Livrées"
-            animatedTarget={statsCommandes.livrees}
+            value={statsCommandes.livrees.toLocaleString('fr-FR')}
             icon={CheckCircle}
-            color="#16a34a"
+            color="var(--color-green-600)"
             bgColor="rgba(240,253,244,0.85)"
             borderColor="rgba(34,197,94,0.4)"
             iconAnimation="spin"
           />
-          <div onClick={() => setShowMontantModal(true)} className="cursor-pointer">
+          <div onClick={() => { if (!montantsMasques) setShowMontantModal(true); }} className="cursor-pointer">
             <UniversalKPI
               label="Montant total"
-              animatedTarget={statsCommandes.montantTotal}
+              value={statsCommandes.montantTotal.toLocaleString('fr-FR')}
+              masque={montantsMasques}
               suffix="FCFA"
               icon={TrendingUp}
-              color="#7c3aed"
+              color="var(--herite-violet)"
               bgColor="rgba(245,243,255,0.85)"
               borderColor="rgba(139,92,246,0.4)"
               iconAnimation="float"
@@ -291,7 +344,7 @@ export function MesCommandes() {
         </KPIGrid>
       </div>
       <AnimatePresence>
-        {showMontantModal && (
+        {showMontantModal && !montantsMasques && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -310,46 +363,46 @@ export function MesCommandes() {
               <h3 className="font-black text-gray-900 text-xl mb-4">Détail des montants</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#f59e0b' }}>En attente</span>
-                  <span style={{ color: '#f59e0b' }}>
+                  <span style={{ color: 'var(--herite-ambre)' }}>En attente</span>
+                  <span style={{ color: 'var(--herite-ambre)' }}>
                     {montantsParStatut.enAttente.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#2563eb' }}>Confirmées</span>
-                  <span style={{ color: '#2563eb' }}>
+                  <span style={{ color: 'var(--herite-bleu-vif)' }}>Confirmées</span>
+                  <span style={{ color: 'var(--herite-bleu-vif)' }}>
                     {montantsParStatut.confirmee.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#7c3aed' }}>En cours</span>
-                  <span style={{ color: '#7c3aed' }}>
+                  <span style={{ color: 'var(--herite-violet)' }}>En cours</span>
+                  <span style={{ color: 'var(--herite-violet)' }}>
                     {montantsParStatut.enCours.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#16a34a' }}>Livrées</span>
-                  <span style={{ color: '#16a34a' }}>
+                  <span style={{ color: 'var(--color-green-600)' }}>Livrées</span>
+                  <span style={{ color: 'var(--color-green-600)' }}>
                     {montantsParStatut.livree.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span style={{ color: '#ef4444' }}>Annulées</span>
-                  <span style={{ color: '#ef4444' }}>
+                  <span style={{ color: 'var(--color-red-500)' }}>Annulées</span>
+                  <span style={{ color: 'var(--color-red-500)' }}>
                     {montantsParStatut.annulee.toLocaleString('fr-FR')} FCFA
                   </span>
                 </div>
               </div>
               <div className="border-t mt-4 pt-4 flex items-center justify-between">
-                <span className="font-black text-lg" style={{ color: '#B74725' }}>Total général</span>
-                <span className="font-black text-xl" style={{ color: '#B74725' }}>
+                <span className="font-black text-lg" style={{ color: 'var(--commerce-action)' }}>Total général</span>
+                <span className="font-black text-xl" style={{ color: 'var(--commerce-action)' }}>
                   {montantsParStatut.total.toLocaleString('fr-FR')} FCFA
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMontantModal(false)}
-                className="w-full rounded-2xl bg-[#B74725] text-white mt-4 py-3 font-semibold"
+                className="w-full rounded-2xl bg-[var(--commerce-action)] text-white mt-4 py-3 font-semibold"
               >
                 Fermer
               </button>
@@ -392,7 +445,7 @@ export function MesCommandes() {
                   >
                     {/* Header */}
                     <div className="px-4 pt-3 pb-2 flex items-start justify-between"
-                      style={{ background: 'linear-gradient(135deg, #faf5ff, white)' }}
+                      style={{ background: 'linear-gradient(135deg, var(--color-purple-50), white)' }}
                     >
                       <div className="flex-1 min-w-0">
                         <span
@@ -412,14 +465,14 @@ export function MesCommandes() {
                       <div className="bg-gray-50 rounded-xl p-2 text-center">
                         <p className="text-[10px] text-gray-500 font-semibold">Mon prix proposé</p>
                         <p className="font-bold text-gray-700 text-sm">
-                          {(neg.prixPropose || 0).toLocaleString('fr-FR')} FCFA
+                          {montantPrive(neg.prixPropose || 0, montantsMasques, 'FCFA')}
                         </p>
                       </div>
                       {isContreOffre && neg.prixContreOffre && (
                         <div className="bg-purple-50 rounded-xl p-2 text-center border border-purple-200">
                           <p className="text-[10px] text-purple-600 font-semibold">Contre-offre reçue</p>
                           <p className="font-bold text-purple-700 text-sm">
-                            {neg.prixContreOffre.toLocaleString('fr-FR')} FCFA
+                            {montantPrive(neg.prixContreOffre, montantsMasques, 'FCFA')}
                           </p>
                         </div>
                       )}
@@ -441,7 +494,7 @@ export function MesCommandes() {
                           onClick={() => handleAccepterContreOffre(neg)}
                           disabled={submittingNeg === neg.id}
                           className="py-3 rounded-2xl font-bold text-white text-xs flex items-center justify-center gap-1 disabled:opacity-50"
-                          style={{ backgroundColor: '#10b981' }}
+                          style={{ backgroundColor: 'var(--herite-vert-menthe)' }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <ThumbsUp className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -468,6 +521,16 @@ export function MesCommandes() {
 
       {/* ══ FILTRES TYPE + STATUT ═════════════════════════════════════════════ */}
       <div className="bg-white border-b sticky top-0 z-10 mt-4">
+        <div className="px-4 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-black text-gray-900">Tes commandes</p>
+            <p className="text-xs text-gray-500">Les plus récentes d’abord</p>
+          </div>
+          <button type="button" onClick={() => setShowFiltres(v => !v)} aria-expanded={showFiltres} className="min-h-11 px-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-700 font-bold text-sm flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4" /> Filtrer
+          </button>
+        </div>
+        {showFiltres && <>
         <div className="px-4 py-3 border-b border-gray-100">
           <div className="flex flex-wrap gap-2">
             {([
@@ -481,7 +544,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreType(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreType === f.key
-                    ? 'bg-[#B74725] text-white'
+                    ? 'bg-[var(--commerce-action)] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -506,7 +569,7 @@ export function MesCommandes() {
                 onClick={() => setFiltreStatut(f.key)}
                 className={`px-4 py-2 rounded-full text-sm font-medium flex-1 min-w-[calc(33%-8px)] transition-colors ${
                   filtreStatut === f.key
-                    ? 'bg-[#B74725] text-white'
+                    ? 'bg-[var(--commerce-action)] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -515,6 +578,7 @@ export function MesCommandes() {
             ))}
           </div>
         </div>
+        </>}
       </div>
 
       {/* ══ LISTE COMMANDES ════════════════════════════════════════════════════ */}
@@ -527,7 +591,12 @@ export function MesCommandes() {
             <h3 className="text-lg font-semibold text-gray-700 mb-2">Aucune commande</h3>
             <p className="text-gray-500 text-sm">
               {filtreStatut === 'tous'
-                ? "Vous n'avez pas encore passé de commandes"
+                // CAI-02 : Tantie TUTOIE, partout. Cette phrase était la
+                // seule du parcours marchande à vouvoyer — repérée par
+                // l'agent de test du 25/09, qui l'a lue à côté de « Tu as
+                // gagné » et « Tes commandes ». Un vouvoiement isolé fait
+                // entendre une AUTRE voix que celle de Tantie.
+                ? "Tu n'as pas encore passé de commande"
                 : `Aucune commande ${STATUT_LABELS[filtreStatut]?.toLowerCase() || ''}`}
             </p>
           </div>
@@ -582,8 +651,8 @@ export function MesCommandes() {
                         <span className="text-gray-500 text-sm ml-2">×{commande.quantite}</span>
                       </div>
                       <div className="font-semibold text-gray-800">
-                        {(commande.prixUnitaire || 0).toLocaleString()}{' '}
-                        <span className="text-[10px] opacity-60">FCFA{commande.unite ? `/${commande.unite}` : ''}</span>
+                        {montantPrive(commande.prixUnitaire || 0, montantsMasques, 'FCFA')}
+                        {commande.unite && !montantsMasques ? <span className="text-[10px] opacity-60">/{commande.unite}</span> : null}
                       </div>
                     </div>
                   </div>
@@ -592,8 +661,7 @@ export function MesCommandes() {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 font-medium">Montant total</span>
                       <span className="text-xl font-bold text-gray-800">
-                        {(commande.total || 0).toLocaleString()}{' '}
-                        <span className="text-sm opacity-60">FCFA</span>
+                        {montantPrive(commande.total || 0, montantsMasques, 'FCFA')}
                       </span>
                     </div>
                     <div className="flex flex-col gap-2 mt-3">
@@ -615,7 +683,7 @@ export function MesCommandes() {
                         <>
                           <Button
                             onClick={() => { void handleConfirmerVente(commande.id); }}
-                            className="flex-1 bg-[#2072AF] text-white hover:bg-[#1a5d92]"
+                            className="flex-1 bg-[var(--herite-bleu)] text-white hover:bg-[#1a5d92]"
                             size="sm"
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
@@ -635,7 +703,7 @@ export function MesCommandes() {
                       {commande.statut === 'confirmee' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => { void handleMarquerLivree(commande.id); }}
-                          className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[var(--color-green-700)]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -645,7 +713,7 @@ export function MesCommandes() {
                       {RECEPTION_PAIEMENT_ACTIF && commande.statut === 'livree' && commande.statutPaiement !== 'paye' && commande.vendeurId === user?.id && (
                         <Button
                           onClick={() => handleOuvrirReception(commande)}
-                          className="flex-1 bg-[#16A34A] text-white hover:bg-[#138a3e]"
+                          className="flex-1 bg-[var(--color-green-600)] text-white hover:bg-[var(--color-green-700)]"
                           size="sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
@@ -659,7 +727,7 @@ export function MesCommandes() {
                           cibleNom={commande.acheteurId === user?.id
                             ? (commande.vendeurNom?.trim() || 'le vendeur')
                             : ((commande as any).acheteurNom?.trim() || "l'acheteur")}
-                          color="#E67E22"
+                          color="var(--herite-orange)"
                           onNoted={() => { void refreshCommandes(); }}
                         />
                       )}

@@ -102,7 +102,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     bottomBar: {
       items: [
         { label: 'Accueil', path: '/marchand', icon: 'Home' },
-        { label: 'Acheter', path: '/marchand/marche', icon: 'Store' },
+        { label: 'Commandes', path: '/marchand/commandes', icon: 'ShoppingBag' },
         { label: 'Moi', path: '/marchand/profil', icon: 'User' },
       ],
     },

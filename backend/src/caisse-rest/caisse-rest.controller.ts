@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Put, Patch, Delete, Body, Param, ParseUUIDPipe, NotFoundException, UseGuards, Optional, Logger, Query, ConflictException } from '@nestjs/common';
 import { EventsGateway } from '../events/events.gateway';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -9,9 +9,166 @@ import { dateOperationValide } from './date-operation';
 import { resumeMargeDesLignes, coutDesLignesCoutees } from './marge-vente';
 import { CaisseTransaction, TransactionStatus } from './caisse-transaction.entity';
 import { restituerStock } from './stock-restitution';
+import { identifiantProduit } from '../commun/identifiant-produit';
+import { nomDeProduitSaisi, uniteDeProduitSaisie } from '../commun/produit-saisi';
+import { exigerJourneeOuverte } from './journee-ouverte';
 import { AlertesService } from '../notifications/alertes.service';
+import { mouvementDeLigne } from '../commun/reconciliation-stock';
 import { CaisseProduitsService } from './caisse-produits.service';
 import { CaisseProduit } from './caisse-produit.entity';
+
+// LE LIBELLÉ D'UNE DÉPENSE — DEP-01, 21/09/2026.
+//
+// UNE SEULE VÉRITÉ : `description` est le nom CANONIQUE du motif d'une dépense.
+// C'est celui de la colonne, celui de l'entité, et c'est désormais celui que le
+// téléphone envoie.
+//
+// COMPATIBILITÉ DE TRANSITION, PAS CONTRAT PÉRENNE : `notes` est la forme
+// HÉRITÉE. Elle n'est acceptée ici que parce que des files hors ligne écrites
+// avec ce nom dorment DÉJÀ sur les téléphones installés — les refuser ferait
+// perdre le motif d'une dépense que la marchande a réellement saisie, une
+// deuxième fois et pour de bon. Cette lecture disparaît quand ces files se
+// seront vidées ; rien de neuf ne doit s'appuyer dessus.
+//
+// Le canonique gagne. Une chaîne vide n'est pas un motif : elle ne doit pas
+// faire perdre celui que la forme héritée transporte.
+export function libelleDepense(canonique: unknown, herite: unknown): string {
+  const texte = (v: unknown): string => (v === null || v === undefined ? '' : String(v).trim());
+  return texte(canonique) || texte(herite);
+}
+
+// LA CATÉGORIE D'UNE DÉPENSE — DEP-02, 22/09/2026.
+//
+// LE DÉFAUT, même famille que DEP-01 un cran plus loin. À l'écran, la marchande
+// TOUCHE une catégorie (« Taxe mairie », « École »…) — c'est le seul geste
+// qu'une non-lectrice puisse faire. Ce choix n'arrivait jamais ici : la route
+// ne lisait pas `body.categorie`, et la colonne `category`, qui existe depuis
+// toujours sur `caisse_transactions`, restait vide sur CHAQUE dépense.
+//
+// L'écran des dépenses la reconstruisait alors en cherchant des mots-clés
+// français dans le libellé — et se trompait sur deux des onze catégories que
+// l'écran propose lui-même. C'est ce que l'architecture interdit : une
+// information qui pèse sur l'argent est conservée ou nommée perdue, jamais
+// reconstruite en aval.
+//
+// LA LISTE EST FERMÉE, ET ELLE EST VÉRIFIÉE ICI. Un identifiant inconnu n'est
+// pas écrit : il vaut mieux une dépense SANS catégorie — cas que l'écran sait
+// nommer (« Catégorie pas notée ») — qu'une catégorie inventée par le
+// téléphone. Le nom de colonne est `category` (héritage du schéma, figé) ;
+// le nom sur le fil est `categorie`. La correspondance se fait ICI, une fois.
+export const CATEGORIES_DEPENSE = [
+  'transport', 'repas', 'taxe_mairie', 'loyer', 'famille', 'tontine',
+  'sante', 'telephone', 'marchandise', 'ecole', 'autre',
+] as const;
+
+export function categorieDepense(valeur: unknown): string | null {
+  if (typeof valeur !== 'string') return null;
+  const v = valeur.trim();
+  return (CATEGORIES_DEPENSE as readonly string[]).includes(v) ? v : null;
+}
+
+/**
+ * LES COLONNES QU'UNE MODIFICATION DE PRODUIT A LE DROIT D'ÉCRIRE — STK-01.
+ *
+ * Une entrée par colonne, avec la façon de lire sa valeur. Ce qui n'est pas
+ * dans cette table n'est pas écrit : un corps de requête ne choisit pas les
+ * colonnes de la base.
+ *
+ * LA RÈGLE, ET ELLE TIENT EN UNE PHRASE : c'est la PRÉSENCE de la clé qui
+ * décide, jamais la vérité de la valeur. `{ prix: 0 }` est une décision de la
+ * marchande et s'écrit ; `{}` ne dit rien du prix et ne le touche pas. Un
+ * `body.prix || 0` confondrait les deux, et c'est cette confusion — « absent »
+ * lu comme « zéro » — qui revient dans chaque défaut d'argent de ce dépôt.
+ */
+/**
+ * UN NOMBRE SAISI DANS UN FORMULAIRE — et la chaîne vide n'en est pas un.
+ *
+ * L'écran des produits remet le champ à `''` quand la marchande l'efface
+ * (`e.target.value === '' ? '' : Number(...)`). `Number('')` vaut ZÉRO : sans
+ * cette lecture, vider la case du prix l'aurait écrit à zéro, et le produit
+ * serait parti en caisse à zéro franc. Un champ vidé n'est pas une décision de
+ * vendre gratuitement — c'est un champ vidé, et on n'y touche pas.
+ */
+/**
+ * STK-04 — « ELLE N'A PAS DIT COMBIEN » N'EST PAS « ZÉRO ».
+ *
+ * Arbitrage de Patrick, 29/09 : « je ne laisserais pas 0 signifier à la fois
+ * "zéro produit" et "quantité inconnue" ».
+ *
+ * Cette route écrivait `body.stock || 0`. Le parcours d'ajout ne réclame pas la
+ * quantité (STK-03 §2) : tout produit entrait donc à 0, et l'alerte criait
+ * « Plus de X ! » sur un produit qu'elle venait de poser.
+ *
+ * LA COLONNE SAIT DÉJÀ LE DIRE : `stock numeric DEFAULT 0`, sans NOT NULL.
+ * Aucune migration n'est nécessaire.
+ *
+ * ET LE CHEMIN D'ARGENT NE BOUGE PAS, c'est mesuré : la vente relit le stock
+ * par `COALESCE(stock, 0)`, donc un stock inconnu se comporte exactement comme
+ * avant pour le décrément et le registre des mouvements. Ce lot ne change que
+ * ce qu'on AFFIRME, jamais ce qu'on compte.
+ */
+function stockSaisiOuInconnu(v: unknown): number | null {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function nombreSaisi(v: unknown): number {
+  if (typeof v === 'string' && v.trim() === '') return NaN; // écarté par l'appelant
+  return Number(v);
+}
+
+const COLONNES_PRODUIT: ReadonlyArray<{ cle: string; colonne: string; lire: (v: unknown) => unknown }> = [
+  { cle: 'nom',             colonne: 'nom',             lire: v => String(v) },
+  { cle: 'prix',            colonne: 'prix',            lire: nombreSaisi },
+  { cle: 'prix_achat',      colonne: 'prix_achat',      lire: nombreSaisi },
+  { cle: 'categorie',       colonne: 'categorie',       lire: v => (v == null ? null : String(v)) },
+  { cle: 'stock',           colonne: 'stock',           lire: nombreSaisi },
+  { cle: 'unite',           colonne: 'unite',           lire: v => (v == null ? null : String(v)) },
+  { cle: 'image',           colonne: 'image',           lire: v => (v == null || v === '' ? null : String(v)) },
+  { cle: 'seuil_alerte',    colonne: 'seuil_alerte',    lire: v => (v == null ? null : nombreSaisi(v)) },
+  { cle: 'date_peremption', colonne: 'date_peremption', lire: v => (v == null || v === '' ? null : v) },
+  // La promo se RETIRE en envoyant `null` : ici, `null` est une valeur, pas une
+  // absence. C'est précisément pourquoi la présence de la clé et la valeur sont
+  // deux questions distinctes.
+  { cle: 'prix_promo',      colonne: 'prix_promo',      lire: v => (v == null || v === '' ? null : Number(v)) },
+  { cle: 'promo_fin',       colonne: 'promo_fin',       lire: v => (v == null || v === '' ? null : v) },
+];
+
+/**
+ * LA PREMIÈRE LIGNE D'UN `RETURNING` — STK-01, et c'est un piège réel.
+ *
+ * `dataSource.query()` ne rend pas la même FORME selon la commande : sur un
+ * INSERT ... RETURNING, les lignes ; sur un UPDATE ... RETURNING, le couple
+ * `[lignes, nombre_de_lignes_touchées]`. L'ancien code faisait `result[0]` dans
+ * les deux cas et répondait donc, sur une modification RÉUSSIE,
+ * `{ produit: [ {…} ] }` — un tableau là où l'écran attend un produit. Et sur
+ * une modification qui ne touchait rien, `{ produit: [] }` avec un 200 : la
+ * forme même empêchait de distinguer le succès de l'échec.
+ *
+ * On lit donc la forme, au lieu de la supposer.
+ */
+export function premiereLigne(resultat: unknown): any | undefined {
+  if (!Array.isArray(resultat)) return undefined;
+  const tete = resultat[0];
+  return Array.isArray(tete) ? tete[0] : tete;
+}
+
+export function colonnesProduitAEcrire(body: Record<string, unknown> | null | undefined): Array<{ colonne: string; valeur: unknown }> {
+  const corps = body ?? {};
+  const sorties: Array<{ colonne: string; valeur: unknown }> = [];
+  for (const { cle, colonne, lire } of COLONNES_PRODUIT) {
+    if (!Object.prototype.hasOwnProperty.call(corps, cle)) continue;
+    const valeur = lire(corps[cle]);
+    // Un nombre illisible (« abc », NaN) n'est pas une valeur : l'écrire
+    // mettrait NULL dans une colonne d'argent. On préfère ne pas y toucher.
+    if (typeof valeur === 'number' && !Number.isFinite(valeur)) continue;
+    // `nom` est NOT NULL : un nom vide n'est pas un nom.
+    if (cle === 'nom' && !String(valeur).trim()) continue;
+    sorties.push({ colonne, valeur });
+  }
+  return sorties;
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('caisse')
@@ -73,6 +230,9 @@ export class CaisseRestController {
       if (jourVente !== aujourdhui) {
         throw new BadRequestException('Seule une vente du jour peut être annulée. Pour une vente plus ancienne, contacte un responsable.');
       }
+      // CAI-02 — annuler, c'est RETIRER de l'argent d'une journée. Si elle est
+      // déjà comptée, l'écart devient faux dans l'autre sens.
+      await this.exigerJourneeOuverte(user.id);
 
       tx.statut = TransactionStatus.ANNULEE;
       tx.motif = 'Annulation par le marchand';
@@ -352,6 +512,31 @@ export class CaisseRestController {
     );
     if (!existante) throw new NotFoundException('Aucune journée à fermer');
 
+    // ON NE FERME PAS DEUX FOIS — CAI-10, 25/09/2026.
+    //
+    // L'agent de test a fermé la journée à 11 000 (écart −500), puis de
+    // nouveau à 11 500 (écart 0) : la seconde fermeture a ÉCRASÉ la première,
+    // et l'écart de 500 francs a disparu sans trace.
+    //
+    // L'`UPDATE` ci-dessous ne regardait pas si la journée était déjà fermée.
+    // Or ce dépôt sait déjà pourquoi c'est grave — c'est écrit dans le
+    // périmètre d'argent, à propos de `exigerJourneeOuverte` : « une journée
+    // fermée est un CONSTAT daté : caisse_theorique, fond_final et leur ecart
+    // sont gravés. Toute écriture postérieure les rend faux en silence. » La
+    // règle valait pour les VENTES, jamais pour la fermeture elle-même.
+    //
+    // Un écart, c'est ce qui manque dans la caisse le soir. Le perdre, c'est
+    // perdre la seule mesure qui dit qu'il s'est passé quelque chose.
+    //
+    // ROUVRIR RESTE PERMIS : `POST session/ouvrir` rouvre une journée fermée
+    // (doctrine en place — on ne bloque jamais la vendeuse). Ce qu'on refuse,
+    // c'est d'écraser un constat en silence.
+    if (existante.ouvert === false && existante.heure_fermeture) {
+      throw new BadRequestException(
+        'Ta journée est déjà fermée. Si tu veux recompter, rouvre-la d’abord.',
+      );
+    }
+
     const theorique = await this.caisseTheorique(user.id, Number(existante.fond_initial ?? 0), today);
     const ecart = comptage - theorique;
 
@@ -390,12 +575,61 @@ export class CaisseRestController {
   // l'ouvre automatiquement (choix produit : la vendeuse n'est jamais bloquée,
   // l'argent reste toujours rattaché à une journée). Idempotent via l'index
   // unique (marchand_id, date).
+  /**
+   * CAI-02 — CETTE FONCTION RESSUSCITAIT UNE JOURNÉE FERMÉE, EN SILENCE.
+   *
+   * Elle faisait `ON CONFLICT … DO UPDATE SET ouvert = true`, et elle est
+   * appelée à CHAQUE vente et CHAQUE dépense. La marchande fermait sa journée,
+   * comptait son argent devant elle, et la clôture gravait trois nombres :
+   * `caisse_theorique`, `fond_final` (ce qu'elle a compté en main) et leur
+   * `ecart`. La vente suivante remettait `ouvert = true` — sans toucher ces
+   * trois nombres. Ils restaient figés sur leurs anciennes valeurs pendant que
+   * l'argent continuait d'entrer. `ecart = 0` voulait dire « tout est juste »
+   * avant, et ne voulait plus rien dire après.
+   *
+   * La recette terrain l'avait vu deux fois (MAR-CAI-002, MAR-CAI-003), les
+   * deux marqués BLOQUANTS.
+   *
+   * L'INTENTION D'ORIGINE EST BONNE, ET ELLE EST CONSERVÉE : « on ne bloque
+   * jamais la vendeuse ». Une marchande qui n'a jamais ouvert sa journée doit
+   * pouvoir vendre — c'est ce que l'INSERT fait, et il reste. Ce qui disparaît,
+   * c'est le `DO UPDATE` : créer une journée absente n'est pas la même chose
+   * que défaire une clôture que quelqu'un a décidée.
+   *
+   * Rouvrir reste possible, par `POST /session/ouvrir`, et c'est un geste
+   * EXPLICITE — parce qu'il invalide un comptage.
+   */
+  /**
+   * CAI-02 — UNE JOURNÉE FERMÉE N'ACCEPTE PLUS D'ÉCRITURE D'ARGENT.
+   *
+   * QUELLES ROUTES, ET POURQUOI CELLES-LÀ. La frontière n'est pas arbitraire :
+   * ce sont exactement les natures que `caisseTheorique` additionne — `vente`,
+   * `depense`, `acompte_credit`, `reglement_credit` — plus l'annulation, qui
+   * retire une ligne du compte (`statut <> 'annulee'`). Une écriture de ces
+   * natures après la clôture rend les trois nombres du soir faux, en silence.
+   *
+   * Le fichier enseigne déjà la moitié de cette leçon, plus haut :
+   * « une écriture d'argent n'est pas finie quand elle est écrite, mais quand
+   * la CLÔTURE la comprend ». Voici l'autre moitié — une clôture n'est pas
+   * finie tant qu'une écriture peut la contredire.
+   *
+   * ON NE BLOQUE PAS LA VENDEUSE, ON LUI DIT QUOI FAIRE. Le message nomme le
+   * geste : rouvrir la journée. C'est un clic, et c'est explicite — parce que
+   * rouvrir invalide un comptage qu'elle a fait devant son argent.
+   */
+  // CAI-09 — LA RÈGLE A DÉMÉNAGÉ, ELLE N'A PAS CHANGÉ. Son corps vit dans
+  // `journee-ouverte.ts` : les crédits, servis par un autre contrôleur, ne
+  // pouvaient pas atteindre une méthode privée, et ils l'ont donc ignorée.
+  private async exigerJourneeOuverte(marchandId: string) {
+    await exigerJourneeOuverte(this.dataSource, marchandId);
+  }
+
   private async ensureSessionOuverte(marchandId: string) {
     const today = new Date().toISOString().split('T')[0];
     await this.dataSource.query(
       `INSERT INTO caisse_sessions (marchand_id, date, fond_initial, ouvert, heure_ouverture)
        VALUES ($1, $2, 0, true, NOW())
-       ON CONFLICT (marchand_id, date) DO UPDATE SET ouvert = true, updated_at = NOW()`,
+       ON CONFLICT (marchand_id, date) DO NOTHING`,
       [marchandId, today],
     ).catch((e: any) => this.logger?.warn(`[CAISSE] ensureSession: ${e.message}`));
   }
@@ -460,6 +694,7 @@ export class CaisseRestController {
       : (prixAchat > 0 ? prixVente - prixAchat : 0);
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
+    await this.exigerJourneeOuverte(user.id);
     await this.ensureSessionOuverte(user.id);
 
     // Lignes vendues (produits appariés). Vente libre/voix : aucune ligne stock.
@@ -472,7 +707,12 @@ export class CaisseRestController {
       ? lignes.map((p: any) => ({
           nom: p.nom || p.name || '',
           qte: Number(p.quantite) || 1,
-          id: p.productId || p.produit_id || p.id || null,
+          // ARG-16 : un identifiant de produit est un UUID, ou il n'y en a
+          // pas. `libre-...` est un identifiant de LIGNE DE PANIER (article
+          // libre, produit dicté non apparié) : le laisser passer ici partait
+          // en `id = 'libre-...'` sur une colonne `uuid` et faisait ÉCHOUER LA
+          // VENTE ENTIÈRE. Écarté, la ligne retombe sur le repli par nom.
+          id: identifiantProduit(p.productId ?? p.produit_id ?? p.id),
         }))
       : (nomProduit ? [{ nom: nomProduit, qte: Number(qteTotale) || 1, id: null }] : []);
 
@@ -529,23 +769,40 @@ export class CaisseRestController {
                LIMIT 1 FOR UPDATE`,
               [user.id, l.nom],
             );
-        if (!rows[0]) continue; // produit inconnu (vente libre/voix) : aucun effet stock
-        const stockAvant = Number(rows[0].stock) || 0;
-        const demandee = l.qte;
-        const retranchee = Math.min(demandee, Math.max(0, stockAvant));
-        const manquant = demandee - retranchee;
-        await qr.manager.query(
-          `UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`,
-          [stockAvant - retranchee, rows[0].id],
+        /**
+         * ARG-18 — LE SILENCE EST REMPLACÉ PAR UNE LIGNE, PAS PAR UN REFUS.
+         *
+         * Ici se trouvait `if (!rows[0]) continue;`. Le saut était juste — un
+         * article libre n'a aucun stock à bouger — mais il ne laissait AUCUNE
+         * trace. Le cas voisin, lui, en laisse une : un stock insuffisant
+         * écrit son `manquant`. Le registre savait dire « il en manquait 3 »,
+         * pas « ce produit-là, je ne l'ai pas trouvé ». L'argent juste, le
+         * stock qui diverge, et rien qui l'écrive.
+         *
+         * La décision est dans `reconciliation-stock`, où elle se teste sans
+         * base : elle dit quoi écrire, et `stockApres === null` dit qu'il n'y
+         * a RIEN à écrire dans `produits`. La vente n'est jamais refusée,
+         * aucun stock n'est fabriqué, aucun autre produit n'est deviné.
+         */
+        const mvt = mouvementDeLigne(
+          { nom: l.nom, qte: l.qte, id: l.id },
+          rows[0] ? { id: rows[0].id, stock: Number(rows[0].stock) || 0, unite: rows[0].unite ?? null } : null,
         );
+        if (mvt.stockApres !== null) {
+          await qr.manager.query(
+            `UPDATE produits SET stock = $1, updated_at = NOW() WHERE id = $2`,
+            [mvt.stockApres, mvt.produitId],
+          );
+        }
         await qr.manager.query(
           // `unite` est FIGÉE ICI, au moment où le mouvement a lieu. Elle
           // était relue du catalogue à l'affichage : changer l'unité d'un
           // produit réécrivait alors tout son historique.
           `INSERT INTO stock_mouvements
-             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, unite)
-           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [user.id, result.id, rows[0].id, l.nom, stockAvant, demandee, retranchee, manquant, rows[0].unite ?? null],
+             (marchand_id, transaction_id, produit_id, produit_nom, stock_avant, quantite_demandee, quantite_retranchee, manquant, unite, type)
+           VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [user.id, result.id, mvt.produitId, mvt.produitNom, mvt.stockAvant,
+           mvt.quantiteDemandee, mvt.quantiteRetranchee, mvt.manquant, mvt.unite, mvt.type],
         );
       }
 
@@ -578,6 +835,7 @@ export class CaisseRestController {
 
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
     // Journée toujours ouverte (dépense rattachée au jour, comme la vente).
+    await this.exigerJourneeOuverte(user.id);
     await this.ensureSessionOuverte(user.id);
     // LA DÉPENSE APPARTIENT AU JOUR OÙ ELLE A ÉTÉ FAITE — ARGENT-1, 19/09/2026.
     //
@@ -602,7 +860,20 @@ export class CaisseRestController {
       result = await this.repo.save(this.repo.create({
         user_id: user.id, marchand_id: user.id,
         session_id: body.session_id || '', montant: body.montant,
-        type: 'depense', description: body.description || '', source: body.source || 'kassa',
+        // DEP-01 : le motif saisi par la marchande DOIT arriver ici. Le
+        // téléphone envoie `description` ; les files hors ligne déjà posées
+        // envoient `notes` (transition — voir `libelleDepense` en tête de
+        // fichier). Avant ce correctif, seul `description` était lu : tout
+        // motif partait dans le vide, sans la moindre erreur.
+        type: 'depense', description: libelleDepense(body.description, body.notes), source: body.source || 'kassa',
+        // DEP-02 : la catégorie TOUCHÉE par la marchande. `null` quand le
+        // téléphone n'en envoie pas (file hors ligne d'avant ce correctif) ou
+        // quand l'identifiant n'est pas des onze — et `null` est une réponse,
+        // que l'écran affiche « Catégorie pas notée ». Aucun repli sur
+        // « autre » : « autre » est un choix qu'elle peut faire, lui donner
+        // aussi le sens de « on ne sait pas » serait donner deux sens à la
+        // même donnée.
+        category: categorieDepense(body.categorie ?? body.category),
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
         ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));
@@ -628,30 +899,77 @@ export class CaisseRestController {
     return { produits };
   }
 
+  // STK-21 — UN PRODUIT ENTRE DANS L'ÉTAL AVEC UN NOM ET UNE UNITÉ.
+  //
+  // Agent de test du 25/09 : un produit nommé « A », 0 kg, en rupture. Cette
+  // route n'exigeait RIEN : `body.nom` partait tel quel, et `body.unite ||
+  // 'unité'` fabriquait une unité quand elle manquait. Arbitrage de Patrick :
+  // « un nom d'au moins 2 caractères et une unité obligatoire ».
   @Post('produits')
   async createProduit(@Body() body: any, @CurrentUser() user: User) {
     const result = await this.dataSource.query(
       'INSERT INTO produits (marchand_id, nom, prix, prix_achat, categorie, stock, unite, image, seuil_alerte, date_peremption, prix_promo, promo_fin) VALUES ($1::text, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
-      [user.id, body.nom, body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', body.stock || 0, body.unite || 'unité', body.image || null,
+      [user.id, nomDeProduitSaisi(body.nom), body.prix || 0, Number(body.prix_achat) || 0, body.categorie || 'Général', stockSaisiOuInconnu(body.stock), uniteDeProduitSaisie(body.unite), body.image || null,
        body.seuil_alerte != null ? Number(body.seuil_alerte) : 10, body.date_peremption || null,
        body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null]
     );
-    return { produit: result[0] };
+    return { produit: premiereLigne(result) };
   }
 
+  /**
+   * MODIFIER UN PRODUIT — STK-01, 22/09/2026.
+   *
+   * CE QUE CETTE ROUTE FAISAIT. Un `UPDATE ... SET nom=$1, prix=$2, ...` sur
+   * six colonnes sans COALESCE : tout champ que le téléphone n'envoyait PAS
+   * était écrit à NULL. C'était un REMPLACEMENT COMPLET déguisé en
+   * modification, et il produisait deux fautes de natures opposées :
+   *
+   *   • `nom` est NOT NULL → une modification partielle faisait ÉCHOUER la
+   *     requête. C'est le « erreur lors de l'enregistrement du prix produit »
+   *     de la recette terrain (MAR-STK-002) : corriger un prix seul renvoyait
+   *     un 500.
+   *
+   *   • `prix` est NULLABLE → une modification du seul stock EFFAÇAIT le prix,
+   *     sans erreur. Le produit restait en rayon sans prix, et la caisse le
+   *     vendait à ce que l'aval voudrait bien reconstruire. Une information
+   *     d'argent perdue en silence : c'est ce que ce dépôt interdit partout.
+   *
+   *   • `RETURNING *` puis `result[0]` : quand l'id n'est pas à cette
+   *     marchande, aucune ligne n'est touchée, `result[0]` vaut `undefined`,
+   *     et la route répondait 200. L'écran disait « Produit mis à jour » sur
+   *     une modification qui n'avait pas eu lieu.
+   *
+   * CE QU'ELLE FAIT MAINTENANT. Elle n'écrit QUE les colonnes présentes dans
+   * le corps. « Absent » veut dire « on n'en a pas parlé » — jamais « zéro »,
+   * jamais « vide ». Un `prix: 0` explicite, lui, est un choix et s'écrit :
+   * c'est la présence de la clé qui décide, pas la vérité de la valeur.
+   * Et une modification qui ne touche aucune ligne le DIT.
+   */
   @Put('produits/:id')
   async updateProduit(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    const champs = colonnesProduitAEcrire(body);
+    if (champs.length === 0) {
+      // Un corps qui ne nomme rien ne modifie rien — et ce n'est pas un succès
+      // muet : sans ça, un formulaire vide repartirait avec « c'est fait ».
+      throw new BadRequestException('Aucun champ à modifier.');
+    }
+
+    const affectations = champs.map((c, i) => `${c.colonne}=$${i + 1}`).join(', ');
+    const valeurs = champs.map(c => c.valeur);
     const result = await this.dataSource.query(
-      `UPDATE produits SET nom=$1, prix=$2, prix_achat=$3, categorie=$4, stock=$5, unite=$6,
-       seuil_alerte=COALESCE($7, seuil_alerte), date_peremption=COALESCE($8, date_peremption),
-       prix_promo=$9, promo_fin=$10, updated_at=NOW()
-       WHERE id=$11 AND marchand_id=$12::text RETURNING *`,
-      [body.nom, body.prix, Number(body.prix_achat) || 0, body.categorie, body.stock, body.unite,
-       body.seuil_alerte != null ? Number(body.seuil_alerte) : null, body.date_peremption || null,
-       body.prix_promo != null && body.prix_promo !== '' ? Number(body.prix_promo) : null, body.promo_fin || null,
-       id, user.id]
+      `UPDATE produits SET ${affectations}, updated_at=NOW()
+        WHERE id=$${champs.length + 1} AND marchand_id=$${champs.length + 2}::text
+        RETURNING *`,
+      [...valeurs, id, user.id],
     );
-    return { produit: result[0] };
+    const produit = premiereLigne(result);
+    if (!produit) {
+      // Aucune ligne : l'id n'existe pas, ou il n'est pas à elle. Dans les deux
+      // cas la modification n'a PAS eu lieu, et le dire est tout l'objet de
+      // cette ligne — l'écran affichait « Produit mis à jour » par-dessus.
+      throw new NotFoundException("Ce produit n'existe pas, ou il n'est pas à toi.");
+    }
+    return { produit };
   }
 
   @Delete('produits/:id')

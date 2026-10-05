@@ -3,6 +3,13 @@
  * Lancer : npm run test:fcfa   (tsx, sans DOM ni navigateur)
  */
 import { COUPURES, decomposerMonnaie, direCoupure, hauteurBillet } from "./fcfa.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const composantCoupure = readFileSync(
+  fileURLToPath(new URL("../components/marchand/CoupureDessinee.tsx", import.meta.url)),
+  "utf8",
+);
 
 let failures = 0;
 function ok(cond: boolean, label: string) {
@@ -17,8 +24,19 @@ function main() {
   console.log("\n[1] Coupures d'encaissement");
   {
     eq(COUPURES.map(c => c.valeur), [10000, 5000, 2000, 1000, 500, 250, 200, 100, 50, 25], "toutes les coupures, décroissantes");
-    ok(COUPURES.every(c => c.forme === 'billet' ? c.valeur >= 500 : c.valeur <= 250), "billets ≥ 500, pièces ≤ 250");
+    ok(COUPURES.every(c => c.forme === 'billet' ? c.valeur >= 1000 : c.valeur <= 500), "billets ≥ 1 000, pièces ≤ 500");
+    ok(COUPURES.find(c => c.valeur === 500)?.forme === 'piece', "500 FCFA est présentée comme une pièce");
     ok(COUPURES.every((c, i) => i === 0 || COUPURES[i - 1].valeur > c.valeur), "ordre strictement décroissant");
+    eq(
+      COUPURES.filter(c => c.forme === 'billet').map(c => [c.valeur, c.couleur, c.repere]),
+      [
+        [10000, '#76539D', 'technologie'],
+        [5000, '#347A4B', 'agriculture'],
+        [2000, '#3577AE', 'transport'],
+        [1000, '#B34E45', 'education'],
+      ],
+      "couleurs dominantes et thèmes simplifiés alignés sur les références BCEAO",
+    );
   }
 
   console.log("\n[2] Décomposition de la monnaie (glouton canonique)");
@@ -50,7 +68,7 @@ function main() {
     const billets = COUPURES.filter((c) => c.forme === "billet").map((c) => c.valeur);
     const hauteurs = billets.map(hauteurBillet);
 
-    ok(hauteurs.length === 5, "cinq billets proposés à l'encaissement");
+    ok(hauteurs.length === 4, "quatre billets proposés à l'encaissement");
     ok(hauteurs.every((h) => h >= 44), "aucun billet sous la cible tactile de 44 px");
 
     // COUPURES est trié décroissant (10 000 → 500) : les hauteurs aussi.
@@ -60,10 +78,57 @@ function main() {
     }
     ok(croissanteAvecLaValeur, "le billet grandit avec la valeur, comme les vraies coupures");
     ok(
-      hauteurBillet(10000) - hauteurBillet(500) >= 12,
-      "l'écart entre le plus gros et le plus petit se voit à l'œil nu",
+      hauteurBillet(10000) - hauteurBillet(1000) >= 12,
+      "l'écart entre le plus gros et le plus petit billet se voit à l'œil nu",
     );
     ok(hauteurBillet(123456) >= 44, "valeur inattendue → taille plancher, jamais 0");
+  }
+
+  console.log("\n[5] Repères visuels sans reproduction des billets");
+  {
+    ok(/data-billet-repere=\{coupure\.repere\}/.test(composantCoupure), "le thème de chaque billet est matérialisé dans le dessin");
+    for (const icone of ["RadioTower", "Sprout", "BusFront", "BookOpen"]) {
+      ok(composantCoupure.includes(icone), `le repère ${icone} est disponible`);
+    }
+    ok(!/logo BCEAO|numéro de série|signe de sécurité/i.test(composantCoupure.replace(/\/\*[\s\S]*?\*\//g, "")), "aucun élément sécurisé n'est reproduit dans le rendu");
+  }
+
+  // ── UN MONTANT DIT N'EST PAS UN MONTANT AFFICHÉ ────────────────────────
+  //
+  // Retour terrain, confirmé deux fois : « il lit 2000 francs : 2 zéro zéro
+  // zéro francs ». Mesuré : `(2000).toLocaleString('fr-FR')` rend `2` + U+202F
+  // (espace fine insécable) + `000`, et AUCUNE couche ne la retire avant le
+  // moteur de voix. Celui-ci reçoit un nombre coupé et lit les chiffres un par
+  // un. Sans locale, c'est pire : `toLocaleString()` suit la locale de
+  // l'APPAREIL — le même montant n'est pas dit pareil selon le téléphone.
+  //
+  // LA RÈGLE EXISTE DÉJÀ, on n'en écrit pas une seconde : `nombreEnMotsFr`
+  // (i18n/voice/argent/deuxFormes) rend « deux mille », déterministe, sans ICU.
+  // `formeEcran` garde l'espace fine pour l'ŒIL — elle y est bonne. Ne jamais
+  // donner deux sens à la même donnée : un montant affiché n'est pas un montant
+  // dit, et les confondre est exactement ce qui a produit ce défaut.
+  {
+    const ecrans = [
+      "components/marchand/DepenseForm.tsx",
+      "components/marchand/GestionStock.tsx",
+      "components/marchand/MarchandModals.tsx",
+      "components/marchand/CreditModal.tsx",
+      "components/marchand/MesCommandes.tsx",
+      "components/marchand/VentesPassees.tsx",
+    ];
+    for (const rel of ecrans) {
+      const src = readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), "utf-8")
+        .replace(/\/\*[\s\S]*?\*\//g, "").split("\n")
+        .filter((l) => !/^\s*(\/\/|\*)/.test(l)).join("\n");
+      const nom = rel.split("/").pop();
+
+      // Un appel de parole qui contient un formatage d'ÉCRAN sur la même ligne.
+      const fautifs = src.split("\n").filter((l) =>
+        /(speak|dire|direEtRetenir|speakAuto)\s*\(/.test(l) &&
+        /toLocaleString|formatMontantFR|formatF\(/.test(l));
+      ok(fautifs.length === 0,
+         `${nom} : aucun montant formaté pour l'écran ne part à la voix (${fautifs.length} restant(s))`);
+    }
   }
 
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);

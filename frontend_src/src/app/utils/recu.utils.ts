@@ -7,7 +7,18 @@
 // n'existait que dans le catalogue, modifiable à tout moment. Un reçu est une
 // preuve remise à une cliente : il doit dire ce qui a été vendu, pas ce que le
 // catalogue affiche aujourd'hui.
+//
+// « ENREGISTRÉE SUR CE TÉLÉPHONE », PAS « CONFIRMÉE » — OFF-01, 21/09/2026.
+// Le reçu se partage même quand la vente n'est pas encore partie : la vente a
+// eu lieu devant la cliente, et il est utile de lui remettre une trace. Mais
+// tant que le serveur n'a rien accusé, le reçu DOIT le dire, et ne doit
+// jamais laisser croire à un état définitif côté serveur. Une vente confirmée
+// rend, elle, EXACTEMENT le reçu d'avant (verrouillé à l'octet par
+// recuStatutSynchronisation.test.mts) : un reçu qui se mettrait à proclamer
+// « confirmée » donnerait un second sens à une donnée qui n'en avait pas et
+// rendrait suspects tous les reçus déjà remis.
 import { ligneLisible } from './unite.utils';
+import type { StatutEnregistrement } from '../types/statutEnregistrement';
 
 interface RecuTx {
   id?: string;
@@ -16,7 +27,21 @@ interface RecuTx {
   date?: string;
   mode_paiement?: string;
   notes?: string;
+  /** L'acheminement de la vente vers le serveur, et rien d'autre.
+   *
+   *  NOM DISTINCT, ET C'EST VOULU : une vente porte déjà un champ `statut`
+   *  (`validee` / `annulee` / `gelee` / `litige`) qui dit son sort COMPTABLE.
+   *  Les confondre donnerait deux sens à une même donnée — « Mes ventes »
+   *  passe justement des ventes qui portent ce `statut`-là.
+   *
+   *  ABSENT = on ne dit rien. C'est le repli sûr : toutes les appelantes
+   *  d'avant OFF-01 obtiennent le reçu inchangé. Seul `'en_attente'` ajoute
+   *  une ligne. */
+  statutSynchronisation?: StatutEnregistrement;
 }
+
+/** La phrase exacte arrêtée par Patrick pour une vente pas encore partie. */
+const MENTION_EN_ATTENTE = 'Vente enregistrée sur ce téléphone — synchronisation en attente.';
 
 function numeroRecu(tx: RecuTx): string {
   const base = (tx.id || '').toString().replace(/[^a-zA-Z0-9]/g, '');
@@ -51,6 +76,10 @@ export function texteRecu(tx: RecuTx, marchand: string): string {
     `TOTAL : ${Number(tx.montant || 0).toLocaleString('fr-FR')} FCFA`,
     tx.mode_paiement ? `Paiement : ${tx.mode_paiement}` : '',
     `Reçu n° ${numeroRecu(tx)}`,
+    // UNE SEULE LIGNE, ET SEULEMENT EN ATTENTE. Placée contre l'identité du
+    // reçu, juste avant la formule de fin : elle reste dans les deux dernières
+    // lignes, donc visible d'un coup d'œil sur WhatsApp, sans rien déplacer.
+    tx.statutSynchronisation === 'en_attente' ? MENTION_EN_ATTENTE : '',
     'Merci et à bientôt !',
   ].filter(Boolean).join('\n');
 }

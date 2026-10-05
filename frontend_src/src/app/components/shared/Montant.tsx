@@ -97,6 +97,8 @@ interface MontantProps {
   animDelay?: number;
   /** Préfixe (ex: "-") */
   prefix?: string;
+  /** Remplace toute valeur par des points, sans chiffre dans le DOM visible. */
+  masque?: boolean;
 }
 
 export function Montant({
@@ -109,8 +111,9 @@ export function Montant({
   animDuration = 1200,
   animDelay = 0,
   prefix,
+  masque = false,
 }: MontantProps) {
-  const displayed = useCountUp(Math.abs(value), animDuration, animDelay);
+  const displayed = useCountUp(masque ? 0 : Math.abs(value), animDuration, animDelay);
   const sign = value < 0 ? '-' : showPlus && value > 0 ? '+' : '';
   const manualPrefix = prefix ?? '';
 
@@ -118,7 +121,15 @@ export function Montant({
     <span
       className={`inline-flex items-baseline gap-[3px] font-black leading-none ${NUMBER_CLASSES[size]} ${className}`}
       style={color ? { color } : undefined}
+      aria-label={masque ? 'Montant caché' : undefined}
     >
+      {masque ? (
+        <>
+          <span>•••••</span>
+          <span className={`font-bold opacity-80 ${UNIT_CLASSES[size]}`}>FCFA{unit && <span className="ml-[2px]">/{unit}</span>}</span>
+        </>
+      ) : (
+      <>
       {/* Signe / préfixe */}
       {(sign || manualPrefix) && (
         <span>{sign || manualPrefix}</span>
@@ -132,6 +143,8 @@ export function Montant({
         FCFA
         {unit && <span className="ml-[2px]">/{unit}</span>}
       </span>
+      </>
+      )}
     </span>
   );
 }

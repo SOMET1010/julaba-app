@@ -14,9 +14,16 @@ tags:
 ---
 - launchApp:
     stopApp: true
+# « Mon commerce », mesuré au run #11 — « Mon compte » n'existe pas.
 - extendedWaitUntil:
-    visible: "Mon compte"
-    timeout: 45000
+    visible: "JÙLABA"
+    timeout: 90000
+# L'écran d'entrée propose « Écouter et entrer » : c'est par là qu'on passe
+# avant de voir le pavé du numéro. Non mesuré au-delà de cet écran — la sonde
+# n'est pas allée plus loin —, donc `optional` plutôt qu'une affirmation.
+- tapOn:
+    text: "Écouter et entrer|Mon commerce"
+    optional: true
 
 # ── LE NUMÉRO ──────────────────────────────────────────────────────────────
 - tapOn: "Taper mon numéro sur le clavier"

@@ -6,7 +6,7 @@
  * connecteur « ni »), la conversion dɔrɔmɛ (× 5 FCFA), les chiffres écrits
  * (« 12 500 »), l'extraction au milieu d'une phrase, et les pièges assumés.
  */
-import { extraireNombreBambara, contientNombreBambara, normaliserBambara } from "./nombresBambara.js";
+import { extraireNombreBambara, contientNombreBambara, normaliserBambara } from "./nombresMandingue.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string) {

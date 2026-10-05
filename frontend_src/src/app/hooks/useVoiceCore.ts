@@ -19,11 +19,13 @@ import {
   type TTSLang,
 } from "../services/elevenlabs";
 import * as audioManager from "../services/audioManager";
+import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : journal de voix (transcript brut, intention, choix clip) — observation seule
 import { tataClipUrl } from "../services/tataVoice";
 import { tataUiClipForText } from "../services/tataUiClips";
-import { playTataChoice, resolveLocalVoiceChoice } from "../services/localVoiceChoice";
+import { resolveLocalVoiceChoice } from "../services/localVoiceChoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
+import { acquiescement } from '../voice-offline/grammaireAcquiescement';
 
 // ─── TYPES ───────────────────────────────────────────────────────
 
@@ -236,21 +238,48 @@ function startTypewriter(
 // pour une phrase FIXE, on joue la vraie voix ivoirienne (sur l'appareil, zéro
 // cloud) au lieu de la voix de synthèse. Sinon on retombe sur le flux normal.
 async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): Promise<void> {
+  vtrace.ttsAppel('useVoiceCore.ttsSpeak', text, { lang, clip: clip ?? null });
+  if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') vtrace.ttsIgnoree('useVoiceCore.ttsSpeak', text, 'voix-desactivee (julaba_voice_disabled)');
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   if (lang === "french") {
-    // Choix B : clip Tata enregistré ou texte seul. Jamais de voix navigateur.
+    // LE FILET PARLE PARTOUT — décision de Patrick, 25/09/2026.
+    //
+    // CE QUI ÉTAIT ICI : « Choix B : clip Tata enregistré ou texte seul. Jamais
+    // de voix navigateur. » Sans clip, RIEN n'était dit — et l'agent de test a
+    // trouvé la caisse muette sur « Je n'ai pas compris », sur le refus d'une
+    // unité vide, sur la fermeture de journée.
+    //
+    // MAIS LE MÊME CODE DISAIT DÉJÀ L'INVERSE AILLEURS : `speakBrowser`, dans
+    // elevenlabs.ts, est documenté comme « filet de dernier recours quand ni un
+    // clip de Tata ni la synthèse native ne peuvent répondre ». Deux règles
+    // pour une seule question, et ce qu'une marchande entendait dépendait du
+    // chemin qu'avait pris la phrase (docs/argent/DEUX-REGLES-DE-VOIX.md).
+    //
+    // Patrick a tranché : le filet parle. Une phrase importante ne se tait
+    // plus faute d'enregistrement — « aucune information importante uniquement
+    // en texte » l'emporte sur « seule la vraie voix a le droit de parler ».
+    //
+    // L'ORDRE NE CHANGE PAS : le clip de Tata d'abord, toujours. La synthèse
+    // ne prend le relais que s'il n'y en a pas, ou s'il échoue. C'est
+    // exactement ce que fait `speakClipOrText`, qui existait déjà pour la
+    // vente vocale — un seul créneau, pas de chevauchement.
+    //
+    // Conséquence : le clip ui-138 (« Je n'ai pas compris. Touche le micro et
+    // redis-moi. ») devient un CONFORT, plus une nécessité. La phrase est dite
+    // tout de suite ; la vraie voix la remplacera quand elle sera enregistrée.
     const clipUrl = (clip ? tataClipUrl(clip) : null) || tataUiClipForText(text) || undefined;
     const choice = resolveLocalVoiceChoice(clipUrl);
-    if (choice.mode === "clip") {
-      await playTataChoice(choice, (url) => audioManager.playClip({ url }, { priority: "user" }));
-    } else if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang, kind: 'clip' } }));
-    }
+    vtrace.ttsChoix('useVoiceCore.ttsSpeak', text, choice.mode, clipUrl ?? null);
+    await audioManager.speakClipOrText(
+      { clipUrl: choice.mode === "clip" ? clipUrl : undefined, text },
+      { priority: "user" },
+    );
     return;
   }
   // Dioula/Bambara : aucun appel réseau n’est autorisé dans le runtime marchand.
   // Une voix locale ne sera jouée que lorsqu’un pack Tata embarqué aura été fourni.
   // En attendant, le texte reste visible et l’application ne feint pas de traduire.
+  vtrace.ttsIgnoree('useVoiceCore.ttsSpeak', text, `pack-${lang}-absent`);
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('julaba:voice-pack-missing', { detail: { lang } }));
   }
@@ -258,6 +287,7 @@ async function ttsSpeak(text: string, lang: TTSLang = "french", clip?: string): 
 }
 
 async function ttsPlayBase64(base64: string, fallback: string): Promise<void> {
+  vtrace.ttsAppel('useVoiceCore.ttsPlayBase64', fallback, { base64: true });
   if (typeof window !== 'undefined' && localStorage.getItem('julaba_voice_disabled') === 'true') return;
   // Joue le clip base64 ; s'il échoue, la voix de secours dit `fallback` (même créneau).
   await audioManager.speakClipOrText({ base64, text: fallback }, { priority: "user" });
@@ -268,15 +298,22 @@ function ttsStop(): void {
 }
 
 // Interprète une réponse de confirmation dictée : « oui » / « non » / incertain.
-// On teste le NON d'abord (« non », « pas ça », « annule »…), sinon le OUI.
-function interpretYesNo(texte: string): "oui" | "non" | null {
-  const t = " " + (texte || "").toLowerCase().replace(/['']/g, "'").replace(/[.,!?;:]/g, " ").replace(/\s+/g, " ") + " ";
-  const NON = [" non ", " pas ", " faux ", " annule", " efface", " recommence"];
-  const OUI = [" oui ", " ouais ", " voila ", " voilà ", " exact ", " accord ", " ok ", " okay ", " c'est bon ", " c'est ca ", " c'est ça ", " bon ", " ca ", " ça "];
-  if (NON.some((w) => t.includes(w))) return "non";
-  if (OUI.some((w) => t.includes(w))) return "oui";
-  return null;
-}
+//
+// VOIX-08 — CETTE FONCTION AVAIT SA PROPRE LISTE DE MOTS, ET ELLE DÉCIDAIT
+// SEULE. Un « oui » ici appelle `confirmAction` : la vente part. Or le dépôt
+// DÉCLARE déjà cette grammaire — `INT_LIGNE_CONFIRMATION` et
+// `INT_LIGNE_REFUS`, marquées `critiqueArgent`, déclinables par locale. Deux
+// vérités pour le même acte, et c'est la non-déclarée qui tranchait ; une
+// langue pouvait déclarer ses variantes sans que la confirmation les lise.
+//
+// Et la liste en dur acceptait « ca » / « ça » ISOLÉS : « ça fait combien ? »
+// valait OUI, donc validait la vente. Elle pose une question, on encaisse.
+// Le repli prévu plus bas (« Dis oui pour valider… », deux fois, puis les
+// boutons) ne se déclenchait jamais : le doute était déjà compté OUI.
+//
+// La règle est maintenant dans `grammaireAcquiescement`, qui lit la grammaire
+// déclarée et où elle se teste sans React.
+const interpretYesNo = acquiescement;
 
 // ─── BIP AUDIO ────────────────────────────────────────────────────
 // Priorité voix : bip uniquement si aucun audio principal en cours
@@ -344,10 +381,32 @@ export function useVoiceCore({
     const onVoicePackMissing = (event: Event) => {
       const detail = event as CustomEvent<{ lang?: string; kind?: string }>;
       const isFrenchClip = detail.detail?.lang === 'french' && detail.detail?.kind === 'clip';
+      // UN CLIP FRANÇAIS MANQUANT NE SE DIT PLUS À LA MARCHANDE — 25/09/2026,
+      // gel VOICE-01 levé par Patrick pour ce seul correctif.
+      //
+      // CE QU'ELLE VOYAIT, sur l'APK 6f4111d, en plein écran de vente et en
+      // rouge : « Cette réponse est affichée. Son clip Tata Nanti Lou n'est
+      // pas encore enregistré. » Une phrase de développeur, devant une femme
+      // qui ne lit pas — et elle PRENAIT LA PLACE de la réponse utile, que la
+      // bulle disait déjà juste au-dessus.
+      //
+      // Elle n'est pas perdue : elle part au journal de voix, donc au
+      // « Rapport de test ». Un silence qu'on ne peut pas relire ne s'explique
+      // pas (limite L4 de GARDE-02).
+      //
+      // CE QUE ÇA NE RÉPARE PAS, et qui reste ouvert : la caisse dit « Je n'ai
+      // pas compris » alors que le seul clip enregistré porte « Je n'ai pas
+      // compris. Tape ton numéro, ou réessaie. » — la phrase du LOGIN. Deux
+      // formulations de la même idée, une seule a une voix. Il manque un
+      // enregistrement, pas une ligne de code.
+      if (isFrenchClip) {
+        vtrace.ttsIgnoree('useVoiceCore.voicePackMissing', '', 'clip-francais-absent');
+        return;
+      }
       const lang = detail.detail?.lang === 'bambara' ? 'Bambara' : 'Dioula';
-      const message = isFrenchClip
-        ? "Cette réponse est affichée. Son clip Tata Nanti Lou n’est pas encore enregistré."
-        : `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
+      // Celui-ci RESTE affiché : il explique à la marchande pourquoi elle
+      // n'entend rien dans sa langue, et que le texte marche sans Internet.
+      const message = `Le pack vocal ${lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet.`;
       setError(message);
       setLiveTranscript(message);
     };
@@ -472,6 +531,7 @@ export function useVoiceCore({
   }, []);
 
   const stopRecording = useCallback(() => {
+    vtrace.ecoute('fin', 'useVoiceCore');
     if (timerRef.current) clearInterval(timerRef.current);
     stopVolumeAnalysis();
     stopSilenceDetection();
@@ -567,8 +627,15 @@ export function useVoiceCore({
     // comme réponse de l'assistant. Le vrai feedback (« C'est dans ton
     // panier. ») est produit par l'effet métier lui-même (onAction), pas ici.
     const bypassed = (confirmationBypassIntents ?? []).includes(data.intent);
+    vtrace.info('EXECUTION', { intent: data.intent, action: data.action?.type ?? null, bypass: bypassed, confirme: confirmed, confirmationDemandee: data.needsConfirmation });
 
-    if (!bypassed) {
+    if (!bypassed && confirmed) {
+      // Déjà confirmé : `data.response` EST la question (« ...c'est bien
+      // ça ? »), déjà posée, et confirmAction vient de dire « J'ai compris ».
+      // La reposer après le « oui » faisait entendre deux fois la question.
+      setResponse(data); setTranscript(data.transcript || userText);
+      setLiveTranscript("");
+    } else if (!bypassed) {
       setResponse(data); setTranscript(data.transcript || userText);
       clearTypewriter();
       typewriterRef.current = startTypewriter(data.response || "", setLiveTranscript, 25);
@@ -750,6 +817,7 @@ export function useVoiceCore({
   // Les chiffres viennent du contexte fourni par l'écran (état local/API).
   const answerQuestion = useCallback(async (texte: string): Promise<boolean> => {
     const question = detecterQuestion(texte);
+    vtrace.intention('useVoiceCore.answerQuestion', texte, question ? { intent: `question_${question}`, action: { type: 'question' } } : null);
     if (!question) return false;
     const chiffres: ChiffresJour = {
       ventes: Number(context.ventes) || 0,
@@ -790,6 +858,7 @@ export function useVoiceCore({
       // VIGILANCE iOS : le repli mp4 du MediaRecorder est a tester sur appareils reels.
       audioBlob = new Blob(chunksRef.current, { type: mimeType });
       audioFilename = mimeType.includes("mp4") ? "audio.mp4" : mimeType.includes("webm") ? "audio.webm" : "audio.wav";
+      if (audioBlob.size < 800) vtrace.info('STT_RIEN_CAPTE', { octets: audioBlob.size, mime: mimeType });
       if (audioBlob.size < 800) {
         // Rien capté : si une confirmation est en attente, on y reste (les boutons
         // Oui/Non restent visibles) au lieu de retomber en veille et bloquer.
@@ -808,13 +877,16 @@ export function useVoiceCore({
     setState("thinking");
     startThinkingPhrases();
     try {
+      vtrace.info('STT_MOTEUR_PRET', { moteur: 'sherpa-native', pret: offlineModelReady() });
       if (!offlineModelReady()) {
         // Pas encore prêt : première fois, ou après un rechargement de page.
         setLiveTranscript("Je prépare ta voix…");
         void ttsSpeak("Je prépare ta voix, un petit instant.");
         await ensureOfflineModel(); // télécharge si besoin, sinon ré-active depuis le cache
       }
+      const _sttT0 = vtrace.sttDebut('useVoiceCore.processAudio', { mime: mimeType, octets: audioBlob.size });
       const texte = await transcribeWav(audioBlob);
+      vtrace.sttFin('useVoiceCore.processAudio', 'sherpa-native', texte, _sttT0);
       if (texte) setTranscript(texte); // affiche « tu as dit … »
 
       // ── RÉPONSE À UNE CONFIRMATION EN COURS (« c'est bien ça ? ») ──────────
@@ -822,6 +894,7 @@ export function useVoiceCore({
       // lieu de la traiter comme une nouvelle vente.
       if (pendingResponseRef.current) {
         const rep = interpretYesNo(texte || "");
+        vtrace.intention('useVoiceCore.confirmation', texte || '', rep ? { intent: `confirmation_${rep}`, action: { type: rep } } : null);
         clearThinkingTimer();
         if (rep === "oui") { confirmAttemptsRef.current = 0; await confirmActionRef.current?.(); return; }
         if (rep === "non") { confirmAttemptsRef.current = 0; await cancelActionRef.current?.(); return; }
@@ -839,6 +912,7 @@ export function useVoiceCore({
       }
 
       const local = texte ? intentLocal(texte) : null;
+      vtrace.intention('useVoiceCore.processAudio', texte || '', local);
       if (local) {
         clearThinkingTimer();
         await handleResponse(local as Partial<VoiceProcessResponse>, texte);
@@ -859,9 +933,31 @@ export function useVoiceCore({
       // d'erreur que si state === "error"). Résultat vécu : « on dirait que rien
       // n'enregistre », alors que Tata avait bien une explication à donner.
       clearThinkingTimer();
-      const msg = navigator.onLine
-        ? "Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie."
-        : "Je n'ai pas réussi à t'écouter, réessaie.";
+      vtrace.erreur('useVoiceCore.processAudio', 'moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav)');
+      // LE MESSAGE DIT LA VRAIE CAUSE — 25/09/2026, gel VOICE-01 levé par
+      // Patrick.
+      //
+      // Agent de test : « Vérifie le réseau » s'affichait sur le web, où le
+      // réseau n'y est pour rien. Il a cherché une panne qui n'existait pas.
+      // Une marchande ferait pire : elle irait chercher du réseau.
+      //
+      // L'INFORMATION ÉTAIT DÉJÀ LÀ, deux lignes plus haut — le commentaire de
+      // ce `catch` dit « moteur voix indisponible, ex. navigateur web sans
+      // sherpa-onnx natif » — et le message la jetait pour parler d'autre
+      // chose. C'est le motif que ce dépôt traque partout.
+      //
+      // La cause est vérifiable, pas devinée : `offlineModelReady()` dit si le
+      // moteur natif est là. Sur le web il ne l'est jamais — décision du
+      // 11/08/2026 (docs/INCLUSION.md) : « moteur vocal unique : sherpa-onnx
+      // (natif, APK) […] conséquence assumée : sur le web, la dictée
+      // hors-ligne n'existe plus — le clavier reste le filet ». Ce n'est donc
+      // pas une panne à réparer, c'est un endroit où la dictée n'existe pas :
+      // on le dit, et on montre la sortie (toucher les produits).
+      const msg = !offlineModelReady()
+        ? "La dictée n'est disponible que dans l'application. Ici, touche les produits."
+        : navigator.onLine
+          ? "Je n'ai pas réussi à préparer ta voix. Réessaie."
+          : "Je n'ai pas réussi à t'écouter, réessaie.";
       setError(msg); setState("error"); setLiveTranscript("");
       await ttsSpeak(msg);
       return;
@@ -880,6 +976,7 @@ export function useVoiceCore({
       // mot-réveil : avant, il passait par le serveur (mort) et donnait « souci
       // technique » au tout début. Désormais, tout est compris localement.
       const local = intentLocal(text);
+      vtrace.intention('useVoiceCore.sendText', text, local);
       if (local) {
         clearThinkingTimer();
         // #8 : on remonte le vrai succès de l'enregistrement (true seulement si
@@ -926,6 +1023,7 @@ try {
     // inutile de tenter getUserMedia, on guide l'utilisateur vers un vrai navigateur.
     if (!navigator.mediaDevices?.getUserMedia || window.isSecureContext === false) {
       const msg = "Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix.";
+      vtrace.erreur('useVoiceCore.startRecording', msg);
       setError(msg);
       setState("error"); setLiveTranscript("");
       if (onError) onError(msg);
@@ -946,6 +1044,7 @@ try {
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = () => { stream.getTracks().forEach((t) => t.stop()); processAudio(mimeType); };
       mr.start(100);
+      vtrace.ecoute('debut', 'useVoiceCore', { mime: mimeType });
       mediaRecorderRef.current = mr;
       playBip('start'); // Bip démarrage
       startVolumeAnalysis(stream);
@@ -967,6 +1066,7 @@ try {
           msg = "Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie.";
         }
       }
+      vtrace.erreur('useVoiceCore.startRecording', msg);
       setError(msg);
       setState("error"); setLiveTranscript("");
       if (onError) onError(err instanceof Error ? err.message : msg);

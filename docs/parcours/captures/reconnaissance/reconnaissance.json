@@ -1,0 +1,812 @@
+{
+  "portes": [
+    {
+      "chemin": "/marchand",
+      "source": "components/marchand/MarchandHome.tsx",
+      "releve": {
+        "url": "/marchand",
+        "titres": [],
+        "lignes": [
+          "Ton comptoir est prêt",
+          "Bonjour Awa",
+          "On vend ensemble aujourd’hui.",
+          "MA CAISSE AUJOURD'HUI",
+          "0 F",
+          "Vendre",
+          "Parler ou toucher les produits",
+          "›",
+          "Mon stock",
+          "Mes dépenses",
+          "Mes ventes",
+          "Mon argent"
+        ],
+        "longueur": 201,
+        "controles": 20,
+        "noeuds": 172,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/caisse",
+      "source": "components/marchand/POSCaisse.tsx",
+      "releve": {
+        "url": "/marchand/caisse",
+        "titres": [
+          "Que voulez-vous vendre ?",
+          "Produits",
+          "Panier actuel"
+        ],
+        "lignes": [
+          "Caisse du jour",
+          "Mar. 22 sept.",
+          "Bonnes ventes !",
+          "Que voulez-vous vendre ?",
+          "Dis-moi ce que tu vends",
+          "Choisir à l’écran",
+          "Produits",
+          "Autre article",
+          "Aucun produit",
+          "+ Autre article",
+          "Panier actuel",
+          "Touche un produit pour l'ajouter au panier."
+        ],
+        "longueur": 244,
+        "controles": 15,
+        "noeuds": 178,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/cahier",
+      "source": "components/marchand/MarchandDepenses.tsx",
+      "releve": {
+        "url": "/marchand/cahier",
+        "titres": [],
+        "lignes": [
+          "Mes dépenses",
+          "Mes chiffres et filtres",
+          "Aujourd'hui : 0 F",
+          "Aucune dépense",
+          "Note tes dépenses pour mieux gérer ton argent",
+          "+ Noter une dépense"
+        ],
+        "longueur": 138,
+        "controles": 11,
+        "noeuds": 111,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo",
+        "[console] Failed to load resource: net::ERR_FAILED"
+      ]
+    },
+    {
+      "chemin": "/marchand/depense",
+      "source": "components/marchand/DepenseForm.tsx",
+      "releve": {
+        "url": "/marchand/depense",
+        "titres": [],
+        "lignes": [
+          "Quelle dépense ?",
+          "ACTIONS RAPIDES",
+          "Transports",
+          "Nourritures",
+          "Taxe mairie",
+          "OU DÉCRIS TA DÉPENSE",
+          "Appuie sur Entrée ou choisis une catégorie",
+          "AUTRES CATÉGORIES",
+          "Voir plus",
+          "\"Petit déjeuner 500 francs\"",
+          "+ Noter une dépense",
+          "Tantie"
+        ],
+        "longueur": 234,
+        "controles": 18,
+        "noeuds": 161,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/stock",
+      "source": "components/marchand/GestionStock.tsx",
+      "releve": {
+        "url": "/marchand/stock",
+        "titres": [],
+        "lignes": [
+          "Mes produits",
+          "0 produit · 0 alerte",
+          "0",
+          "Produits",
+          "0",
+          "Alertes",
+          "0",
+          "FCFA",
+          "Valeur stock",
+          "0",
+          "FCFA",
+          "Prix moyen"
+        ],
+        "longueur": 272,
+        "controles": 25,
+        "noeuds": 231,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/marche",
+      "source": "components/marchand/MarcheVirtuel.tsx",
+      "releve": {
+        "url": "/marchand/marche",
+        "titres": [],
+        "lignes": [
+          "Marché virtuel",
+          "Ton profil marchand n'est pas complet",
+          "Pour accéder au marché, vois ton identificateur : il précisera si tu es détaillante, demi-grossiste ou grossiste.",
+          "0",
+          "Commandes",
+          "0",
+          "Produits disponibles",
+          "0",
+          "FCFA",
+          "Total dépensé",
+          "0",
+          "Négociations en cours"
+        ],
+        "longueur": 390,
+        "controles": 21,
+        "noeuds": 195,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/recoltes-prevues",
+      "source": "components/marchand/RecoltesPrevues.tsx",
+      "releve": {
+        "url": "/marchand/recoltes-prevues",
+        "titres": [],
+        "lignes": [
+          "Récoltes prévues",
+          "Réservé aux grossistes",
+          "Cet écran est accessible uniquement aux marchands grossistes.",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 131,
+        "controles": 10,
+        "noeuds": 123,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/profil",
+      "source": "components/marchand/MarchandProfil.tsx",
+      "releve": {
+        "url": "/marchand/profil",
+        "titres": [
+          "JÙLABA Academy",
+          "Ma coopérative",
+          "Mes tontines",
+          "Ma protection sociale",
+          "Fidélité clients",
+          "Support & Aide JÙLABA"
+        ],
+        "lignes": [
+          "Mon profil",
+          "Afficher ma carte",
+          "Réglages",
+          "Carte professionnelle Jùlaba",
+          "Utilise « Afficher ma carte » pour ouvrir ta carte digitale.",
+          "JÙLABA Academy",
+          "Formations et micro-apprentissages",
+          "MES SERVICES",
+          "Ma coopérative",
+          "Rejoindre ou voir ma coop",
+          "Soumettre un besoin",
+          "Mes tontines"
+        ],
+        "longueur": 833,
+        "controles": 28,
+        "noeuds": 294,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/ventes-passees",
+      "source": "components/marchand/VentesPassees.tsx",
+      "releve": {
+        "url": "/marchand/ventes-passees",
+        "titres": [],
+        "lignes": [
+          "Ventes passées",
+          "Mes chiffres et filtres",
+          "Toutes",
+          "Par la voix",
+          "Par caisse",
+          "Filtres avancés",
+          "Je n'ai pas pu lire tes ventes. Ce n'est pas zéro : je n'ai pas pu demander au serveur. Ton argent est là, réessaie.",
+          "Réessayer de lire mes ventes",
+          "+ Noter une vente"
+        ],
+        "longueur": 250,
+        "controles": 17,
+        "noeuds": 133,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo",
+        "[console] [VentesPassees] erreur chargement crédits Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    "
+      ]
+    },
+    {
+      "chemin": "/marchand/resume-caisse",
+      "source": "components/marchand/ResumeCaisse.tsx",
+      "releve": {
+        "url": "/marchand/resume-caisse",
+        "titres": [],
+        "lignes": [
+          "Résumé détaillé",
+          "0",
+          "FCFA",
+          "Tu as gagné",
+          "0",
+          "FCFA",
+          "Tu as dépensé",
+          "0",
+          "FCFA",
+          "Tu as gagné net",
+          "0",
+          "FCFA"
+        ],
+        "longueur": 332,
+        "controles": 19,
+        "noeuds": 181,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/commandes",
+      "source": "components/marchand/MesCommandes.tsx",
+      "releve": {
+        "url": "/marchand/commandes",
+        "titres": [
+          "Aucune commande"
+        ],
+        "lignes": [
+          "Mes commandes",
+          "Achats, ventes et livraisons",
+          "0",
+          "Total commandes",
+          "0",
+          "En cours",
+          "0",
+          "Livrées",
+          "0",
+          "FCFA",
+          "Montant total",
+          "Tes commandes"
+        ],
+        "longueur": 252,
+        "controles": 13,
+        "noeuds": 169,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/alertes",
+      "source": "components/marchand/MarchandAlertes.tsx",
+      "releve": {
+        "url": "/marchand/alertes",
+        "titres": [
+          "Tout va bien"
+        ],
+        "lignes": [
+          "Alertes",
+          "Aucune alerte active",
+          "Tout réafficher",
+          "Tout va bien",
+          "Aucune alerte en ce moment. Votre stock est bien garni !"
+        ],
+        "longueur": 115,
+        "controles": 8,
+        "noeuds": 107,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/parametres",
+      "source": "components/marchand/Parametres.tsx",
+      "releve": {
+        "url": "/marchand/parametres",
+        "titres": [
+          "Ma façon d'utiliser Julaba",
+          "Notifications",
+          "Sécurité",
+          "Accessibilité",
+          "Compte"
+        ],
+        "lignes": [
+          "Paramètres",
+          "Awa Koné",
+          "En ligne",
+          "Ma façon d'utiliser Julaba",
+          "Comment Julaba s'adapte à toi",
+          "🔵",
+          "Automatique",
+          "Julaba s'adapte à ta façon de faire",
+          "🟢",
+          "Je lis et j'écris",
+          "Clavier direct, peu de voix",
+          "🟡"
+        ],
+        "longueur": 1842,
+        "controles": 37,
+        "noeuds": 374,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/cooperative",
+      "source": "components/marchand/MaCooperative.tsx",
+      "releve": {
+        "url": "/marchand/cooperative",
+        "titres": [],
+        "lignes": [
+          "Ma coopérative",
+          "Pas encore membre",
+          "Rejoins une coopérative pour accéder aux achats groupés et soumettre tes besoins.",
+          "Choisir ta coopérative",
+          "Sélectionne ta coopérative dans la liste officielle.",
+          "Choisis une coopérative…",
+          "Rejoindre cette coopérative",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 275,
+        "controles": 12,
+        "noeuds": 128,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/cooperative/besoin",
+      "source": "components/marchand/BesoinMarchand.tsx",
+      "releve": {
+        "url": "/marchand/cooperative/besoin",
+        "titres": [],
+        "lignes": [
+          "Soumettre un besoin",
+          "Produit *",
+          "Catégorie",
+          "Quantité *",
+          "Unité",
+          "Choisir...",
+          "kg",
+          "sac",
+          "tonne",
+          "tas",
+          "régimes",
+          "carton"
+        ],
+        "longueur": 257,
+        "controles": 19,
+        "noeuds": 156,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/tontines",
+      "source": "components/marchand/Tontines.tsx",
+      "releve": {
+        "url": "/marchand/tontines",
+        "titres": [],
+        "lignes": [
+          "Mes tontines",
+          "Épargne tournante entre commerçantes",
+          "Chacune cotise, chacune reçoit son tour — argent réel, traçable.",
+          "Aucune tontine pour l'instant",
+          "Crée-en une, ou fais-toi ajouter par une responsable.",
+          "Créer une tontine",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 248,
+        "controles": 11,
+        "noeuds": 129,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/tontines/1",
+      "source": "components/marchand/TontineDetail.tsx",
+      "releve": {
+        "url": "/marchand/tontines/1",
+        "titres": [],
+        "lignes": [
+          "Tontine",
+          "Réponse serveur invalide (non-JSON)",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 72,
+        "controles": 10,
+        "noeuds": 114,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/protection-sociale",
+      "source": "components/marchand/ProtectionSociale.tsx",
+      "releve": {
+        "url": "/marchand/protection-sociale",
+        "titres": [],
+        "lignes": [
+          "Ma protection sociale",
+          "CNPS retraite · CNAM santé",
+          "Impossible de charger votre historique de cotisations pour le moment. Réessayez plus tard.",
+          "Suivi personnel de vos cotisations. La synchronisation officielle avec la CNPS et la CNAM sera activée dès que la connexion sera disponible.",
+          "CNPS",
+          "Retraite & prévoyance",
+          "Non enrôlé",
+          "Total cotisé",
+          "0 FCFA",
+          "Dernier versement",
+          "—",
+          "Enregistrer un versement"
+        ],
+        "longueur": 584,
+        "controles": 13,
+        "noeuds": 178,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo",
+        "[console] Failed to load resource: net::ERR_FAILED"
+      ]
+    },
+    {
+      "chemin": "/marchand/fidelite",
+      "source": "components/marchand/Fidelite.tsx",
+      "releve": {
+        "url": "/marchand/fidelite",
+        "titres": [],
+        "lignes": [
+          "Fidélité",
+          "Programme désactivé",
+          "Mon barème",
+          "désactivé",
+          "1 point par 100 FCFA · récompense à 100 points = 1 000 FCFA de remise",
+          "Modifier le barème",
+          "Numéro du client",
+          "Voir",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 191,
+        "controles": 14,
+        "noeuds": 140,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/academy",
+      "source": "components/academy/UniversalAcademy.tsx",
+      "releve": {
+        "url": "/marchand/academy",
+        "titres": [
+          "Julaba Academy"
+        ],
+        "lignes": [
+          "0",
+          "/100",
+          "Salut ! On apprend en s'amusant !",
+          "Julaba Academy",
+          "Apprends et gagne des points !",
+          "Mon Score Jùlaba Academy",
+          "0/100",
+          "Encore 100 points",
+          "Comprendre",
+          "0",
+          "Lecons terminees",
+          "1"
+        ],
+        "longueur": 228,
+        "controles": 13,
+        "noeuds": 165,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa",
+      "source": "components/wallet/WalletPage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa",
+        "titres": [],
+        "lignes": [
+          "Crée ton code PIN",
+          "Sécurise ton Keiwa",
+          "Choisis un code à 4 chiffres",
+          "Nouveau PIN",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8"
+        ],
+        "longueur": 120,
+        "controles": 18,
+        "noeuds": 128,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa/transfert",
+      "source": "components/wallet/TransfertPage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa/transfert",
+        "titres": [],
+        "lignes": [
+          "Transfert",
+          "À qui envoyer ?",
+          "Étape 1 sur 3",
+          "Destinataire",
+          "Entrez le numéro de téléphone du destinataire — son compte Julaba est vérifié automatiquement.",
+          "Continuer",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 189,
+        "controles": 12,
+        "noeuds": 126,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa/paiements",
+      "source": "components/wallet/PaiementsPage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa/paiements",
+        "titres": [],
+        "lignes": [
+          "Paiements",
+          "Payez vos services facilement",
+          "Tout",
+          "Factures",
+          "Santé",
+          "Éducation",
+          "Vos favoris",
+          "CNPS",
+          "Cotisation sociale",
+          "CMU",
+          "Assurance maladie",
+          "Mairie"
+        ],
+        "longueur": 646,
+        "controles": 18,
+        "noeuds": 275,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa/banque",
+      "source": "components/wallet/BanquePage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa/banque",
+        "titres": [],
+        "lignes": [
+          "Lier ma banque",
+          "Connectez votre compte bancaire",
+          "Fonctionnalité en cours de déploiement",
+          "Bientôt vous pourrez lier votre compte bancaire directement à Keiwa.",
+          "Banque liée",
+          "BICICI",
+          "BICICI",
+          "CI•• •••• •••• 4892",
+          "Connectée",
+          "Banques disponibles",
+          "SIB",
+          "SIB"
+        ],
+        "longueur": 785,
+        "controles": 21,
+        "noeuds": 236,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa/carte",
+      "source": "components/wallet/CartePage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa/carte",
+        "titres": [],
+        "lignes": [
+          "Ma carte",
+          "Carte virtuelle Julaba",
+          "Active",
+          "Julaba",
+          "CARTE VIRTUELLE",
+          "SOLDE",
+          "••••••",
+          "FCFA",
+          "•••• •••• •••• ••••",
+          "TITULAIRE",
+          "AWA KONÉ",
+          "EXPIRE"
+        ],
+        "longueur": 586,
+        "controles": 18,
+        "noeuds": 284,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/keiwa/historique",
+      "source": "components/wallet/HistoriquePage.tsx",
+      "releve": {
+        "url": "/marchand/keiwa/historique",
+        "titres": [
+          "Transactions"
+        ],
+        "lignes": [
+          "Transactions",
+          "Tous",
+          "Crédits",
+          "Débits",
+          "Recharges",
+          "Aucune transaction",
+          "Tantie",
+          "Accueil",
+          "Acheter",
+          "Moi"
+        ],
+        "longueur": 90,
+        "controles": 15,
+        "noeuds": 122,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    },
+    {
+      "chemin": "/marchand/support",
+      "source": "components/shared/SupportPage.tsx",
+      "releve": {
+        "url": "/marchand/support",
+        "titres": [
+          "Support JÙLABA",
+          "Nous contacter",
+          "Questions fréquentes"
+        ],
+        "lignes": [
+          "Support JÙLABA",
+          "Notre équipe est là pour t'aider",
+          "Service disponible",
+          "Lun-Ven 8h-18h",
+          "Nous contacter",
+          "Appeler le support",
+          "+225 27 20 00 00 00",
+          "Lun-Ven 8h-18h",
+          "WhatsApp",
+          "0700000000",
+          "Réponse rapide",
+          "Email"
+        ],
+        "longueur": 590,
+        "controles": 15,
+        "noeuds": 220,
+        "vide": false
+      },
+      "souci": "",
+      "erreurs": [
+        "[console] [Notif] loadNotifications: Error: Réponse serveur invalide (non-JSON)\n    at http://127.0.0.1:5198/src/app/services/api/api-client.ts:122:11\n    at async loadNo"
+      ]
+    }
+  ]
+}

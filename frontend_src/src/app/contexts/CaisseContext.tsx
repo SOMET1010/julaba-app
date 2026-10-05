@@ -10,12 +10,23 @@ import { API_URL } from '../utils/api';
 import { prixEffectif } from '../utils/promo.utils';
 import type { LigneDeVente, ProduitServeur, AliasSaisieProduit } from '../types/vente';
 import { jourLocal } from '../utils/jourLocal';
+import { etatCatalogueCaisse, type EtatCatalogueCaisse, type LectureCatalogue } from '../services/etatCatalogueCaisse';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
   enfilerOperation, synchroniser,
   nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
+  ventesParties, ventesEncoreEnFile,
   type OfflineEndpoint, type OfflineMethod, type LettreMorte,
 } from '../voice-offline/offlineCaisse';
+// OFF-02 — les trois canaux d'une vente qui part enfin : la clé se choisit
+// dans un module pur, la voix passe par le catalogue, la vibration par le
+// module haptique commun. Rien n'est composé ici.
+import { annonceVentesParties } from '../services/annonceVentesParties';
+import { vibrerEnvoyee } from '../utils/haptique';
+import { useSpeakMessage } from '../i18n/voice/speakMessage';
+import { resoudreMessage, type Variables } from '../i18n/voice/runtime';
+import type { MessageId } from '../i18n/voice/types';
+import { guidageVocal } from '../utils/accessMode';
 // Persistance locale du panier (Phase 1) : module pur, stockage injecté.
 import { loadCart, saveCart, clearStoredCart, type KVStore } from '../services/cartStorage';
 
@@ -57,6 +68,51 @@ function doitEnfiler(error: unknown): boolean {
   return true; // pas de statut HTTP → transitoire (réseau/technique/session)
 }
 
+/**
+ * CE QU'UNE VENTE EST DEVENUE, DIT À L'APPELANTE — OFF-01, 21/09/2026.
+ *
+ * `enregistrerVente` avait TROIS issues qui rendaient toutes `undefined` :
+ * mise en file parce que le téléphone est hors ligne, acceptée par le serveur,
+ * et mise en file parce que l'envoi est tombé alors que `navigator.onLine`
+ * disait « en ligne » (le cas le plus traître). Indiscernables, l'écran les
+ * annonçait toutes les trois « Vente réussie », avec vibration de succès et
+ * voix de succès, sur une vente qui dormait dans la file.
+ *
+ * DEUX VALEURS, PAS TROIS : ce qui compte pour la marchande n'est pas POURQUOI
+ * la vente attend, c'est QU'ELLE attend. Les deux chemins d'attente rendent
+ * donc le même statut.
+ *
+ * UN OBJET, PAS UNE CHAÎNE NUE : `resultat.statut` se lit à l'appel, ne se
+ * confond avec aucun autre `string` de la caisse, et laisse la place à un
+ * champ supplémentaire (l'identifiant de file, par exemple) sans toucher aux
+ * appelantes.
+ *
+ * OÙ VIT CE TYPE, ET QUI LE PRODUIT. Il est DÉCLARÉ une seule fois, dans
+ * `types/statutEnregistrement` — un module sans dépendance, parce que le reçu
+ * (`utils/recu.utils.ts`) doit le connaître et qu'un util pur n'a rien à faire
+ * d'un module de contexte React. Il est ré-exporté ici pour que les écrans de
+ * caisse continuent de le prendre à un seul endroit.
+ *
+ * Il est PRODUIT par `enregistrerVente`, ci-dessous, qui est le seul à savoir
+ * ce qui est arrivé à la vente. UNE SEULE EXCEPTION, nommée : la vente à
+ * CRÉDIT (`handleCreditSuccess` dans `POSCaisse.tsx`) pose `'confirmee'` en
+ * dur. Elle ne passe pas par ici — le crédit a son propre appel serveur, et ce
+ * gestionnaire ne tourne qu'APRÈS son accusé de réception ; le chemin est de
+ * surcroît inactif en pilote espèces (`CAISSE_CREDIT_ACTIF = false`, modale
+ * non montée). Le rebrancher sur le contexte pour la beauté du commentaire
+ * ferait bouger du code d'argent mort et non couvert : on préfère l'écrire.
+ *
+ * Ce qu'aucun écran ne doit faire, en revanche : REDÉDUIRE ce statut de
+ * `navigator.onLine` après coup. Le navigateur ment quand l'envoi tombe.
+ *
+ * CE QUI N'EST PAS UN STATUT : une erreur métier 4xx. Elle continue d'être
+ * levée — une vente refusée n'est ni confirmée ni en attente.
+ */
+export type { StatutEnregistrement, ResultatEnregistrement } from '../types/statutEnregistrement';
+import type { ResultatEnregistrement } from '../types/statutEnregistrement';
+import type { IdCategorieDepense } from '../services/categorieDepense';
+import { ajouterAuPanier, retirerLigne, changerQuantite, changerPrix, type LignePanier } from '../services/panierLignes';
+
 export interface CaisseTransaction {
   id: string;
   marchandId: string;
@@ -93,6 +149,23 @@ export interface CaisseProduct {
 }
 
 export interface CartItem {
+  /**
+   * L'IDENTITÉ DE CETTE LIGNE — P0.1, 27/09/2026. Toujours présente, unique
+   * dans le panier. C'est elle qui cible une suppression ou une modification.
+   */
+  ligneId: string;
+  /**
+   * L'identifiant du produit au CATALOGUE, ou `null` s'il n'y en a pas
+   * (article libre, produit dicté non apparié).
+   *
+   * `null` veut dire « pas de produit catalogue ». JAMAIS « c'est le même ».
+   * Il n'est donc jamais une clé de fusion : sans le test d'existence, tous
+   * les articles libres seraient égaux entre eux et s'écraseraient en une
+   * ligne — la faute du 18/09, réintroduite par la correction censée
+   * l'éviter. Voir `services/panierLignes.ts`.
+   */
+  productIdCatalogue: string | null;
+  /** @deprecated P0.1 — vaut l'identité de LIGNE. Retiré à la propagation finale. */
   productId: string;
   nom: string;
   prix: number;
@@ -150,6 +223,16 @@ export interface CaisseStats {
   nombreCahier: number;
 }
 
+/** Des ventes gardées hors ligne viennent d'être acceptées par le serveur.
+ *  `restantes` = les ventes encore en file APRÈS ce tour : sans elle, on
+ *  laisserait croire que tout est parti. */
+export interface VentesSynchronisees {
+  ventes: number;
+  restantes: number;
+  /** Horodatage de la nouvelle (la plus récente l'emporte à l'affichage). */
+  a: number;
+}
+
 interface CaisseContextType {
   transactions: CaisseTransaction[];
   loading: boolean;
@@ -159,15 +242,21 @@ interface CaisseContextType {
   selectedProduct: CaisseProduct | null;
   setSelectedProduct: (p: CaisseProduct | null) => void;
   
-  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<void>;
-  enregistrerDepense: (montant: number, notes?: string) => Promise<void>;
+  /** Rend TOUJOURS le statut de la vente (OFF-01) : `confirmee` quand le
+   *  serveur a accusé réception, `en_attente` quand elle dort dans la file
+   *  durable. Une erreur métier 4xx est levée, pas rendue. */
+  enregistrerVente: (montant: number, produits?: LigneDeVente[], modePaiement?: string, notes?: string, source?: 'vocal' | 'kassa') => Promise<ResultatEnregistrement>;
+  /** `description` : le MOTIF de la dépense, sous son nom canonique — celui de
+   *  la colonne, de l'entité et de la route. Il s'appelait `notes` ici, et le
+   *  serveur ne le lisait jamais (DEP-01). */
+  enregistrerDepense: (montant: number, description?: string, categorie?: IdCategorieDepense) => Promise<void>;
   
   // POS Cart
   addToCart: (product: CaisseProduct, quantite?: number, totalExact?: number, origine?: 'vocal') => void;
-  removeFromCart: (productId: string) => void;
-  updateCartItemQuantity: (productId: string, quantite: number) => void;
+  removeFromCart: (ligneId: string) => void;
+  updateCartItemQuantity: (ligneId: string, quantite: number) => void;
   /** Négoce (demi-grossiste/grossiste) : le prix unitaire se discute à la vente. */
-  updateCartItemPrice: (productId: string, prix: number) => void;
+  updateCartItemPrice: (ligneId: string, prix: number) => void;
   clearCart: () => void;
   getTotalCart: () => number;
 
@@ -186,6 +275,11 @@ interface CaisseContextType {
   updateProduct: (id: string, updates: Partial<CaisseProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
+  /** CAI-01 — ce que la caisse a le DROIT d'affirmer sur son catalogue.
+   *  Ne remplace pas `products` : il dit seulement pourquoi la liste
+   *  est ce qu'elle est. Un écran ne peut plus confondre « rien créé »
+   *  et « pas pu demander ». */
+  etatCatalogue: EtatCatalogueCaisse;
   
   // Transactions (alias)
   addTransaction: (tx: Omit<CaisseTransaction, 'id' | 'date'>) => Promise<void>;
@@ -203,6 +297,16 @@ interface CaisseContextType {
   syncLettresMortes: LettreMorte[];
   /** Retire une opération refusée du registre (après revue). */
   purgerEchecSync: (id: string) => Promise<void>;
+
+  // File hors-ligne — ventes GARDÉES qui viennent enfin de partir (OFF-02).
+  /** La dernière nouvelle à donner à la marchande, ou `null` s'il n'y en a
+   *  pas. Elle vit ICI, dans le contexte monté pour toute l'application, et
+   *  non dans l'écran de vente : le rejeu tourne souvent alors que la
+   *  marchande est ailleurs, ou que l'application vient de redémarrer. Une
+   *  notification posée dans un composant démonté serait perdue. */
+  ventesSynchronisees: VentesSynchronisees | null;
+  /** La marchande a vu la nouvelle : on l'efface. */
+  accuserVentesSynchronisees: () => void;
 }
 
 const CaisseContext = createContext<CaisseContextType | undefined>(undefined);
@@ -216,6 +320,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<CaisseTransaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<CaisseProduct[]>([]);
+  // ── CAI-01 — OÙ EN EST LA LECTURE DU CATALOGUE ───────────────────────────
+  // `loadProducts` avale son échec et se replie sur le cache du téléphone :
+  // c'est la BONNE décision sur un marché sans réseau. Mais quand le cache est
+  // vide lui aussi, la liste reste `[]` — et `[]` s'affichait « Aucun produit »,
+  // la même phrase que « tu n'as rien créé ». Deux situations, une phrase.
+  // On CONSERVE donc l'information au lieu de la perdre : ce que la caisse a le
+  // droit d'affirmer se décide dans `services/etatCatalogueCaisse.ts`.
+  const [lectureCatalogue, setLectureCatalogue] = useState<LectureCatalogue>('jamais');
+  const [produitsDepuisCache, setProduitsDepuisCache] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<CaisseProduct | null>(null);
 
@@ -229,6 +342,19 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // Rejets définitifs (4xx) sortis de la file au rejeu : surfaçage obligatoire.
   const [syncEchecs, setSyncEchecs] = useState(0);
   const [syncLettresMortes, setSyncLettresMortes] = useState<LettreMorte[]>([]);
+  // OFF-02 : la bonne nouvelle, gardée au niveau du contexte pour qu'elle
+  // survive à l'écran de vente refermé (voir CaisseContextType).
+  const [ventesSynchronisees, setVentesSynchronisees] = useState<VentesSynchronisees | null>(null);
+  const accuserVentesSynchronisees = useCallback(() => setVentesSynchronisees(null), []);
+  // LES PHRASES SONT DES CLÉS. `direMessage` dit la phrase quand le guidage
+  // vocal est actif, et rend TOUJOURS son texte résolu — pour que ce qui est
+  // affiché soit exactement ce qui est dit, sans seconde rédaction. Le mute
+  // global reste en aval (AppContext.speak) : muette veut dire muette, argent
+  // compris — arbitrage de Patrick, il n'est pas contourné ici.
+  const speakMessage = useSpeakMessage();
+  const direMessage = (id: MessageId, vars?: Variables) => (
+    guidageVocal() ? speakMessage(id, vars) : resoudreMessage(id, vars)
+  );
   const rafraichirEchecs = useCallback(async () => {
     const uid = appUser?.id;
     if (!uid) { setSyncEchecs(0); setSyncLettresMortes([]); return; }
@@ -323,9 +449,34 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       if (minuterie) { clearTimeout(minuterie); minuterie = null; }
       try {
         const avant = await offlineNbEchecs(uid).catch(() => 0);
-        const { ok, echecs, reste } = await synchroniser(posterOperation, uid);
+        const bilan = await synchroniser(posterOperation, uid);
+        const { ok, echecs, reste } = bilan;
         if (ok > 0) await loadTransactions();
         await rafraichirEchecs();
+        // OFF-02 — LA VENTE QUI PART ENFIN SE SAIT.
+        //
+        // On ne le déduit JAMAIS de `ok`, qui compte des opérations toutes
+        // natures confondues : une dépense rejouée y pèse autant qu'une
+        // vente. On lit la ventilation par point de terminaison, la nature
+        // que la file portait déjà. Zéro vente partie = silence total.
+        //
+        // UNE SALVE, UNE ANNONCE : trois ventes se disent une fois avec leur
+        // nombre. Et tant qu'il en reste en file, la phrase le dit — on
+        // n'annonce pas « tout est parti » sur une file à moitié vidée.
+        const annonce = annonceVentesParties(ventesParties(bilan), ventesEncoreEnFile(bilan));
+        if (annonce) {
+          const message = direMessage(annonce.cle, annonce.variables);
+          vibrerEnvoyee();
+          setVentesSynchronisees((precedent) => ({
+            // Deux salves avant qu'elle n'ait regardé : on additionne, on ne
+            // remplace pas — sinon la première nouvelle disparaîtrait sans
+            // avoir été vue.
+            ventes: (precedent?.ventes ?? 0) + annonce.variables.nombre,
+            restantes: annonce.variables.reste,
+            a: Date.now(),
+          }));
+          toast.success(message.texte);
+        }
         if (echecs > avant) {
           const n = echecs - avant;
           toast.error(`${n} opération${n > 1 ? 's' : ''} hors-ligne refusée${n > 1 ? 's' : ''} — à revoir`);
@@ -431,7 +582,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
      *  'kassa'`) ; c'est le front qui ne l'envoyait jamais, d'où un écran où
      *  tout paraissait venir de la caisse. */
     source?: 'vocal' | 'kassa',
-  ) => {
+  ): Promise<ResultatEnregistrement> => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de vente invalide');
     // Calculer prix_achat depuis les produits du panier
     const lignes = Array.isArray(produits) ? produits : [];
@@ -460,13 +611,17 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/vente', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-      return;
+      // La vente est GARDÉE, pas enregistrée : c'est ce que l'appelante doit
+      // pouvoir dire à la marchande (OFF-01).
+      return { statut: 'en_attente' };
     }
     try {
       await caisseApi.enregistrerVente(payload);
       await loadTransactions();
       // Notifier AppContext de recharger ses transactions
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant }, { priority: 'high' });
+      // Le serveur a accusé réception : c'est la SEULE issue qui vaut succès.
+      return { statut: 'confirmee' };
     } catch (error: any) {
       // Ne JAMAIS perdre une vente : hors-ligne, token expiré, panne réseau ou
       // serveur temporairement KO -> on l'enfile (rejeu avec la MÊME clé, donc
@@ -475,15 +630,27 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       if (doitEnfiler(error)) {
         await enfilerOperation('/caisse/vente', payload, appUser?.id);
         eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
-        return;
+        // LE CAS TRAÎTRE : `navigator.onLine` disait « en ligne », l'envoi est
+        // tombé quand même. La vente attend exactement comme hors ligne, et se
+        // dit de la même façon — une seule attente, un seul statut.
+        return { statut: 'en_attente' };
       }
       throw error;
     }
   };
 
-  const enregistrerDepense = async (montant: number, notes?: string) => {
+  // LE MOTIF DE LA DÉPENSE PART SOUS SON VRAI NOM — DEP-01, 21/09/2026.
+  //
+  // Ce payload envoyait `notes`. Le serveur lit `description`, la colonne
+  // s'appelle `description` : le motif saisi par la marchande n'arrivait JAMAIS
+  // en base, et rien ne le disait. La même perte se rejouait à la
+  // synchronisation, la file repoussant le payload tel quel.
+  // DEP-02 : la catégorie TOUCHÉE traverse jusqu'au serveur. Elle est dans le
+  // `payload`, donc aussi dans la FILE HORS LIGNE — qui rejoue ce payload tel
+  // quel. Une dépense notée au marché sans réseau garde sa catégorie.
+  const enregistrerDepense = async (montant: number, description?: string, categorie?: IdCategorieDepense) => {
     if (!montant || isNaN(montant) || montant <= 0) throw new Error('Montant de dépense invalide');
-    const payload: caisseApi.EnregistrerDepenseData = { montant, notes, idempotency_key: genererCle() };
+    const payload: caisseApi.EnregistrerDepenseData = { montant, description, categorie, idempotency_key: genererCle() };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       await enfilerOperation('/caisse/depense', payload, appUser?.id);
       eventBus.emit(EVENTS.CAISSE_VENTE, { montant, offline: true }, { priority: 'high' });
@@ -522,74 +689,100 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   // mieux vaut retomber sur prix*quantite (comportement déjà existant avant
   // ce correctif) que de garder un total exact devenu faux pour la nouvelle
   // quantité.
+  /**
+   * P0.1 — LE SEUL ÉCART ENTRE `LignePanier` ET `CartItem` : `productId`.
+   *
+   * Ce champ est déprécié et vaut l'identité de LIGNE ; il ne survit que le
+   * temps que les derniers lecteurs historiques disparaissent. Cet adaptateur
+   * est l'unique endroit qui le pose, pour qu'il n'y ait rien à chercher le
+   * jour où on le retire.
+   */
+  /**
+   * L'ADAPTATEUR INVERSE, ET IL N'EST PAS DÉCORATIF.
+   *
+   * `CartItem.productId` (déprécié) vaut l'identité de LIGNE, tandis que
+   * `LignePanier.productId` est l'identifiant CATALOGUE. Passer un `CartItem`
+   * directement au module compile — les deux sont des `string` — et casse la
+   * fusion en silence : elle comparerait l'identifiant du produit à une
+   * identité de ligne, et ne trouverait jamais rien. Mesuré : la garde
+   * `fusion-panier` est rouge sans cette conversion.
+   *
+   * C'est précisément le genre d'erreur que ce lot existe pour rendre
+   * impossible — et que seul le nom pouvait trahir, pas le type.
+   */
+  const versLignePanier = (i: CartItem): LignePanier => ({
+    ligneId: i.ligneId,
+    productId: i.productIdCatalogue,
+    nom: i.nom, prix: i.prix, quantite: i.quantite,
+    ...(i.prix_achat !== undefined ? { prix_achat: i.prix_achat } : {}),
+    ...(i.totalExact !== undefined ? { totalExact: i.totalExact } : {}),
+    ...(i.unite !== undefined ? { unite: i.unite } : {}),
+    ...(i.origine !== undefined ? { origine: i.origine } : {}),
+  });
+
+  const versCartItem = (l: LignePanier): CartItem => ({
+    ligneId: l.ligneId,
+    // Le module nomme ce champ `productId` (identifiant catalogue, nullable) ;
+    // le contexte le nomme `productIdCatalogue` pour lever toute ambiguïté
+    // avec le champ déprécié ci-dessous. Même donnée, nom plus explicite.
+    productIdCatalogue: l.productId,
+    productId: l.ligneId,
+    nom: l.nom, prix: l.prix, quantite: l.quantite,
+    ...(l.prix_achat !== undefined ? { prix_achat: l.prix_achat } : {}),
+    ...(l.totalExact !== undefined ? { totalExact: l.totalExact } : {}),
+    ...(l.unite !== undefined ? { unite: l.unite } : {}),
+    ...(l.origine !== undefined ? { origine: l.origine } : {}),
+  });
+
   const addToCart = (product: CaisseProduct, quantite: number = 1, totalExact?: number, origine?: 'vocal') => {
-    const existing = cart.find(item => item.productId === product.id);
-    const next = existing
-      ? cart.map(item =>
-          item.productId === product.id
-            // `origine` se CUMULE en fusion (une ligne dictée puis complétée au
-            // doigt reste une ligne où la voix a servi), là où `totalExact` est
-            // invalidé — le total dicté, lui, ne vaut plus pour la nouvelle
-            // quantité.
-            // LA FUSION NE DOIT PAS PERDRE D'ARGENT — corrigé le 18/09/2026.
-            // Avant : la quantité s'additionnait, mais le PRIX de la première
-            // ligne était conservé et `totalExact` jeté. « 1 tomate à 500 »
-            // puis « 1 tomate à 700 » donnait 2 × 500 = 1 000 F au lieu de
-            // 1 200 F. Elle perdait 200 F, sur son propre panier, sans rien
-            // voir.
-            // Désormais on ADDITIONNE les deux totaux réels. Le total de
-            // chaque côté est son `totalExact` s'il en a un (montant négocié
-            // ou dicté), sinon prix × quantité. La règle vaut aussi pour le
-            // tactile, où elle ne change rien : prix × q1 + prix × q2 est
-            // exactement prix × (q1+q2).
-            ? {
-                ...item,
-                quantite: item.quantite + quantite,
-                totalExact:
-                  (item.totalExact ?? item.prix * item.quantite) +
-                  (totalExact ?? prixEffectif(product) * quantite),
-                ...(origine ? { origine } : {}),
-              }
-            : item)
-      // Prix effectif : applique automatiquement le prix promo s'il est actif.
-      : [...cart, {
-          productId: product.id, nom: product.nom, prix: prixEffectif(product), quantite,
-          prix_achat: Number(product.prix_achat) || 0,
-          // FIGÉE À LA CRÉATION DE LA LIGNE, comme le prix d'achat : c'est
-          // l'unité telle qu'elle était au moment de la vente.
-          ...(product.unite ? { unite: String(product.unite) } : {}),
-          ...(totalExact != null && totalExact > 0 ? { totalExact } : {}),
-          ...(origine ? { origine } : {}),
-        }];
+    /**
+     * P0.1 — LA RÈGLE VIT DANS `panierLignes`, PAS ICI.
+     *
+     * Ce contexte la réimplémentait : fusion, retrait, changement de quantité
+     * et de prix y étaient écrits une seconde fois, à côté du module pur créé
+     * pour les porter. Deux implémentations de la même règle finissent
+     * toujours par diverger — et celle du module était la seule tenue par les
+     * gardes, l'autre tournait en production sans filet.
+     *
+     * Ce qui reste ici est ce qui appartient VRAIMENT au contexte : le prix
+     * promo du catalogue (`prixEffectif`), l'état React, et la persistance.
+     */
+    const next = ajouterAuPanier(
+      cart.map(versLignePanier),
+      {
+        id: product.id && !String(product.id).startsWith('libre-') ? String(product.id) : null,
+        nom: product.nom,
+        prix: prixEffectif(product),
+        prix_achat: Number(product.prix_achat) || 0,
+        ...(product.unite ? { unite: String(product.unite) } : {}),
+      },
+      quantite,
+      totalExact != null && totalExact > 0 ? totalExact : undefined,
+      origine,
+    ).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
 
-  const removeFromCart = (productId: string) => {
-    const next = cart.filter(item => item.productId !== productId);
+  const removeFromCart = (ligneId: string) => {
+    const next = retirerLigne(cart.map(versLignePanier), ligneId).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
 
-  const updateCartItemQuantity = (productId: string, quantite: number) => {
-    if (quantite <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    // Le total exact éventuel ne valait que pour l'ancienne quantité.
-    const next = cart.map(item =>
-      item.productId === productId ? { ...item, quantite, totalExact: undefined } : item);
+  const updateCartItemQuantity = (ligneId: string, quantite: number) => {
+    // `changerQuantite` retire la ligne à zéro ou moins : la règle est dans le
+    // module, pas dupliquée ici.
+    const next = changerQuantite(cart.map(versLignePanier), ligneId, quantite).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
 
   // Négoce (demi-grossiste/grossiste) : le prix se discute à chaque vente —
   // la ligne du panier porte le prix CONVENU, persisté comme le reste.
-  const updateCartItemPrice = (productId: string, prix: number) => {
+  const updateCartItemPrice = (ligneId: string, prix: number) => {
     if (!prix || isNaN(prix) || prix <= 0) return;
-    // Le total exact éventuel ne valait que pour l'ancien prix.
-    const next = cart.map(item =>
-      item.productId === productId ? { ...item, prix, totalExact: undefined } : item);
+    const next = changerPrix(cart.map(versLignePanier), ligneId, prix).map(versCartItem);
     setCart(next);
     persistCart(next);
   };
@@ -634,7 +827,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   const restaurerDepuisCache = (cacheKey: string) => {
     try {
       const raw = localStorage.getItem(cacheKey);
-      if (raw) setProducts(JSON.parse(raw));
+      if (raw) {
+        setProducts(JSON.parse(raw));
+        // On NOTE que ces produits viennent du téléphone, pas du serveur.
+        // Les montrer est juste ; les présenter comme à jour ne l'est pas.
+        setProduitsDepuisCache(true);
+      }
     } catch { /* un cache illisible ne doit jamais casser l'écran */ }
   };
 
@@ -643,6 +841,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_produits_${id}`; }
       catch { return 'julaba_cache_produits_anon'; }
     })();
+    setLectureCatalogue('chargement');
     try {
       // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
       // 18/09/2026. Le catalogue restait VIDE sur un 500/503 alors que le cache
@@ -670,11 +869,15 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         promo_fin: p.promo_fin || null,
       }));
       setProducts(mapped);
+      setProduitsDepuisCache(false);
+      setLectureCatalogue('lu');
       // Cache local : derniers produits connus (vente/stock consultables hors-ligne).
       try { localStorage.setItem(cacheKey, JSON.stringify(mapped)); } catch { /* ignore */ }
     } catch (err: unknown) {
       console.warn('[CaisseContext] loadProducts failed:', err instanceof Error ? err.message : err);
-      // Hors-ligne : servir les derniers produits connus.
+      // Hors-ligne : servir les derniers produits connus. L'échec n'est plus
+      // avalé — il est CONSERVÉ, pour que l'écran cesse de dire « aucun ».
+      setLectureCatalogue('echec');
       restaurerDepuisCache(cacheKey);
     }
   }, []);
@@ -810,6 +1013,12 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     updateProduct,
     deleteProduct,
     refreshProducts: loadProducts,
+    // La règle vit dans un module pur, pas ici : elle est relisible seule.
+    etatCatalogue: etatCatalogueCaisse({
+      lecture: lectureCatalogue,
+      nbProduits: products.length,
+      servisDepuisCache: produitsDepuisCache,
+    }),
     addTransaction,
     getSoldeJour,
     getVentesJour,
@@ -818,6 +1027,8 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     syncEchecs,
     syncLettresMortes,
     purgerEchecSync,
+    ventesSynchronisees,
+    accuserVentesSynchronisees,
   };
 
 

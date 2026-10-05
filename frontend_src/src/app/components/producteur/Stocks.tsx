@@ -124,7 +124,7 @@ export function Stocks() {
   const [showValueModal, setShowValueModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'alerts' | 'value'>('all');
   
-  // Tata Nanti Lou
+  // Tantie Nanti Lou
   const [isListening, setIsListening] = useState(false);
   const [tantieSpeaking, setTantieSpeaking] = useState(false);
   const [tantieMessage, setTantieMessage] = useState('');
