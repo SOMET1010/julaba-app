@@ -33,6 +33,8 @@
     "test:entree-unique",
     "test:canal-code",
     "test:auth-charte",
+    "test:enum-check-phone",
+    "test:warn-dev",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",

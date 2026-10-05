@@ -86,8 +86,11 @@ export class AuthController {
   @Post('check-phone')
   @HttpCode(HttpStatus.OK)
   async checkPhone(@Body() body: { phone: string }): Promise<{ exists: boolean }> {
-    if (!body?.phone) return { exists: false };
-    const phone = body.phone.startsWith('+225') ? body.phone : `+225${body.phone.replace(/\D/g, '').slice(0, 10)}`;
+    // AUTH-07 — TOUTES les réponses passent par le service : même un appel
+    // malformé (téléphone absent) y attend l'échéance uniforme. Une voie
+    // rapide distincte serait déjà une fuite de timing.
+    const brut = typeof body?.phone === 'string' ? body.phone : '';
+    const phone = brut.startsWith('+225') ? brut : `+225${brut.replace(/\D/g, '').slice(0, 10)}`;
     return this.authService.checkPhone(phone);
   }
 

@@ -158,17 +158,15 @@
 
 ## AUTH (lot P2 audit UI auth — 05/10/2026)
 
-Dettes ASSUMÉES relevées par l'audit UI auth (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`) et non corrigées de code — hors périmètre frontend ou décision documentée :
+Dettes relevées par l'audit UI auth (`AUDITS/AUDIT-UI-AUTH-2026-10-05.md`). Les 9 P2 actionnables frontend (AUTH-08..11, 13, 15..17) ont été corrigés le jour même (§12 du rapport d'audit), puis AUTH-07 et AUTH-14 à leur tour (§13). Restent les décisions d'architecture et de produit :
 
 | ID | Description | Priorité | Effort | Statut |
 |---|---|---|---|---|
-| AUTH-06 | JWT access + refresh en localStorage (décision documentée en code : auth mobile sans cookie cross-domaine) | P2 | L | OUVERT (audit) — à terme cookie httpOnly même-domaine |
-| AUTH-07 | TEST_PHONES actifs en prod (décision métier ANSUT) + énumération check-phone (timing attack) | P2 | M | OUVERT (audit) — côté SERVEUR : réponse uniforme + délai constant + log des accès TEST_PHONES |
+| AUTH-06 | JWT access + refresh en localStorage (décision documentée en code : auth mobile sans cookie cross-domaine) | P2 | L | OUVERT (audit) — à terme cookie httpOnly même-domaine ; décision d'architecture à trancher avec le déploiement mobile |
+| AUTH-07-sous-dette | Liste TEST_PHONES SERVEUR autoritaire par environnement (env var / config) — la liste miroir dans `anti-enumeration.ts` et LoginPassword doit être tenue À DEUX MAINS aujourd'hui ; la garde `test:enum-check-phone` vérifie le miroir, mais une liste unique côté serveur reste l'objectif (« valider liste autorisée » du bloc d'escalation) | P3 | S | OUVERT (§13) |
 | AUTH-12 | UI auth 100 % français hardcodé (la voix est i18nisée fr-ci/dyu-ci/bm/bci, pas le texte) | P3 | XL | OUVERT (audit) — dette i18n visuelle connue du repo |
-| AUTH-14 | 13 `console.warn` auth (aucun PIN/password/montant — vérifié) : bruit à silencier en prod | P3 | S | OUVERT (audit) — préservé conformément à PROJECT_CONTEXT §8.7 |
+| AUTH-14b | Bruit de logs prod : surveiller que le silenciage frontend (warnDev, §13) suffit — le log SERVEUR des accès TEST_PHONES (AUTH-07) est volontairement actif en prod pour COMPTER les accès recette | P3 | S | OUVERT (§13) — écoute ops à prévoir |
 | AUTH-ERR | Trou vocal verrou : > 2 essais restants → clip `codeErreur` « prototype » muet en build livré (trou découvert en fermant AUTH-03, P1) | P3 | S | OUVERT (lot P1) — besoin d'un clip lot A « Ce n'est pas le bon code » |
-
-Les 9 autres P2 de l'audit (AUTH-08..11, 13, 15..17 + cibles) ont été corrigés le jour même (§12 du rapport d'audit).
 
 ## Recommandation globale
 

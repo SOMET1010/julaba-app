@@ -22,6 +22,8 @@ import { Welcome } from './Welcome';
 import { OnboardingSlides } from './OnboardingSlides';
 import { LoginPassword } from './LoginPassword';
 import { noterLancement } from '../../utils/parcours';
+// AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
+import { warnDev } from '../../utils/warnDev';
 
 // Clés localStorage
 const STORAGE_KEYS = {
@@ -38,7 +40,7 @@ export function EntryGate() {
     try {
       return localStorage.getItem(STORAGE_KEYS.SEEN_SPLASH) === 'true';
     } catch (err) {
-      console.warn('[EntryGate] localStorage read failed (splash):', err instanceof Error ? err.message : err);
+      warnDev('[EntryGate] localStorage read failed (splash):', err instanceof Error ? err.message : err);
       return false;
     }
   });
@@ -47,7 +49,7 @@ export function EntryGate() {
     try {
       return localStorage.getItem(STORAGE_KEYS.COMPLETED_ONBOARDING) === 'true';
     } catch (err) {
-      console.warn('[EntryGate] localStorage read failed (onboarding):', err instanceof Error ? err.message : err);
+      warnDev('[EntryGate] localStorage read failed (onboarding):', err instanceof Error ? err.message : err);
       return false;
     }
   });
@@ -57,7 +59,7 @@ export function EntryGate() {
     try {
       localStorage.setItem(STORAGE_KEYS.SEEN_SPLASH, 'true');
     } catch (err) {
-      console.warn('[EntryGate] localStorage write failed (splash):', err instanceof Error ? err.message : err);
+      warnDev('[EntryGate] localStorage write failed (splash):', err instanceof Error ? err.message : err);
     }
     setHasSeenSplash(true);
   };
@@ -67,7 +69,7 @@ export function EntryGate() {
     try {
       localStorage.setItem(STORAGE_KEYS.COMPLETED_ONBOARDING, 'true');
     } catch (err) {
-      console.warn('[EntryGate] localStorage write failed (onboarding):', err instanceof Error ? err.message : err);
+      warnDev('[EntryGate] localStorage write failed (onboarding):', err instanceof Error ? err.message : err);
     }
     setHasCompletedOnboarding(true);
   };
@@ -90,7 +92,7 @@ export function EntryGate() {
 
     // Cas rôle inconnu : logout forcé + toast (anti état zombie post-auth)
     if (!isKnownRole(userRole)) {
-      console.warn('[EntryGate] unknown role detected:', userRole);
+      warnDev('[EntryGate] unknown role detected:', userRole);
       toast.error('Rôle utilisateur non reconnu. Reconnexion requise.');
       // Tentative logout via event global (BackOffice/AppContext écoutent)
       window.dispatchEvent(new CustomEvent('julaba:force-logout'));

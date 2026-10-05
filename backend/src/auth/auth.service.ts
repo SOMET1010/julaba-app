@@ -7,6 +7,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { attenteApresEchecs, essaisAvantAttente, attenteEnClair, estVerrouHeriteSansFin } from './verrou-pin';
+// AUTH-07 (audit UI auth 05/10/2026) — anti-énumération : les numéros de
+// recette ANSUT se LOGUENT (masqués), et check-phone répond à une échéance
+// uniforme. Voir anti-enumeration.ts, qui porte la décision.
+import { estTelephoneTest, repondreAEcheanceUniforme } from './anti-enumeration';
+import { masquerTelephone } from '../users/remise-code-bo';
 import * as crypto from 'crypto';
 import { randomBytes } from 'crypto';
 import { User, UserStatus, UserRole } from '../users/entities/user.entity';
@@ -189,6 +194,13 @@ export class AuthService {
       throw new UnauthorizedException('Téléphone ou e-mail requis');
     }
 
+    // AUTH-07 — les numéros de recette ANSUT sont actifs en production
+    // (décision métier) : chaque tentative de connexion se voit loguée côté
+    // serveur, numéro MASQUÉ (jamais le numéro complet dans un journal).
+    if (estTelephoneTest(loginDto.phone)) {
+      this.logger.warn(`login: accès TEST_PHONE ${masquerTelephone(loginDto.phone)} depuis ${ipAddress || 'ip inconnue'}`);
+    }
+
     let user: User | null = null;
 
     if (loginDto.email) {
@@ -292,10 +304,21 @@ export class AuthService {
   }
 
   async checkPhone(phone: string): Promise<{ exists: boolean }> {
+    // AUTH-07 — ANTI-ÉNUMÉRATION PAR LE TEMPS. La réponse (« existe /
+    // n'existe pas ») reste le parcours produit, mais sa DURÉE ne doit rien
+    // révéler : on retient le début, on interroge, puis on répond à une
+    // échéance uniforme (plancher + gigue indépendants du résultat) — le hit
+    // DB et le miss coûtent la même chose depuis l'extérieur.
+    const debut = Date.now();
     const user = await this.userRepository.findOne({
       where: { phone },
       select: ['id'],
     });
+    // AUTH-07 — accès aux numéros de recette ANSUT : logués, numéro MASQUÉ.
+    if (estTelephoneTest(phone)) {
+      this.logger.warn(`check-phone: accès TEST_PHONE ${masquerTelephone(phone)}`);
+    }
+    await repondreAEcheanceUniforme(debut);
     return { exists: !!user };
   }
 

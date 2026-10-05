@@ -125,3 +125,31 @@ Stage Summary:
 - Nouveaux artefacts : authCharte.test.mts (charte fermée + budgets), useDicteeLive.ts, useDevMode.ts, BanniereErreur.tsx, PaveSaisie.tsx ; test-cible-tactile étendu à l'auth ; test:auth-charte dans verify
 - Décisions : charte auth FERMÉE avec budgets figés (une couleur nouvelle = échec, baisser un budget = progrès) ; feuille modale #fff documentée exception ; empreinteDisabled séparée dans PaveSaisie (régression d'activation évitée)
 - P2 restants hors code : AUTH-06/07/12/14 (registre) — auth frontend prête pour un prochain lot : AUTH-07 côté backend
+
+---
+Task ID: 6
+Agent: Z.ai Code (orchestrateur)
+Task: Enchaîner sur les dettes P2 restantes de l'audit UI auth (AUTH-07 côté serveur + AUTH-14)
+
+Work Log:
+- Reprise post-coupure : vérifié l'intégrité du lot Task 5 (artefacts présents, LoginPassword 1525 l., arbre git propre, 2 commits P2) ; relancé les gardes existantes vertes
+- Lu le registre de dette (DEBT_REPORT §AUTH) : restent AUTH-06 (L, décision d'architecture cookie httpOnly — laissé au registre), AUTH-07 (M, serveur), AUTH-12 (XL, i18n repo — laissé), AUTH-14 (S) ; AUTH-07 explicitement désigné comme prochain lot par Task 5
+- AUTH-07 : nouveau module backend/src/auth/anti-enumeration.ts — liste miroir TEST_PHONES ANSUT (6 numéros, estTelephoneTest) + repondreAEcheanceUniforme (plancher 300 ms + gigue 80 ms tirée indépendamment du résultat)
+- AUTH-07 : auth.service.ts — checkPhone retient son début, interroge, logue les accès TEST_PHONE (masqué via masquerTelephone de remise-code-bo), répond à l'échéance uniforme ; login() logue aussi les accès TEST_PHONE (masqué + IP)
+- AUTH-07 : auth.controller.ts — plus de voie rapide `return {exists:false}` sur appel malformé : tout passe par le service (une voie rapide serait une fuite de timing)
+- AUTH-14 : nouveau robinet src/app/utils/warnDev.ts (console.warn en DEV via import.meta.env.DEV résolu au build, no-op dans le bundle livré) ; 13 console.warn convertis (EntryGate ×5, LoginPassword ×5, ChangePasswordScreen ×2, UnregisteredPhone ×1)
+- Bloc « BACKLOG ESCALATION P0 BACKEND » de LoginPassword mis à jour : items 1 et 3 → FAIT côté serveur le 05/10/2026 avec pointeur vers anti-enumeration.ts ; sous-dette « liste serveur autoritaire » documentée
+- Nouvelle garde test:enum-check-phone.mjs (10 vérifs : module, échéance, listes MIROIRS exactes frontend↔backend, logs masqués, pas de voie rapide contrôleur, escalation à jour) + test:warn-dev.mjs (robinet DEV-gated + zéro console.warn brut sur 12 fichiers auth) ; inscrites dans package.json + maillons-verify.json (après test:auth-charte)
+- Corrections en chemin : orthographe GIGUE_MS (garde cherchait GIGE_MS) ; extraction des numéros restreinte au bloc de DÉCLARATION du Set (le 0501604040 support polluait le miroir)
+- Incident infra : nest --watch n'a pas détecté les fichiers (plafond inotify sandbox) ET un ancien enfant node dist/main (18561) survivait au pkill en tenant :3001 → double backend éphémère ; normalisé (tout tué, un unique watcher, app 19365 sur :3001, code frais)
+- Preuves runtime curl (backend propre) : check-phone 0726262626→200 en 396 ms / 0999999999→200 en 375 ms / malformé→200 en 331 ms (avant : retour instantané) ; log backend WARN `check-phone: accès TEST_PHONE 08 •• •• 40 40` + `login: accès TEST_PHONE 08 •• •• 40 40 depuis 127.0.0.1` ; login Michelle 200 (zéro régression)
+- Gardes finales (exit 0) : verrou-connexion, entree-unique, canal-code, auth-charte, cible-tactile, comptes, tokens, maillons-orphelins, enum-check-phone, warn-dev ; typecheck frontend + tsc backend 0 erreur
+- Recette agent-browser (390×844) : EntryGate → onboarding → écran numéro (PaveSaisie) → 0726262626 → check-phone uniforme (~350 ms invisible) → PIN 1234 → /marchand → modale Radix (role=dialog, aria-modal, focus « Oui, je veux », ESC ferme après animation) → logout cookies+storage → 0412345678 → /non-enregistre avec PII masquée « XXXXXX 5678 » → zéro erreur page (découverte : 0799999999 est Awa, actrice démo en attente — premier essai de numéro inconnu mal choisi, routage correct)
+- Documentation : audit §13 (tableau de clôture AUTH-07/AUTH-14 + gouvernance + recette), DEBT_REPORT (AUTH-07/AUTH-14 fermées ; restent AUTH-06, AUTH-12 ; nouvelles sous-dettes AUTH-07-sous-dette liste autoritaire + AUTH-14b écoute ops), AUDIT_REPORT (synthèse clôturée)
+
+Stage Summary:
+- AUTH-07 fermé avec preuve de garde ET preuves runtime : le TEMPS de check-phone ne dit plus rien (343-396 ms uniformes, appel malformé inclus), les accès recette ANSUT se comptent côté serveur, numéro masqué dans les journaux
+- AUTH-14 fermé : 13 diagnostics auth passent par warnDev — visibles en dev, absents du build livré ; §8.7 préservé
+- Nouveaux artefacts : backend/src/auth/anti-enumeration.ts, frontend_src/src/app/utils/warnDev.ts, scripts/test-enum-check-phone.mjs, scripts/test-warn-dev.mjs
+- Décision : le corps de réponse check-phone reste distinct (exists) — c'est le parcours produit /non-enregistre ; seul le TEMPS est uniformisé ; les protections frontend restent tant que la liste serveur n'est pas autoritaire par environnement
+- Il reste au registre : AUTH-06 (architecture cookie httpOnly), AUTH-12 (i18n visuel XL), AUTH-07-sous-dette (liste autoritaire), AUTH-14b (écoute ops), AUTH-ERR (clip voix, Patrick)
