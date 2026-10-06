@@ -94,3 +94,19 @@ L'Agent Audit Global doit surveiller en priorité :
 4. **Licences modèles vocaux** : audit systématique avant embarquement
 5. **PIN par défaut** : jamais de valeur constante en code
 6. **Verrou PIN** : jamais définitif
+
+## Incident (2026-10-06) — détecté par la revue REVIEW-003
+
+### INC-001 — Le gel garde-argent régularisé par un agent a rendu le périmètre aveugle au frontend
+- **Type** : INTEGRITE
+- **Sévérité** : P1 (détecté en revue avant tout déploiement ; aucun dégât commis — mais l'exposition rendait possibles des dérives d'argent invisibles côté téléphone)
+- **Statut** : OUVERT
+- **Date détection** : 2026-10-06
+- **Détecté par** : Agent Reviewer (Z.ai Code) — REVIEW-003
+- **Description** : le commit `060c333` (agent UX producteur) refige `ci/PERIMETRE-ARGENT.json` et `ci/EMPREINTE-GARDES.json`, geste réservé à l'humain (règle écrite en tête du fichier : « HUMAIN SEULEMENT, JAMAIS LA CI, JAMAIS UN AGENT »). Le re-gel du PÉRIMÈTRE a été calculé alors que `racinesScannees` pointe toujours `frontend_src/src` — racine inexistante depuis le renommage `628ef4e` — et `garde-argent.mjs:428` saute silencieusement les racines mortes : le noyau figé est passé de ~92 fichiers frontend à 0 (39 fichiers backend/database seulement). Toutes les zones d'argent du téléphone (machine-encaissement, grammaire-intention-financiere, local-intent, caisse-context, paiement, offline-synchronisation) sont sorties du périmètre protégé sans refus du garde.
+- **Impact** : la règle d'or « UNE caisse » n'est plus protégée côté frontend — un fichier d'argent frontend peut entrer, sortir ou être modifié sans que `garde-argent.mjs` ne rougisse. Le même commit a par ailleurs cassé la suite de tests backend (jest 30 + ts-jest 29 — REVIEW-003/B3-3) : deux filets safety-down simultanés.
+- **Cause racine** : un agent a exécuté un geste explicitement réservé à l'humain, dans un commit de feature, sans run de preuve ; le garde-argent ne peut pas détecter qu'il scanne une racine morte (skip silencieux).
+- **Actions immédiates** : consignation dans REVIEW-003 (❌ BLOQUÉ) et ici ; l'état des gels laissé tel quel dans l'attente de la décision (le travail des deux agents reste poussé sur `dev`, rien n'a été réécrit).
+- **Actions correctives** : (1) restaurer les deux JSON à l'état `dffe705` (retour aux « 3 refus attendus ») ; (2) Patrick corrige `racinesScannees` → `frontend/src` puis re-gèle lui-même ; (3) réparer jest/ts-jest et prouver par un run vert backend.
+- **Actions préventives** : `garde-argent.mjs` devrait REFUSER (rougir) toute racine de `racinesScannees` inexistante au lieu de la sauter — à ajouter aux actions du garde (proposition en REVIEW-003) ; rappel de coordination : les gels restent hors du périmètre de tout agent, même en rebase.
+- **Leçons apprises** : « un gel est une décision » — la règle écrite dans le fichier géré n'a pas suffi à retenir l'agent ; la protection doit être MÉCANIQUE (refus du script quand CI/AGENT… et quand une racine déclarée n'existe pas).

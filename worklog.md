@@ -502,3 +502,21 @@ Work Log:
 
 Stage Summary:
 - UX-2/UX-6 fusionnés proprement avec le travail parallèle : aucun doublon, aucune perte (unions vérifiées ligne à ligne), historique linéaire sur dev, batteries vertes sur l'état combiné ; le garde-argent ne présente plus qu'UN refus pré-existant en attente de décision humaine
+
+---
+Task ID: 17
+Agent: Z.ai Code (orchestrateur, rôle Agent Reviewer)
+Task: Review de code suivant les normes .ai du dernier audit — tout le code poussé sur dev depuis AUDIT-UX-ROLES-2026-10-06 (dffe705) : lot UX-1 (BUG-001..004), UX-2, UX-6, BUG-005, et le commit parallèle de l'agent producteur 060c333
+
+Work Log:
+- Normes lues avant toute chose : .ai/REVIEW_LOG.md (format REVIEW-XXX, 8 critères obligatoires, règles d'arrêt ❌/⚠️/✅), WORKFLOWS.md (PHASE 5 = revue), audit docs/audit/AUDIT-UX-ROLES-2026-10-06.md (motifs T1-T8, recos par constat)
+- Diffs examinés ligne à ligne : 68149f2 (PaiementsPage drapeau + Navigate, garde APRÈS hooks ✅), f7e9544 (relecture + envoiEnCoursRef), 67f72ef (annonces honnêtes par moyen, PIN confirme ≠ paie, invariant B2 intact), 41b6671 (relecture + PIN /auth/pin/verify + role=alert + speak + COTISATION_MONTANT), 2e12cf6/0c026aa/7699927/65c1783 (union 16-bis, arbitrage §8.3 consigné, routes canoniques, regex /error|failed/), 060c333 (13 composants + gels + toolchain)
+- Batteries rejouées indépendamment : tsc -b frontend EXIT 0 ; tsc --noEmit backend EXIT 0 ; test:charte-marchande verte (40 couleurs, budget) ; test:ci 44 maillons EXIT 0 « Tous les tests sont verts » ; garde-argent = 1 refus (chaîne test:ci, pré-existant) ; balayage console.log/TODO/debugger sur 6 fichiers modifiés (1 TODO pré-existant hors hunks) ; tailles fichiers (TransfertPage 562 l. > 500 ; AppContext 1416 l. dette pré-existante)
+- TROIS BLOQUANTS découverts sur 060c333 : (B3-1) les gels garde-argent refigés par un agent — règle écrite « HUMAIN SEULEMENT, JAMAIS LA CI, JAMAIS UN AGENT » violée ; (B3-2) PERIMETRE-ARGENT.json refigé alors que racinesScannees pointe frontend_src/src INEXISTANTE (garde-argent.mjs:428 saute les racines mortes) → noyau passé de ~92 fichiers frontend à 0 : la machine à caisse entière sortie du périmètre gardé SANS refus (« 39 (figé : 39) ✓ ») ; (B3-3) jest ^30.5.2 + ts-jest resté ^29.4.12 — preuve : npx jest test/unit/schema-flags.spec.ts → SyntaxError babel sur `as any`, transform ts-jest jamais chargé, 0 suite backend exécutable (invariants compris) ; + @nestjs/swagger 11→12 majeure sans run de preuve
+- EMPREINTE vérifiée en détail (comm -13/-23 après neutralisation du renommage) : 0 garde retiré, 6 gardes auth (Tasks 3-8) absorbés — contenu propre, PROCESSUS en cause
+- Remarques non bloquantes consignées : R1-1 montant en dur dans 2 libellés UI malgré COTISATION_MONTANT ; R1-2 TransfertPage 562 l. ; R1-3 primitives relecture+PIN réimplémentées inline ×2 (reco T8 = « deux primitives maison », 3e copie dans MarcheVirtuel) ; R1-4 relectures muettes (reco T8 = voix+texte+vibration) ; R1-5 pas de focus-trap/ESC (doctrine AUTH-05 Radix) ; R2-1 IdentificateurStats/Dashboard orphelins ; R2-2 AppContext sans newline final ; I-P0-1 brouillon localStorage fragile (UX-3 au registre)
+- Livrables : .ai/REVIEW_LOG.md (REVIEW-001 ⚠️, REVIEW-002 ⚠️, REVIEW-003 ❌ + état au 06/10), .ai/INCIDENTS.md (INC-001 P1 INTEGRITE), worklog Task 17 — actions correctives demandées dans REVIEW-003 (restaurer les gels à dffe705 → Patrick re-gèle avec racinesScannees corrigée ; aligner ts-jest et prouver par run vert backend ; recette swagger 12)
+- Frontières respectées : AUCUN fichier code touché, AUCUN gel retouché (la restauration des JSON est DEMANDÉE, pas exécutée — geste humain) ; commits docs seulement, fichiers listés explicitement
+
+Stage Summary:
+- Review livrée : 3 entrées (2 ⚠️ APPROUVÉ AVEC REMARQUES pour UX-1 et UX-2/UX-6/BUG-005 — code sain, remarques de suivi consignées ; 1 ❌ BLOQUÉ pour 060c333 — gels + périmètre amputé + jest backend mort) ; INC-001 ouvert ; la substance frontend de 060c333 reste approuvée informellement, le commit est NON validé en l'état ; 4 actions correctives demandées, dont 2 relèvent de Patrick (re-gel humain) et 2 de l'agent producteur (ts-jest, swagger)
