@@ -164,6 +164,12 @@ const CULTURES = [
 const QUALITE_OPTIONS = ['Excellente', 'Bonne', 'Moyenne'];
 const COLOR = '#2E8B57';
 
+const QUALITE_API: Record<string, 'standard' | 'premium' | 'bio'> = {
+  Excellente: 'premium',
+  Bonne: 'standard',
+  Moyenne: 'standard',
+};
+
 // ── Unités disponibles ──────────────────────────────────────────────────────
 const UNITES = [
   { id: 'kg',    label: 'Kilogramme',   abbr: 'kg',   facteur: 1,      placeholder: '0',    hint: 'Ex : 150 kg',       step: 1    },
@@ -253,6 +259,8 @@ export function RecolteForm() {
   };
 
   const handleClose = () => {
+    const hasSaisie = Boolean(quantite || autreCulture || prixUnitaire || photoPreview);
+    if (hasSaisie && !window.confirm('Tu as une saisie en cours. Fermer sans enregistrer ?')) return;
     setVisible(false);
     scheduleTimeout(() => navigate(-1), 320);
   };
@@ -279,7 +287,7 @@ export function RecolteForm() {
         produit: cultureName,
         quantite: quantiteEnKg,
         unite: 'kg',
-        qualite: (qualite || 'standard') as 'standard' | 'premium' | 'bio',
+         qualite: QUALITE_API[qualite] || 'standard',
         date_recolte: dateRecolte || new Date().toISOString().split('T')[0],
         localisation: localisation || '',
         prix_unitaire: prixParKg,
@@ -559,8 +567,9 @@ export function RecolteForm() {
                               key={u.id}
                               type="button"
                               onClick={() => {
+                                const quantiteKg = quantite ? Number(quantite) * uniteObj.facteur : 0;
                                 setUnite(u.id);
-                                setQuantite('');
+                                setQuantite(quantiteKg > 0 ? String(Math.round((quantiteKg / u.facteur) * 100) / 100) : '');
                                 setShowUniteDropdown(false);
                                 // speak disabled;
                               }}

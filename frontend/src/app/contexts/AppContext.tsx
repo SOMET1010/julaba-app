@@ -726,8 +726,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const speak = async (text: string) => {
     vtrace.ttsAppel('AppContext.speak', text, { role: user?.role ?? null, muet: voiceMuted });
     if (!text?.trim()) return;
-    if (user?.role !== 'marchand') vtrace.ttsIgnoree('AppContext.speak', text, 'role-non-marchand');
-    if (user?.role !== 'marchand') return;
     if (voiceMuted) vtrace.ttsIgnoree('AppContext.speak', text, 'muet');
     if (voiceMuted) return;
     // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
@@ -769,7 +767,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Synchroniser le flag voice_disabled selon le rôle utilisateur
   useEffect(() => {
-    const disabledRoles = ['identificateur', 'institution'];
+    // La doctrine voice-first s’applique aussi aux identificateurs : seul le
+    // rôle institutionnel conserve ici le mode silencieux historique.
+    const disabledRoles = ['institution'];
     if (!user || !user.role) {
       localStorage.removeItem('julaba_voice_disabled');
       return;

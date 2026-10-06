@@ -162,7 +162,7 @@ export const router = createBrowserRouter([
 
       { path: "/identificateur", element: <IdentificateurLayout />, children: [
         { index: true, element: L(() => import("./components/identificateur/IdentificateurHome").then(m => ({ default: m.IdentificateurHome }))), errorElement: <ErrorFallback /> },
-        { path: "identification", element: L(() => import("./components/identificateur/FicheIdentificationDynamique").then(m => ({ default: m.FicheIdentificationDynamique }))), errorElement: <ErrorFallback /> },
+        { path: "identification", element: <Navigate to="/identificateur/fiche-identification" replace />, errorElement: <ErrorFallback /> },
         { path: "suivi", element: L(() => import("./components/identificateur/SuiviIdentifications").then(m => ({ default: m.SuiviIdentifications }))), errorElement: <ErrorFallback /> },
         { path: "brouillons", element: L(() => import("./components/identificateur/MesBrouillons").then(m => ({ default: m.MesBrouillons }))), errorElement: <ErrorFallback /> },
         { path: "acteurs", element: L(() => import("./components/identificateur/Identifications").then(m => ({ default: m.Identifications }))), errorElement: <ErrorFallback /> },

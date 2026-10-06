@@ -18,18 +18,6 @@ import { Montant, MontantCard } from '../shared/Montant';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { Clock } from 'lucide-react';
 
-// Données réelles depuis /api/v1/recoltes
-const donneesGraphique = [
-  { jour: 1, montant: 450000 },
-  { jour: 2, montant: 680000 },
-  { jour: 3, montant: 520000 },
-  { jour: 4, montant: 890000 },
-  { jour: 5, montant: 750000 },
-  { jour: 6, montant: 920000 },
-  { jour: 7, montant: 1150000 },
-];
-
-
 type PeriodeFiltreType = '7jours' | '30jours' | '3mois';
 
 // Bulles flottantes animées
@@ -95,10 +83,17 @@ const Particules = () => {
 export function Revenus() {
   const [periodeFiltree, setPeriodeFiltree] = useState<PeriodeFiltreType>('7jours');
 
-  const { recoltes, stats } = useProducteur();
+  const { recoltes, commandes, stats } = useProducteur();
   const { speak } = useApp();
   const revenuTotal = stats?.revenusTotal || 0;
-  const nbTransactions = recoltes.length;
+  const joursPeriode = periodeFiltree === '7jours' ? 7 : periodeFiltree === '30jours' ? 30 : 90;
+  const debutPeriode = Date.now() - joursPeriode * 24 * 60 * 60 * 1000;
+  const commandesValides = commandes.filter((commande) => {
+    if (commande.statut === 'annulee') return false;
+    const date = Date.parse(commande.dateCommande);
+    return Number.isNaN(date) || date >= debutPeriode;
+  });
+  const nbTransactions = commandesValides.length;
 
   // Le producteur vient ici pour SAVOIR combien il a gagné : on l'annonce à voix
   // haute dès l'arrivée (une fois), et un bouton haut-parleur permet de ré-écouter.
@@ -114,9 +109,23 @@ export function Revenus() {
     direRevenu();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [revenuTotal, recoltes.length]);
-  const enAttente = 0;
-  const croissance = 0;
-  const transactions = recoltes.map((r:any) => ({ id: r.id, client: 'Client', date: r.dateRecolte ? new Date(r.dateRecolte).toLocaleDateString('fr-FR') : '—', statut: r.statut === 'vendue' ? 'recu' : 'en_attente', icon: '🌾', produit: r.produit, quantite: r.quantite + ' kg', mode: 'Cash', montant: Number(r.prixUnitaire||0)*Number(r.quantite||0) }));
+  const enAttente = commandes
+    .filter((commande) => ['en_attente', 'confirmee', 'en_cours'].includes(commande.statut))
+    .reduce((total, commande) => total + Number(commande.total || 0), 0);
+  const transactions = commandesValides.map((commande) => ({
+    id: commande.id,
+    client: commande.acheteurNom || 'Client',
+    date: commande.dateCommande ? new Date(commande.dateCommande).toLocaleDateString('fr-FR') : '—',
+    statut: commande.statut === 'livree' ? 'reçu' : 'en_attente',
+    icon: '🌾',
+    produit: commande.produit,
+    quantite: `${commande.quantite} ${commande.quantite === 1 ? 'unité' : 'unités'}`,
+    mode: commande.statut === 'livree' ? 'Commande livrée' : 'Commande en cours',
+    montant: Number(commande.total || 0),
+  }));
+  const donneesGraphique = commandesValides
+    .slice(-7)
+    .map((commande, index) => ({ jour: index + 1, montant: Number(commande.total || 0) }));
 
   return (
     <div className="space-y-6 pb-6">
@@ -206,8 +215,8 @@ export function Revenus() {
             >
               <ArrowUpRight className="w-4 h-4 text-white" strokeWidth={3} />
             </motion.div>
-            <span className="text-white font-bold text-lg">+{croissance}%</span>
-            <span className="text-white/80 text-sm ml-1">vs période précédente</span>
+            <span className="text-white font-bold text-lg">Commandes réelles</span>
+            <span className="text-white/80 text-sm ml-1">source des revenus</span>
           </motion.div>
 
           {/* Mini graphique animé */}
@@ -253,7 +262,7 @@ export function Revenus() {
         />
         <UniversalKPI
           label="Croissance"
-          value={`+${croissance}%`}
+           value="Commandes"
           icon={TrendingUp}
           color="#22C55E"
           iconAnimation="float"

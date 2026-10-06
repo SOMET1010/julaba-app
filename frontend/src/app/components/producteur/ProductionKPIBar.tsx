@@ -48,10 +48,12 @@ export function ProductionKPIBar({ activeTab, historiqueTab = 'ventes', onKPICli
   const nbPubliees = recoltes.filter((r: any) => r.statut === 'declaree' || r.statut === 'validee' || r.status === 'published').length;
 
   // KPIs Mon Marche
-  const cmdActives = commandes.filter((c: any) => ['new', 'accepted', 'preparing'].includes(c.status)).length;
-  const cmdUrgentes = commandes.filter((c: any) => c.status === 'new').length;
-  const revenuTotal = recoltes.reduce((s: number, r: any) => s + (Number(r.stockVendu) || 0) * (Number(r.prixUnitaire) || 0), 0);
-  const cmdLivrees = commandes.filter((c: any) => c.status === 'delivered').length;
+  const cmdActives = commandes.filter((c: any) => ['en_attente', 'confirmee', 'en_cours'].includes(c.statut)).length;
+  const cmdUrgentes = commandes.filter((c: any) => c.statut === 'en_attente').length;
+  const revenuTotal = commandes
+    .filter((c: any) => c.statut !== 'annulee')
+    .reduce((s: number, c: any) => s + (Number(c.total) || 0), 0);
+  const cmdLivrees = commandes.filter((c: any) => c.statut === 'livree').length;
 
   const kpisMap: Record<string, any[]> = {
     cycles: [
@@ -74,8 +76,8 @@ export function ProductionKPIBar({ activeTab, historiqueTab = 'ventes', onKPICli
     ],
     historique: historiqueTab === 'ventes' ? [
       { label: 'Transactions', animatedTarget: commandes.length, icon: ShoppingBag, color: '#2E8B57', iconAnimation: 'bounce' as const },
-      { label: 'Livrées', animatedTarget: commandes.filter((c: any) => c.statut === 'livree' || c.status === 'delivered').length, icon: CheckCircle, color: '#10b981', iconAnimation: 'float' as const },
-      { label: 'Revenus', value: fmt(commandes.reduce((s: number, c: any) => s + (Number(c.total) || Number(c.montantTotal) || 0), 0)), suffix: 'FCFA', icon: Banknote, color: '#f59e0b', iconAnimation: 'float' as const },
+      { label: 'Livrées', animatedTarget: commandes.filter((c: any) => c.statut === 'livree').length, icon: CheckCircle, color: '#10b981', iconAnimation: 'float' as const },
+      { label: 'Revenus', value: fmt(commandes.filter((c: any) => c.statut !== 'annulee').reduce((s: number, c: any) => s + (Number(c.total) || 0), 0)), suffix: 'FCFA', icon: Banknote, color: '#f59e0b', iconAnimation: 'float' as const },
       { label: 'En attente', animatedTarget: commandes.filter((c: any) => c.statut === 'en_attente' || c.status === 'new').length, icon: Clock, color: '#f97316', iconAnimation: 'pulse' as const },
     ] : [
       { label: 'Saisons terminées', animatedTarget: cycles.filter((c: any) => c.status === 'completed').length, icon: CheckCircle, color: '#2E8B57', iconAnimation: 'float' as const },

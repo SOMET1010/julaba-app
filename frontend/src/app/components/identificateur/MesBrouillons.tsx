@@ -29,6 +29,7 @@ import { toast } from 'sonner';
 
 const AUTO_DELETE_DAYS = 30;
 const RECENT_DAYS = 7;
+const LOCAL_DRAFT_PREFIX = 'julaba:fiche-draft:';
 
 type ProfileEntry = {
   label: string;
@@ -198,14 +199,36 @@ export function MesBrouillons() {
           if ((e as Error)?.name === 'AbortError') return;
           if (!isMountedRef.current) return;
           console.warn('[MesBrouillons] fetchBrouillons HTTP error:', (e as Error)?.message);
-          toast.error('Impossible de charger tes brouillons, réessaie');
-          setBrouillons([]);
-          return;
+          // Les brouillons locaux restent affichables hors ligne.
+          toast.info('Connexion indisponible : affichage des brouillons enregistrés sur ce téléphone.');
         }
         if (!isMountedRef.current) return;
         const rawList = data && Array.isArray(data.drafts) ? data.drafts : [];
         const parsed = rawList.map(parseDraftItem).filter((b): b is Brouillon => b !== null);
-        setBrouillons(parsed);
+        const localDrafts: Brouillon[] = [];
+        for (const typeActeur of ['marchand', 'producteur', 'cooperative']) {
+          try {
+            const raw = localStorage.getItem(`${LOCAL_DRAFT_PREFIX}${typeActeur}`);
+            if (!raw) continue;
+            const local = JSON.parse(raw) as Record<string, unknown>;
+            const parsedLocal = parseDraftItem({
+              ...local,
+              id: `local-${typeActeur}`,
+              typeActeur,
+              acteurNom: typeof (local.data as Record<string, unknown> | undefined)?.nom === 'string'
+                ? (local.data as Record<string, unknown>).nom
+                : '',
+              formData: local.data,
+              currentStep: local.step,
+              updatedAt: local.savedAt,
+              createdAt: local.savedAt,
+            });
+            if (parsedLocal) localDrafts.push(parsedLocal);
+          } catch {
+            localStorage.removeItem(`${LOCAL_DRAFT_PREFIX}${typeActeur}`);
+          }
+        }
+        setBrouillons([...localDrafts, ...parsed]);
       } catch (e) {
         if ((e as Error)?.name === 'AbortError') return;
         console.warn('[MesBrouillons] fetchBrouillons failed:', e instanceof Error ? e.message : e);
@@ -256,6 +279,12 @@ export function MesBrouillons() {
     const ac = new AbortController();
     setProcessingId(id);
     try {
+      if (id.startsWith('local-')) {
+        localStorage.removeItem(`${LOCAL_DRAFT_PREFIX}${id.slice('local-'.length)}`);
+        setBrouillons((prev) => prev.filter((item) => item.id !== id));
+        toast.success('Brouillon local supprimé.');
+        return;
+      }
       let data: { success?: boolean; error?: string } | null = null;
       try {
         data = await apiRequest<{ success?: boolean; error?: string }>(API_URL, `/identifications/draft/${id}`, { method: 'DELETE', signal: ac.signal });
