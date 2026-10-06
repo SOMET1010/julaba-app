@@ -208,3 +208,29 @@ Work Log:
 Stage Summary:
 - Leçon consignée : les sorties brutes des outils qui echo des URLs authentifiées ne doivent JAMAIS être versionnées — .gitignore verrouillé au nom du répertoire (tool-results/)
 - main == origin/main à 20f1a3b
+
+---
+Task ID: 9 (9-a..9-k en parallèle)
+Agent: Z.ai Code (orchestrateur) + 11 agents AUDIT (Explore) en parallèle
+Task: Audit complet suivant les normes .ai — 10 acteurs + système auth — constats/risques/vulnérabilités/criticité/recommandations + génération de 11 fichiers .docx distincts
+
+Work Log:
+- Normes lues avant toute chose : .ai/README.md (règle d'or), PROJECT_CONTEXT.md (§1 vision + §8 règles critiques), ACCESSIBILITY_GUIDE.md (§4/5/6), DESIGN_SYSTEM.md (§9), format de référence AUDIT-002 + AUDIT-ACTEUR-MARCHAND-2026-09-28
+- Cartographie : routes.tsx (233 l.), pages/espaces acteurs, 60+ modules backend, comptage des 10 rôles dans le code (marchand 518, identificateur 240, super_admin 169…)
+- 11 agents d'audit Explore lancés EN PARALLÈLE (9-a AUTH-SYS, 9-b MARCHAND, 9-c PRODUCTEUR, 9-d COOPERATEUR, 9-e INSTITUTION, 9-f IDENTIFICATEUR, 9-g OPERATEUR-TERRAIN, 9-h GESTIONNAIRE-ZONE, 9-i ADMIN-NATIONAL, 9-j ADMIN-GENERAL, 9-k SUPER-ADMIN) — chaque agent : lecture worklog + normes + audit statique ligne à ligne avec preuves fichier:ligne + max 5 sondes curl runtime LECTURE SEULE sur :3001 (401 sans token, 403 mauvais rôle, 429 throttle constatés partout) + 1 test d'élévation signup super_admin → 403 sans création (système sain)
+- 11 rapports persistés : .ai/AUDITS/AUDIT-SYSTEME-AUTH-2026-10-05.md + .ai/AUDITS/ACTEURS/AUDIT-ACTEUR-{MARCHAND,PRODUCTEUR,COOPERATEUR,INSTITUTION,IDENTIFICATEUR,OPERATEUR-TERRAIN,GESTIONNAIRE-ZONE,ADMIN-NATIONAL,ADMIN-GENERAL,SUPER-ADMIN}-2026-10-05.md
+- Scores : AUTH 76, MARCHAND 80, PRODUCTEUR 54 🔴, COOPERATEUR 54 🔴, INSTITUTION 42 🔴, IDENTIFICATEUR 61, OPERATEUR-TERRAIN 61, GESTIONNAIRE-ZONE 59, ADMIN-NATIONAL 71, ADMIN-GENERAL 60, SUPER-ADMIN 72
+- P0 nouveaux : PRODUCTEUR-01 (speak() muet hors rôle marchand — AppContext.tsx:729 → tout le feedback vocal producteur inopérant), INSTITUTION-01 (/oneci/lookup RNPP ouvert à tout compte authentifié, sans log — violation 2013-450)
+- P1 marquants : AUTH-SYS-01 (la rotation réécrit access+refresh en localStorage WEB via wrapper sans porte estMobileNatif — ADR-002 inopérante en runtime, garde coffre aveugle aux clés variables), COOPERATEUR-01/02 (IDOR inter-coop, membre suspendu garde ses droits), PRODUCTEUR-02/03 (vendeur_id + total client acceptés sur /commandes), GESTZONE-01..05 (isolation territoriale non tenue côté serveur), ADMINNAT-02 (annuaire BO lisible par URL), ADMINGEN-04/05/08 (clés API en clair, broadcast WS des transactions, Paramètres PUT 404), SUPERADMIN-01 (EventMonitor : donnée WS diffusée à tous avant le gate UI)
+- 3 constats TRANSVERSAUX récurrents : broadcast WS room « all » ; POST /audit inscriptible par tout rôle BO ; 3 registres de permissions divergents (bo-permissions.ts mort)
+- Génération .docx : compétence docx chargée (routes/create.md + design-system R1 + common-rules + toc.md + docx-js-core), docx@9.8.1 installé ; générateur .zscripts/audit-docx/gen-audit-docx.mjs (parseur Markdown → docx, couverture recette R1 palette marché JULABA bg 2B1F16/accent B74725, calcTitleLayout adapté latin, calcCoverSpacing, allNoBorders, 3 sections : couverture sans numéro / sommaire en romains / corps en arabes repartant à 1, TableOfContents + nota de mise à jour, tableaux tableHeader+cantSplit+marges+ShadingType.CLEAR, largeurs PERCENTAGE, criticité P0-P3 colorée) + patch-docx.py (suppression pgNumType vides + patch instrText PAGE \* ROMAN / \* arabic via résolution footerReference des sectPr)
+- Pipeline complet ×11 : bun gen → add_toc_placeholders.py --auto (exit 0 ×11) → patch-docx.py (footers ['-',ROMAN,arabic] ×11) → postcheck.py : 0 erreur ×11 (2 corrections en chemin : Consolas→Courier New ; suppression du PageBreak final du sommaire qui créait une page blanche avec le NEXT_PAGE du corps — règle anti-page-vide du skill)
+- Vérification visuelle LibreOffice→PDF→PNG : couverture conforme R1, sommaire indexé avec numéros, corps stylé (en-tête, H1/H2, tableaux à filet terracotta), page blanche éliminée
+- Hygiène repo : package.json restauré après bun add docx (docx reste en node_modules, non versionné) ; livrables dans download/audit-julaba-2026-10-05/ (hors versionnement)
+- AUDIT_REPORT.md : section « AUDIT COMPLET 11 PÉRIMÈTRES — 2026-10-05 » ajoutée (tableau des 11 scores/statuts/top actions + lot transversal recommandé)
+
+Stage Summary:
+- 11 audits complets livrés (.md dans .ai/AUDITS + 11 .docx dans download/audit-julaba-2026-10-05/ : 01_Système_Authentification, 02_Marchand, 03_Producteur, 04_Coopérateur, 05_Institution, 06_Identificateur, 07_Opérateur_Terrain, 08_Gestionnaire_Zone, 09_Admin_National, 10_Admin_Général, 11_Super_Admin) — chaque docx : couverture, sommaire, constats avec preuves fichier:ligne, tableau risques/vulnérabilités/criticité, points forts, recommandations, matrice de recette, tests critiques, SYNTHÈSE DES ACTIONS PRIORITAIRES, scores, conclusion/statut
+- 3 acteurs sous le seuil PROD 60 : Producteur 54 (P0 voix), Coopérateur 54 (IDOR/statuts/cotisation), Institution 42 (ONECI ouvert) — 1 au seuil pile : Admin général 60 — le reste au-dessus
+- Verdict auth : socle serveur mûr (14/17 constats précédents closes vérifiées) MAIS AUTH-SYS-01 P1 à fermer avant livraison web (le coffre ADR-002 fuit à la première rotation via api-client.ts:128/132)
+- Prochain lot de corrections recommandé : AUTH-SYS-01 + PRODUCTEUR-01 + INSTITUTION-01 (P0) puis lot transversal (WS room all, POST /audit, unification matrice permissions)
