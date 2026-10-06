@@ -293,3 +293,46 @@ Stage Summary:
 - DELETE (4) : services/voicePacks.ts + services/voicePacks.test.mts (paire morte, 0 import hors tests) + script package.json « test:packs » (frontend) + services/README-MOCK-SERVICE.md (décrit un service/hook supprimés) ; coupler : adapter studioWav.test.mts:5,39-40 (import validerManifeste) ; arbitrer docs/PACKS_VOIX.md + public/voix/manifeste.exemple.json (doc/data d'exemple du module mort, hors code)
 - KEEP : 10/10 pages, 24 contexts, 29 hooks, 104/105 services, 4/4 data, 4/4 types, design-tokens.ts, images.ts, tabler-subset.woff2, config/bo-permissions.ts — tout prouvé utilisé
 - INCERTAIN : aucun fichier code incertain ; correction au dossier d'audit : « bo-permissions.ts mort » à invalider (il est branché sur BOUtilisateurs), la divergence des 3 registres reste un chantier d'unification
+
+---
+Task ID: 11-c
+Agent: Z.ai Code (orchestrateur)
+Task: Phase 4 — ménage approfondi (suppressions vérifiées + adaptations + build)
+
+Work Log:
+- Vérifications indépendantes des candidats des scans 11-a/11-b avant suppression (rg basename, exclusion auto-références/tests)
+- Découvertes sensibles : sms.service lit lui-même ANSUT_* (env conservées) ; /recoltes + /cycles vivants servis par cycles-rest/recoltes-rest ; manifeste.exemple.json référencé par mp3Encoder+collecteVoixDB (conservé) ; test:packs chaîné dans test:ci ; les 3 specs orphelines sont des scaffolds e2e (AppModule+supertest) incompatibles avec test/unit « pur » → suppression documentée
+- Supprimé backend : src/ansut/ (×2), cycles.module+service+2 dto, recoltes.module+update-recolte.dto, wallets/dto/credit-wallet.dto.ts, 3 specs ; dep @sentry/profiling-node — entités cycles/recoltes conservées (glob database.module)
+- Supprimé frontend : voicePacks.ts + voicePacks.test.mts (182 l.), README-MOCK-SERVICE.md ; script test:packs (isolé + chaîne test:ci) ; docs/PACKS_VOIX.md → docs/archive/
+- Adapté : studioWav.test.mts (assertions directes sur le manifeste, plus d'import voicePacks) + studioWav.ts (typage précis du retour genererManifesteStudio — corrige 3 erreurs TS2339 relevées par tsc)
+- Verifications exit 0 : tsc --noEmit backend ; tsc -b frontend ; vite build (20,2 s) ; garde npx tsx studioWav.test.mts ; npm install racine (lockfile resynchronisé)
+- Interférence sandbox : pull --rebase exécuté sur main entre deux commandes (commit Phase 4 resté sain sur dev) → rebase rejoué proprement sur origin/dev b5eb397
+
+Stage Summary:
+- aefc7fa sur origin/dev : 22 fichiers, −1276 lignes ; corrige le keep INIT-011 (rationale erronée) et le keep ansut de la Phase 1 ; correction d'audit : bo-permissions.ts VIVANT (chantier d'unification, pas code mort)
+
+---
+Task ID: 11-d
+Agent: Z.ai Code (orchestrateur)
+Task: R18 — procédure git-lfs documentée (sans exécution)
+
+Work Log:
+- Mesure des binaires versionnés : public/voix 11 Mo (clips tata), src/assets/images 4,2 Mo, redesign 632 Ko, public/images 728 Ko — ~16,6 Mo (corrige l'estimation ~38 Mo du diagnostic)
+- Rédaction §7 du plan : prérequis (git-lfs>=3, setup-git-lfs en CI), étapes migrate import (tag rollback pre-lfs-migration, patterns mp3/png/jpg/jpeg/webp/woff2, SVG exclu), vérifications (lfs ls-files, count-objects, build sur clone frais), push force + re-clones équipe, variante progressive .gitattributes sans rewrite (et son piège CI)
+- Décision : PAS d'exécution maintenant (rewrite d'historique → fenêtre coordonnée requise) ; .gitattributes volontairement non commité tant que la CI n'a pas git-lfs
+
+Stage Summary:
+- R18 prête à exécuter par l'équipe en fenêtre calme ; recommandation mise à jour dans §4
+
+---
+Task ID: 11-e
+Agent: Z.ai Code (orchestrateur)
+Task: Clôture Task 11 — plan à jour (Phase 4 + §7 + §4) et push dev
+
+Work Log:
+- PLAN-REORGANISATION-2026-10-06.md : section Phase 4 détaillée (avec inversions documentées), §4 (R18 → §7, 16,6 Mo mesurés ; nouvelle ligne PERF unification registres permissions), §7 procédure R18
+- worklog : sections 11-a/11-b (agents Explore) transférées depuis le worktree main (interférence sandbox), 11-c/11-d/11-e rédigées
+- Pushs sur dev uniquement ; main local non poussé (consigne utilisateur)
+
+Stage Summary:
+- Plan de réorganisation : Phases 0-4 closes + procédure R18 livrée ; restent à trancher : F14 (lot fonctionnel), CI Playwright, rotation identifiants (historique), unification permissions (PERF)
