@@ -55,3 +55,9 @@ docs/voix/ENTREES-TATA-UI-CLIPS.txt
 # Sorties brutes du tooling sandbox (journaux d’outils, jamais versionnés — peuvent contenir des échos d’URL authentifiées)
 tool-results/
 /bun.lock
+
+# Dossiers sandbox (tooling IA locale, livrables téléchargeables) — jamais versionnés
+skills/
+.zscripts/
+download/
+upload/
