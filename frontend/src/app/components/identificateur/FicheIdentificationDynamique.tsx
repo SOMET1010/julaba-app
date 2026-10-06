@@ -972,12 +972,13 @@ export function FicheIdentificationDynamique() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Brouillon auto : charger au montage si un brouillon existe pour ce profil
+  // Brouillon auto : charger au montage si un brouillon existe pour ce profil.
+  // localStorage survit au redémarrage de l’APK/WebView (contrairement à sessionStorage).
   useEffect(() => {
-    if (!profil) return;
+    if (!profil || locationState2) return;
     try {
       const draftKey = `julaba:fiche-draft:${profil}`;
-      const stored = sessionStorage.getItem(draftKey);
+      const stored = localStorage.getItem(draftKey);
       if (!stored) return;
 
       const parsed = JSON.parse(stored);
@@ -1005,7 +1006,7 @@ export function FicheIdentificationDynamique() {
   // Ref exposée pour annulation manuelle du debounce avant cleanup post-submit
   const draftSaveTimeoutRef = useRef<number | null>(null);
 
-  // Brouillon auto : sauvegarder à chaque changement (debouncé 500ms pour limiter I/O sessionStorage)
+  // Brouillon auto : sauvegarder dès la première étape et après chaque changement.
   useEffect(() => {
     if (!profil) return;
     if (draftSaveTimeoutRef.current) window.clearTimeout(draftSaveTimeoutRef.current);
@@ -1013,7 +1014,7 @@ export function FicheIdentificationDynamique() {
       try {
         const draftKey = `julaba:fiche-draft:${profil}`;
         const draftPayload = { data, step, savedAt: new Date().toISOString() };
-        sessionStorage.setItem(draftKey, JSON.stringify(draftPayload));
+        localStorage.setItem(draftKey, JSON.stringify(draftPayload));
       } catch (e: any) {
         console.warn('[BrouillonAuto] Sauvegarde échouée:', e?.message);
       }
@@ -1520,7 +1521,7 @@ export function FicheIdentificationDynamique() {
     };
   }, []);
 
-  // Cleanup atomique brouillon sessionStorage post-soumission réussie
+  // Cleanup atomique brouillon local post-soumission réussie
   // Annule d'abord le debounce 500ms en cours pour éviter race (ré-écriture après suppression)
   const clearDraftAndCancelDebounce = () => {
     if (draftSaveTimeoutRef.current) {
@@ -1529,7 +1530,7 @@ export function FicheIdentificationDynamique() {
     }
     if (profil) {
       try {
-        sessionStorage.removeItem(`julaba:fiche-draft:${profil}`);
+        localStorage.removeItem(`julaba:fiche-draft:${profil}`);
       } catch (e: any) {
         console.warn('[FicheIdentificationDynamique] cleanup brouillon échoué:', e?.message);
       }
@@ -1584,6 +1585,11 @@ export function FicheIdentificationDynamique() {
       } catch (errDraft) {
         if (errDraft instanceof DOMException && errDraft.name === 'AbortError') return;
         if (!isMountedRef.current) return;
+        if (errDraft instanceof Error && /NOT_AUTHENTICATED|UNAUTHORIZED|401/i.test(errDraft.message)) {
+          toast.error('Ta session a expiré. Reconnecte-toi pour sauvegarder le brouillon.');
+          window.dispatchEvent(new Event('julaba:force-logout'));
+          return;
+        }
         toast.error(`Erreur lors de la sauvegarde du brouillon : ${errDraft instanceof Error ? errDraft.message : 'réessaie'}`);
         return;
       }
@@ -1667,6 +1673,9 @@ export function FicheIdentificationDynamique() {
       const isComplement = locationState2?.mode === 'complement'
         && typeof locationState2?.identificationId === 'string'
         && locationState2.identificationId.length > 0;
+      const isEdit = locationState2?.mode === 'edit'
+        && typeof locationState2?.identificationId === 'string'
+        && locationState2.identificationId.length > 0;
 
       // Helpers de sécurisation des champs optionnels (évitent crash si data.field undefined)
       const safeNom = (data.nom || '').toUpperCase();
@@ -1674,7 +1683,7 @@ export function FicheIdentificationDynamique() {
         ? (data.telephone || '')
         : '+225' + (data.telephone || '');
 
-      if (isComplement) {
+      if (isComplement || isEdit) {
         try {
           const fullName = `${data.prenoms || ''} ${data.nom || ''}`.trim();
           const acteurIdRaw = locationState2.acteurId;
@@ -1724,7 +1733,7 @@ export function FicheIdentificationDynamique() {
             await apiRequest(API_URL, `/identifications/${locationState2.identificationId}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                statut: 'en_attente',
+                statut: isEdit ? (locationState2.statut || 'validee') : 'en_attente',
                 acteur_nom: fullName,
                 commune: data.commune || '',
                 region: data.region || null,
@@ -1844,7 +1853,10 @@ export function FicheIdentificationDynamique() {
           if (!isMountedRef.current) return;
           const msg = errCreate instanceof Error ? errCreate.message : '';
           console.warn('[handleSubmit] Échec create-with-acteur:', msg);
-          if (msg.includes('telephone')) {
+          if (/NOT_AUTHENTICATED|UNAUTHORIZED|401/i.test(msg)) {
+            toast.error('Ta session a expiré. Reconnecte-toi pour envoyer cette fiche.');
+            window.dispatchEvent(new Event('julaba:force-logout'));
+          } else if (msg.includes('telephone')) {
             toast.error('Ce numéro de téléphone est déjà utilisé.');
           } else {
             toast.error(`Erreur de création acteur : ${msg || 'vérifie tes données'}`);
@@ -2473,7 +2485,7 @@ export function FicheIdentificationDynamique() {
           <motion.button
             type="button"
             onClick={handleSaveDraft}
-            disabled={isSubmitting || step < 3}
+            disabled={isSubmitting}
             whileHover={isSubmitting ? undefined : { scale: 1.02 }}
             whileTap={isSubmitting ? undefined : { scale: 0.98 }}
             className="shrink-0 rounded-3xl flex items-center justify-center gap-2 border-2 bg-white font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed px-4"
@@ -5749,5 +5761,3 @@ function StepContent({
 
   return null;
 }
-
-

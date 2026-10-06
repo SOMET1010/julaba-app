@@ -689,7 +689,19 @@ export function ActeurDetails() {
           {canResume && (
             <motion.button
               type="button"
-              onClick={() => navigate('/identificateur/fiche-identification')}
+              onClick={() => navigate('/identificateur/fiche-identification', {
+                state: {
+                  mode: 'complement',
+                  identificationId: identification?.id,
+                  acteurId: acteur.id,
+                  typeActeur: acteur.role,
+                  phone: acteur.phone,
+                  nom: acteur.lastName,
+                  prenoms: acteur.firstName,
+                  commune: acteur.commune,
+                  activite: acteur.activity,
+                },
+              })}
               whileTap={{ scale: 0.97 }}
               className="flex-1 py-3 rounded-2xl text-white font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
               style={{ background: `linear-gradient(135deg, ${PRIMARY} 0%, #B39485 100%)`, minHeight: '44px' }}

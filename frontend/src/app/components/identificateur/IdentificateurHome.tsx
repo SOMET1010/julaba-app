@@ -50,7 +50,11 @@ function safeNumber(v: unknown): number | null {
 async function fetchDraftsCount(userId: string, signal?: AbortSignal): Promise<number> {
   try {
     const data = await apiRequest<any>(API_URL, `/identifications/drafts/${userId}`, { method: 'GET', signal });
-    return Array.isArray(data?.drafts) ? data.drafts.length : 0;
+    let localCount = 0;
+    for (const profile of ['marchand', 'producteur', 'cooperative']) {
+      if (localStorage.getItem(`julaba:fiche-draft:${profile}`)) localCount += 1;
+    }
+    return (Array.isArray(data?.drafts) ? data.drafts.length : 0) + localCount;
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') return 0;
     if ((e as Error)?.name === 'AbortError') return 0;
@@ -61,7 +65,7 @@ async function fetchDraftsCount(userId: string, signal?: AbortSignal): Promise<n
 
 export function IdentificateurHome() {
   const navigate = useNavigate();
-  const { user: currentUser, setIsModalOpen } = useApp();
+  const { user: currentUser, setIsModalOpen, isOnline } = useApp();
   const { stats: ctxStats, getMesIdentifications } = useIdentificateur();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -122,6 +126,11 @@ export function IdentificateurHome() {
       const trimmed = query.trim();
       if (!trimmed || trimmed.length < 2) return [];
 
+      if (!isOnline) {
+        toast.error('Tu es hors ligne. La recherche sera possible quand la connexion reviendra.');
+        return [];
+      }
+
       const myZoneId = currentUser?.zoneId || null;
       if (!myZoneId) {
         console.warn(`${LOG_PREFIX} zoneId pas encore chargé, recherche reportée`);
@@ -177,7 +186,7 @@ export function IdentificateurHome() {
         return [];
       }
     },
-    [currentUser]
+    [currentUser, isOnline]
   );
 
   const handleSelect = useCallback(

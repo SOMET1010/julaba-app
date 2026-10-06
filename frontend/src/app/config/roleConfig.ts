@@ -367,7 +367,7 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
       items: [
         { label: 'Accueil', path: '/identificateur', icon: 'Home' },
         { label: 'Acteurs', path: '/identificateur/identifications', icon: 'Users' },
-        { label: 'Suivi', path: '/identificateur/rapports', icon: 'BarChart3' },
+        { label: 'Suivi', path: '/identificateur/suivi', icon: 'BarChart3' },
         { label: 'Moi', path: '/identificateur/profil', icon: 'User' },
       ],
     },

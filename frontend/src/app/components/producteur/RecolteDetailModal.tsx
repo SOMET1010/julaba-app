@@ -46,8 +46,8 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
   const recolteStatus = recolte.statut ?? recolte.status ?? '';
 
   const commandesLiees = commandes.filter(c => c.recolteId === recolte.id);
-  const commandesEnCours = commandesLiees.filter(c => ['new', 'accepted', 'preparing'].includes(c.status ?? ''));
-  const commandesLivrees = commandesLiees.filter(c => c.status === 'delivered');
+  const commandesEnCours = commandesLiees.filter(c => ['en_attente', 'confirmee', 'en_cours'].includes(c.statut));
+  const commandesLivrees = commandesLiees.filter(c => c.statut === 'livree');
 
   const quality  = QUALITY_LABELS[recolte.qualite] || QUALITY_LABELS.B;
   const statut   = STATUS_LABELS[recolteStatus] || STATUS_LABELS.declaree;
@@ -293,12 +293,12 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
                       <div className="text-right">
                         <p className="font-black text-sm" style={{ color: COLOR }}>{(cmd.montant || 0).toLocaleString()} FCFA</p>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          cmd.status === 'delivered' ? 'bg-green-100 text-green-700' :
-                          cmd.status === 'new'       ? 'bg-blue-100 text-blue-700' :
+                           cmd.statut === 'livree' ? 'bg-green-100 text-green-700' :
+                           cmd.statut === 'en_attente' ? 'bg-blue-100 text-blue-700' :
                           'bg-orange-100 text-orange-700'
                         }`}>
-                          {cmd.status === 'delivered' ? 'Livré' :
-                           cmd.status === 'new'       ? 'Nouveau' :
+                           {cmd.statut === 'livree' ? 'Livré' :
+                            cmd.statut === 'en_attente' ? 'Nouveau' :
                            cmd.status === 'accepted'  ? 'Accepté' :
                            cmd.status === 'preparing' ? 'Préparation' : cmd.status}
                         </span>

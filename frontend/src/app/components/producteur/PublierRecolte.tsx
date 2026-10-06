@@ -51,6 +51,7 @@ export function PublierRecolte() {
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,15 +72,18 @@ export function PublierRecolte() {
     e.preventDefault();
 
     if (!formData.produit || !formData.quantite || !formData.prixUnitaire || !formData.stockDisponible) {
+      toast.error('Remplis tous les champs obligatoires');
       await speak('Remplis tous les champs obligatoires');
       return;
     }
     if (Number(formData.stockDisponible) > Number(formData.quantite)) {
+      toast.error('Le stock disponible ne peut pas dépasser la récolte totale');
       await speak('Le stock disponible ne peut pas dépasser la quantité totale de la récolte');
       return;
     }
 
     if (formData.produit === 'autre' && !formData.autreNom) {
+      toast.error('Indique le nom du produit');
       await speak('Indique le nom du produit');
       return;
     }
@@ -88,6 +92,7 @@ export function PublierRecolte() {
       ? formData.autreNom
       : PRODUITS.find(p => p.id === formData.produit)?.name || formData.produit;
 
+    setIsSubmitting(true);
     try {
       // Compresser l'image si trop grande (> 500KB)
       let photoData = imagePreview;
@@ -132,6 +137,8 @@ export function PublierRecolte() {
       console.warn('[PublierRecolte] handleSubmit failed:', e?.message);
       toast.error('Erreur lors de la publication');
       void speak('Erreur lors de la publication, réessaie');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -321,10 +328,11 @@ export function PublierRecolte() {
               {/* Submit Button */}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-[#2E8B57] hover:bg-[#236B43] py-6 text-lg font-semibold rounded-xl"
               >
                 <Package className="w-5 h-5 mr-2" />
-                Publier sur le marché
+                {isSubmitting ? 'Publication en cours...' : 'Publier sur le marché'}
               </Button>
             </form>
           </Card>

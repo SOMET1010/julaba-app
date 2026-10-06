@@ -117,6 +117,7 @@ export function Stocks() {
   const [selectedCategory, setSelectedCategory] = useState('tous');
   const [sortBy, setSortBy] = useState('name');
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
+  const [quantityDraft, setQuantityDraft] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -464,12 +465,15 @@ export function Stocks() {
   };
 
   const updateStock = async (id: string, quantity: number) => {
+    if (!Number.isFinite(quantity) || quantity < 0) return;
     try {
       await apiRequest(API_URL, `/stocks/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ quantite: quantity }),
       });
       setStocks(prev => prev.map(s => s.id === id ? { ...s, quantity } : s));
+      setSelectedStock(prev => prev?.id === id ? { ...prev, quantity } : prev);
+      setQuantityDraft(String(quantity));
       showToast('✅ Production mise à jour', 'success');
     } catch (e: any) {
       console.warn('[Stocks] updateStock failed:', e?.message);
@@ -634,6 +638,7 @@ export function Stocks() {
               transition={{ delay: index * 0.05 }}
               onClick={() => {
                 setSelectedStock(stock);
+                setQuantityDraft(String(stock.quantity));
                 setShowEditModal(true);
               }}
               className={`bg-gradient-to-br ${
@@ -898,8 +903,16 @@ export function Stocks() {
                     </motion.button>
                     <input
                       type="number"
-                      value={selectedStock.quantity}
-                      onChange={(e) => updateStock(selectedStock.id, parseInt(e.target.value) || 0)}
+                      value={quantityDraft}
+                      onChange={(e) => setQuantityDraft(e.target.value)}
+                      onBlur={() => {
+                        const quantity = Number(quantityDraft);
+                        if (!Number.isFinite(quantity) || quantity < 0 || quantityDraft.trim() === '') {
+                          setQuantityDraft(String(selectedStock.quantity));
+                          return;
+                        }
+                        void updateStock(selectedStock.id, quantity);
+                      }}
                       className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-[#2E8B57] focus:outline-none text-center text-2xl font-bold"
                     />
                     <span className="text-gray-500 font-semibold">{selectedStock.unit}</span>

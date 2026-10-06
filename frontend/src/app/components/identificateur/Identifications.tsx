@@ -975,6 +975,7 @@ export function Identifications() {
                 mode: 'edit',
                 identificationId: ficheActeur.id,
                 acteurId: ficheActeur.acteurId || ficheActeur.acteur_id,
+                statut: ficheActeur.statut,
                 phone: ficheActeur.telephone,
                 typeActeur: ficheActeur.role,
                 nom: ficheActeur.nom,
