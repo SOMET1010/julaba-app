@@ -22,7 +22,7 @@ versionnés, code mort, dépendances fantômes, Orphelins CI.
 | Backend | Modules coquilles vides `tickets/`, `escrow/` | 16 lignes |
 | Backend | `src/audit/` mal nommé (service vivant, 12 références) | renommage |
 | Backend | `jspdf` déclaré, jamais importé côté backend | 1 dépendance |
-| Frontend | 8 composants Universal*BO sans aucun importeur + barrel jamais importé | ~3060 lignes |
+| Frontend | 6 composants Universal*BO sans aucun importeur + 6 exports morts du barrel | 1786 lignes |
 | Frontend | Dépendances jamais importées (à re-vérifier) | ~10 paquets |
 
 ## 3. Phases et statut d'exécution
@@ -52,15 +52,25 @@ versionnés, code mort, dépendances fantômes, Orphelins CI.
 - Retrait de `jspdf` de `backend/package.json` (utilisé côté frontend uniquement).
 
 ### Phase 2 — Frontend ✅
-- Suppression des 8 composants Universal*BO sans importeur :
+- Suppression des 6 composants Universal*BO sans aucun importeur (types inclus) :
   `UniversalAvatarBO`, `UniversalBadgeBO`, `UniversalFilterPanelBO`,
-  `UniversalSearchBarBO`, `UniversalTableBO`, `UniversalToastBO`,
-  `UniversalCardBO`, `UniversalCardBOZone` (~3023 lignes)
-  + barrel `universal/index.ts` (0 import ; les importeurs passent tous par
-  les chemins directs). Les 11 composants universels **utilisés** sont conservés.
-- Retrait des dépendances jamais importées (vérifiées une à une par recherche
-  d'import avant retrait).
-- Suppression des assets images sans référence et des documents orphelins.
+  `UniversalSearchBarBO`, `UniversalTableBO`, `UniversalToastBO`
+  + retrait de leurs 6 exports du barrel `universal/index.ts` (le barrel reste :
+  `BOZones.tsx` y importe des composants vivants). Total : 1786 lignes.
+  - ⚠️ correction du diagnostic initial : `UniversalCardBO` et `UniversalCardBOZone`
+    sont VIVANTS (imports relatifs `./` depuis BOActeurs/BOZones/BOEnrolement/BOMarketplace)
+    → conservés.
+- Retrait de 10 dépendances jamais importées (vérifiées une à une) :
+  `react-hook-form`, `cmdk`, `papaparse` + `@types/papaparse`, `qrcode`
+  (seul `qrcode.react` est utilisé), `react-day-picker`, `react-resizable-panels`,
+  `jsqr`, `@nestjs/core` (framework backend déclaré côté frontend !), `playwright-core`.
+  - gardés malgré le scan : `@capacitor/core|android|cli` (requis par `android/` — `npx cap sync`),
+    `tsx` (binaire appelé par les scripts npm).
+- Suppression de 12 images sans aucune référence (~558 Ko) : 11 vignettes
+  `produit-*.png` (remplacées par `assets/images/produits/*.jpg`) + `tantie-login.png`
+  (écran d'accueil redessiné).
+  - conservées : les icônes PWA `tantie-sagesse-*` (référencées par
+    `public/manifest.json` et `public/sw.js`).
 
 ### Phase 3 — Vérifications ✅
 - `nest build` (backend) et `tsc -b` + `vite build` (frontend) verts après chaque phase.
