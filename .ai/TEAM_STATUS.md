@@ -81,13 +81,13 @@
 - **Voice-first** : Tata Nanti Lou (137 clips pré-cachés)
 
 ### 🕵️ AUDIT (Agent Audit Global)
-- **Dernier audit** : AUDIT-001 (2026-09-28) — Score global 73/100
+- **Dernier audit** : Audit UX rôles (2026-10-06) — revue effectuée, 3 P1 + 1 P2 ouverts
 - **Prochain audit prévu** : À déclencher après 5 features terminées OU hebdomadaire
 - **Dette technique** : 48 items OUVERTS (0 P0, 3 P1, reste P2-P3) — registre révision 20
 - **Conformité** : 78/100
 
 ### 🔴 QA (Agent 2 — Chef de Projet Technique / QA)
-- **Tâche** : Audit initial terminé
+- **Tâche** : Recette des lots UX en attente
 - **Scénarios** : Plan de test E2E initial rédigé
 - **Tests existants** :
   - Backend : 78 specs (27 unit + 48 invariants + 3 controller)
@@ -98,13 +98,13 @@
 
 ## Progression globale (HONNÊTE)
 
-- **Terminées** : 0 (initialisation système)
-- **En cours** : 0
+- **Terminées** : 1 lot UX (UX-1)
+- **En cours** : 5 lots UX partiels (UX-2 à UX-6)
 - **Bloquées** : 0
-- **Bugs** : 0 (registre initial — voir `BUGS.md`)
+- **Bugs** : 7 enregistrés, dont 4 résolus et 3 P1 ouverts (voir `BUGS.md`)
 - **Vulnérabilités** : 14 CVEs prod + 10 CVEs dev (voir `SEC_BUGS.md`)
 - **Problèmes a11y** : 7 points faibles (voir `A11Y_BUGS.md`)
-- **Problèmes perf** : 6 manques (voir `PERF_ISSUES.md`)
+- **Problèmes perf** : 7 manques (voir `PERF_ISSUES.md`)
 - **Incidents intégrité** : 0
 - **Commits rejetés** : 0
 - **Revues bloquantes** : 0
@@ -114,7 +114,7 @@
 ## Prochaine action par agent
 
 - **Back** : En attente feature
-- **Front** : En attente feature
+- **Front** : Corriger BUG-005/006/007 des lots UX
 - **DevOps** : Trancher cible de prod (Render vs OVH vs Azure)
 - **Security** : Patcher 14 CVEs prod (P1)
 - **Commit** : Standby
@@ -124,4 +124,4 @@
 - **Perf** : Mettre en place Core Web Vitals + metrics Prometheus (P1)
 - **UX/UI** : Standby (en attente feature)
 - **Audit** : Prochain audit après 5 features OU hebdo
-- **QA** : Standby (en attente feature)
+- **QA** : Recetter les parcours producteur hors ligne, annulation et revenus

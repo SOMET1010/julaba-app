@@ -13,6 +13,11 @@ Suite du suivi de l'audit UX (même source que UX-1) — périmètre marchand/id
 - **Routes identificateur** (T5/I-P1-4/I-P1-5) : `/identification` → `/fiche-identification`, `/acteurs` → `/identifications`, orphelines `/statistiques` et `/dashboard` → `/rapports` ; onglet « Suivi » ouvre enfin SuiviIdentifications (`/suivi`) ; titre d'écran « Acteurs » aligné sur l'onglet ; `useScoreJULABA` pointe la route canonique
 - **BUG-005** : `/paiement/failed` affichait « Paiement effectué ✅ » (détection `includes('error')` seulement) — corrigé (`/error|failed/`)
 - Vérifications : `tsc -b` 0, garde charte marchande vert, `test:ci` 44 maillons 0, garde-argent = les 3 refus attendus (gels humains en attente)
+### Ajouté — Revue audit UX des trois rôles (2026-10-06)
+- Revue du commit `060c333` et de `AUDIT-UX-ROLES-2026-10-06.md`.
+- Lots UX-2/3/4/5/6 réconciliés dans `TASKS.md` : les corrections sont partielles et restent soumises aux validations QA, a11y, performance et Tech Lead.
+ - Trois reliquats P1 enregistrés dans `BUGS.md` : mutations producteur hors ligne sans outbox (`BUG-008`), annulation producteur sans confirmation (`BUG-009`), revenu incluant les commandes non livrées (`BUG-010`).
+- Un reliquat performance P2 est tracé : polling producteur sans suspension hors ligne (`PERF-007`).
 
 ### Corrigé — Lot UX-1 « Promesses d'argent » (2026-10-06)
 Suivi de l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`) — décisions §8 tranchées, lot UX-1 exécuté (BUG-001..004) :

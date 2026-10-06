@@ -2,14 +2,14 @@
 
 > Registre des bugs fonctionnels détectés. Format : BUG-XXX.
 
-## État au 2026-09-28
+## État au 2026-10-06
 
-- **Total bugs** : 0 (registre initialisé)
-- **Bugs P0** : 0
-- **Bugs P1** : 0
-- **Bugs P2** : 0
+- **Total bugs** : 7 (4 résolus, 3 ouverts)
+- **Bugs P0** : 0 ouvert
+- **Bugs P1** : 3 ouverts
+- **Bugs P2** : 0 ouverts
 - **Bugs P3** : 0
-- **Bugs résolus** : 0
+- **Bugs résolus** : 4
 
 ## Format d'enregistrement
 
@@ -93,6 +93,34 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - **Description** : les 4 routes de callback (`/pay/success`, `/pay/error`, `/paiement/success`, `/paiement/failed`) montent toutes `PaySuccessPage`, qui ne détectait l'échec que par `pathname.includes('error')` — « failed » passe au travers : une erreur de paiement PSP s'affichait comme un succès. `PaySuccessPage.tsx:7`.
 - **Résolution** : détection `/error|failed/` — les quatre callbacks affichent désormais l'état réel.
 - **Commits** : cf. UX-6 (fix wallet BUG-005) · **Vérifications** : tsc 0, test:ci 0
+## Bugs ouverts — Revue audit UX du 2026-10-06
+
+### BUG-008 — Écriture récolte/publication producteur perdue hors ligne
+- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
+- **Environnement** : dev / terrain hors ligne
+- **Description** : les créations de récolte et de publication appellent directement l'API sans outbox ni idempotence. Une coupure réseau après saisie ne laisse pas de mutation rejouable.
+- **Comportement attendu** : conserver la saisie avec propriétaire, clé d'idempotence et statut « à synchroniser », puis rejouer au retour réseau.
+- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx:351-371,481-485`.
+- **Tests liés** : à créer — outbox producteur nominal, 4xx lettre morte, 5xx rejeu.
+
+### BUG-009 — Annulation de commande producteur sans confirmation
+- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
+- **Environnement** : dev / pilote
+- **Description** : le bouton « Annuler la commande » déclenche directement `cancelCommande()` sans confirmation, raison ni verrou synchrone.
+- **Comportement attendu** : relecture texte/voix, confirmation explicite, verrou anti double-tap et retour d'erreur visible.
+- **Fichiers concernés** : `frontend/src/app/components/producteur/CommandesProducteurPage.tsx:1627-1683`.
+- **Tests liés** : à créer — annulation confirmée, annulation abandonnée, double-tap, erreur réseau.
+
+### BUG-010 — Revenu gagné incluant des commandes non livrées
+- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
+- **Environnement** : dev / pilote
+- **Description** : `revenusTotal` additionne toute commande non annulée, y compris `en_attente`, `confirmee` et `en_cours`, tandis que l'interface annonce « Tu as gagné ».
+- **Comportement attendu** : séparer revenu livré/encaissé, montant en attente et montant annulé ; utiliser une fonction métier unique dans tous les écrans.
+- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx:606-614`, `frontend/src/app/components/producteur/Revenus.tsx:100-114`.
+- **Tests liés** : à créer — commandes par statut, cohérence KPI/écran revenus/voix.
 
 ## Bugs à détecter (surveillance active)
 

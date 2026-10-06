@@ -2,7 +2,7 @@
 
 > Version humaine-lisible du backlog. Miroir de `TASKS.xlsx` (à créer à la première feature).
 
-## État au 2026-09-29
+## État au 2026-10-06
 
 - **Total tâches** : 12 (toutes issues de l'audit initial)
 - **Terminées** : 2 (INIT-011, INIT-012)
@@ -39,6 +39,8 @@
 ## Tâches UX (audit UX des 3 rôles, 2026-10-06)
 
 > Source : `docs/audit/AUDIT-UX-ROLES-2026-10-06.md` (12 P0 / 21 P1 / ~25 P2, 8 motifs transversaux, 6 lots). Décisions §8 tranchées le 06/10 (détail dans le §8 du document).
+>
+> **Mise à jour revue 2026-10-06** : UX-1 est livré ; UX-2 à UX-6 restent en cours avec validations et reliquats documentés ci-dessous.
 
 | ID | Lot | Description | Statut | Priorité |
 |---|---|---|---|---|
@@ -48,6 +50,15 @@
 | UX-4 | Le réseau dit la vérité | Trois situations trois phrases (T3), badge offline dans les 3 layouts (T6), gardes offline wallet, outbox récolte/fiche | TODO | P1 |
 | UX-5 | Contrats alignés | computeRevenus unique (T4/P-P0-4), énumération qualité, mapping statuts API, KPIs | TODO | P1 |
 | UX-6 | IA/routing | Routes canoniques + redirects (T5), porte keiwa marchand restaurée (décision §8.3), onglets renommés, callbacks /pay à vérifier | **TERMINÉ** — redirects `identification`/`acteurs`/`statistiques`/`dashboard`, onglet Suivi → SuiviIdentifications, titre « Acteurs », tuile Mon argent restaurée, BUG-005 corrigé ; reste côté producteur (orphelines `/publier-recolte`, `Stocks.tsx:561`) : agent UX producteur | P1 |
+
+### Revue de l'audit UX — 2026-10-06
+
+Revue indépendante du code après `060c333` : les corrections UX-1 et une partie des lots UX-2/3/5/6 sont présentes, mais les lots ne sont pas validables au sens de la règle finale (`WORKFLOWS.md` §7). Reliquats enregistrés :
+
+- **BUG-008 P1** : `ProducteurContext.createRecolte()` et `createPublication()` font des POST directs sans outbox offline ni idempotence ; voir `frontend/src/app/contexts/ProducteurContext.tsx:351-371,481-485`.
+- **BUG-009 P1** : `CommandesProducteurPage` annule une commande sans confirmation, raison ni verrou d'envoi ; voir `frontend/src/app/components/producteur/CommandesProducteurPage.tsx:1627-1683`.
+- **BUG-010 P1** : `revenusTotal` additionne toute commande non annulée, y compris les commandes non livrées, puis l'écran annonce un revenu gagné ; voir `ProducteurContext.tsx:606-614` et `components/producteur/Revenus.tsx:100-114`.
+- **PERF-007 P2** : le polling de `ProducteurProduction` continue toutes les 30 secondes hors ligne ; voir `components/producteur/ProducteurProduction.tsx:74-84`.
 
 ## Tâches reportées (backlog futur)
 
