@@ -4,7 +4,10 @@ import { useLocation, useNavigate } from 'react-router';
 export default function PaySuccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const isSuccess = !location.pathname.includes('error');
+  // BUG-005 (audit UX 06/10, T5 « callbacks /pay à vérifier ») : /paiement/failed
+  // montait ce composant et… affichait « Paiement effectué ✅ » — la détection
+  // ne cherchait que « error ». Les deux mots d'échec sont désormais couverts.
+  const isSuccess = !/error|failed/.test(location.pathname);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F6F0E4', padding: 24 }}>
