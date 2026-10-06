@@ -351,3 +351,20 @@ Work Log:
 
 Stage Summary:
 - Liste DELETE confirmée puis exécutée par l'orchestrateur en Task 11-c (aefc7fa) ; chaîne cycles/recoltes arbitrée : suppression (endpoints vivants servis par -rest), entités conservées
+
+---
+Task ID: 12
+Agent: Z.ai Code (orchestrateur)
+Task: Renommage frontend_src → frontend (602 refs / ~134 fichiers) selon le plan d'exécution validé
+
+Work Log:
+- Pré-requis vérifié : test:verrou-connexion VERT sur dev (l'analyse visait un snapshot antérieur) ; en revanche le refus préexistant RÉEL est jest-unit pin-jamais-rendu.spec (Math.random dans anti-enumeration.ts:108, introduit par 01634fe AUTH-07 — préexistant, hors périmètre renommage, à arbitrer : randomInt pour la gigue ou GARDE-ASSOUPLIE)
+- git mv frontend_src frontend (1er essai Avalé par le piège n°4 non listé : frontend/ EXISTAIT déjà comme sortie de build ../frontend/dist → mv imbriqué frontend/frontend_src ; récupéré par remise à plat), substitutions ciblées 369+ sur ~130 fichiers vivants, exceptions respectées : ci/garde-argent.mjs:687 intouché, lignes refs f0c965c préservées (VOIX-01:607, REGISTRE-MAITRE:19), docs/archive/ + worklog.md historiques non réécrits, EMPREINTE-GARDES.json + PERIMETRE-ARGENT.json intacts
+- Pièges n°1 et n°2 neutralisés et VÉRIFIÉS par check-ignore : .gitignore règle bare frontend/ retirée (sinon source ignorée — au passage découvert que la 1re passe de la correction était un no-op silencieux car le commentaire référencé avait déjà été sedé ; corrigé par filtrage de ligne), .dockerignore ligne frontend/ retirée (dist/tsbuildinfo suivent)
+- Interférences sandbox majeures : 3 checkout -f main entre commandes (worktree écrasé, frontend/ vidé, frontend_src restauré) — commit final construit PAR PLOMBERIE (write-tree/commit-tree -p dev/update-ref) immunisé contre la position de HEAD, puis symbolic-ref + reset --mixed dev
+- Vérifs post-renommage (toutes sur dev) : tsc -b frontend 0 ; vite build 0 (21,9 s, 202 chunks + 220 clips — outDir ../frontend/dist INVARIANT confirmé) ; tsc --noEmit backend 0 ; jest unit 250/251 (seul pin-jamais-rendu rouge, préexistant) ; test:ci 44 maillons EXIT 0 ; garde-argent = 3 refus ATTENDUS (périmètre bougé 55 sorties ; chaîne test:ci diffère de f0c965c — le retrait test:packs de la Phase 4 est légitime, à déclarer GARDE-ASSOUPLIE ; 131 gardes frontend_src non branchées)
+- Lockfile resynchronisé (workspace julaba-frontend inchangé, chemin frontend/)
+
+Stage Summary:
+- 628ef4e sur origin/dev : renommage complet, Phase 4 préservée, résidus volontaires : EMPREINTE/PERIMETRE (gels), garde-argent.mjs:687, worklog, docs/archive ×2, 2 lignes f0c965c
+- À FAIRE PAR L'ÉQUIPE (gels humains) : node ci/garde-argent.mjs --figer-perimetre PUIS --figer-gardes (en déclarant GARDE-ASSOUPLIE: retrait test:packs — voicePacks supprimé Phase 4) puis re-run → vert attendu
