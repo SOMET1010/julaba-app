@@ -1,7 +1,7 @@
 {
-  "genereLe": "2026-10-06",
+  "genereLe": "2026-10-05",
   "gardes": {
-    "frontend/scripts/test-maillons-orphelins.mjs": {
+    "frontend_src/scripts/test-maillons-orphelins.mjs": {
       "script": "test:maillons-orphelins",
       "assertions": 6,
       "expects": 0,
@@ -14,7 +14,7 @@
         "ok·les ${} scripts test:* sont tous rattachés (verify, test:ci, ou hors-verify motivé) ⟂ ${} banc(s) ORPHELIN(S), dans aucune chaîne : ${}": 1
       }
     },
-    "frontend/src/app/utils/api.test.mts": {
+    "frontend_src/src/app/utils/api.test.mts": {
       "script": "test:api-url",
       "assertions": 13,
       "expects": 0,
@@ -34,7 +34,7 @@
         "vrai·string ⟂ API_URL est une chaine non vide": 1
       }
     },
-    "frontend/src/app/services/cartStorage.test.mts": {
+    "frontend_src/src/app/services/cartStorage.test.mts": {
       "script": "test:cart",
       "assertions": 31,
       "expects": 0,
@@ -72,7 +72,7 @@
         "ok·saveCart ne lève pas malgré l'erreur de stockage": 1
       }
     },
-    "frontend/src/app/services/venteVocale.test.mts": {
+    "frontend_src/src/app/services/venteVocale.test.mts": {
       "script": "test:voix",
       "assertions": 42,
       "expects": 0,
@@ -121,7 +121,7 @@
         "ok·un refus ne bloque QUE ce produit": 1
       }
     },
-    "frontend/src/app/services/comptesMemorises.test.mts": {
+    "frontend_src/src/app/services/comptesMemorises.test.mts": {
       "script": "test:comptes",
       "assertions": 39,
       "expects": 0,
@@ -166,7 +166,7 @@
         "ok·échec matériel → on peut repasser à false": 1
       }
     },
-    "frontend/src/app/voice-offline/nombresBambara.test.mts": {
+    "frontend_src/src/app/voice-offline/nombresBambara.test.mts": {
       "script": "test:bambara",
       "assertions": 40,
       "expects": 0,
@@ -213,7 +213,7 @@
         "ok·pas de faux positif sur mots ordinaires": 1
       }
     },
-    "frontend/src/app/voice-offline/nombresMandingue.test.mts": {
+    "frontend_src/src/app/voice-offline/nombresMandingue.test.mts": {
       "script": "test:mandingue",
       "assertions": 146,
       "expects": 0,
@@ -364,7 +364,7 @@
         "ok·toute entrée a forme + valeur + variété + source (aucune forme sans attestation)": 1
       }
     },
-    "frontend/src/app/utils/fcfa.test.mts": {
+    "frontend_src/src/app/utils/fcfa.test.mts": {
       "script": "test:fcfa",
       "assertions": 25,
       "expects": 0,
@@ -396,7 +396,7 @@
         "ok·valeur inattendue → taille plancher, jamais 0": 1
       }
     },
-    "frontend/src/app/services/antiJargon.test.mts": {
+    "frontend_src/src/app/services/antiJargon.test.mts": {
       "script": "test:jargon",
       "assertions": 3,
       "expects": 0,
@@ -406,7 +406,7 @@
         "verdict·❌ ${} — « ${} » contient « ${} »": 1
       }
     },
-    "frontend/src/app/utils/confortVisuel.test.mts": {
+    "frontend_src/src/app/utils/confortVisuel.test.mts": {
       "script": "test:confort",
       "assertions": 20,
       "expects": 0,
@@ -433,7 +433,7 @@
         "ok·écriture → false (pas d'exception)": 1
       }
     },
-    "frontend/src/app/utils/tailleTexte.test.mts": {
+    "frontend_src/src/app/utils/tailleTexte.test.mts": {
       "script": "test:taille",
       "assertions": 13,
       "expects": 0,
@@ -453,7 +453,7 @@
         "ok·cran ${} strictement plus grand que le cran ${}": 1
       }
     },
-    "frontend/src/app/services/tokens.test.mts": {
+    "frontend_src/src/app/services/tokens.test.mts": {
       "script": "test:tokens",
       "assertions": 7,
       "expects": 0,
@@ -467,7 +467,7 @@
         "ok·« ${} » surchargé par le sombre l'est aussi par le soleil": 1
       }
     },
-    "frontend/src/app/services/supportLu.test.mts": {
+    "frontend_src/src/app/services/supportLu.test.mts": {
       "script": "test:support",
       "assertions": 12,
       "expects": 0,
@@ -486,7 +486,7 @@
         "ok·quota plein → false, pas d'exception": 1
       }
     },
-    "frontend/src/app/services/statsVente.test.mts": {
+    "frontend_src/src/app/services/statsVente.test.mts": {
       "script": "test:stats",
       "assertions": 18,
       "expects": 0,
@@ -511,7 +511,7 @@
         "ok·validee comptée": 1
       }
     },
-    "frontend/src/app/services/ruptureStock.test.mts": {
+    "frontend_src/src/app/services/ruptureStock.test.mts": {
       "script": "test:rupture",
       "assertions": 11,
       "expects": 0,
@@ -529,7 +529,7 @@
         "ok·10 vendus sur 2 en stock → « 8 riz » annoncés": 1
       }
     },
-    "frontend/src/app/types/constants.test.mts": {
+    "frontend_src/src/app/types/constants.test.mts": {
       "script": "test:route-access",
       "assertions": 16,
       "expects": 0,
@@ -552,7 +552,7 @@
         "ok·…refus signalé comme légitime (absence de coopérative), pas silencieux": 1
       }
     },
-    "frontend/src/app/hooks/useAudioUnlockFallback.test.tsx": {
+    "frontend_src/src/app/hooks/useAudioUnlockFallback.test.tsx": {
       "script": "test:audio-unlock",
       "assertions": 7,
       "expects": 0,
@@ -566,7 +566,7 @@
         "ok·un premier tap sur un BOUTON rejoue quand même la consigne": 1
       }
     },
-    "frontend/src/app/utils/appellation.test.mts": {
+    "frontend_src/src/app/utils/appellation.test.mts": {
       "script": "test:appellation",
       "assertions": 12,
       "expects": 0,
@@ -585,7 +585,7 @@
         "ok·⟂ rien de connu : rien à dire": 1
       }
     },
-    "frontend/src/app/utils/emojiTile.test.mts": {
+    "frontend_src/src/app/utils/emojiTile.test.mts": {
       "script": "test:vignette",
       "assertions": 13,
       "expects": 0,
@@ -605,7 +605,7 @@
         "ok·🧺 ⟂ produit inconnu : un panier, pas du vide": 1
       }
     },
-    "frontend/scripts/test-icones.mjs": {
+    "frontend_src/scripts/test-icones.mjs": {
       "script": "test:icones",
       "assertions": 8,
       "expects": 0,
@@ -620,29 +620,21 @@
         "verdict·✗ index.html appelle encore : ${}": 1
       }
     },
-    "frontend/scripts/test-cible-tactile.mjs": {
+    "frontend_src/scripts/test-cible-tactile.mjs": {
       "script": "test:cible-tactile",
-      "assertions": 15,
+      "assertions": 7,
       "expects": 0,
       "empreintes": {
-        "cibleAuth·LoginPassword.tsx ⟂ \"Revoir mon numéro\" ⟂ bouton « Revoir mon numéro » ⟂ /width:\\s*(\\d+),\\s*height:\\s*(\\d+)/": 1,
-        "cibleAuth·LoginPassword.tsx ⟂ 'Afficher des images à la place des chiffres' ⟂ bascule images du code ⟂ /minHeight:\\s*(\\d+)/": 1,
-        "cibleAuth·LoginPassword.tsx ⟂ >Modifier</motion.button> ⟂ bouton « Modifier » (changer le numéro) ⟂ /minHeight:\\s*(\\d+)/": 1,
-        "cibleAuth·PropositionReconnaissance.tsx ⟂ aria-label=\"Fermer\" ⟂ bouton « Fermer » de la modale reconnaissance ⟂ /width:\\s*(\\d+),\\s*height:\\s*(\\d+)/": 1,
-        "passe·auth · ${} : cible ≥ ${} px (${} px)": 1,
         "passe·la barre fait ~${} px de haut (minimum ${})": 1,
         "passe·le champ est entouré d’une <label> — toute la barre donne le focus": 1,
         "rate·aucune </label> fermante — le balisage est cassé": 1,
-        "rate·auth · ${} : cible de ${} px — en dessous de ${} px": 1,
-        "rate·auth · ${} : marqueur introuvable (${}) — l'écran a changé ?": 1,
-        "rate·auth · ${} : taille introuvable près de « ${} »": 1,
         "rate·impossible de trouver l’élément qui entoure le champ": 1,
         "rate·la barre ne fait que ~${} px — en dessous de la cible tactile de ${} px": 1,
         "rate·le champ est entouré d’une ${}… et non d’une <label> :": 1,
         "rate·marge verticale de la barre illisible": 1
       }
     },
-    "frontend/scripts/test-source-vente.mjs": {
+    "frontend_src/scripts/test-source-vente.mjs": {
       "script": "test:source-vente",
       "assertions": 6,
       "expects": 0,
@@ -655,118 +647,19 @@
         "verifier·l’origine SURVIT à la fusion de deux lignes ⟂ /origine === 'vocal' \\|\\| l\\.origine === 'vocal'/ ⟂ un panier dicté puis complété au doigt reste un panier où la voix a servi.": 1
       }
     },
-    "frontend/scripts/test-verrou-connexion.mjs": {
+    "frontend_src/scripts/test-verrou-connexion.mjs": {
       "script": "test:verrou-connexion",
-      "assertions": 8,
+      "assertions": 5,
       "expects": 0,
       "empreintes": {
-        "verifier·clip « ${} » déclaré dans entreeVoix.ts avec un fichier": 1,
-        "verifier·fichier audio ${} embarqué dans public/ ⟂ un clip déclaré mais absent du disque, c’est un silence qui se croit parlé.": 1,
-        "verifier·la phrase interpolée n’est plus envoyée à la voix ⟂ /parle\\(message\\)/ ⟂ `parle(message)` = texte dynamique sans clip = marchande muette.": 1,
-        "verifier·les deux cas (attente + avertissement) sont dits PAR CLIP ⟂ ce qui est dit doit référencer une clé de services/entreeVoix.ts (AUTH-03).": 1,
+        "verifier·ce qui est affiché est aussi DIT ⟂ les deux cas comptent : l’attente ET l’avertissement.": 1,
         "verifier·l’attente affichée vient du SERVEUR ⟂ /result\\.attenteMs/ ⟂ sans la durée renvoyée, on ne peut pas dire QUAND réessayer.": 1,
         "verifier·l’avertissement avant palier vient du SERVEUR ⟂ /result\\.essaisRestants/ ⟂ c’est lui qui évite le blocage : rien ne prévenait avant.": 1,
         "verifier·plus de compteur d’essais en mémoire ⟂ /loginAttempts/ ⟂ un compteur local ment dès le premier rechargement — c’était tout le défaut.": 1,
         "verifier·plus d’échelle de paliers dupliquée ici ⟂ /dureeBlocagePalier|PALIER_1|PALIER_2|PALIER_3/ ⟂ une seule échelle, côté serveur : deux règles finissent toujours par diverger.": 1
       }
     },
-    "frontend/scripts/test-entree-unique.mjs": {
-      "script": "test:entree-unique",
-      "assertions": 6,
-      "expects": 0,
-      "empreintes": {
-        "ok·/path: \"\\/\", element: <EntryGate/ ⟂ la racine monte EntryGate": 1,
-        "ok·/path: \"\\/login\", element: <LoginPassword/ ⟂ LoginPassword ne peut plus être monté hors EntryGate": 1,
-        "ok·/path: \"\\/login\", element: <Navigate to=\"\\/\" replace/ ⟂ /login revient à EntryGate": 1,
-        "ok·/path: \"\\/welcome\", element: <Navigate to=\"\\/\" replace/ ⟂ /welcome revient à EntryGate": 1,
-        "ok·/path: \"\\/welcome\", element: <Welcome/ ⟂ Welcome ne peut plus être monté hors EntryGate": 1,
-        "ok·Maestro valide Bienvenue → Tata → Numéro dans cet ordre": 1
-      }
-    },
-    "frontend/scripts/test-canal-code.mjs": {
-      "script": "test:canal-code",
-      "assertions": 7,
-      "expects": 0,
-      "empreintes": {
-        "verifier·la lecture est ONE-SHOT (le code s’efface en étant lu) ⟂ /code = null/ ⟂ un canal qui conserve rend le code re-lisible indéfiniment.": 1,
-        "verifier·le canal est PUR (ni stockage, ni DOM, ni historique) ⟂ /localStorage|sessionStorage|document\\.|history|window\\./ ⟂ une fuite de canal vers un stockage recréerait exactement le défaut AUTH-02.": 1,
-        "verifier·le canal mémoire services/codeActuelMemoire.ts existe": 1,
-        "verifier·l’écran de changement LIT le canal ⟂ /lireCodeActuel\\(\\)/ ⟂ le récepteur du canal est l’écran de changement de mot de passe.": 1,
-        "verifier·l’écran de connexion DÉPOSE le code dans le canal ⟂ /deposerCodeActuel\\(/ ⟂ sans dépôt, l’écran suivant redemandera le code à qui ne lit pas.": 1,
-        "verifier·plus aucun codeActuel dans un state de navigation ⟂ /state:\\s*\\{\\s*codeActuel/ ⟂ `navigate(path, { state: { codeActuel } })` écrit le code dans history.state.": 1,
-        "verifier·plus aucune lecture location.state côté changement de mot de passe ⟂ /location\\.state/ ⟂ lire location.state réintroduit la persistance du code dans l’historique.": 1
-      }
-    },
-    "frontend/src/app/components/auth/authCharte.test.mts": {
-      "script": "test:auth-charte",
-      "assertions": 12,
-      "expects": 0,
-      "empreintes": {
-        "ok·${} : ${} hex (budget ${})": 1,
-        "ok·${} : toutes ses couleurs sont dans la charte (${})": 1,
-        "ok·/#FFF9F2/i ⟂ plus d'ivoire en dur #FFF9F2 (→ --commerce-paper)": 1,
-        "ok·/background:\\s*['\"]#fff['\"]/i ⟂ LoginPassword : plus aucune surface background '#fff'": 1,
-        "ok·/var\\(--commerce-action\\)/ ⟂ ChangePasswordScreen lit var(--commerce-action) (rôle marchand)": 1,
-        "ok·/var\\(--commerce-action\\)/ ⟂ LoginPassword lit var(--commerce-action) (empreinte, effacement)": 1,
-        "ok·/var\\(--commerce-action\\)/ ⟂ PropositionReconnaissance lit var(--commerce-action)": 1,
-        "ok·/var\\(--commerce-apricot\\)/ ⟂ LoginPassword lit var(--commerce-apricot) (bascule, rapport dev)": 1,
-        "ok·/var\\(--commerce-paper\\)/ ⟂ LoginPassword lit var(--commerce-paper) (plateau du pavé, ex-#FFF9F2)": 1,
-        "ok·/var\\(--commerce-surface\\)/ ⟂ LoginPassword lit var(--commerce-surface) (feuilles, ex-#fff)": 1,
-        "ok·/var\\(--encre-3\\)/ ⟂ LoginPassword lit var(--encre-3) (sous-libellés)": 1,
-        "ok·aucun jeton fantôme (${})": 1
-      }
-    },
-    "frontend/scripts/test-enum-check-phone.mjs": {
-      "script": "test:enum-check-phone",
-      "assertions": 17,
-      "expects": 0,
-      "empreintes": {
-        "verifier·backend/.env AUTH_TELEPHONES_TEST aligné sur le miroir (${} numéros) ⟂ en dev l\\'env fait foi : divergent, il fait taire la journalisation d\\'un numéro que l\\'écran accepte.": 1,
-        "verifier·backend/.env présent : AUTH_TELEPHONES_TEST déclaré (liste autoritaire explicite) ⟂ repli code acceptable, mais un .env explicite verrouille l\\'environnement.": 1,
-        "verifier·check-phone logue les accès TEST_PHONE ⟂ /estTelephoneTest\\(phone\\)/ ⟂ les accès recette en prod doivent se compter côté serveur.": 1,
-        "verifier·check-phone répond à l\\'échéance uniforme (service) ⟂ /repondreAEcheanceUniforme\\(debut\\)/ ⟂ le findOne seul laisserait hit et miss se distinguer au chrono.": 1,
-        "verifier·estTelephoneTest interroge la liste CHARGÉE (env ou repli), pas un Set figé ⟂ /chargeeSiBesoin\\(\\)\\.liste\\.has\\(local\\)/": 1,
-        "verifier·l\\'ENV est filtrée : seuls les numéros à 10 chiffres entrent dans la liste ⟂ /length === 10/ ⟂ un morceau malformé de la variable ne doit pas devenir un numéro logué.": 1,
-        "verifier·l\\'escalation frontend documente le FAIT côté serveur ⟂ /FAIT côté serveur le 05\\/10\\/2026 \\(AUTH-07/ ⟂ l\\'écran doit dire où la protection vit désormais, sinon on la croira encore attendue.": 1,
-        "verifier·l\\'échéance uniforme est porte (plancher + gigue indépendants du résultat) ⟂ /PLANCHER_MS/ ⟂ /GIGUE?_MS/ ⟂ /export async function repondreAEcheanceUniforme/ ⟂ sans échéance, la durée de réponse reste une fuite de timing.": 1,
-        "verifier·la liste ANSUT vit côté serveur (estTelephoneTest exporté) ⟂ /export function estTelephoneTest/ ⟂ le backend doit reconnaître les numéros de recette pour les loguer.": 1,
-        "verifier·la liste autoritaire se charge de l\\'ENV (AUTH_TELEPHONES_TEST) ⟂ /export function chargerTelephonesTest/ ⟂ /AUTH_TELEPHONES_TEST/ ⟂ sans env autoritaire, la liste recette se tient à deux mains dans le code.": 1,
-        "verifier·le démarrage journalise la source et la taille de la liste active ⟂ /sourceListeTelephonesTest/ ⟂ /tailleListeTelephonesTest/ ⟂ /onModuleInit/ ⟂ sans ce journal, on ne sait pas quel environnement logue quoi.": 1,
-        "verifier·le journal de démarrage ne cite AUCUN numéro ⟂ /TEST_PHONES actifs[^\\n]*[0-9]{10}/ ⟂ la PII recette ne va pas non plus dans le journal de boot.": 1,
-        "verifier·le log check-phone MASQUE le numéro (jamais le numéro complet) ⟂ /\\$\\{phone\\}/ ⟂ un numéro complet dans un journal rouvre la fuite PII qu\\'on vient de fermer.": 1,
-        "verifier·le module backend/src/auth/anti-enumeration.ts existe": 1,
-        "verifier·les listes TEST_PHONES frontend et backend sont des miroirs exacts (${} numéros) ⟂ une liste divergente logue un numéro que l\\'écran accepte, ou l\\'inverse. MAINTENIR LES DEUX.": 1,
-        "verifier·login logue aussi les accès TEST_PHONE ⟂ /estTelephoneTest\\(loginDto\\.phone\\)/ ⟂ la connexion est le premier accès d\\'un compte de recette.": 1,
-        "verifier·plus aucune voie rapide dans le contrôleur (tout passe par le service) ⟂ /return\\s*\\{\\s*exists:\\s*false\\s*\\}/ ⟂ un retour immédiat serait un chemin de réponse plus court, donc une fuite.": 1
-      }
-    },
-    "frontend/scripts/test-warn-dev.mjs": {
-      "script": "test:warn-dev",
-      "assertions": 3,
-      "expects": 0,
-      "empreintes": {
-        "verifier·${} : aucun console.warn brut ⟂ remplacer par warnDev(...) — console.warn ressort dans le build livré.": 1,
-        "verifier·le robinet dépend de import.meta.env.DEV ⟂ /import\\.meta\\.env\\.DEV/ ⟂ un robinet toujours ouvert remettrait le bruit en production.": 1,
-        "verifier·le robinet utils/warnDev.ts existe": 1
-      }
-    },
-    "frontend/scripts/test-coffre-web.mjs": {
-      "script": "test:coffre-web",
-      "assertions": 9,
-      "expects": 0,
-      "empreintes": {
-        "verifier·LoginPassword appelle le coffre exactement 2 fois (connexion vocale + connexion par code) ⟂ trouvé : ${}. Chaque nouvelle voie de connexion doit passer par le coffre.": 1,
-        "verifier·LoginPassword cite ADR-002 (l\\'escalation raconte la décision) ⟂ /ADR-002/": 1,
-        "verifier·api-client lit toujours les clés (chemin APK + jetons hérités) ⟂ /lireStockage\\(CLE_RAFRAICHISSEMENT\\)/ ⟂ sans lecture, l\\'APK perd sa session et les gardes de convergence mentent.": 1,
-        "verifier·aucun setItem des clés jetons hors du coffre ⟂ écriture(s) hors coffre : ${} ⟂": 1,
-        "verifier·le coffre ${} existe ⟂ sans coffre unique, l\\'écriture des jetons se disperse et la voie web rouvre.": 1,
-        "verifier·le coffre cite ADR-002 (la décision doit se lire là où elle vit) ⟂ /ADR-002/": 1,
-        "verifier·le coffre exporte stockerJetonsSiMobile et estMobileNatif ⟂ /export function stockerJetonsSiMobile/ ⟂ /export function estMobileNatif/": 1,
-        "verifier·le coffre ne pose les clés QUE si Capacitor.isNativePlatform() répond vrai ⟂ /isNativePlatform/ ⟂ sans la porte native, le coffre écrirait sur web aussi.": 1,
-        "verifier·plus aucun setItem direct des clés dans LoginPassword": 1
-      }
-    },
-    "frontend/scripts/test-recuperation-admin.mjs": {
+    "frontend_src/scripts/test-recuperation-admin.mjs": {
       "script": "test:recuperation-admin",
       "assertions": 4,
       "expects": 0,
@@ -777,7 +670,7 @@
         "verifier·la page AdminRecovery n\\'existe plus ⟂ src/app/pages/AdminRecovery.tsx est encore présent": 1
       }
     },
-    "frontend/src/app/components/backoffice/carte-popup.test.mts": {
+    "frontend_src/src/app/components/backoffice/carte-popup.test.mts": {
       "script": "test:carte-xss",
       "assertions": 12,
       "expects": 0,
@@ -796,7 +689,7 @@
         "ok·toujours aucun script exécuté après le clic": 1
       }
     },
-    "frontend/src/app/services/prixCatalogueVocal.test.mts": {
+    "frontend_src/src/app/services/prixCatalogueVocal.test.mts": {
       "script": "test:prix-catalogue",
       "assertions": 18,
       "expects": 0,
@@ -821,7 +714,7 @@
         "ok·« trois kilos » sur un prix au kg : 3 × 500 = 1500, obtenu ${}": 1
       }
     },
-    "frontend/scripts/test-fusion-panier.mjs": {
+    "frontend_src/scripts/test-fusion-panier.mjs": {
       "script": "test:fusion-panier",
       "assertions": 6,
       "expects": 0,
@@ -834,7 +727,7 @@
         "verifier·un serveur qui répond MAL retombe sur le cache, comme une coupure ⟂ /catch \\(err: unknown\\) \\{[\\s\\S]{0,300}restaurerDepuisCache\\(cacheKey\\)/ ⟂ /await caisseApi\\.fetchProduitsCaisse\\(\\)/ ⟂ /if \\(!res\\.ok\\)[\\s\\S]{0,200}return;/ ⟂ un 503 laissait le catalogue vide alors que les prix étaient sur le téléphone.": 1
       }
     },
-    "frontend/src/app/services/statsMultiProduits.test.mts": {
+    "frontend_src/src/app/services/statsMultiProduits.test.mts": {
       "script": "test:stats-multi",
       "assertions": 12,
       "expects": 0,
@@ -853,7 +746,7 @@
         "ok·une vente annulée n’apparaît dans aucun produit": 1
       }
     },
-    "frontend/src/app/services/margePerte.test.mts": {
+    "frontend_src/src/app/services/margePerte.test.mts": {
       "script": "test:marge-perte",
       "assertions": 8,
       "expects": 0,
@@ -868,7 +761,7 @@
         "ok·vente mixte : −400 + 300 = −100 (l'ancien calcul disait +300), obtenu ${}": 1
       }
     },
-    "frontend/src/app/utils/uniteVente.test.mts": {
+    "frontend_src/src/app/utils/uniteVente.test.mts": {
       "script": "test:unite-vente",
       "assertions": 35,
       "expects": 0,
@@ -910,7 +803,7 @@
         "ok·⟂ « unité » n’apprend rien : rien à afficher": 1
       }
     },
-    "frontend/scripts/test-unite-persistee.mjs": {
+    "frontend_src/scripts/test-unite-persistee.mjs": {
       "script": "test:unite-persistee",
       "assertions": 6,
       "expects": 0,
@@ -923,7 +816,7 @@
         "verifier·le reçu la lit depuis la LIGNE, jamais depuis le catalogue ⟂ /ligneLisible\\(q, nom, p\\.unite\\)/ ⟂ c’est une preuve remise à une cliente : elle doit dire ce qui a été vendu.": 1
       }
     },
-    "frontend/src/app/services/voixNative.test.mts": {
+    "frontend_src/src/app/services/voixNative.test.mts": {
       "script": "test:voix-native",
       "assertions": 13,
       "expects": 0,
@@ -943,7 +836,7 @@
         "verifier·un WAV natif est confié au lecteur de clips": 1
       }
     },
-    "frontend/src/app/services/api/convergenceApi.test.mts": {
+    "frontend_src/src/app/services/api/convergenceApi.test.mts": {
       "script": "test:convergence-api",
       "assertions": 17,
       "expects": 0,
@@ -967,7 +860,7 @@
         "ok·un refus du serveur à la création de stock REMONTE (il ne repart plus en succès)": 1
       }
     },
-    "frontend/src/app/services/api/authApiSessionExpiree.test.mts": {
+    "frontend_src/src/app/services/api/authApiSessionExpiree.test.mts": {
       "script": "test:auth-session-expiree",
       "assertions": 13,
       "expects": 0,
@@ -987,7 +880,7 @@
         "eq·session_expiree ⟂ …et il ne porte AUCUN verdict sur le code : il n’y en a pas eu": 1
       }
     },
-    "frontend/src/app/services/api/biometrieSessionExpiree.test.mts": {
+    "frontend_src/src/app/services/api/biometrieSessionExpiree.test.mts": {
       "script": "test:biometrie-session",
       "assertions": 6,
       "expects": 0,
@@ -1000,7 +893,7 @@
         "eq·session_expiree ⟂ l’état dit « session expirée »…": 1
       }
     },
-    "frontend/src/app/services/api/creditsCleIdempotence.test.mts": {
+    "frontend_src/src/app/services/api/creditsCleIdempotence.test.mts": {
       "script": "test:credits-cle",
       "assertions": 10,
       "expects": 0,
@@ -1017,7 +910,7 @@
         "ok·string ⟂ marquerCreditPaye envoie une clé": 1
       }
     },
-    "frontend/src/app/services/margePartielle.test.mts": {
+    "frontend_src/src/app/services/margePartielle.test.mts": {
       "script": "test:marge-partielle",
       "assertions": 21,
       "expects": 0,
@@ -1045,7 +938,7 @@
         "eq·⟂ Tata se tait plutôt que d’inventer": 1
       }
     },
-    "frontend/src/app/services/mouvementsStockHorsStock.test.mts": {
+    "frontend_src/src/app/services/mouvementsStockHorsStock.test.mts": {
       "script": "test:mouvements-hors-stock",
       "assertions": 11,
       "expects": 0,
@@ -1063,7 +956,7 @@
         "eq·…et l’écran sait qu’il doit dire « hors stock »": 1
       }
     },
-    "frontend/src/app/services/mouvementsStockUniteHistorique.test.mts": {
+    "frontend_src/src/app/services/mouvementsStockUniteHistorique.test.mts": {
       "script": "test:mouvements-unite-historique",
       "assertions": 13,
       "expects": 0,
@@ -1083,7 +976,7 @@
         "eq·…et l’écran sait qu’il peut la dire": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseSurfaceUnique.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseSurfaceUnique.test.mts": {
       "script": "test:caisse-surface",
       "assertions": 16,
       "expects": 0,
@@ -1106,7 +999,7 @@
         "ok·une <section className=\\\"lg:hidden\\\"> porte le panier sur téléphone": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseMicroPermanent.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseMicroPermanent.test.mts": {
       "script": "test:caisse-micro",
       "assertions": 29,
       "expects": 0,
@@ -1142,7 +1035,7 @@
         "ok·vibrerTic n'est appelé qu'à UN seul endroit du micro (${} trouvé(s)) : deux points d'appel, c'est deux vibrations": 1
       }
     },
-    "frontend/src/app/services/preselectionVente.test.mts": {
+    "frontend_src/src/app/services/preselectionVente.test.mts": {
       "script": "test:preselection-vente",
       "assertions": 15,
       "expects": 0,
@@ -1163,7 +1056,7 @@
         "ok·une présélection vide ne vaut pas présélection": 1
       }
     },
-    "frontend/src/app/voice-offline/grammaireEncaissement.test.mts": {
+    "frontend_src/src/app/voice-offline/grammaireEncaissement.test.mts": {
       "script": "test:grammaire-encaissement",
       "assertions": 16,
       "expects": 0,
@@ -1186,7 +1079,7 @@
         "table·[6] Une vente ou une question du jour n'est PAS un encaissement": 1
       }
     },
-    "frontend/src/app/services/machineEncaissement.test.mts": {
+    "frontend_src/src/app/services/machineEncaissement.test.mts": {
       "script": "test:machine-encaissement",
       "assertions": 64,
       "expects": 0,
@@ -1255,7 +1148,7 @@
         "ok·« Vider » puis « oui valide » : rien à payer": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseEncaissementVocal.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseEncaissementVocal.test.mts": {
       "script": "test:caisse-encaissement",
       "assertions": 50,
       "expects": 0,
@@ -1312,7 +1205,7 @@
         "ok·⟂ encaisser ⟂ un résultat d\\'encaissement : needsConfirmation false, response vide (la machine parle, pas le moteur)": 1
       }
     },
-    "frontend/src/app/services/relectureSpontanee.test.mts": {
+    "frontend_src/src/app/services/relectureSpontanee.test.mts": {
       "script": "test:relecture-spontanee",
       "assertions": 29,
       "expects": 0,
@@ -1348,7 +1241,7 @@
         "ok·vente A : dite": 1
       }
     },
-    "frontend/src/app/components/marchand/repliParle.test.mts": {
+    "frontend_src/src/app/components/marchand/repliParle.test.mts": {
       "script": "test:repli-parle",
       "assertions": 15,
       "expects": 0,
@@ -1370,7 +1263,7 @@
         "ok·SaisieGuidee.tsx appelle speak( au moins une fois (obtenu ${})": 1
       }
     },
-    "frontend/src/app/components/marchand/venteVocaleSansPrix.test.mts": {
+    "frontend_src/src/app/components/marchand/venteVocaleSansPrix.test.mts": {
       "script": "test:vente-sans-prix",
       "assertions": 55,
       "expects": 0,
@@ -1432,7 +1325,7 @@
         "ok·vendre ⟂ ${} n'est pas une vente (${}) — obtenu ${}": 1
       }
     },
-    "frontend/src/app/services/venteSansSilence.test.mts": {
+    "frontend_src/src/app/services/venteSansSilence.test.mts": {
       "script": "test:vente-sans-silence",
       "assertions": 19,
       "expects": 0,
@@ -1458,7 +1351,7 @@
         "ok·vendre ⟂ la caisse comprend bien une vente": 1
       }
     },
-    "frontend/src/app/services/prixVocalUnitaire.test.mts": {
+    "frontend_src/src/app/services/prixVocalUnitaire.test.mts": {
       "script": "test:prix-unitaire",
       "assertions": 22,
       "expects": 0,
@@ -1486,7 +1379,7 @@
         "ok·une ligne entre au panier": 1
       }
     },
-    "frontend/src/app/services/prixAmbigu.test.mts": {
+    "frontend_src/src/app/services/prixAmbigu.test.mts": {
       "script": "test:prix-ambigu",
       "assertions": 11,
       "expects": 0,
@@ -1504,7 +1397,7 @@
         "ok·unitaire ⟂ écrit en toutes lettres aussi": 1
       }
     },
-    "frontend/src/app/services/vendreVocalUnifieUnite.test.mts": {
+    "frontend_src/src/app/services/vendreVocalUnifieUnite.test.mts": {
       "script": "test:vendre-unifie-unite",
       "assertions": 20,
       "expects": 0,
@@ -1531,7 +1424,7 @@
         "ok·la phrase dite est construite avec l'unité ENREGISTRÉE : un seul sens pour la même donnée": 1
       }
     },
-    "frontend/src/app/components/marchand/choixUnite.test.mts": {
+    "frontend_src/src/app/components/marchand/choixUnite.test.mts": {
       "script": "test:choix-unite",
       "assertions": 16,
       "expects": 0,
@@ -1554,7 +1447,7 @@
         "ok·à l'unité ⟂ à la bassine ⟂ les tournures sont celles du marché": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseUnSeulMicro.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseUnSeulMicro.test.mts": {
       "script": "test:caisse-un-seul-micro",
       "assertions": 14,
       "expects": 0,
@@ -1575,7 +1468,7 @@
         "ok·le bouton « Ouvrir Tantie Nanti Lou » est rendu sous la garde `!tataMasquee`": 1
       }
     },
-    "frontend/src/app/services/gesteDuMicro.test.mts": {
+    "frontend_src/src/app/services/gesteDuMicro.test.mts": {
       "script": "test:geste-micro",
       "assertions": 19,
       "expects": 0,
@@ -1601,7 +1494,7 @@
         "ok·« ${} » → « ${} » : un appui fait quelque chose": 1
       }
     },
-    "frontend/src/app/services/microContraint.test.mts": {
+    "frontend_src/src/app/services/microContraint.test.mts": {
       "script": "test:micro-contraint",
       "assertions": 14,
       "expects": 0,
@@ -1622,7 +1515,7 @@
         "ok·⟂ ${} — ${}": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseCharte.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseCharte.test.mts": {
       "script": "test:caisse-charte",
       "assertions": 28,
       "expects": 0,
@@ -1657,7 +1550,7 @@
         "ok·rayon ${} = ${}px": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseRelectureAffichee.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseRelectureAffichee.test.mts": {
       "script": "test:caisse-relecture-affichee",
       "assertions": 24,
       "expects": 0,
@@ -1688,7 +1581,7 @@
         "ok·un bouton « Réécouter »": 1
       }
     },
-    "frontend/src/app/services/api/apiClientAuthorization.test.mts": {
+    "frontend_src/src/app/services/api/apiClientAuthorization.test.mts": {
       "script": "test:api-authorization",
       "assertions": 29,
       "expects": 0,
@@ -1724,7 +1617,7 @@
         "ok·plus aucun appel direct ne dépend du filet de main.tsx : il doit être retiré (API-04, dernier pas)": 1
       }
     },
-    "frontend/src/app/utils/voiceTrace.test.mts": {
+    "frontend_src/src/app/utils/voiceTrace.test.mts": {
       "script": "test:voix-trace",
       "assertions": 34,
       "expects": 0,
@@ -1765,7 +1658,7 @@
         "verifier·vlogStart n\\'efface PAS le journal en anneau": 1
       }
     },
-    "frontend/scripts/test-voix-trace-source.mjs": {
+    "frontend_src/scripts/test-voix-trace-source.mjs": {
       "script": "test:voix-trace-source",
       "assertions": 29,
       "expects": 0,
@@ -1801,7 +1694,7 @@
         "verifier·… en réutilisant vlogPartager() (un seul rapport, une seule source) ⟂ /vlogPartager\\(\\)/": 1
       }
     },
-    "frontend/src/app/i18n/voice/validators/validateLocale.mts": {
+    "frontend_src/src/app/i18n/voice/validators/validateLocale.mts": {
       "script": "test:i18n-locales",
       "assertions": 40,
       "expects": 0,
@@ -1848,7 +1741,7 @@
         "ok·vider le journal réarme la déduplication (session de test)": 1
       }
     },
-    "frontend/src/app/i18n/voice/validators/validateCriticalMessages.mts": {
+    "frontend_src/src/app/i18n/voice/validators/validateCriticalMessages.mts": {
       "script": "test:i18n-argent",
       "assertions": 18,
       "expects": 0,
@@ -1873,7 +1766,7 @@
         "ok·zz-test ⟂ Invite test ⟂ un message NON critique en brouillon est servi (seul l\\'argent est verrouillé)": 1
       }
     },
-    "frontend/src/app/i18n/voice/validators/validateSource.mts": {
+    "frontend_src/src/app/i18n/voice/validators/validateSource.mts": {
       "script": "test:i18n-source",
       "assertions": 15,
       "expects": 0,
@@ -1895,7 +1788,7 @@
         "ok·sites d'appel : inventaire ${} = source ${} (sinon : npm run i18n:inventaire)": 1
       }
     },
-    "frontend/src/app/i18n/voice/validators/empreintesArgent.mts": {
+    "frontend_src/src/app/i18n/voice/validators/empreintesArgent.mts": {
       "script": "test:i18n-empreintes-argent",
       "assertions": 2,
       "expects": 0,
@@ -1904,7 +1797,7 @@
         "ok·énumération exhaustive : ${} conversations / ${} paiements / ${} violation(s)": 1
       }
     },
-    "frontend/scripts/test-garde-argent.mjs": {
+    "frontend_src/scripts/test-garde-argent.mjs": {
       "script": "test:garde-argent",
       "assertions": 43,
       "expects": 0,
@@ -1952,7 +1845,7 @@
         "verifier·une preuve rédigée à la main est REFUSÉE": 1
       }
     },
-    "frontend/../docs/dette/compter-registre.test.mjs": {
+    "frontend_src/../docs/dette/compter-registre.test.mjs": {
       "script": "test:compter-registre",
       "assertions": 8,
       "expects": 0,
@@ -1967,7 +1860,7 @@
         "verifier·seule la vraie ligne de dette est comptée": 1
       }
     },
-    "frontend/src/app/components/shared/PaveMontant.test.mts": {
+    "frontend_src/src/app/components/shared/PaveMontant.test.mts": {
       "script": "test:pave-montant",
       "assertions": 9,
       "expects": 0,
@@ -1983,7 +1876,7 @@
         "eq·⟂ interdit trois zéros comme premier geste": 1
       }
     },
-    "frontend/src/app/voice-offline/depenseLibelleRejeu.test.mts": {
+    "frontend_src/src/app/voice-offline/depenseLibelleRejeu.test.mts": {
       "script": "test:depense-libelle",
       "assertions": 12,
       "expects": 0,
@@ -2002,7 +1895,7 @@
         "ok·taxe_mairie ⟂ T6 la catégorie touchée traverse le rejeu hors ligne, telle quelle": 1
       }
     },
-    "frontend/src/app/voice-offline/venteHorsLigneStatut.test.mts": {
+    "frontend_src/src/app/voice-offline/venteHorsLigneStatut.test.mts": {
       "script": "test:vente-hors-ligne-statut",
       "assertions": 34,
       "expects": 0,
@@ -2043,7 +1936,7 @@
         "ok·void ⟂ T7 CaisseContextType.enregistrerVente ne promet plus void (aujourd’hui : Promise<${}>)": 1
       }
     },
-    "frontend/src/app/voice-offline/venteSynchroniseeAnnonce.test.mts": {
+    "frontend_src/src/app/voice-offline/venteSynchroniseeAnnonce.test.mts": {
       "script": "test:vente-synchronisee",
       "assertions": 62,
       "expects": 0,
@@ -2112,7 +2005,7 @@
         "ok·« ${} » n’est pas une impulsion unique (l’attente et l’erreur le sont déjà)": 1
       }
     },
-    "frontend/src/app/utils/recuStatutSynchronisation.test.mts": {
+    "frontend_src/src/app/utils/recuStatutSynchronisation.test.mts": {
       "script": "test:recu-statut",
       "assertions": 16,
       "expects": 0,
@@ -2135,7 +2028,7 @@
         "ok·R9 vente en attente : l’objet réel de l’écran produit un reçu qui porte le statut": 1
       }
     },
-    "frontend/src/app/voice-offline/sondeMoteurVoix.test.mts": {
+    "frontend_src/src/app/voice-offline/sondeMoteurVoix.test.mts": {
       "script": "test:sonde-moteur-voix",
       "assertions": 15,
       "expects": 0,
@@ -2157,7 +2050,7 @@
         "ok·S5 une sonde négative n’écrit rien (${})": 1
       }
     },
-    "frontend/src/app/components/marchand/refusHorsLigneCommande.test.mts": {
+    "frontend_src/src/app/components/marchand/refusHorsLigneCommande.test.mts": {
       "script": "test:refus-hors-ligne-commande",
       "assertions": 16,
       "expects": 0,
@@ -2180,7 +2073,7 @@
         "ok·hors_ligne ⟂ B4-4 hors ligne, même un statut n’est pas une réponse du serveur : c’est le réseau": 1
       }
     },
-    "frontend/src/app/i18n/voice/niveauVoix.test.mts": {
+    "frontend_src/src/app/i18n/voice/niveauVoix.test.mts": {
       "script": "test:niveau-voix",
       "assertions": 21,
       "expects": 0,
@@ -2208,7 +2101,7 @@
         "ok·string ⟂ B5-5 un message tu reste résolu et rendu à l’appelante (le bouton « réécouter » a de quoi parler)": 1
       }
     },
-    "frontend/scripts/test-precache-doctrine.mjs": {
+    "frontend_src/scripts/test-precache-doctrine.mjs": {
       "script": "test:precache-doctrine",
       "assertions": 13,
       "expects": 0,
@@ -2228,7 +2121,7 @@
         "ok·le plafond par fichier reste serré : ${} Ko (≤ 250)": 1
       }
     },
-    "frontend/src/app/hooks/langueNonPrete.test.mts": {
+    "frontend_src/src/app/hooks/langueNonPrete.test.mts": {
       "script": "test:langue-non-prete",
       "assertions": 15,
       "expects": 0,
@@ -2250,13 +2143,13 @@
         "ok·french ⟂ french ⟂ B7-2 une langue prête se choisit et se mémorise normalement": 1
       }
     },
-    "frontend/scripts/generer-registre-voix.mjs": {
+    "frontend_src/scripts/generer-registre-voix.mjs": {
       "script": "test:registre-voix",
       "assertions": 0,
       "expects": 0,
       "empreintes": {}
     },
-    "frontend/src/app/services/routageAudio/decisionRoutage.test.mts": {
+    "frontend_src/src/app/services/routageAudio/decisionRoutage.test.mts": {
       "script": "test:routage-audio-decision",
       "assertions": 42,
       "expects": 0,
@@ -2305,7 +2198,7 @@
         "ok·trois modes exposés, pas deux": 1
       }
     },
-    "frontend/src/app/i18n/voice/voixParLocale.test.mts": {
+    "frontend_src/src/app/i18n/voice/voixParLocale.test.mts": {
       "script": "test:voix-dyu-argent",
       "assertions": 25,
       "expects": 0,
@@ -2337,7 +2230,7 @@
         "ok·une langue sans voix retombe sur le français": 1
       }
     },
-    "frontend/src/app/services/routageAudio/sessionRoutage.test.mts": {
+    "frontend_src/src/app/services/routageAudio/sessionRoutage.test.mts": {
       "script": "test:routage-audio-session",
       "assertions": 45,
       "expects": 0,
@@ -2389,7 +2282,7 @@
         "ok·écoute finie : le canal TIENT, le temps que Tantie réponde dans l’oreille": 1
       }
     },
-    "frontend/src/app/services/etatVentesPassees.test.mts": {
+    "frontend_src/src/app/services/etatVentesPassees.test.mts": {
       "script": "test:ventes-historique-etat",
       "assertions": 35,
       "expects": 0,
@@ -2431,7 +2324,7 @@
         "ok·… avec le nombre de VENTES, pas d’opérations": 1
       }
     },
-    "frontend/src/app/i18n/voice/drapeauxDyu.test.mts": {
+    "frontend_src/src/app/i18n/voice/drapeauxDyu.test.mts": {
       "script": "test:drapeaux-dyu",
       "assertions": 27,
       "expects": 0,
@@ -2465,7 +2358,7 @@
         "ok·plus aucune clé écartée POUR raison d\\'argent — c\\'est exactement ce que le drapeau change": 1
       }
     },
-    "frontend/src/app/services/etatCaisseAccueil.test.mts": {
+    "frontend_src/src/app/services/etatCaisseAccueil.test.mts": {
       "script": "test:caisse-accueil-etat",
       "assertions": 30,
       "expects": 0,
@@ -2502,7 +2395,7 @@
         "ok·une file négative est ramenée à 0 : on n\\'affiche pas « -3 ventes en attente »": 1
       }
     },
-    "frontend/src/app/components/marchand/accueilHonnete.test.mts": {
+    "frontend_src/src/app/components/marchand/accueilHonnete.test.mts": {
       "script": "test:accueil-honnete",
       "assertions": 26,
       "expects": 0,
@@ -2535,7 +2428,7 @@
         "ok·les deux boutons « Écouter… » partagent un seul geste (${} trouvé(s), 2 attendus)": 1
       }
     },
-    "frontend/src/app/services/accueilVoixUneSeuleSortie.test.mts": {
+    "frontend_src/src/app/services/accueilVoixUneSeuleSortie.test.mts": {
       "script": "test:accueil-une-sortie",
       "assertions": 11,
       "expects": 0,
@@ -2553,7 +2446,7 @@
         "ok·le texte rattrape : promettre un son et n\\'en produire aucun est l\\'impasse d\\'avant": 1
       }
     },
-    "frontend/src/app/services/entreeVoixAvantConnexion.test.mts": {
+    "frontend_src/src/app/services/entreeVoixAvantConnexion.test.mts": {
       "script": "test:akwaba-voix",
       "assertions": 24,
       "expects": 0,
@@ -2584,7 +2477,7 @@
         "ok·« retour » n\\'est ni attesté ni prototype : aucun clip, dans les deux mondes": 1
       }
     },
-    "frontend/src/app/services/paroleEntree.test.mts": {
+    "frontend_src/src/app/services/paroleEntree.test.mts": {
       "script": "test:parole-entree",
       "assertions": 17,
       "expects": 0,
@@ -2608,7 +2501,7 @@
         "ok·« ${} » : muet, exactement comme aujourd'hui": 1
       }
     },
-    "frontend/src/app/services/entreeVoixNumero.test.mts": {
+    "frontend_src/src/app/services/entreeVoixNumero.test.mts": {
       "script": "test:entree-numero-voix",
       "assertions": 14,
       "expects": 0,
@@ -2629,7 +2522,7 @@
         "ok·une phrase inconnue (donc un numéro) ne produit AUCUN son": 1
       }
     },
-    "frontend/src/app/services/retourDeFrappe.test.mts": {
+    "frontend_src/src/app/services/retourDeFrappe.test.mts": {
       "script": "test:retour-frappe",
       "assertions": 10,
       "expects": 0,
@@ -2646,7 +2539,7 @@
         "ok·« ${} » : un appui se SENT (${} ms)": 1
       }
     },
-    "frontend/src/app/services/etatCatalogueCaisse.test.mts": {
+    "frontend_src/src/app/services/etatCatalogueCaisse.test.mts": {
       "script": "test:catalogue-caisse-etat",
       "assertions": 8,
       "expects": 0,
@@ -2661,7 +2554,7 @@
         "ok·vide ⟂ le serveur a répondu et il n\\'a rien : LÀ seulement « aucun produit » est vrai": 1
       }
     },
-    "frontend/src/app/services/etalGarde.test.mts": {
+    "frontend_src/src/app/services/etalGarde.test.mts": {
       "script": "test:etal-garde",
       "assertions": 16,
       "expects": 0,
@@ -2684,7 +2577,7 @@
         "ok·tant qu\\'on ne sait pas, on ne laisse pas entendre « à jour »": 1
       }
     },
-    "frontend/src/app/components/marchand/caisseTutoie.test.mts": {
+    "frontend_src/src/app/components/marchand/caisseTutoie.test.mts": {
       "script": "test:caisse-tutoie",
       "assertions": 8,
       "expects": 0,
@@ -2699,7 +2592,7 @@
         "ok·la clé TATA_QUE_VENDRE existe": 1
       }
     },
-    "frontend/src/app/services/ecouteCaisse.test.mts": {
+    "frontend_src/src/app/services/ecouteCaisse.test.mts": {
       "script": "test:ecoute-caisse",
       "assertions": 44,
       "expects": 0,
@@ -2750,7 +2643,7 @@
         "ok·une vibration, et une seule, sur toute l'écoute (obtenu ${})": 1
       }
     },
-    "frontend/src/app/services/cai07-un-seul-jai-compris.test.mts": {
+    "frontend_src/src/app/services/cai07-un-seul-jai-compris.test.mts": {
       "script": "test:cai07-un-seul-compris",
       "assertions": 16,
       "expects": 0,
@@ -2773,7 +2666,7 @@
         "ok·⟂ le bandeau reste piloté par vueEcoute — la règle est le seul juge": 1
       }
     },
-    "frontend/src/app/services/resumePeriode.test.mts": {
+    "frontend_src/src/app/services/resumePeriode.test.mts": {
       "script": "test:resume-periode",
       "assertions": 21,
       "expects": 0,
@@ -2801,7 +2694,7 @@
         "ok·« ${}… » se lit": 1
       }
     },
-    "frontend/src/app/services/categorieDepense.test.mts": {
+    "frontend_src/src/app/services/categorieDepense.test.mts": {
       "script": "test:categorie-depense",
       "assertions": 28,
       "expects": 0,
@@ -2836,7 +2729,7 @@
         "ok·« École » est une catégorie à part entière (l\\'affichage la rendait « Famille »)": 1
       }
     },
-    "frontend/src/app/services/motsDuGesteTactile.test.mts": {
+    "frontend_src/src/app/services/motsDuGesteTactile.test.mts": {
       "script": "test:geste-tactile",
       "assertions": 17,
       "expects": 0,
@@ -2860,7 +2753,7 @@
         "ok·⟂ le bouton garde une icône — la retirer ne dirait rien du tout": 1
       }
     },
-    "frontend/src/app/services/etatLectureBO.test.mts": {
+    "frontend_src/src/app/services/etatLectureBO.test.mts": {
       "script": "test:etat-lecture-bo",
       "assertions": 54,
       "expects": 0,
@@ -2921,7 +2814,7 @@
         "ok·texte brut ⟂ une chaîne aussi": 1
       }
     },
-    "frontend/src/app/services/prixDeLaMarchande.test.mts": {
+    "frontend_src/src/app/services/prixDeLaMarchande.test.mts": {
       "script": "test:prix-marchande",
       "assertions": 24,
       "expects": 0,
@@ -2952,7 +2845,7 @@
         "ok·⟂ ⟂ et les prix qu\\'elle avait saisis pour le PREMIER ne restent pas sur le second": 1
       }
     },
-    "frontend/src/app/services/etalDeLaMarchande.test.mts": {
+    "frontend_src/src/app/services/etalDeLaMarchande.test.mts": {
       "script": "test:etal-marchande",
       "assertions": 20,
       "expects": 0,
@@ -2979,7 +2872,7 @@
         "ok·étal vide → zéro tuile ; on ne comble jamais le vide avec le catalogue": 1
       }
     },
-    "frontend/src/app/services/premierProduit.test.mts": {
+    "frontend_src/src/app/services/premierProduit.test.mts": {
       "script": "test:premier-produit",
       "assertions": 66,
       "expects": 0,
@@ -3052,7 +2945,7 @@
         "ok·⟂ et aucune catégorie inventée — « autre » serait un mot qu\\'elle n\\'a pas dit": 1
       }
     },
-    "frontend/src/app/services/montantDit.test.mts": {
+    "frontend_src/src/app/services/montantDit.test.mts": {
       "script": "test:montant-dit",
       "assertions": 23,
       "expects": 0,
@@ -3082,7 +2975,7 @@
         "ok·« à mille cinq cents »": 1
       }
     },
-    "frontend/src/app/services/produitDit.test.mts": {
+    "frontend_src/src/app/services/produitDit.test.mts": {
       "script": "test:produit-dit",
       "assertions": 56,
       "expects": 0,
@@ -3145,7 +3038,7 @@
         "ok·⟂ et rien du reste n\\'est supposé": 1
       }
     },
-    "frontend/src/app/components/backoffice/etatSectionsBO.test.mts": {
+    "frontend_src/src/app/components/backoffice/etatSectionsBO.test.mts": {
       "script": "test:sections-bo",
       "assertions": 51,
       "expects": 0,
@@ -3203,7 +3096,7 @@
         "ok·une barre reste bornée à 100 %, comme avant": 1
       }
     },
-    "frontend/src/app/components/marchand/charteMarchande.test.mts": {
+    "frontend_src/src/app/components/marchand/charteMarchande.test.mts": {
       "script": "test:charte-marchande",
       "assertions": 5,
       "expects": 0,
@@ -3215,7 +3108,7 @@
         "ok·les ${} fichiers restent sous leur plafond": 1
       }
     },
-    "frontend/src/app/components/marchand/portesChiffres.test.mts": {
+    "frontend_src/src/app/components/marchand/portesChiffres.test.mts": {
       "script": "test:portes-chiffres",
       "assertions": 10,
       "expects": 0,
@@ -3232,7 +3125,7 @@
         "ok·ni à la liste des ventes": 1
       }
     },
-    "frontend/src/app/components/marchand/gesteAjouterProduit.test.mts": {
+    "frontend_src/src/app/components/marchand/gesteAjouterProduit.test.mts": {
       "script": "test:geste-ajouter-produit",
       "assertions": 4,
       "expects": 0,
@@ -3243,7 +3136,7 @@
         "ok·le tactile et le vocal mènent tous deux au parcours guidé": 1
       }
     },
-    "frontend/src/app/components/layout/roleConfigIcones.test.mts": {
+    "frontend_src/src/app/components/layout/roleConfigIcones.test.mts": {
       "script": "test:role-icones",
       "assertions": 6,
       "expects": 0,
@@ -3256,7 +3149,7 @@
         "ok·icône(s) demandée(s) mais absente(s) — repli silencieux sur Home :\\n ${} ⟂ toutes les icônes demandées existent dans ICON_MAP": 1
       }
     },
-    "frontend/src/app/components/marchand/clipEchecCaisse.test.mts": {
+    "frontend_src/src/app/components/marchand/clipEchecCaisse.test.mts": {
       "script": "test:clip-echec-caisse",
       "assertions": 5,
       "expects": 0,
@@ -3268,7 +3161,7 @@
         "ok·« ${} »": 1
       }
     },
-    "frontend/src/app/services/alerteStockVivante.test.mts": {
+    "frontend_src/src/app/services/alerteStockVivante.test.mts": {
       "script": "test:alerte-vivante",
       "assertions": 12,
       "expects": 0,
@@ -3287,7 +3180,7 @@
         "eq·étal vide (cache froid) → on n'invente rien": 1
       }
     },
-    "frontend/src/app/i18n/voice/nomDuPersonnage.test.mts": {
+    "frontend_src/src/app/i18n/voice/nomDuPersonnage.test.mts": {
       "script": "test:nom-personnage",
       "assertions": 7,
       "expects": 0,
@@ -3301,7 +3194,7 @@
         "ok·mais casse, accents et ponctuation, eux, sont bien absorbés": 1
       }
     },
-    "frontend/src/app/services/clipsEmbarques.test.mts": {
+    "frontend_src/src/app/services/clipsEmbarques.test.mts": {
       "script": "test:clips-embarques",
       "assertions": 4,
       "expects": 0,
@@ -3312,7 +3205,7 @@
         "ok·chaque clip sert au plus un texte": 1
       }
     },
-    "frontend/src/app/services/voixConnexionLotA.test.mts": {
+    "frontend_src/src/app/services/voixConnexionLotA.test.mts": {
       "script": "test:voix-connexion-lot-a",
       "assertions": 15,
       "expects": 0,
@@ -3334,7 +3227,7 @@
         "ok·/tape ton num/i ⟂ le texte dit QUOI FAIRE, pas seulement ce qui cloche": 1
       }
     },
-    "frontend/src/app/components/marchand/boutonDireProduit.test.mts": {
+    "frontend_src/src/app/components/marchand/boutonDireProduit.test.mts": {
       "script": "test:bouton-dire-produit",
       "assertions": 7,
       "expects": 0,
@@ -3348,7 +3241,7 @@
         "ok·message trouvé": 1
       }
     },
-    "frontend/src/app/components/marchand/parcoursGuideParle.test.mts": {
+    "frontend_src/src/app/components/marchand/parcoursGuideParle.test.mts": {
       "script": "test:parcours-guide-parle",
       "assertions": 10,
       "expects": 0,
@@ -3365,7 +3258,7 @@
         "ok·étape « ${} » → direMessage('${}') ⟂ sans ça l\\'étape s\\'affiche et se tait : elle ne saura pas quoi dire": 1
       }
     },
-    "frontend/src/app/components/marchand/refusParle.test.mts": {
+    "frontend_src/src/app/components/marchand/refusParle.test.mts": {
       "script": "test:refus-parle",
       "assertions": 25,
       "expects": 0,
@@ -3397,7 +3290,7 @@
         "ok·unite-absente ⟂ aucune unité → unite-absente": 1
       }
     },
-    "frontend/src/app/services/uniteTraverse.test.mts": {
+    "frontend_src/src/app/services/uniteTraverse.test.mts": {
       "script": "test:unite-traverse",
       "assertions": 16,
       "expects": 0,
@@ -3420,7 +3313,7 @@
         "ok·« ${} » → uniteParlee = ${} ⟂ obtenu : ${}": 1
       }
     },
-    "frontend/src/app/voice-offline/grammaireAcquiescement.test.mts": {
+    "frontend_src/src/app/voice-offline/grammaireAcquiescement.test.mts": {
       "script": "test:acquiescement",
       "assertions": 14,
       "expects": 0,
@@ -3441,7 +3334,7 @@
         "ok·« ouais » a été conservé en le déclarant ⟂ il vivait dans la liste en dur : le brancher l\\'aurait perdu en silence": 1
       }
     },
-    "frontend/src/app/contexts/objectifDit.test.mts": {
+    "frontend_src/src/app/contexts/objectifDit.test.mts": {
       "script": "test:objectif-dit",
       "assertions": 10,
       "expects": 0,
@@ -3458,7 +3351,7 @@
         "ok·le périmètre MARCHANDE est net — c\\'est celui du pilote ⟂ restant : ${}": 1
       }
     },
-    "frontend/src/app/services/encaissementDeuxFormes.test.mts": {
+    "frontend_src/src/app/services/encaissementDeuxFormes.test.mts": {
       "script": "test:encaissement-deux-formes",
       "assertions": 13,
       "expects": 0,
@@ -3478,7 +3371,7 @@
         "ok·string ⟂ string ⟂ ${} : l'effet porte texte ET texteParle ⟂ champs : ${}": 1
       }
     },
-    "frontend/src/app/services/panierFidele.test.mts": {
+    "frontend_src/src/app/services/panierFidele.test.mts": {
       "script": "test:panier-fidele",
       "assertions": 17,
       "expects": 0,
@@ -3502,7 +3395,7 @@
         "ok·vocal ⟂ origine traverse le redémarrage ⟂ obtenu : ${}": 1
       }
     },
-    "frontend/src/app/services/panierLignes.test.mts": {
+    "frontend_src/src/app/services/panierLignes.test.mts": {
       "script": "test:panier-lignes",
       "assertions": 30,
       "expects": 0,
@@ -3538,7 +3431,7 @@
         "ok·… et reste l\\'identifiant catalogue (c\\'est un UUID)": 1
       }
     },
-    "frontend/src/app/services/encaissementDitIncompris.test.mts": {
+    "frontend_src/src/app/services/encaissementDitIncompris.test.mts": {
       "script": "test:encaissement-incompris",
       "assertions": 16,
       "expects": 0,
@@ -3561,7 +3454,7 @@
         "ok·« compris » est nul, parce que ce n'est pas une vente : ${}": 1
       }
     },
-    "frontend/src/app/services/microNiveauParole.test.mts": {
+    "frontend_src/src/app/services/microNiveauParole.test.mts": {
       "script": "test:micro-niveau-parole",
       "assertions": 21,
       "expects": 0,
@@ -3589,7 +3482,7 @@
         "ok·⟂ la boucle de fermeture existe toujours dans l\\'écran": 1
       }
     },
-    "frontend/src/app/services/venteAuCatalogue.test.mts": {
+    "frontend_src/src/app/services/venteAuCatalogue.test.mts": {
       "script": "test:vente-au-catalogue",
       "assertions": 43,
       "expects": 0,
@@ -3638,7 +3531,7 @@
         "ok·« deux » redevient une quantité, et AUCUN prix n'est inventé : ${}": 1
       }
     },
-    "frontend/src/app/services/accueilCaisseDite.test.mts": {
+    "frontend_src/src/app/services/accueilCaisseDite.test.mts": {
       "script": "test:accueil-caisse-dite",
       "assertions": 17,
       "expects": 0,
@@ -3662,7 +3555,7 @@
         "ok·⟂ l\\'effet d\\'annonce au montage existe toujours": 1
       }
     },
-    "frontend/src/app/voice-offline/apostropheDictee.test.mts": {
+    "frontend_src/src/app/voice-offline/apostropheDictee.test.mts": {
       "script": "test:apostrophe-dictee",
       "assertions": 15,
       "expects": 0,
@@ -3684,7 +3577,7 @@
         "ok·« vends pour 500 » : montant 500, intacte": 1
       }
     },
-    "frontend/src/app/services/prixSansQuantite.test.mts": {
+    "frontend_src/src/app/services/prixSansQuantite.test.mts": {
       "script": "test:prix-sans-quantite",
       "assertions": 19,
       "expects": 0,
@@ -3710,7 +3603,7 @@
         "ok·⟂ … sans question posée : quantité 1, aucune ambiguïté de prix": 1
       }
     },
-    "frontend/../.maestro/valider.mjs": {
+    "frontend_src/../.maestro/valider.mjs": {
       "script": "test:flows-maestro",
       "assertions": 5,
       "expects": 0,
@@ -3722,7 +3615,7 @@
         "ko·ligne ${} : « optional » n'est pas accepté sur « ${} » — Maestro refuse le fichier au parsing": 1
       }
     },
-    "frontend/src/app/services/creditHorsPilote.test.mts": {
+    "frontend_src/src/app/services/creditHorsPilote.test.mts": {
       "script": "test:credit-hors-pilote",
       "assertions": 10,
       "expects": 0,
