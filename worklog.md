@@ -234,3 +234,25 @@ Stage Summary:
 - 3 acteurs sous le seuil PROD 60 : Producteur 54 (P0 voix), Coopérateur 54 (IDOR/statuts/cotisation), Institution 42 (ONECI ouvert) — 1 au seuil pile : Admin général 60 — le reste au-dessus
 - Verdict auth : socle serveur mûr (14/17 constats précédents closes vérifiées) MAIS AUTH-SYS-01 P1 à fermer avant livraison web (le coffre ADR-002 fuit à la première rotation via api-client.ts:128/132)
 - Prochain lot de corrections recommandé : AUTH-SYS-01 + PRODUCTEUR-01 + INSTITUTION-01 (P0) puis lot transversal (WS room all, POST /audit, unification matrice permissions)
+
+---
+Task ID: 10
+Agent: Z.ai Code (orchestrateur)
+Task: Alignement forcé dev←main + exécution du plan de réorganisation (Phases 0-3) — commits et pushs sur dev
+
+Work Log:
+- Demande utilisateur : « passe au plan mais fais les push et commit sur dev » puis « je veux que tu recupere main sur dev directement en force »
+- Nettoyage du commit main non poussé 1ab5514 (mélange audits + artefacts sandbox) : reset --soft, retrait de download/*.docx, upload/, .zscripts/ du staging, recommit propre → aa780ae (11 audits .md + AUDIT_REPORT + worklog)
+- Fusion main→dev abandonnée en cours de route (conflits 12 fichiers) sur demande de forçage : backup du travail INIT-016..021 de dev sur branche backup/dev-init-016-021 (poussée sur origin), puis git reset --hard main + git push --force origin dev (45eaaef → aa780ae)
+- Interférence sandbox notée : HEAD rebasculait seul sur main (3 fois) — contre-mesure : checkout dev + vérification HEAD avant chaque commit
+- Phase 0 (c4e63ee) : untrack skills/ (1076 f.), .zscripts/ (9), tool-results/ (2), download/ (1) + .gitignore verrouillé ; suppression .audit_ui_* ×4 ; archivage azure-pipelines.yml + docker-compose.prod.yml → docs/archive/ ; suppression tests/ (Playwright orphelin, identifiants en dur dans api.spec.ts → ROTATION requise, cf. historique) ; rédaction docs/audit/PLAN-REORGANISATION-2026-10-06.md
+- Phase 1 (ee0b4a0) : suppression coquilles vides backend/src/tickets/ + escrow/ (app.module.ts mis à jour) ; renommage audit/ → audit-log/ (dossier + fichiers + 12 références) ; retrait jspdf de backend/package.json ; correction du diagnostic : ansut/ VIVANT (service vocal ANSUT/Lafricamobile + ffmpeg, référencé par sms.service) → conservé
+- Phase 2 (7467da3) : suppression 6 composants Universal*BO sans importeur + leurs 6 exports du barrel (1786 lignes) — UniversalCardBO/UniversalCardBOZone VIVANTS → conservés ; retrait 10 deps jamais importées (react-hook-form, cmdk, papaparse+types, qrcode, react-day-picker, react-resizable-panels, jsqr, @nestjs/core, playwright-core) — @capacitor/* et tsx gardés (android/ + scripts npm) ; suppression 12 images sans référence (~558 Ko) — icônes PWA tantie-sagesse-* gardées (manifest.json/sw.js)
+- Vérifications : tsc backend --noEmit exit 0 (cache purgé) ; tsc -b frontend exit 0 ; vite build exit 0 (20,7 s, stamp-sw 202 chunks + 220 clips) ; npm install racine régénère package-lock.json (−140 paquets)
+- Décisions reportées consignées dans le plan : R18 (git-lfs ~38 Mo d'images), F14 (5 chaînes horsVerify), rotation des identifiants tests/, réintroduction éventuelle de gardes Playwright
+
+Stage Summary:
+- dev == origin/dev == 7467da3 (Phase 0+1+2 poussées) ; main local = c4e63ee (non poussé — les pushs demandés étaient pour dev)
+- Dépôt allégé : ~62 000 lignes désalignées (skills/ etc.), 1786 lignes TS mortes, 16 lignes backend mortes, 10 deps, 12 images (~558 Ko) en moins
+- backup/dev-init-016-021 = le travail INIT-016..021 (vitest, i18next, strictNull, fetch) récupérable à tout moment
+- Registre sécurité : rotation des identifiants ayant figuré dans tests/specs/api.spec.ts (historique) à programmer côté équipe
