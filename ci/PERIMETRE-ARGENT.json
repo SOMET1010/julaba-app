@@ -816,7 +816,566 @@
       "symboles": [
         "caisse_transactions"
       ]
+    },
+    "frontend_src/src/app/App.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/assistant/TantieSagesseModal.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense",
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/components/identificateur/IdentificateurLayout.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/AjoutProduitGuide.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/CreditModal.tsx": {
+      "zones": [
+        "api-caisse"
+      ],
+      "symboles": [
+        "caisse-api",
+        "creerCredit"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/DepenseForm.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/GestionStock.tsx": {
+      "zones": [
+        "caisse-context",
+        "stock"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "stock_mouvements"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MarchandAccueilVoice.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MarcheVirtuel.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/MicroVenteCaisse.tsx": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente",
+        "grammaire-intention-financiere",
+        "local-intent",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "grammaireEncaissement",
+        "handlePay",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/POSCaisse.tsx": {
+      "zones": [
+        "caisse-context",
+        "calcul-financier",
+        "enregistrement-vente",
+        "grammaire-intention-financiere",
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "EffetEncaissement",
+        "EtatEncaissement",
+        "decomposerMonnaie",
+        "empreintePanier",
+        "enregistrerVente",
+        "grammaireEncaissement",
+        "handlePay",
+        "machineEncaissement",
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/SyncEchecsBanner.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/marchand/VentesPassees.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "calcul-financier",
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "annulerVente",
+        "caisse-api",
+        "marquerCreditPaye",
+        "mode_paiement",
+        "resumeVentes",
+        "venteComptee"
+      ]
+    },
+    "frontend_src/src/app/components/shared/UniversalProfil.tsx": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/components/wallet/PayPage.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/config/devise.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "frontend_src/src/app/contexts/AppContext.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "calcul-financier",
+        "offline-synchronisation",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "beneficeDepuisDetails",
+        "caisse-api",
+        "caisseTheorique",
+        "mode_paiement",
+        "offlineCaisse",
+        "venteComptee"
+      ]
+    },
+    "frontend_src/src/app/contexts/CaisseContext.tsx": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "calcul-financier",
+        "enregistrement-vente",
+        "idempotence",
+        "offline-synchronisation",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "beneficeDepuisDetails",
+        "caisse-api",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "idempotency_key",
+        "mode_paiement",
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/contexts/CommandeContext.tsx": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/contexts/StockContext.tsx": {
+      "zones": [
+        "idempotence",
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/hooks/useOfflineVoiceQueue.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/hooks/useVoiceCore.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/hooks/useVoluntaryLogout.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/catalog.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "local-intent",
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "REPONSES_VALIDATION",
+        "grammaireEncaissement",
+        "handlePay",
+        "localIntent",
+        "machineEncaissement"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/detectIntent.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "detectIntent",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/locales/fr-ci/intents.ts": {
+      "zones": [
+        "grammaire-intention-financiere"
+      ],
+      "symboles": [
+        "grammaireEncaissement"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/locales/fr-ci/lexicon.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/i18n/voice/runtime.ts": {
+      "zones": [
+        "grammaire-intention-financiere"
+      ],
+      "symboles": [
+        "grammaireEncaissement"
+      ]
+    },
+    "frontend_src/src/app/services/api/caisse-api.ts": {
+      "zones": [
+        "api-caisse",
+        "caisse-context",
+        "enregistrement-vente",
+        "idempotence",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "ajouterAcompte",
+        "annulerVente",
+        "caisse-api",
+        "creerCredit",
+        "enregistrerDepense",
+        "enregistrerVente",
+        "idempotency_key",
+        "marquerCreditPaye",
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/services/api/commandes-api.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/services/categorieDepense.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "caisse_transactions"
+      ]
+    },
+    "frontend_src/src/app/services/collecteVoixDB.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/services/etatCatalogueCaisse.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/services/fidelite.service.ts": {
+      "zones": [
+        "caisse-context",
+        "idempotence"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "idempotency_key"
+      ]
+    },
+    "frontend_src/src/app/services/grammaireCorrection.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/services/ligneProvisoire.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/services/machineEncaissement.ts": {
+      "zones": [
+        "machine-encaissement",
+        "paiement"
+      ],
+      "symboles": [
+        "EffetEncaissement",
+        "EmpreinteFinanciere",
+        "EtatEncaissement",
+        "EvenementEncaissement",
+        "empreintePanier",
+        "handlePay",
+        "machineEncaissement",
+        "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/margeVente.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "beneficeDepuisDetails"
+      ]
+    },
+    "frontend_src/src/app/services/panierLignes.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/services/premierProduit.ts": {
+      "zones": [
+        "caisse-context"
+      ],
+      "symboles": [
+        "CaisseContext"
+      ]
+    },
+    "frontend_src/src/app/services/prixVocal.ts": {
+      "zones": [
+        "caisse-context",
+        "local-intent"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/services/relectureSpontanee.ts": {
+      "zones": [
+        "machine-encaissement"
+      ],
+      "symboles": [
+        "EtatEncaissement",
+        "phraseRelecture"
+      ]
+    },
+    "frontend_src/src/app/services/statsVente.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "resumeVentes",
+        "venteComptee"
+      ]
+    },
+    "frontend_src/src/app/services/tataMarchandActions.ts": {
+      "zones": [
+        "enregistrement-vente"
+      ],
+      "symboles": [
+        "enregistrerDepense",
+        "enregistrerVente"
+      ]
+    },
+    "frontend_src/src/app/services/vendreVocalUnifie.ts": {
+      "zones": [
+        "caisse-context",
+        "enregistrement-vente",
+        "paiement"
+      ],
+      "symboles": [
+        "CaisseContext",
+        "enregistrerVente",
+        "handlePay"
+      ]
+    },
+    "frontend_src/src/app/services/venteAuCatalogue.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "local-intent"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "grammaireEncaissement",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/types/payment.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/types/vente.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/utils/fcfa.ts": {
+      "zones": [
+        "calcul-financier"
+      ],
+      "symboles": [
+        "decomposerMonnaie"
+      ]
+    },
+    "frontend_src/src/app/utils/recu.utils.ts": {
+      "zones": [
+        "paiement"
+      ],
+      "symboles": [
+        "mode_paiement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/grammaireAcquiescement.ts": {
+      "zones": [
+        "local-intent"
+      ],
+      "symboles": [
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/grammaireEncaissement.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "machine-encaissement"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "grammaireEncaissement",
+        "machineEncaissement"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/incidentsHorsLigne.ts": {
+      "zones": [
+        "offline-synchronisation"
+      ],
+      "symboles": [
+        "offlineCaisse"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/localIntent.ts": {
+      "zones": [
+        "grammaire-intention-financiere",
+        "local-intent"
+      ],
+      "symboles": [
+        "detecterEncaissement",
+        "grammaireEncaissement",
+        "localIntent"
+      ]
+    },
+    "frontend_src/src/app/voice-offline/offlineCaisse.ts": {
+      "zones": [
+        "idempotence",
+        "offline-synchronisation",
+        "paiement"
+      ],
+      "symboles": [
+        "idempotency_key",
+        "mode_paiement",
+        "offlineCaisse"
+      ]
     }
   },
-  "genereLe": "2026-10-06"
+  "genereLe": "2026-10-05"
 }
