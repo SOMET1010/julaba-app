@@ -336,3 +336,18 @@ Work Log:
 
 Stage Summary:
 - Plan de réorganisation : Phases 0-4 closes + procédure R18 livrée ; restent à trancher : F14 (lot fonctionnel), CI Playwright, rotation identifiants (historique), unification permissions (PERF)
+---
+Task ID: 11-b
+Agent: Explore (scan mort backend)
+Task: Scan code mort backend — candidats avec preuves
+
+Work Log:
+- Graphe d'imports scripté sur les 348 .ts de backend/src (+ test/), racines = main.ts, app.module.ts, data-source.ts et *.entity.ts ; 278 fichiers atteignables, 0 import non résolu
+- Entités vérifiées D'ABORD : database.module.ts charge src/**/*.entity{.ts,.js} par GLOB → les 49 entités vivantes par définition, aucune reportée
+- Cadavres prouvés : src/ansut/ (0 importeur hors lui-même ; sms.service implémente son propre client HTTP ANSUT — inverse le keep Task 10) ; modules orphelins producteur/cycles (module+service+2 dto) et producteur/recoltes/recoltes.module.ts+update-recolte.dto (rationale INIT-011 techniquement erronée : forFeature d'un module non importé inerte, entités glob-chargées) ; wallets/dto/credit-wallet.dto.ts (0 importeur) ; 3 specs e2e jamais exécutées (jest-unit match test/unit/**, jest-invariants match test/invariants/**, tsconfig.build exclut *spec.ts) ; dep @sentry/profiling-node (0 import, instrument.ts n'utilise que @sentry/node)
+- Résidus renommage audit→audit-log : ZÉRO casse ; jest-invariants.config.cjs valide (test/invariants 50+ specs, env.ts + global-setup.ts présents)
+- Faussement suspects gardés : @nestjs/platform-socket.io (WebSocketGateway events.gateway), passport/rxjs (peers), require-in-the-middle (peer @sentry/node), multer/exceljs/pdfkit/web-push/@simplewebauthn (importés), migrations/_archive hors chaîne (ADR-0002)
+- Note : section réécrite par l'orchestrateur (append initial perdu dans la course des branches sandbox — contenu intégralement issu du rapport de l'agent)
+
+Stage Summary:
+- Liste DELETE confirmée puis exécutée par l'orchestrateur en Task 11-c (aefc7fa) ; chaîne cycles/recoltes arbitrée : suppression (endpoints vivants servis par -rest), entités conservées
