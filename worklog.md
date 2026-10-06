@@ -368,3 +368,19 @@ Work Log:
 Stage Summary:
 - 628ef4e sur origin/dev : renommage complet, Phase 4 préservée, résidus volontaires : EMPREINTE/PERIMETRE (gels), garde-argent.mjs:687, worklog, docs/archive ×2, 2 lignes f0c965c
 - À FAIRE PAR L'ÉQUIPE (gels humains) : node ci/garde-argent.mjs --figer-perimetre PUIS --figer-gardes (en déclarant GARDE-ASSOUPLIE: retrait test:packs — voicePacks supprimé Phase 4) puis re-run → vert attendu
+
+---
+Task ID: 13
+Agent: Z.ai Code (orchestrateur)
+Task: Reprise post-Task 12 — arbitrage du refus préexistant pin-jamais-rendu (SEC-07) + vérification indépendante de l'état renommage
+
+Work Log:
+- Reprise (« continues ») : vérification indépendante de l'état Task 12 — renommage 628ef4e confirmé sur origin/dev : frontend_src absent, frontend/src présent, dist présent (outDir invariant) ; .gitignore/.dockerignore règles bare retirées avec commentaire explicatif ; ci/garde-argent.mjs:687 intouché ; ci/EMPREINTE-GARDES.json 131 occurrences frontend_src + ci/PERIMETRE-ARGENT.json 37 = gels intacts (ATTENDU, gels humains)
+- git grep sur l'arbre dev (méthode immunisée contre les bascules HEAD) : exactement 3 occurrences frontend_src hors gels/archives/worklog = les 3 exceptions volontaires (garde-argent.mjs:687 lecture d'historique f0c965c ; REGISTRE-MAITRE.md:19 et VOIX-01-PLAN-PARCOURS.md:607 refs d'historique) → étape 8 docs vivantes CONFIRMÉE déjà faite par Task 12 (README, ci/README.md, .ai/ propres, plus aucune occurrence)
+- Arbitrage SEC-07 tranché : randomInt (node:crypto) plutôt que GARDE-ASSOUPLIE — la règle binaire « aucun générateur non cryptographique dans les modules sensibles » reste entière, sans exception à documenter ; bonus : le CSPRNG élimine l'état PRNG partagé de V8 (corrélation théorique des durées mesurées), sémantique identique (randomInt(80) → entier uniforme [0,80))
+- anti-enumeration.ts vérifié HORS ci/EMPREINTE-GARDES.json → aucun gel supplémentaire bougé, les 3 refus attendus de la Task 12 sont inchangés
+- Vérifications : tsc --noEmit backend exit 0 ; jest unit 251/251 (33 suites) — pin-jamais-rendu redevient vert (Task 12 : 250/251)
+- Interférence sandbox : bascules HEAD→main continues (vérification de branche à chaque commande) ; lecture du worklog passée par git show dev:worklog.md > fichier hors repo ; append Task 13 construit hors worktree puis réinjecté+commité en une commande chaînée checkout dev && cp && add && commit
+
+Stage Summary:
+- 9e5e0ef sur dev : SEC-07 réglé par randomInt, suite unit backend intégralement verte (251/251) ; renommage Task 12 validé par vérification indépendante ; restent SEULEMENT les 3 refus garde-argent ATTENDUS → geste humain Patrick : --figer-perimetre PUIS --figer-gardes (en déclarant GARDE-ASSOUPLIE: retrait test:packs — voicePacks supprimé Phase 4) puis re-run → vert attendu
