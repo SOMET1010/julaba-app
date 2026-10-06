@@ -455,3 +455,17 @@ Work Log:
 
 Stage Summary:
 - UX-1 « Promesses d'argent » TERMINÉ et poussé : plus aucune UI ne promet un paiement qui n'existe pas, les deux irréversibles (transfert, cotisation) passent par relecture + verrou + PIN conditionnel ; 6/6 décisions §8 tranchées ; restent UX-2 (voix, P0), UX-3 (perdu=retrouvé, P0), UX-4/5/6 ; journaux .ai à jour (BUGS, CHANGELOG, TASKS, COMMIT_LOG)
+
+---
+Task ID: 15-v
+Agent: Z.ai Code (orchestrateur, session de reprise)
+Task: Vérification indépendante du lot UX-1 et des décisions §8 (travail exécuté par Task 15 avant coupure de session)
+
+Work Log:
+- Reprise post-coupure : constaté que Task 15 avait été exécutée intégralement (commits 68149f2, f7e9544, 67f72ef, 41b6671, 4a16fac) et poussée (dev == origin/dev == 4a16fac) — méthode Task 12 appliquée : vérification indépendante au lieu de refaire
+- Spot-checks des 4 correctifs sur le code réel : PaiementsPage (PAIEMENTS_SERVICES_ACTIFS=false + Navigate /keiwa + tuile wallet retirée), TransfertPage (relecture + verrou synchrone envoiEnCoursRef), MarcheVirtuel (annonces honnêtes par moyen, PIN confirme ≠ paie, « rien n'est encore débité »), MaCooperative (relecture + PIN /auth/pin/verify + COTISATION_MONTANT + role=alert + speak)
+- Batterie relancée indépendamment : tsc -b frontend EXIT 0 ; test:charte-marchande vert (40 couleurs en dur, garde verte) ; test:ci 44 maillons EXIT 0 « Tous les tests sont verts » ; garde-argent = exactement les 3 refus attendus (gels humains en attente — périmètre frontend_src→frontend, chaîne test:ci gelée, 131 assertions EMPREINTE), aucun refus nouveau
+- main vérifié : origin/main inchangé (9fb4655, ancêtre de dev) — aucun push vers main ; dérive locale constatée (main local avancé à b5eb397 par pulls sandbox fast-forward le long de la lignée dev, jamais poussé, sans conséquence)
+
+Stage Summary:
+- Task 15 confirmée TERMINÉE et saine : 6/6 décisions §8 tranchées, lot UX-1 complet (BUG-001..004), journaux .ai à jour, tout poussé sur dev ; restent UX-2..UX-6 et les gels humains (Patrick)
