@@ -11,7 +11,6 @@ import { UsersModule } from './users/users.module';
 import { WalletsModule } from './wallets/wallets.module';
 import { BpayModule } from './bpay/bpay.module';
 import { ScheduleModule } from "@nestjs/schedule";
-import { EscrowModule } from './escrow/escrow.module';
 import { RecoltesRestModule } from './recoltes-rest/recoltes-rest.module';
 import { ProducteurRestModule } from './producteur-rest/producteur-rest.module';
 import { PublicationsModule } from './producteur/publications/publications.module';
@@ -43,9 +42,8 @@ import { FideliteRestModule } from './fidelite-rest/fidelite-rest.module';
 import { TicketsRestModule } from './tickets-rest/tickets-rest.module';
 import { PublicationsRestModule } from './publications-rest/publications-rest.module';
 import { CommandesRestModule } from './commandes-rest/commandes-rest.module';
-import { TicketsModule } from './tickets/tickets.module';
 import { ScoresModule } from './scores/scores.module';
-import { AuditModule } from './audit/audit.module';
+import { AuditModule } from './audit-log/audit-log.module';
 import { SmsModule } from './sms/sms.module';
 import { FeedbakSmsModule } from './feedbak-sms/feedbak-sms.module';
 import { EventsModule } from './events/events.module';
@@ -86,10 +84,8 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
     WalletsModule,
     BpayModule,
     ScheduleModule.forRoot(),
-    EscrowModule,
     AdminModule,
     NotificationsModule,
-    TicketsModule,
     ScoresModule,
     AuditModule,
 

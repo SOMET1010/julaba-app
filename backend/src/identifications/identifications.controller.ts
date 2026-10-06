@@ -14,7 +14,7 @@ import { ActivationService } from '../auth/activation.service';
 import { User, UserStatus } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { CreateActeurDto } from '../auth/dto/create-acteur.dto';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @UseGuards(JwtAuthGuard)

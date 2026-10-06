@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuditService } from './audit.service';
+import { AuditService } from './audit-log.service';
 
 @Module({
   imports: [],

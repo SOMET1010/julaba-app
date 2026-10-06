@@ -6,7 +6,7 @@ import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { UsersBoListQueryDto } from './dto/users-bo-list-query.dto';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { generateInitialPassword, BO_ROLES } from '../auth/auth.service';
 import { stripSensitiveUserFields } from './sanitize-user.util';
 

@@ -23,7 +23,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { CaisseTransaction, TransactionStatus } from '../caisse-rest/caisse-transaction.entity';
 import { paginate } from '../common/paginate';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { UpdateTransactionStatusDto } from './dto/update-transaction-status.dto';
 import { TransactionsExportService } from './transactions-export.service';
 import { restituerStock } from '../caisse-rest/stock-restitution';

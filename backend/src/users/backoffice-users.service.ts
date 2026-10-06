@@ -12,7 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Identification } from '../identifications/identification.entity';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBackofficeUserDto } from './dto/create-backoffice-user.dto';
 import { UpdateSousProfilMarchandDto } from './dto/update-sous-profil-marchand.dto';
