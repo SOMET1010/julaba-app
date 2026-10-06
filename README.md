@@ -87,7 +87,6 @@ julaba-app/
 ├── database/                # (historique — schéma géré par migrations TypeORM + DbInitService)
 ├── docs/                    # Documentation vivante (ADR, dette, invariants, parcours…)
 ├── .ai/                     # Cockpit multi-agents (audit, dette, conformité, handoffs)
-├── coordination/            # Bus IA↔humain (instructions, statut, preuves)
 ├── ci/                      # Garde-fous CI (baseline TypeScript)
 ├── infra/odoo-poc/          # POC gateway Odoo (référentiel maître)
 ├── maestro/                 # Plans de tests mobiles Maestro
@@ -114,7 +113,6 @@ intervenant :
 | [docs/REGLE-VOICE-FIRST.md](docs/REGLE-VOICE-FIRST.md) | Pourquoi tout est voice-first |
 | [docs/POUR_LE_DEV.md](docs/POUR_LE_DEV.md) & [docs/PIEGES_DEV.md](docs/PIEGES_DEV.md) | Pièges connus (Nest v10/v11, trust proxy, VITE_API_URL…) |
 | [.ai/](.ai/) | Cockpit multi-agents autonome (audit global 73/100, dette, conformité, handoffs, ADR-001) |
-| [coordination/](coordination/) | Bus IA↔humain (un fichier = un écrivain) |
 | [ci/README.md](ci/README.md) | Doctrine CI/CD et cibles de production |
 
 ## 6. Scripts principaux
@@ -222,11 +220,9 @@ Préfixes : `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`,
 
 ### Bus IA↔humain
 
-[coordination/](coordination/) est le fil entre Patrick et les instances IA.
-**Un fichier = un seul écrivain.** JULABA historique est le chef d'orchestre et
-le seul qui écrit dans le code ; les autres instances rendent leur verdict dans
-la conversation ou dans `PREUVE-RESULTAT.md`. Voir
-[coordination/README.md](coordination/README.md).
+Le dossier `coordination/` (bus Patrick ↔ instances IA, « un fichier = un
+écrivain ») a été **supprimé le 06/10/2026**. Il ne contenait aucun script ni
+workflow ; l'état acquis du projet reste porté par `docs/PASSATION.md`.
 
 ## 10. Sécurité
 

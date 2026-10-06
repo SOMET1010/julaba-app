@@ -32,7 +32,7 @@
 ### Commits conventionnels
 - ✅ **Tous les commits respectent le format** (analyse `git log` sur 780 commits)
 - ✅ **Préfixes utilisés** : `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `ci:`, `perf:`, `style:`
-- ✅ **Pas de `git add .`** (ajout explicite par fichier, formalisé dans `coordination/README.md`)
+- ✅ **Pas de `git add .`** (ajout explicite par fichier — règle historiquement formalisée dans `coordination/README.md`, dossier supprimé le 06/10/2026)
 - ✅ **Score 100%**
 
 ### Atomicité des commits

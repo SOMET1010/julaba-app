@@ -22,7 +22,7 @@ Format : `<type>(<scope>): <sujet>`
 - 1 commit = 1 préoccupation
 - Pas de `git add .` (ajout explicite par fichier)
 - Pas de commits géants injustifiés
-- Convention formalisée dans `coordination/README.md`
+- Convention historiquement formalisée dans `coordination/README.md` (dossier supprimé le 06/10/2026)
 
 ## Historique récent (5 derniers commits)
 
