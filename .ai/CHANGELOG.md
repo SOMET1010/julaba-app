@@ -5,6 +5,15 @@
 
 ## [Non publié]
 
+### Corrigé — Lots UX-2 « Voix pour tous » et UX-6 « IA/routing » (2026-10-06)
+Suite du suivi de l'audit UX (même source que UX-1) — périmètre marchand/identificateur/transversal (l'agent UX producteur couvre le sien) :
+- **Voix ouverte aux 3 rôles** (décision §8.1, T1 P0) : le garde `role !== 'marchand'` d'`AppContext.speak` est retiré — ~40 appels producteur reprennent vie, le bouton Tata ne meurt plus pour l'identificateur ; le muet utilisateur reste la borne
+- **Parité Tata dans IdentificateurLayout** : `TantieSagesseModal` montée + `onMicClick` passé à Sidebar/BottomBar (comme AppLayout)
+- **Porte keiwa marchand restaurée** (décision §8.3, M-P1-2) : tuile « Mon argent » de retour sur l'accueil vers `/marchand/keiwa` — porte unique, conforme au commentaire d'UniversalProfil ; l'historique (retrait Patrick 24/09, écran verrouillé muet) est consigné et supersedé dans le code
+- **Routes identificateur** (T5/I-P1-4/I-P1-5) : `/identification` → `/fiche-identification`, `/acteurs` → `/identifications`, orphelines `/statistiques` et `/dashboard` → `/rapports` ; onglet « Suivi » ouvre enfin SuiviIdentifications (`/suivi`) ; titre d'écran « Acteurs » aligné sur l'onglet ; `useScoreJULABA` pointe la route canonique
+- **BUG-005** : `/paiement/failed` affichait « Paiement effectué ✅ » (détection `includes('error')` seulement) — corrigé (`/error|failed/`)
+- Vérifications : `tsc -b` 0, garde charte marchande vert, `test:ci` 44 maillons 0, garde-argent = les 3 refus attendus (gels humains en attente)
+
 ### Corrigé — Lot UX-1 « Promesses d'argent » (2026-10-06)
 Suivi de l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`) — décisions §8 tranchées, lot UX-1 exécuté (BUG-001..004) :
 - **Paiements services (Keiwa)** : plus de « Payer maintenant » sans backend — page masquée derrière `PAIEMENTS_SERVICES_ACTIFS`, porte retirée du wallet, route redirigée (BUG-001, `68149f2`)
