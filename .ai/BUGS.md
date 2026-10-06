@@ -4,12 +4,14 @@
 
 ## État au 2026-10-06
 
-- **Total bugs** : 7 (4 résolus, 3 ouverts)
+- **Total bugs** : 8 (5 résolus, 3 ouverts)
 - **Bugs P0** : 0 ouvert
 - **Bugs P1** : 3 ouverts
 - **Bugs P2** : 0 ouverts
 - **Bugs P3** : 0
-- **Bugs résolus** : 4
+- **Bugs résolus** : 5
+
+> Numérotation : BUG-006 et BUG-007 n'ont jamais été attribués (numéros sautés par l'histoire du registre — constaté en REVIEW-004). Ils restent RÉSERVÉS : ne pas les réattribuer, les prochains bugs prennent BUG-011 et suivants.
 
 ## Format d'enregistrement
 
