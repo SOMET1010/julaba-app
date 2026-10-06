@@ -4,7 +4,7 @@
     "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
     "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
     "hooks/useVoiceCore.ts": "65ea3c8d2f3401dc28cf8bdf557b08b2864e9c3c7af3703b7bc7334628f34d67",
-    "contexts/AppContext.tsx": "c00184e5f8e5342419e83a0d11f31a4aa0165f096095e7ee491a34e4aac37b8f",
+    "contexts/AppContext.tsx": "1dc2a065d6bc8a9d28f332503db8ea52ad7b7d19ae59155335f7ed33ead7dc3b",
     "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
     "components/layout/AppLayout.tsx": "addfe8f95e5f505683f552d1efbcbe26e6fb128c2f03d6e19fb7cc6d427af9c2",
