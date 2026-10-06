@@ -203,18 +203,23 @@ function MarchandAccueilVoiceInner() {
     //
     // Décision déjà rendue : « "Résumé caisse" n'est plus une destination
     // concurrente : il appartient à "Mes ventes". »
-    // LA TUILE « MON ARGENT » A ÉTÉ RETIRÉE — décision de Patrick, 24/09.
+    // LA TUILE « MON ARGENT » EST RESTAURÉE — arbitrage §8.3 de l'audit UX
+    // (06/10/2026, AUDIT-UX-ROLES-2026-10-06, sur délégation explicite).
     //
-    // Le commentaire précédent disait qu'elle était CONSERVÉE faute d'arbitrage :
-    // « retirer une entrée de navigation est un arbitrage produit ». L'arbitrage
-    // est désormais rendu.
+    // HISTORIQUE. Retirée par Patrick le 24/09 parce qu'elle tombait sur
+    // « Keiwa verrouillé · Entre ton code PIN » : un écran de sécurité, devant
+    // une femme qui ne lit pas, avec ZÉRO parole. Ce défaut-là est traité à la
+    // racine le même jour : la voix Tata est ouverte aux trois rôles
+    // (AppContext.speak, décision §8.1) — l'écran n'est plus une porte muette.
+    // Depuis le retrait, keiwa n'avait PLUS AUCUNE porte pour la marchande
+    // (seul lien vivant : une notification) — M-P1-2/T5.
     //
-    // Elle ouvrait `/marchand/keiwa` — un produit financier entier logé dans la
-    // caisse d'une marchande, 6 des 26 destinations à lui seul. C'est par cette
-    // tuile qu'on tombait sur « Keiwa verrouillé · Entre ton code PIN » : un
-    // écran de sécurité, devant une femme qui ne lit pas, avec ZÉRO parole.
-    //
-    // LA ROUTE EXISTE TOUJOURS : rien n'est supprimé, seule la porte se ferme.
+    // L'ARBITRAGE : porte UNIQUE, sur l'accueil — l'accueil est la porte
+    // naturelle d'un produit voice-first, le profil est texte (conforme au
+    // commentaire d'UniversalProfil : « Keiwa vit uniquement sur la tuile
+    // "Mon argent" de l'accueil, une seule porte suffit »). Pas de ligne keiwa
+    // dans le profil.
+    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></>), label: 'Mon argent', go: () => navigate('/marchand/keiwa'), teinte: 'var(--caisse-gris-texte)' },
   ];
 
   return (
