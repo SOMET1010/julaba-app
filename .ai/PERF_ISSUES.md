@@ -2,12 +2,12 @@
 
 > Registre des problèmes de performance. Format : PERF-XXX.
 
-## État au 2026-09-28
+## État au 2026-10-06
 
-- **Total problèmes** : 6
+- **Total problèmes** : 7
 - **CRITIQUES (P0)** : 0
 - **MAJEURS (P1)** : 3
-- **MINEURS (P2)** : 3
+- **MINEURS (P2)** : 4
 - **Résolus** : 0
 
 ## Problèmes identifiés (audit initial 2026-09-28)
@@ -47,6 +47,13 @@
 - **Description** : `@nestjs/core` 11.1.28 en `dependencies` frontend — dépendance suspecte (fuite backend ? ~5+ MB).
 - **Impact** : Bundle frontend alourdi inutilement.
 - **Recommandation** : Retirer `@nestjs/core` du `frontend/package.json`.
+
+### PERF-007 — Polling producteur actif hors ligne (P2)
+- **Statut** : OUVERT
+- **Description** : `ProducteurProduction` appelle `refreshAllData()` toutes les 30 secondes sans vérifier `isOnline` ni suspendre la boucle pendant une coupure réseau.
+- **Impact** : requêtes et logs répétés pendant une coupure, feedback réseau peu lisible et charge inutile au retour de connexion.
+- **Fichiers concernés** : `frontend/src/app/components/producteur/ProducteurProduction.tsx:74-84`.
+- **Recommandation** : suspendre le polling hors ligne et déclencher un rafraîchissement unique sur l'événement `online`.
 
 ## Points forts perf (audit initial)
 

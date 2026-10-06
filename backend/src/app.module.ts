@@ -13,7 +13,6 @@ import { BpayModule } from './bpay/bpay.module';
 import { ScheduleModule } from "@nestjs/schedule";
 import { RecoltesRestModule } from './recoltes-rest/recoltes-rest.module';
 import { ProducteurRestModule } from './producteur-rest/producteur-rest.module';
-import { PublicationsModule } from './producteur/publications/publications.module';
 import { ActeursRestModule } from './acteurs-rest/acteurs-rest.module';
 import { DossiersRestModule } from './dossiers-rest/dossiers-rest.module';
 import { TransactionsRestModule } from './transactions-rest/transactions-rest.module';
@@ -32,7 +31,6 @@ import { AuditRestModule } from './audit-rest/audit-rest.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { ZonesModule } from './zones/zones.module';
 import { MarchesModule } from './marches/marches.module';
-import { CommandesModule } from './commandes/commandes.module';
 import { AdminModule } from './admin/admin.module';
 
 
@@ -91,8 +89,6 @@ import { ProtectionSocialeModule } from './protection-sociale/protection-sociale
 
     // Producteur
 
-    // Commandes (multi-rôles)
-    CommandesModule,
     ZonesModule,
     MarchesModule,
     CyclesRestModule,

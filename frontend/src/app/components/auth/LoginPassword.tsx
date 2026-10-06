@@ -117,7 +117,7 @@ import { PaveSaisie } from './PaveSaisie';
  *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
-import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
+import { vlog, vlogStart } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 // AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
@@ -352,10 +352,8 @@ export function LoginPassword() {
   // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
   // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
   // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
-  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
-  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
-  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
-  // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
+  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas).
+  // vlogStart enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
   // Doit rester le PREMIER effet du composant : les suivants y écrivent.
   useEffect(() => {
     vlogStart('login');
@@ -738,9 +736,8 @@ export function LoginPassword() {
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
     if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
     setIsLoading(true); setError('');
-    // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
-    // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
-    // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
+    // Espion de connexion : trace l'URL réellement appelée et le résultat pour
+    // le diagnostic technique interne.
     vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
     try {
       const controller = new AbortController();
@@ -1519,20 +1516,6 @@ export function LoginPassword() {
         >
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>
-        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
-            à Claude et déboguer précisément (phase de test). */}
-        <button
-          type="button"
-          onClick={async () => {
-            const r = await vlogPartager();
-            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
-            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
-          }}
-          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
-        >
-          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
-          Rapport de test
-        </button>
       </motion.div>
       )}
     </div>
