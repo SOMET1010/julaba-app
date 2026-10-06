@@ -28,7 +28,7 @@ import type {
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { attenteApresEchecs, essaisAvantAttente, estVerrouHeriteSansFin } from './verrou-pin';
 import { genererPinIdentificateurAcceptable } from './pin-identificateur';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { PinCryptoService } from './pin-crypto.service';
 import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 

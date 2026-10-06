@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
 import { UserFlag } from '../users/entities/user-flag.entity';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateUserFlagDto } from './dto/create-user-flag.dto';
 import { FlagResolutionAction, ResolveUserFlagDto } from './dto/resolve-user-flag.dto';

@@ -13,7 +13,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
 import { WalletsModule } from '../wallets/wallets.module';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
-import { AuditModule } from '../audit/audit.module';
+import { AuditModule } from '../audit-log/audit-log.module';
 import { PinCryptoService } from './pin-crypto.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
