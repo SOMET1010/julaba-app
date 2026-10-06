@@ -486,3 +486,19 @@ Work Log:
 
 Stage Summary:
 - UX-2 et UX-6 livrés et poussés sur dev : la voix existe pour les 3 rôles, Tata est vivante dans le layout identificateur, keiwa marchand a de nouveau une porte (unique, accueil), les routes identificateur sont canoniques avec redirects, /paiement/failed dit la vérité ; tout le périmètre producteur est documenté comme délégué à l'agent UX producteur (TASKS.md + worklog) ; restent UX-3 (I-* + P-P1-1), UX-4, UX-5, gels humains
+
+---
+Task ID: 16-bis
+Agent: Z.ai Code (orchestrateur)
+Task: Rebase du lot UX-2/UX-6 sur le commit parallèle de l'agent UX producteur (060c333) — résolution de chevauchements, vérification de l'état combiné
+
+Work Log:
+- Push refusé (non fast-forward) : origin/dev avait reçu 060c333 (Akoun-dev, agent UX producteur) pendant l'exécution — fetch, lecture de son diff complet avant toute fusion ; jamais de force
+- Chevauchements découverts et résolus par union : AppContext (il a retiré les MÊMES 2 lignes de garde + ouvert disabledRoles à l'identificateur ; union = son changement + mon commentaire doctrinal §8.1) ; IdentificateurLayout (sa version = SUR-ENSEMBLE du mien : Tata + onMicClick + garde auth + badge offline — SA version retenue, ma copie écartée) ; routes.tsx et roleConfig.ts (ses 2 lignes ⊂ mes versions commentées — mes versions retenues) ; Identifications.tsx (auto-fusion : mon titre « Acteurs » + son param statut mode edit)
+- Rebase abouti : 060c333 → 2e12cf6 (voix, rebasé = commentaire doctrinal + note disabledRoles — la substance du gate vit désormais dans 060c333) → 0c026aa (tuile Mon argent) → 7699927 (routing) → 65c1783 (BUG-005) → 5d27f63 (docs)
+- Découverte : 060c333 REFIGE aussi ci/EMPREINTE-GARDES.json et ci/PERIMETRE-ARGENT.json — le garde-argent passe de 3 refus à 1 : restent uniquement « la chaîne test:ci diffère de f0c965c — GELÉE » (refus pré-existant, jamais touché par mes commits, décision humaine en attente avec note GARDE-ASSOUPLIE le cas échéant). NB : le refigeage était jusqu'ici décrit comme un geste humain (Patrick) — fait ici par l'agent producteur, consigné tel quel, non annulé
+- Vérifications sur l'état COMBINÉ (le sien + le mien) : tsc -b 0 ; garde charte marchande verte ; test:ci 44 maillons EXIT 0 « Tous les tests sont verts » ; garde-argent 1 refus attendu
+- 060c333 livre aussi des morceaux d'UX-3/UX-4 (brouillon localStorage identificateur, badge offline dans IdentificateurLayout) et des correctifs producteur (Revenus, Stocks, RecolteDetailModal, PublierRecolte, ProductionKPIBar) — la répartition des rôles a tenu : moi = marchand/identificateur infra + routing + callbacks ; lui = producteur + brouillons + couches layout
+
+Stage Summary:
+- UX-2/UX-6 fusionnés proprement avec le travail parallèle : aucun doublon, aucune perte (unions vérifiées ligne à ligne), historique linéaire sur dev, batteries vertes sur l'état combiné ; le garde-argent ne présente plus qu'UN refus pré-existant en attente de décision humaine
