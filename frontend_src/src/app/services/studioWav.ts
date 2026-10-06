@@ -2,10 +2,10 @@
 // Studio Voice v0 — utilitaires PURS (sans DOM) de la console d'enregistrement.
 //
 // - encoderWav : échantillons Float32 → fichier WAV PCM 16 bits mono. C'est le
-//   format MASTER du studio (docs/PACKS_VOIX.md) : on archive du WAV, le MP3 de
-//   publication est transcodé ensuite (ffmpeg, checklist du doc).
+//   format MASTER du studio (docs/archive/PACKS_VOIX.md) : on archive du WAV, le
+//   MP3 de publication est transcodé ensuite (ffmpeg, checklist du doc).
 // - genererManifesteStudio : squelette de manifeste prêt à téléverser, aligné
-//   sur le format validé par services/voicePacks.ts.
+//   sur le format du registre public/voix/manifeste.exemple.json.
 // ──────────────────────────────────────────────────────────────────────────
 
 /** Encode un signal mono en WAV PCM 16 bits (en-tête RIFF standard). */
@@ -52,7 +52,16 @@ export function genererManifesteStudio(
   clips: ClipStudio[],
   baseUrl: string,
   packVersion: number,
-): object {
+): {
+  manifest_version: number;
+  packs: Array<{
+    lang: string;
+    voice: string;
+    pack_version: number;
+    base_url: string;
+    clips: Array<{ key: string; file: string; texte: string }>;
+  }>;
+} {
   return {
     manifest_version: 1,
     packs: [

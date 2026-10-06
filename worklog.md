@@ -271,3 +271,25 @@ Work Log:
 Stage Summary:
 - État livré VÉRIFIÉ indépendamment : dev == origin/dev == b89b988, Phases 0-3 du plan closes, deux typechecks verts sur dev
 - Le dépôt est laissé sur dev ; le tooling sandbox rebasculant régulièrement HEAD sur main, vérifier `git branch --show-current` avant toute opération git
+---
+Task ID: 11-a
+Agent: Explore (scan mort frontend)
+Task: Scan code mort frontend — candidats avec preuves
+
+Work Log:
+- Contexte lu : worklog.md Task 9 (3 registres permissions divergents) + Task 10 (Phases 0-2 : 6 Universal*BO, 10 deps, 12 images supprimés)
+- Pages : les 10 .tsx de pages/ vérifiés un à un contre routes.tsx + imports croisés → 10/10 VIVANTS (lazy imports routes.tsx:30-64,81,230 ; StudioVoixClonage ← StudioVoix.tsx:32 ; DevModeHome route isDev-only routes.tsx:64)
+- Contexts : tour complet — les 7 candidats (RapportHebdo, Audit, Modal, SupportConfig, Raccourcis, Shortcuts, objectifAlerts) tous importés ; ShortcutsContext N'EST PAS un doublon de RaccourcisContext (undo/actions BO, provider App.tsx:31, consommateurs BOEnrolement/BOActeurs/BOUtilisateurs vs raccourcis caisse vocale marchande) ; AuditContext vivant (App.tsx:19 + InstitutionSupervision:29 + AuditTrail:21)
+- Hooks : tour complet — 8 candidats tous importés (useCountUp←ProducteurProduction:19 ; useScoreJULABA←ScoreResumeCard/ScoreOnboardingModal/ActionsGuideesCard ; useMarchesByCommune←MarcheSelect:3 ; useDevMode+useDicteeLive←LoginPassword:100-102 ; useIdleTimer←BOLayout:21 ; useLangPref←UniversalParametres+speakMessage+4 écrans ; useCatalogueMaitre←POSCaisse:24) ; useOfflineVoiceQueue←useVoiceCore.ts:26
+- Services : scan exhaustif des 105 .ts (2 passes : chemin cité entre quotes, puis lignes d'import réelles uniquement, auto-réf et *.test.* exclus) → 7 candidats nommés tous VIVANTS (meteo←ProducteurAlertes:31 routé ; evaluations←NoterCommande+MarcheVirtuel routés ; protectionSociale←ProtectionSociale:25 routé ; fidelite←Fidelite:17 routé ; elevenlabs←12 importeurs ; mp3Encoder←StudioVoix:29 ; supportLu←SupportCardProfil:20+SupportContact:14 usage réel hors test) ; 1 seul orphelin réel = voicePacks.ts ; routageAudio/index.ts vivant via import dynamique main.tsx:76
+- voicePacks.ts (102 l.) : 0 import hors tests (voicePacks.test.mts + studioWav.test.mts:5) ; voicePacksRuntime.ts est un STUB volontaire (packClipUrl→null) vivant via onboardingVoix.ts:15 et ne l'importe pas ; package.json:90 script « test:packs » ne lance que le test du module mort ; studioWav.ts:8 n'y fait qu'une mention en commentaire ; studioWav.ts vivant (encoderWav ← StudioVoix.tsx:30)
+- Data/Types/design-tokens : mockUsers←ProfileSwitcher:15 (DEV_MOCK_USERS, rendu DEV dans LoginPassword/BOLayout/IdentificateurLayout/InstitutionLayout/Dashboard/AppLayout) ; civ-geography←6 BO + utils/civ-gadm-district-mapping ; activites-vivriers←FicheIdentificationDynamique:18 ; catalogue-produits←CaisseContext:7+emojiTile ; payment←CommandeContext:6-7+HistoriqueList:13 ; document←DocumentsCertificationsModalUniversal:12 (←UniversalProfil:37) ; statutEnregistrement←CaisseContext:111-112 ; sousProfilMarchand←backoffice-api:3+AppContext:55+UniversalProfil:33+FicheIdentificationDynamique:29 ; design-tokens←Card:10+Modal:11+ProfilUnifieModal:8
+- Assets : 0 image orpheline (38 src/assets/images + 3 redesign + riz.jpg + 3 icônes PWA public/images vivantes par manifest/sw) ; registre app/assets/images.ts importé ×15 ; tabler-subset.woff2 VIVANT (styles/icons-tabler.css:14 ← main.tsx:13 ; régénéré par scripts/generer-icones.mjs)
+- bo-permissions : config/bo-permissions.ts VIVANT — importé ET utilisé par BOUtilisateurs.tsx:11-17 (BO_PERMISSION_TREE:156, allPermissionKeys/roleCanHave/buildDefaultPermissions :170-527) ; le constat d'audit Task 9 « bo-permissions.ts mort » est PÉRIMÉ ; les 3 registres (config/bo-permissions.ts, PERMISSIONS/DEFAULT_INSTITUTION_PERMISSIONS dans BackOfficeContext, buildFullBoPermissions local FicheIdentificationDynamiqueBO.tsx:123) sont tous référencés → sujet d'UNIFICATION, pas de code mort
+- README-MOCK-SERVICE.md : décrit services/mock/producteur-mock.service.ts + hooks/useProducteurMockInit.ts qui N'EXISTENT PLUS (seule mention du repo = ce README) → doc morte
+- READ-ONLY respecté : aucun fichier de code modifié ; seul append de cette section
+
+Stage Summary:
+- DELETE (4) : services/voicePacks.ts + services/voicePacks.test.mts (paire morte, 0 import hors tests) + script package.json « test:packs » (frontend) + services/README-MOCK-SERVICE.md (décrit un service/hook supprimés) ; coupler : adapter studioWav.test.mts:5,39-40 (import validerManifeste) ; arbitrer docs/PACKS_VOIX.md + public/voix/manifeste.exemple.json (doc/data d'exemple du module mort, hors code)
+- KEEP : 10/10 pages, 24 contexts, 29 hooks, 104/105 services, 4/4 data, 4/4 types, design-tokens.ts, images.ts, tabler-subset.woff2, config/bo-permissions.ts — tout prouvé utilisé
+- INCERTAIN : aucun fichier code incertain ; correction au dossier d'audit : « bo-permissions.ts mort » à invalider (il est branché sur BOUtilisateurs), la divergence des 3 registres reste un chantier d'unification

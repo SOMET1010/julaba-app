@@ -2,7 +2,6 @@
 // Lancer :  npx tsx src/app/services/studioWav.test.mts
 
 import { encoderWav, genererManifesteStudio } from "./studioWav.js";
-import { validerManifeste } from "./voicePacks.js";
 
 let failures = 0;
 function ok(cond: boolean, label: string): void {
@@ -30,17 +29,15 @@ function main(): void {
   ok(v.getInt16(52, true) === -0x8000, "-1.0 → minimum");
   ok(v.getInt16(54, true) === 0x7fff && v.getInt16(56, true) === -0x8000, "hors bornes → écrêté proprement");
 
-  console.log("\n[3] Manifeste du studio — accepté par le validateur des packs");
+  console.log("\n[3] Manifeste du studio — forme générée");
   const manifeste = genererManifesteStudio(
     [{ key: "intro_accueil", texte: "Bonjour ! Moi, c'est Tata." }],
     "https://exemple.ci/voix/fr/tata_v2/2",
     2,
   );
-  const valide = validerManifeste(manifeste);
-  ok(valide !== null, "le squelette passe validerManifeste tel quel");
-  ok(valide!.packs[0].pack_version === 2, "version transportée");
-  ok(valide!.packs[0].clips[0].file === "intro_accueil.mp3", "fichier nommé par la clé");
-  ok(valide!.packs[0].clips[0].texte === "Bonjour ! Moi, c'est Tata.", "texte transporté");
+  ok(manifeste.packs[0].pack_version === 2, "version transportée");
+  ok(manifeste.packs[0].clips[0].file === "intro_accueil.mp3", "fichier nommé par la clé");
+  ok(manifeste.packs[0].clips[0].texte === "Bonjour ! Moi, c'est Tata.", "texte transporté");
 
   console.log(failures === 0 ? "\nTous les tests studioWav passent." : `\n${failures} échec(s).`);
   if (failures > 0) process.exit(1);
