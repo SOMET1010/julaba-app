@@ -31,8 +31,8 @@ import { fileURLToPath } from 'node:url';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const RACINE = join(ICI, '..');
-const BO = join(RACINE, 'frontend_src/src/app/components/backoffice');
-const CONTEXTE = join(RACINE, 'frontend_src/src/app/contexts/BackOfficeContext.tsx');
+const BO = join(RACINE, 'frontend/src/app/components/backoffice');
+const CONTEXTE = join(RACINE, 'frontend/src/app/contexts/BackOfficeContext.tsx');
 
 const sansCommentaires = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map(l => (/^\s*(\/\/|\*)/.test(l) ? '' : l)).join('\n');

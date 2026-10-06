@@ -348,7 +348,7 @@ function empreinteFichier(chemin) {
 // Le corpus : quels fichiers sont des GARDES, quels fichiers sont du NOYAU
 // ═══════════════════════════════════════════════════════════════════════════
 const lireJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
-const pkgFront = () => lireJson(join(RACINE, 'frontend_src', 'package.json'));
+const pkgFront = () => lireJson(join(RACINE, 'frontend', 'package.json'));
 
 /**
  * Les maillons de `verify`, dans l'ordre — des NOMS de scripts.
@@ -364,7 +364,7 @@ const pkgFront = () => lireJson(join(RACINE, 'frontend_src', 'package.json'));
 function maillonsDeVerify(pkg) {
   const chaine = pkg.scripts?.verify ?? '';
   if (/(?:^|\s)node\s+(?:\.\/)?scripts\/verify-tout\.mjs(?:\s|$)/.test(chaine)) {
-    const f = join(RACINE, 'frontend_src', 'scripts', 'maillons-verify.json');
+    const f = join(RACINE, 'frontend', 'scripts', 'maillons-verify.json');
     let maillons;
     try { maillons = lireJson(f).maillons; } catch (e) {
       throw new Error(`verify passe par verify-tout.mjs mais ${relative(RACINE, f)} est illisible : ${e.message}`);
@@ -387,7 +387,7 @@ function gardesDerivees() {
     if (!cmd) continue;
     const m = cmd.match(/(?:^|\s)(?:tsx|node)\s+(\S+)/);
     if (!m) continue;                       // `typecheck` n'est pas un fichier
-    const rel = `frontend_src/${m[1]}`;
+    const rel = `frontend/${m[1]}`;
     if (existsSync(join(RACINE, rel))) gardes.push({ fichier: rel, script: nom });
   }
   const dossier = join(RACINE, 'backend', 'test', 'invariants');
@@ -484,7 +484,7 @@ function importsDe(abs) {
 function resoudreImport(fichierRel, spec, noyauSet) {
   let base;
   if (spec.startsWith('.')) base = `${dirname(fichierRel)}/${spec}`;
-  else if (spec.startsWith('@/')) base = `frontend_src/src/${spec.slice(2)}`;
+  else if (spec.startsWith('@/')) base = `frontend/src/${spec.slice(2)}`;
   else return null;
   // Normalisation posix des `..` sans toucher au système de fichiers.
   const parts = [];

@@ -3,7 +3,7 @@
 ## 1. Identité et périmètre
 
 - **Rôle** : `institution` (ANSUT / régulateur — partenaire réglementaire, cf. PROJECT_CONTEXT §1/§2).
-- **Frontend audité** : `frontend_src/src/app/components/institution/` (10 fichiers, ~3 630 l.) : InstitutionLayout, InstitutionHome, Dashboard, DashboardAnalytics, Analytics, InstitutionActeurs, InstitutionSupervision, AuditTrail, InstitutionParametres, InstitutionProfil ; routes `routes.tsx:139-148` (9 routes) + backoffice `BOInstitutions.tsx` (951 l.), `BOConfigInstitution.tsx` (521 l., route `config-institution` :221).
+- **Frontend audité** : `frontend/src/app/components/institution/` (10 fichiers, ~3 630 l.) : InstitutionLayout, InstitutionHome, Dashboard, DashboardAnalytics, Analytics, InstitutionActeurs, InstitutionSupervision, AuditTrail, InstitutionParametres, InstitutionProfil ; routes `routes.tsx:139-148` (9 routes) + backoffice `BOInstitutions.tsx` (951 l.), `BOConfigInstitution.tsx` (521 l., route `config-institution` :221).
 - **Backend audité** : `backend/src/institutions/` (2 contrôleurs + guard + décorateurs + entité), `backend/src/ansut/` (service, **aucun contrôleur**), `backend/src/oneci/`, canaux adjacents ouverts au rôle institution : `users.controller.ts`, `scores.controller.ts`, `notifications.controller.ts`, `events.gateway.ts`.
 - **Conformité** : loi ivoirienne n°2013-450 (données personnelles) — accès PII marchandes, traçabilité, justification.
 - **Sondes runtime** (backend :3001, lecture seule) : login marchande Awa Koné (+2250700000009) → 200 ; login institution Aïcha Bamba (+2250700000015) → 200 ; 5 GET effectués (détaillés §3/§4).

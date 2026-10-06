@@ -1,7 +1,7 @@
 # Backlog du parcours marchand — ce qu'on suit à chaque passe
 
 **Source de vérité des défauts : le banc terrain**, pas une impression.
-`cd frontend_src && node apercu-caisse/banc-terrain.mjs` — 30 écrans, catalogue
+`cd frontend && node apercu-caisse/banc-terrain.mjs` — 30 écrans, catalogue
 vide, sans réseau, 390 × 844, `NODE_ENV=production`. Le rapport de référence est
 versionné : `docs/parcours/captures/banc-terrain/banc-terrain.json`.
 

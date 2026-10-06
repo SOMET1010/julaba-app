@@ -38,9 +38,9 @@ grep -rln "exceljs\|pdfkit\|jspdf" backend/src            # rapports/exports
 grep -rn "emitTransactionCreated" backend/src            # événements
 
 # Frontend — points d'entrée réseau puis consommateurs
-grep -rn "caisse/transactions\|fetchCaisseTransactions\|/transactions/all\|/transactions/export\|geo-aggregation\|by-acteur-geo\|rapport/hebdo\|financial-score" frontend_src/src --include=*.ts --include=*.tsx
-grep -rn "type === 'vente'\|type === 'depense'\|ventesCredit\|ventesEspeces\|acomptesCredit\|encaisse\b\|getSalesHistory\|getFinancialSummary\|getTodayStats\|venteComptee\|resumeVentes\|topProduitsVentes\|caisseTheorique\|mode_paiement\|paymentMethod" frontend_src/src --include=*.ts --include=*.tsx | grep -v "\.test\."
-grep -rn "'/caisse/vente'\|'/caisse/depense'\|'/caisse/credits'" frontend_src/src/app/voice-offline frontend_src/src/app/hooks   # file hors ligne
+grep -rn "caisse/transactions\|fetchCaisseTransactions\|/transactions/all\|/transactions/export\|geo-aggregation\|by-acteur-geo\|rapport/hebdo\|financial-score" frontend/src --include=*.ts --include=*.tsx
+grep -rn "type === 'vente'\|type === 'depense'\|ventesCredit\|ventesEspeces\|acomptesCredit\|encaisse\b\|getSalesHistory\|getFinancialSummary\|getTodayStats\|venteComptee\|resumeVentes\|topProduitsVentes\|caisseTheorique\|mode_paiement\|paymentMethod" frontend/src --include=*.ts --include=*.tsx | grep -v "\.test\."
+grep -rn "'/caisse/vente'\|'/caisse/depense'\|'/caisse/credits'" frontend/src/app/voice-offline frontend/src/app/hooks   # file hors ligne
 ```
 
 Exclusions vérifiées et motivées : `boutique.service.ts:61` (`m.type === "vente"` porte sur `stock_mouvements`), `notifications.service.ts:157` (type de notification), `mouvement-mapper.ts:71` (ledger stock), `institution-dashboard.controller.ts` (lit `WalletTransaction`, pas la caisse — son `type !== 'credit'` l. 80 est le crédit **wallet**), `export.utils.ts:331` (colonnes acheteur/vendeur : export des **commandes**), `admin.service.ts:150` (lecture d'`information_schema`, pas de données), `seed-demo.service.ts` (écrivain, §B). **Aucune vue SQL ne lit `caisse_transactions`** (`credits_avec_statut` lit `credits` seulement ; la baseline `1780200000000` ne définit que cette vue).

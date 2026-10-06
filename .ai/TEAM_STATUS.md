@@ -13,7 +13,7 @@
 
 ### 🔵 FRONTEND (Dev Frontend)
 - **Tâche** : Audit initial terminé
-- **Fichiers** : `frontend_src/` (95 routes, 24 contexts, 16 composants UI)
+- **Fichiers** : `frontend/` (95 routes, 24 contexts, 16 composants UI)
 - **Statut UI** : React 18.3 + Vite 6.3 + Tailwind 4 + shadcn/Radix opérationnel
 - **Score santé frontend** : 73/100
 - **Prochaine action** : En attente d'affectation de feature

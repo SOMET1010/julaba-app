@@ -66,7 +66,7 @@ git checkout main          # REL-01 : la seule référence auditée
 npm ci
 
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # OBLIGATOIRE
-npm run build -w frontend_src
+npm run build -w frontend
 npx cap sync android
 
 cd android

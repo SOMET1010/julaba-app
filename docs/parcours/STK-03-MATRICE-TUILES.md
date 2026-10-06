@@ -3,7 +3,7 @@
 Mesure du 23/09/2026, arbre `fd10e47`. **Aucune modification fonctionnelle.**
 Rejouable : `python3 scripts/inventaire/stk03-matrice-tuiles.py`
 
-Sources : `frontend_src/src/app/data/catalogue-produits.ts` (37 tuiles) et
+Sources : `frontend/src/app/data/catalogue-produits.ts` (37 tuiles) et
 `docs/data/catalogue-maitre-julaba.v1.json` (198 références, 18 familles,
 30 sous-familles).
 

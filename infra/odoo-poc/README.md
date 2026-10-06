@@ -130,7 +130,7 @@ verifie **au franc pres** : un prix qui derive fait echouer le test.
 
 > **Divergence a trancher cote JULABA.** Les deux sources de prix du depot ne
 > s'accordent pas : `seed-demo.service.ts` donne Tomate a 200 et Banane a 100,
-> tandis que `frontend_src/src/app/data/catalogue-produits.ts` donne 400 et 700.
+> tandis que `frontend/src/app/data/catalogue-produits.ts` donne 400 et 700.
 > Le POC suit la premiere, comme demande. Mais deux catalogues qui se
 > contredisent, c'est le principe 2 de la CONSTITUTION — un concept, une seule
 > source de verite. Ce n'est pas un probleme de ce POC, c'en est un de JULABA.

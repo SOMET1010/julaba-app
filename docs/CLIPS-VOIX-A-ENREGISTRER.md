@@ -30,7 +30,7 @@ n'écrire rien du tout**.
 Le code les attend déjà, sous ces noms exacts. Leur absence est la cause du
 silence des deux premiers écrans — les tout premiers qu'une marchande voit.
 
-À déposer dans `frontend_src/public/voix/tata/`.
+À déposer dans `frontend/public/voix/tata/`.
 
 | Fichier | Texte à dire |
 |---|---|

@@ -4,7 +4,7 @@
 
 - **Rôle** : `identificateur` — acteur terrain d'enrôlement (création de dossiers d'identification, comptes acteurs, suivi, mutation).
 - **Périmètre audité (statique, lecture seule)** :
-  - Frontend : `frontend_src/src/app/components/identificateur/**` (16 fichiers, ~15 400 l., dont `FicheIdentificationDynamique.tsx` 5 753 l.), routes `routes.tsx:163-186`, contexts `IdentificateurContext.tsx` (413 l.) / `ZoneContext.tsx` (155 l.), `api-client.ts`.
+  - Frontend : `frontend/src/app/components/identificateur/**` (16 fichiers, ~15 400 l., dont `FicheIdentificationDynamique.tsx` 5 753 l.), routes `routes.tsx:163-186`, contexts `IdentificateurContext.tsx` (413 l.) / `ZoneContext.tsx` (155 l.), `api-client.ts`.
   - Backend : `backend/src/{identifications,acteurs-rest,oneci,admin-divisions}/`, plus supports directement impliqués : `auth/` (signup allow-list, PIN identificateur, verrou, activation P0.0, jwt.strategy), `users/` (by-phone, search-identificateur, PATCH :id, photo), `mutations/`, `zones/`.
   - Normes : PROJECT_CONTEXT §1/§8, ACCESSIBILITY_GUIDE §4/5/6, DESIGN_SYSTEM §9, worklog Tasks 1-8.
 - **Sonde runtime** (backend :3001, 5 requêtes max, lecture seule) : 3 GET sans token + 1 POST login + 1 GET avec token (voir §3/§7).

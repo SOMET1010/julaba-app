@@ -4,8 +4,8 @@
 .git
 .github
 **/node_modules
-frontend_src/dist
-frontend_src/tsconfig.tsbuildinfo
+frontend/dist
+frontend/tsconfig.tsbuildinfo
 backend/dist
 docs
 *.zip

@@ -10,7 +10,7 @@
 # rien : il donne toujours la même réponse.
 #
 # LES PRODUITS CHOISIS SONT TOUS DANS LE VOCABULAIRE VOCAL EMBARQUÉ
-# (frontend_src/src/app/voice-offline/vocabulaire.ts). C'est la condition pour
+# (frontend/src/app/voice-offline/vocabulaire.ts). C'est la condition pour
 # que le test ait un sens : dicter un produit que l'application ne connaît pas
 # ne teste que le repli, pas la reconnaissance.
 #

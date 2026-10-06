@@ -49,7 +49,7 @@ avant de lancer Gradle.
 # webDir pointe vers frontend/dist, jamais peuplé sans ce build.
 # VITE_API_URL est OBLIGATOIRE ici — voir l'avertissement ci-dessous.
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1
-npm run build --workspace frontend_src
+npm run build --workspace frontend
 npx cap sync android   # copie frontend/dist dans android/app/src/main/assets/public
 
 cd android
@@ -58,9 +58,9 @@ cd android
 ```
 
 ⚠️ **`capacitor.config.ts` (racine)** : `webDir` doit valoir `'frontend/dist'`
-(le dossier de sortie réel de Vite — `frontend_src/vite.config.ts` →
+(le dossier de sortie réel de Vite — `frontend/vite.config.ts` →
 `build.outDir: "../frontend/dist"`). Une valeur malformée ou pointant vers
-`frontend_src/dist` (jamais peuplé) fait échouer ou vider silencieusement
+`frontend/dist` (jamais peuplé) fait échouer ou vider silencieusement
 `npx cap sync` — c'est le blocage levé au premier build réel (ci-dessous).
 
 ⚠️ **`VITE_API_URL` DOIT être exportée avant `npm run build` ci-dessus** —
@@ -68,7 +68,7 @@ cd android
 export VITE_API_URL=https://julaba-api.onrender.com/api/v1   # ou un autre backend (staging, VPS)
 ```
 Sans elle, l'APK compile sans erreur mais ne peut joindre **aucun** backend :
-`resoudreUrlApi()` (`frontend_src/src/app/utils/api.ts`) détecte l'exécution
+`resoudreUrlApi()` (`frontend/src/app/utils/api.ts`) détecte l'exécution
 native via `Capacitor.getPlatform()` et refuse volontairement tout repli sur
 un chemin relatif (qui, dans le WebView, désignerait les fichiers embarqués
 dans le téléphone, pas un serveur). Elle renvoie une URL délibérément

@@ -4,7 +4,7 @@
 
 - **Rôle audité** : admin_national (UserRole.ADMIN_NATIONAL, user.entity.ts:25) — back-office national.
 - **Famille BO** : super_admin, admin_general, admin_national, gestionnaire_zone, operateur_terrain (auth.service.ts:40, bo-autorisation.ts:22, BORoot.tsx:17-23).
-- **Périmètre couvert** : frontend frontend_src/src/app/components/backoffice/** (BORoot, BOLayout, BOLogin, écrans BO*, universal/), routes routes.tsx:188-222 ; backend backend/src/{admin,users,user-flags,mutations,notifications,tickets-rest,audit-rest,transactions-rest,identifications,auth} ; garde serveur bo-autorisation.ts ; journal d'audit ; a11y écrans BO.
+- **Périmètre couvert** : frontend frontend/src/app/components/backoffice/** (BORoot, BOLayout, BOLogin, écrans BO*, universal/), routes routes.tsx:188-222 ; backend backend/src/{admin,users,user-flags,mutations,notifications,tickets-rest,audit-rest,transactions-rest,identifications,auth} ; garde serveur bo-autorisation.ts ; journal d'audit ; a11y écrans BO.
 - **Sonde runtime** (5 appels lecture seule, backend :3001) : /api/v1/admin/stats et /api/v1/users **sans token → 401** ; token Awa Koné (marchande) obtenu → mêmes endpoints **403** « Rôle requis: ADMIN ». Aucune écriture.
 - **Audit précédent relu** : AUDIT-ACTEUR-ADMIN-NATIONAL-2026-09-28.md — générique, statut « À RECETTER ». Verdict §7 infra.
 

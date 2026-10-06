@@ -30,7 +30,7 @@ import { join, basename } from 'node:path';
 
 const RACINE = process.cwd();
 const LOT = join(RACINE, 'docs/voix/LOT-A-ENREGISTRER.csv');
-const SORTIE_DEFAUT = join(RACINE, 'frontend_src/public/voix/tata');
+const SORTIE_DEFAUT = join(RACINE, 'frontend/public/voix/tata');
 
 // Tolérances. Elles viennent des 128 clips humains déjà en place, mesurés.
 const CIBLE_LUFS = -16, TOLERANCE_LUFS = 1.0;

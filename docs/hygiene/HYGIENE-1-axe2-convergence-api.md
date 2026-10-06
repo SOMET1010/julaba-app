@@ -132,8 +132,8 @@ passe quand il n'y en a pas.
 ## Portes franchies
 
 - `node ci/check-tsc-baseline.mjs` — 0 erreur
-- `npm run verify -w frontend_src` (55 scripts) — vert
-- `npm run test:ci -w frontend_src` (gelé) — vert, **non modifié**
+- `npm run verify -w frontend` (55 scripts) — vert
+- `npm run test:ci -w frontend` (gelé) — vert, **non modifié**
 - `npm run test:unit -w backend` — 195 tests / 24 suites, vert
 - `npm run build` frontend et backend — verts
 

@@ -3,7 +3,6 @@
 .github
 node_modules
 **/node_modules
-frontend/
 backend/
 docs/
 scripts/
@@ -13,5 +12,5 @@ nginx/*.conf
 !nginx/frontend.conf
 *.zip
 *.md
-frontend_src/dist
-frontend_src/tsconfig.tsbuildinfo
+frontend/dist
+frontend/tsconfig.tsbuildinfo

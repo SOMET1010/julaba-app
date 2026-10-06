@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@v5
 
       # Monorepo npm workspaces : un seul lockfile a la racine, pas de
-      # frontend_src/package-lock.json. On installe depuis la racine et on build
+      # frontend/package-lock.json. On installe depuis la racine et on build
       # le workspace frontend (Vite emet dans ../frontend/dist, cf. vite.config).
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -47,7 +47,7 @@ jobs:
         run: npm ci
 
       - name: Build frontend
-        run: npm run build --workspace frontend_src
+        run: npm run build --workspace frontend
 
       - name: Configure SSH
         run: |

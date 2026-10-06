@@ -39,15 +39,15 @@ Deux cas déjà traités te servent d'exemple :
 ## Les fichiers à lire
 
 ```
-frontend_src/src/app/components/auth/LoginPassword.tsx      (l'écran principal)
-frontend_src/src/app/components/auth/UnregisteredPhone.tsx
-frontend_src/src/app/components/auth/ActivationScreen.tsx
-frontend_src/src/app/components/auth/ChangePasswordScreen.tsx
-frontend_src/src/app/components/auth/PropositionReconnaissance.tsx
-frontend_src/src/app/components/auth/EntryGate.tsx
-frontend_src/src/app/components/auth/Welcome.tsx
-frontend_src/src/app/services/entreeVoix.ts                 (la table de clés)
-frontend_src/src/app/services/loginVoiceScript.ts           (les 37 moments)
+frontend/src/app/components/auth/LoginPassword.tsx      (l'écran principal)
+frontend/src/app/components/auth/UnregisteredPhone.tsx
+frontend/src/app/components/auth/ActivationScreen.tsx
+frontend/src/app/components/auth/ChangePasswordScreen.tsx
+frontend/src/app/components/auth/PropositionReconnaissance.tsx
+frontend/src/app/components/auth/EntryGate.tsx
+frontend/src/app/components/auth/Welcome.tsx
+frontend/src/app/services/entreeVoix.ts                 (la table de clés)
+frontend/src/app/services/loginVoiceScript.ts           (les 37 moments)
 docs/voix/LOT-A-ENREGISTRER.csv                             (les textes enregistrés)
 ```
 
@@ -80,7 +80,7 @@ enregistrés : c'est `LOT-A-ENREGISTRER.csv` qui fait foi.
 
 ## Et une petite chose à part
 
-Réécoute `frontend_src/public/voix/tata/ui-085.mp3`. Il avait été transcrit
+Réécoute `frontend/public/voix/tata/ui-085.mp3`. Il avait été transcrit
 « Ouverture des détails de **l'opération** ». Or le fichier qui dit cette
 famille de phrases (`components/shared/DocumentsCertificationsModalUniversal.tsx`)
 n'en a que trois : la carte d'identité, la certification JULABA, et

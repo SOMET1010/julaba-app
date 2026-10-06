@@ -128,7 +128,7 @@ jobs:
           VITE_JULABA_VOICE_PREVIEW: ${{ inputs.voix_prototype }}
           JULABA_VOIX_DYU: ${{ inputs.voix_dyu == 'true' && '1' || '0' }}
           JULABA_DYU_ARGENT: ${{ inputs.dyu_argent == 'true' && '1' || '0' }}
-        run: npm run build -w frontend_src
+        run: npm run build -w frontend
 
       - name: Copier le front dans le projet Android
         run: npx cap sync android

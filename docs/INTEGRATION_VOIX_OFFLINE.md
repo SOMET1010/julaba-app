@@ -10,7 +10,7 @@ Statut : **compile** (typecheck 0 erreur sur les fichiers ajoutés/modifiés ; `
 historique, stock) est **inchangé** : on branche l'offline en amont et en aval.
 
 **Couche 1 — comprendre sans réseau** (`useVoiceCore.processAudio`)
-- Nouveau dossier `frontend_src/src/app/voice-offline/` :
+- Nouveau dossier `frontend/src/app/voice-offline/` :
   - `offlineStt.ts` — STT Vosk 100 % sur l'appareil (`transcribeWav(blob)`),
     `vosk-browser` en **import dynamique** (chunk séparé, chargé à la demande).
   - `extraction.ts` + `vocabulaire.ts` — compréhension locale (produits, nombres,

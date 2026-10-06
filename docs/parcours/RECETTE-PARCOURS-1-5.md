@@ -17,7 +17,7 @@ Les deux corrections sont nommées plus bas.
 ## Commande exacte pour rejouer
 
 ```bash
-cd frontend_src
+cd frontend
 
 # La passe 1 → 5, sans réseau (le cas du marché)
 BANC_SORTIE=../docs/parcours/captures/parcours-1-5 \

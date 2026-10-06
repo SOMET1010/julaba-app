@@ -14,7 +14,7 @@
 | Sous-tâche | Rôle | Fichiers concernés | Dépendances | Effort |
 |---|---|---|---|---|
 | ST-1 | Backend | `backend/src/...` | — | S |
-| ST-2 | Frontend | `frontend_src/src/...` | ST-1 (contrat API) | M |
+| ST-2 | Frontend | `frontend/src/...` | ST-1 (contrat API) | M |
 | ST-3 | DevOps | `.github/workflows/...` | — | S |
 
 ## Contrats d'interface

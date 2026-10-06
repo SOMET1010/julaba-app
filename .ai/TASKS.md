@@ -54,7 +54,7 @@
 
 ### P3
 - Purger `node_modules` de l'historique git via `git filter-repo`
-- Nettoyer `frontend_src/src/imports/` (mélange code + prompts obsolètes)
+- Nettoyer `frontend/src/imports/` (mélange code + prompts obsolètes)
 - Adopter `devise.ts` partout (480 « FCFA » en dur)
 - Réduire les 173 `fetch()` directs hors `services/api/`
 - Réduire les 35 branches vivantes

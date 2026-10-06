@@ -28,7 +28,7 @@
 
 - `backend/test/unit/xxx.spec.ts` : X tests
 - `backend/test/invariants/xxx.spec.ts` : Y tests (si module sacré)
-- `frontend_src/tests/xxx.test.mts` : Z tests
+- `frontend/tests/xxx.test.mts` : Z tests
 
 ## Garde-fous à vérifier
 

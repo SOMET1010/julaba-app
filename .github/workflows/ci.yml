@@ -50,7 +50,7 @@ jobs:
         run: npm run check:nest-versions
 
       - name: Build frontend
-        run: npm run build -w frontend_src
+        run: npm run build -w frontend
 
       - name: Build backend
         run: npm run build -w backend
@@ -59,15 +59,15 @@ jobs:
         run: npm run test:unit -w backend
 
       - name: Tests frontend (harnais tsx)
-        run: npm run test:ci -w frontend_src
+        run: npm run test:ci -w frontend
 
       # Déterminisme du manifeste voix (Studio Voix, Lot 1). Auto-activant :
       # tourne dès que le script existe sur la branche (donc quand Studio Voix
       # sera mergé), et s'ignore proprement sinon.
       - name: Déterminisme manifeste voix (si présent)
         run: |
-          if node -e "process.exit(require('./frontend_src/package.json').scripts['voix:manifest']?0:1)"; then
-            npm run voix:manifest -w frontend_src
+          if node -e "process.exit(require('./frontend/package.json').scripts['voix:manifest']?0:1)"; then
+            npm run voix:manifest -w frontend
             git diff --exit-code -- docs/voix \
               || { echo '✗ Le manifeste voix committé diffère de la régénération.'; exit 1; }
             echo '✓ Manifeste voix déterministe.'

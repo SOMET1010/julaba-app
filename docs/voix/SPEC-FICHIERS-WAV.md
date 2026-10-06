@@ -28,11 +28,11 @@ ré-échantillonne à la conversion. Ne monte JAMAIS un fichier de 16 kHz vers
 ### Ce que j'ai mesuré
 
 ```
-frontend_src/public/voix/tata/*.mp3   137 fichiers (128 jouables, 9 orphelins)
+frontend/public/voix/tata/*.mp3   137 fichiers (128 jouables, 9 orphelins)
   MPEG-2 layer III · 96 kbps · 24 kHz · mono · ID3v2.4
   5,6 Mo au total · 42 ko en moyenne (~3,6 s) · le plus long 11,7 s
 
-frontend_src/public/voix/fr-CI/prototype/*.mp3   15 fichiers
+frontend/public/voix/fr-CI/prototype/*.mp3   15 fichiers
   MPEG-1 layer III · 96 kbps · 48 kHz · mono
   (parcours prototype, PAS le parcours marchande — ne pas s'en inspirer)
 ```
@@ -49,7 +49,7 @@ Tu me livres du WAV, **l'application embarque du MP3**. Deux raisons mesurées,
 pas une préférence :
 
 1. **Le pré-cache hors-ligne ne ramasse que les `.mp3`.**
-   `frontend_src/vite.config.ts:113` liste le dossier des clips en filtrant
+   `frontend/vite.config.ts:113` liste le dossier des clips en filtrant
    `f.endsWith(".mp3")`. Un `.wav` déposé là serait servi en ligne, mais
    **absent du pré-cache du service worker** : muet chez une marchande sans
    réseau — c'est-à-dire le cas normal.
@@ -308,7 +308,7 @@ changeront — pas le lot.
    pas de clonage. Reste à dire si elle porte un nom (§ 4 bis).
 
 Ce que je fais ensuite, sans rien te redemander : conversion en MP3
-96 kbps / 24 kHz / mono, dépôt dans `frontend_src/public/voix/tata/`, ajout des
+96 kbps / 24 kHz / mono, dépôt dans `frontend/public/voix/tata/`, ajout des
 92 entrées dans `services/tataUiClips.ts`, garde de non-régression qui vérifie
 que **chaque fichier livré a bien un texte et que chaque texte trouve bien son
 fichier** — puis `verify`, puis APK.

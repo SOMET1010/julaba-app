@@ -53,7 +53,7 @@
 | CODE-NEW-3 | `CronJobsModule` non branché dans `AppModule` (module mort) | P3 | S | OUVERT (audit) |
 | CODE-NEW-4 | `Sentry.expressErrorHandler` commenté (`// app.use(Sentry.expressErrorHandler());`) | P3 | S | OUVERT (audit) |
 | CODE-NEW-5 | `node_modules` dans l'historique git (>24 000 fichiers) | P3 | XL | OUVERT (registre) |
-| CODE-NEW-6 | `frontend_src/src/imports/` mélange code + prompts obsolètes | P3 | M | OUVERT (registre) |
+| CODE-NEW-6 | `frontend/src/imports/` mélange code + prompts obsolètes | P3 | M | OUVERT (registre) |
 
 ### TYPAGE (2 dettes)
 | ID | Description | Priorité | Effort | Statut |
@@ -102,7 +102,7 @@
 | FRONT-NEW-6 | Tests sans framework standard (74 fichiers via tsx + helpers ad-hoc) — pas de coverage, pas de watch, pas de snapshot | P2 | L | OUVERT (audit) |
 | FRONT-NEW-7 | 878 `console.*` dans 162 fichiers, pas de logger structuré | P2 | M | OUVERT (audit) |
 | FRONT-NEW-8 | 7 fichiers CSS avec override OKLCH->hex workarounds pour Motion | P3 | M | OUVERT (audit) |
-| FRONT-NEW-9 | `@nestjs/core` 11.1.28 dans `frontend_src/package.json` (fuite backend, ~5+ MB) | P3 | S | OUVERT (audit) |
+| FRONT-NEW-9 | `@nestjs/core` 11.1.28 dans `frontend/package.json` (fuite backend, ~5+ MB) | P3 | S | OUVERT (audit) |
 | FRONT-NEW-10 | Radix UI en version `*` (24 packages) — instabilité potentielle | P3 | S | OUVERT (audit) |
 
 ### DEVOPS (nouvelles dettes)

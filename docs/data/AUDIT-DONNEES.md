@@ -145,7 +145,7 @@ Les valeurs ne sont pas recopiées ici. Seuls les emplacements sont nommés.
 | **haute** | `identifications` (table) | documents d'identité, `latitude`/`longitude`, `form_data` libre non schématisé |
 | **haute** | `users` (table) | `nin`, `date_naissance`, `lieu_naissance`, `photo_url`, `password_hash`, `pin_code_hash`, `pin_code_encrypted_identificateur` — **63 colonnes sur une seule table**, PII et sécurité mêlées |
 | moyenne | `render.yaml` | `SEED_DEMO_PASSWORD: "1234"` en clair (inerte tant que `SEED_DEMO=false`) |
-| moyenne | `frontend_src/public/voix/` | 155 clips — **voix d'une personne réelle**, consentement à tracer |
+| moyenne | `frontend/public/voix/` | 155 clips — **voix d'une personne réelle**, consentement à tracer |
 | moyenne | `akoun-dev/data/voice/ivoirian-v1/` | jeu de données de locuteurs (`VOICE_TALENT_CONSENT_TEMPLATE_FR.md` existe — la chaîne de consentement est à vérifier) |
 | moyenne | `clients`, `credits` | noms et téléphones de clientes de la marchande |
 | moyenne | `push_tokens` | jetons d'appareil |

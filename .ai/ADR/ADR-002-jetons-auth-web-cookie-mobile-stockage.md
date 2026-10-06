@@ -116,7 +116,7 @@ Nous décidons de la **voie duelle assumée**, sélectée en un point unique :
 ## Invariants testables
 
 - Invariant 1 : aucun `setItem` des clés `julaba_access_token`/`julaba_refresh_token`
-  hors de `utils/stockerJetonsSiMobile.ts` — Test : `frontend_src/scripts/test-coffre-web.mjs`
+  hors de `utils/stockerJetonsSiMobile.ts` — Test : `frontend/scripts/test-coffre-web.mjs`
 - Invariant 2 : l'unique module d'écriture ne fait rien quand Capacitor est absent
   (web) et pose les deux clés en APK — Test : `test:coffre-web` (statique) + recette
   navigateur (localStorage vide après login web, session restaurée au rechargement)
@@ -126,6 +126,6 @@ Nous décidons de la **voie duelle assumée**, sélectée en un point unique :
 ## Modules impactés
 
 - `auth/` (backend) — Module sacré : AUCUN changement (cookies déjà posés) ; cité pour mémoire.
-- `frontend_src/src/app/components/auth/LoginPassword.tsx` — 2 sites d'écriture remplacés.
-- `frontend_src/src/app/utils/stockerJetonsSiMobile.ts` — nouveau module, unique écrivain.
-- `frontend_src/src/app/services/api/api-client.ts` — INCHANGÉ (lectures + purge inchangées).
+- `frontend/src/app/components/auth/LoginPassword.tsx` — 2 sites d'écriture remplacés.
+- `frontend/src/app/utils/stockerJetonsSiMobile.ts` — nouveau module, unique écrivain.
+- `frontend/src/app/services/api/api-client.ts` — INCHANGÉ (lectures + purge inchangées).

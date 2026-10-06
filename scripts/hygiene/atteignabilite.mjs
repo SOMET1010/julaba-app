@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const RACINE = process.cwd();
-const SRC = path.join(RACINE, 'frontend_src', 'src');
+const SRC = path.join(RACINE, 'frontend', 'src');
 const EXT = ['.ts', '.tsx', '.mts', '.js', '.jsx', '.mjs', '.json'];
 
 function tousFichiers(dir, acc = []) {
@@ -30,7 +30,7 @@ function resoudre(depuis, spec) {
   if (!spec.startsWith('.') && !spec.startsWith('/') && !spec.startsWith('@/')) return null; // paquet npm
   let base;
   if (spec.startsWith('@/')) base = path.join(SRC, spec.slice(2));
-  else if (spec.startsWith('/src/')) base = path.join(RACINE, 'frontend_src', spec.slice(1));
+  else if (spec.startsWith('/src/')) base = path.join(RACINE, 'frontend', spec.slice(1));
   else base = path.resolve(path.dirname(depuis), spec);
   const essais = [base, ...EXT.map((e) => base + e), ...EXT.map((e) => path.join(base, 'index' + e))];
   // .js → .ts (imports ESM TypeScript)
@@ -75,14 +75,14 @@ const mainT = path.join(SRC, 'main.tsx');
 if (fs.existsSync(mainT)) entrees.add(mainT);
 
 // Tests (verify, test:ci) : ce sont des consommateurs légitimes.
-const pkg = JSON.parse(fs.readFileSync(path.join(RACINE, 'frontend_src', 'package.json'), 'utf8'));
+const pkg = JSON.parse(fs.readFileSync(path.join(RACINE, 'frontend', 'package.json'), 'utf8'));
 const scripts = Object.entries(pkg.scripts || {});
 const testsFichiers = fichiers.filter((f) => /\.(test|spec)\.(ts|tsx|mts|mjs|js)$/.test(f));
 for (const t of testsFichiers) entrees.add(t);
 // fichiers cités littéralement dans un script npm
 for (const [, cmd] of scripts) {
   for (const m of cmd.matchAll(/[\w./-]*src\/[\w./-]+\.(?:ts|tsx|mts|mjs|js)/g)) {
-    const p = path.join(RACINE, 'frontend_src', m[0].replace(/^\.?\//, ''));
+    const p = path.join(RACINE, 'frontend', m[0].replace(/^\.?\//, ''));
     if (fs.existsSync(p)) entrees.add(p);
   }
 }

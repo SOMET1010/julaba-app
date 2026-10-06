@@ -1,7 +1,7 @@
 // BO-0 / S4 — Aucune récupération du super_admin par clé partagée.
 //
 // La page front `/admin-recovery` (retirée dans ce lot, garde
-// frontend_src/scripts/test-recuperation-admin.mjs) envoyait une clé en dur
+// frontend/scripts/test-recuperation-admin.mjs) envoyait une clé en dur
 // (`secretKey`) à trois routes. Ce test prouve que le SERVEUR n'en expose
 // aucune : une clé connue de tous ne réinitialise rien. Toute récupération
 // future devra passer par une vérification réelle côté serveur.

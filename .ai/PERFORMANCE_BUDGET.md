@@ -45,7 +45,7 @@
 - **AppContext 1351 LOC** (god context) — propice aux re-renders globaux
 - **878 `console.*`** en production (pas de stripping configuré visible)
 - **Pas de bundle analyzer** (pas de `rollup-plugin-visualizer`)
-- **`@nestjs/core`** dans `frontend_src/package.json` — dépendance suspecte (5+ MB dans node_modules)
+- **`@nestjs/core`** dans `frontend/package.json` — dépendance suspecte (5+ MB dans node_modules)
 
 ### Backend
 - **592 `manager.query()`** SQL brut — potentielles N+1 invisibles
