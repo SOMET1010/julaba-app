@@ -439,3 +439,19 @@ Work Log:
 
 Stage Summary:
 - AUDIT-UX-ROLES-2026-10-06.md sur dev : l'app est deux produits selon le rôle — caisse exemplaire, le reste n'a pas reçu la garde ; chantiers prioritaires : UX-1 promesses d'argent (S-M), UX-3 perdu=retrouvé (M), UX-2 décision voix (Patrick) ; liens avec la ligne PERF du plan d'orga (unification registres) et la doctrine caisse (T2)
+
+---
+Task ID: 15
+Agent: Z.ai Code (orchestrateur)
+Task: Corrections post-audit UX — trancher les 6 décisions §8 + exécuter le lot UX-1 complet, en suivant la logique .ai
+
+Work Log:
+- Règle d'or .ai appliquée : lecture README/WORKFLOWS/PROJECT_CONTEXT/TASKS/TEAM_STATUS/BUGS/COMMIT_LOG/CHANGELOG avant toute modification ; conventions respectées (commits conventionnels atomiques sans git add ., routage des bugs BUG-XXX dans BUGS.md, journaux CHANGELOG/COMMIT_LOG/TASKS mis à jour)
+- 6 décisions §8 tranchées et documentées dans le doc d'audit : (1) ouvrir speak() aux 3 rôles [doctrine voice-first, UX-2] ; (2) PaiementsPage MASQUÉE derrière PAIEMENTS_SERVICES_ACTIFS [fait, BUG-001] ; (3) porte keiwa marchand = tuile accueil [UX-6] ; (4) stocks producteur = séparation assumée + noms distincts, revenus unifiés en UX-5 ; (5) fusion écrans analytiques identificateur à terme, court terme redirects/canon [UX-6] ; (6) consentement signé OUI [UX-3]
+- Lot UX-1 exécuté (4 bugs, 4 commits atomiques) : BUG-001 PaiementsPage simulation morte → drapeau + porte retirée + redirect (68149f2) ; BUG-002 transfert keiwa → relecture + verrou synchrone envoiEnCoursRef pattern caisse (f7e9544) ; BUG-003 marché virtuel → « Commande passée, à régler à la livraison » au lieu de « Paiement effectué avec succès », modal succès honnête, PIN CONFIRME ≠ paie (67f72ef) ; BUG-004 cotisation 25 000 F → relecture + PIN /auth/pin/verify si pinSecurityEnabled + verrou + erreurs affichées ET parlées + COTISATION_MONTANT nommé (41b6671)
+- Frontières respectées : invariant B2 (aucun mouvement wallet ajouté — que des libellés/confirmations), garde charte marchande (plafonds intacts : MarcheVirtuel ≤5, MaCooperative 0), garde-argent (mes 5 fichiers hors empreinte et hors périmètre figé)
+- Vérifications : tsc -b frontend 0 ; test:charte-marchande vert ; vite build 0 (21,9 s, 202 chunks + 220 clips) ; test:ci 44 maillons EXIT 0 ; garde-argent = exactement les 3 refus attendus (gels humains), AUCUN refus nouveau
+- Interférence sandbox : bascules HEAD→main continues — édition des 5 fichiers source faite sur copies extraites de dev (/home/z/ux1), réinjection + commits en chaînes immunisées ; même méthode pour les journaux (/home/z/ux1-docs)
+
+Stage Summary:
+- UX-1 « Promesses d'argent » TERMINÉ et poussé : plus aucune UI ne promet un paiement qui n'existe pas, les deux irréversibles (transfert, cotisation) passent par relecture + verrou + PIN conditionnel ; 6/6 décisions §8 tranchées ; restent UX-2 (voix, P0), UX-3 (perdu=retrouvé, P0), UX-4/5/6 ; journaux .ai à jour (BUGS, CHANGELOG, TASKS, COMMIT_LOG)

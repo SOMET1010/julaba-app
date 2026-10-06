@@ -5,6 +5,14 @@
 
 ## [Non publié]
 
+### Corrigé — Lot UX-1 « Promesses d'argent » (2026-10-06)
+Suivi de l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`) — décisions §8 tranchées, lot UX-1 exécuté (BUG-001..004) :
+- **Paiements services (Keiwa)** : plus de « Payer maintenant » sans backend — page masquée derrière `PAIEMENTS_SERVICES_ACTIFS`, porte retirée du wallet, route redirigée (BUG-001, `68149f2`)
+- **Transfert keiwa** : relecture obligatoire « Tu envoies X à Y — tu confirms ? » + verrou synchrone anti double-tap (BUG-002, `f7e9544`)
+- **Marché virtuel** : annonce « Commande passée — à régler à la livraison » au lieu de « Paiement effectué avec succès » (aucun mouvement wallet à la création, invariant B2) ; modal succès « Montant à régler / rien n'est encore débité » (BUG-003, `67f72ef`)
+- **Cotisation coopérative (25 000 F)** : relecture + PIN conditionnel (`pinSecurityEnabled`, /auth/pin/verify) + verrou synchrone + erreurs affichées ET parlées (BUG-004, `41b6671`)
+- Vérifications : `tsc -b` 0, garde charte marchande vert, `vite build` 0 (21,9 s), `test:ci` 44 maillons 0, garde-argent = les 3 refus attendus (gels humains en attente), aucun refus nouveau
+
 ### Ajouté — Système multi-agents (2026-09-28)
 - Initialisation du dossier `.ai/` avec 30+ fichiers de pilotage
 - Audit initial complet : backend (76/100), frontend (73/100), DevOps (68/100), sécurité (72/100), documentation (78/100)

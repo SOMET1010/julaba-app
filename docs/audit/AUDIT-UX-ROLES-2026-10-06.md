@@ -227,6 +227,17 @@ Règle transversale à écrire dans les conventions : **« tout ce qui est parl�
 5. **Identificateur :** fusionner les 4 écrans analytiques (Suivi/Statistiques/Rapports/Dashboard) et choisir la route canonique du formulaire ? (T5)
 6. **Consentement signé :** texte court fr-ci + case avant signature, doublé d'un clip voix ? (I-P1-3 — au-delà de l'UX : conformité)
 
+### Décisions tranchées (06/10/2026, sur délégation explicite — exécution : lots indiqués)
+
+1. **Voix → OUVRIR `speak()` aux trois rôles.** Le gate `role !== 'marchand'` (`AppContext.tsx:729-732`) contredit la doctrine voice-first elle-même (« Aucune information importante ne doit exister uniquement sous forme de texte », Patrick 20/09). Exécution **UX-2** : retirer la condition (S), monter `TantieSagesseModal` + `onMicClick` dans `IdentificateurLayout`, puis parcourir les ~40 appels producteur pour vérifier les libellés (le message serveur brut dicté, T7, sera corrigé au passage).
+2. **PaiementsPage → MASQUER.** Drapeau `PAIEMENTS_SERVICES_ACTIFS = false` (doctrine POSCaisse), porte retirée du wallet, route redirigée vers `/keiwa`. **Fait le jour même** (BUG-001, `68149f2`). La page reste complète pour le jour du PSP : basculer le drapeau réactive tout le parcours, et le CTA devra ALORS appeler l'API.
+3. **Keiwa marchand → PORTE UNIQUE À RESTAURER** (tuile « Mon argent » de l'accueil, conformément au commentaire d'`UniversalProfil.tsx:278-280` — l'accueil est la porte naturelle d'un produit voice-first, le profil est texte). Exécution **UX-6**.
+4. **Stocks producteur → SÉPARATION ASSUMÉE à court terme avec des NOMS DISTINCTS** (renommage « Les stocks » vs « Mes récoltes », fusion = L, reportée) ; la partie calcul (cinq définitions des revenus) passe en **UX-5** avec `computeRevenus()` unique.
+5. **Écrans analytiques identificateur → FUSIONNER à terme** (Dashboard + Statistiques dans Rapports/Suivi) ; court terme (**UX-6**) : route canonique du formulaire + redirect de la route historique, onglet « Suivi » → `SuiviIdentifications`, retrait des routes orphelines.
+6. **Consentement signé → OUI** : encart lisible ET énonçable avant la signature (fr-ci, court), doublé d'un clip voix ; exécution **UX-3**.
+
+**Livré le même jour (lot UX-1)** : BUG-001..004 corrigés (commits `68149f2`, `f7e9544`, `67f72ef`, `41b6671`) — voir §2 T2/T8, `.ai/BUGS.md` et `.ai/CHANGELOG.md`.
+
 ## 9. Limites de l'audit
 
 - **Statique** : aucune exécution d'app/APK ; le scénario « app tuée → sessionStorage perdu » est le comportement standard du WebView Capacitor mais non mesuré sur device ; contrastes non calculés (seul le ratio documenté dans le code est cité) ; TTS/clips non écoutés.

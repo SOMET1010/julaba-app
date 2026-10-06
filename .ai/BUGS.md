@@ -60,6 +60,34 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - I6 : Traçabilité crédit (spécification périmée — à réécrire)
 - **Impact** : crédit désactivé donc pas de bug en production
 
+## Bugs fonctionnels (2026-10-06) — Lot UX-1 « Promesses d'argent »
+
+> Détectés par l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`, explorations 14-a/14-b/14-c, spot-checks orchestrateur). Corrigés le même jour.
+
+### BUG-001 — « Payer maintenant » (Keiwa → Paiements services) ne faisait rien
+- **Priorité** : P0 · **Statut** : RÉSOLU · **Détecté** : 2026-10-06 (audit UX, convergent agents marchand + producteur)
+- **Description** : le CTA du modal (CNPS, CIE, SODECI, école…) se contentait de fermer le modal et vider les champs — aucun appel API, aucune validation, aucun reçu. L'utilisateur croyait avoir réglé sa facture (impayé réel, pénalités). `PaiementsPage.tsx:262-269`.
+- **Résolution** : drapeau `PAIEMENTS_SERVICES_ACTIFS = false` (doctrine POSCaisse 55-60, pas de promesse contradictoire) : porte retirée du wallet, route redirigée vers `/keiwa` (deep links compris), page conservée pour la bascule PSP.
+- **Commits** : `68149f2` · **Vérifications** : tsc 0, charte 0, build 0, test:ci 0
+
+### BUG-002 — Transfert keiwa irréversible en un tap, sans relecture ni verrou
+- **Priorité** : P0 · **Statut** : RÉSOLU · **Détecté** : 2026-10-06 (audit UX, M-P0-3)
+- **Description** : « Envoyer maintenant » appelait `transfererVersCompte` directement — ni PIN, ni relecture, ni verrou synchrone (double-tap même frame = double requête ; l'idempotence backend rattrapait, le geste restait non gardé). `TransfertPage.tsx:133-158, 467-483`.
+- **Résolution** : relecture « Tu envoies X FCFA à Y — tu confirms ? » + verrou synchrone `envoiEnCoursRef` (pattern caisse POSCaisse 208-210).
+- **Commits** : `f7e9544` · **Vérifications** : idem ci-dessus
+
+### BUG-003 — Le marché virtuel annonçait « Paiement effectué avec succès » pour rien
+- **Priorité** : P0 · **Statut** : RÉSOLU · **Détecté** : 2026-10-06 (audit UX, T2/P1-3 marchand)
+- **Description** : après création des commandes (statut en_attente, AUCUN mouvement wallet — invariant B2), l'app disait et répétait « Paiement de X francs CFA par Y effectué avec succès », y compris pour mobile money/carte purement déclaratifs. `MarcheVirtuel.tsx:448-455, 488` + modal succès « Montant payé ».
+- **Résolution** : annonces honnêtes selon le moyen (commande passée, à régler à la livraison ; Keiwa : débit à l'encaissement du vendeur, le PIN CONFIRME il ne paie pas) + modal succès « Montant à régler / rien n'est encore débité ».
+- **Commits** : `67f72ef` · **Vérifications** : garde charte vert (plafond MarcheVirtuel intact)
+
+### BUG-004 — Cotisation coopérative 25 000 F débitée en un tap, sans confirmation ni PIN
+- **Priorité** : P0 · **Statut** : RÉSOLU · **Détecté** : 2026-10-06 (audit UX, M-P0-2)
+- **Description** : POST `/cooperatives/cotisation` direct depuis le bouton, montant codé en dur, aucune confirmation, aucun PIN, aucune vérification de solde. `MaCooperative.tsx:156-172`.
+- **Résolution** : relecture « Tu paies 25 000 FCFA à [coop] » + PIN 4 chiffres via /auth/pin/verify si `pinSecurityEnabled` + verrou synchrone + erreur affichée (role=alert) ET parlée + montant nommé `COTISATION_MONTANT`.
+- **Commits** : `41b6671` · **Vérifications** : garde charte vert (MaCooperative reste à 0 couleur en dur)
+
 ## Bugs à détecter (surveillance active)
 
 L'Agent QA doit surveiller en priorité :
