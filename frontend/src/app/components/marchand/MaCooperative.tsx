@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Users, CheckCircle, RefreshCw, Package, Gift } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Users, CheckCircle, RefreshCw, Package, Gift, X } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { useApp } from '../../contexts/AppContext';
 import { useNavigate } from 'react-router';
@@ -11,6 +11,14 @@ import { useCooperativesListe } from '../../hooks/useCooperativesListe';
 import { fetchMesDistributions, type DistributionRecue } from '../../services/api/cooperatives-api';
 
 const COLOR = 'var(--commerce-action)';
+
+// M-P0-2 (AUDIT-UX-ROLES-2026-10-06) : la cotisation est un MOUVEMENT D'ARGENT
+// — elle passe désormais par la relecture « tu paies X à Y ? » + PIN si la
+// marchande l'a activé (même contrat que le marché : /auth/pin/verify). Le
+// montant reste porté par le code tant qu'aucun endpoint ne le sert ; il vit
+// ICI et nulle part ailleurs, nommé, pour que le jour de la bascule API il ne
+// bouge qu'une seule ligne.
+const COTISATION_MONTANT = 25000;
 
 /** Réponse `GET /api/v1/cooperatives/ma-cooperative` (objet plat) */
 interface MaCooperativeInfo {
@@ -28,7 +36,7 @@ interface MaCooperativeInfo {
 }
 
 export function MaCooperative() {
-  const { speak } = useApp();
+  const { speak, user } = useApp();
   const navigate = useNavigate();
   const { cooperatives: cooperativesListe } = useCooperativesListe();
   const [selectedCoopId, setSelectedCoopId] = useState('');
@@ -36,6 +44,15 @@ export function MaCooperative() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [distributions, setDistributions] = useState<DistributionRecue[]>([]);
+  // Cotisation : relecture avant l'irréversible + verrou SYNCHRONE anti
+  // double-tap (le pattern caisse : l'état React ne se met à jour qu'au
+  // render suivant, un ref bloque le 2e tap dès la même frame).
+  const [showCotisationConfirm, setShowCotisationConfirm] = useState(false);
+  const [cotisationEnCours, setCotisationEnCours] = useState(false);
+  const cotisationEnCoursRef = useRef(false);
+  const [cotisationPin, setCotisationPin] = useState('');
+  const [cotisationErreur, setCotisationErreur] = useState('');
+  const pinRequis = Boolean(user?.pinSecurityEnabled);
   useEffect(() => {
     apiRequest<MaCooperativeInfo | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' })
       .then(d => { setMaCoopInfo(d); setLoading(false); })
@@ -52,6 +69,54 @@ export function MaCooperative() {
     try { return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }); }
     catch { return iso; }
   }
+
+  const fermerCotisationConfirm = () => {
+    if (cotisationEnCours) return;
+    setShowCotisationConfirm(false);
+    setCotisationPin('');
+    setCotisationErreur('');
+  };
+
+  const handleConfirmerCotisation = async () => {
+    // Verrou synchrone : un 2e tap dans la même frame est ignoré ici, pas
+    // au prochain render — la cotisation ne doit JAMAIS partir deux fois.
+    if (cotisationEnCoursRef.current) return;
+    if (pinRequis && cotisationPin.length !== 4) {
+      setCotisationErreur('Ton code PIN a 4 chiffres');
+      return;
+    }
+    cotisationEnCoursRef.current = true;
+    setCotisationEnCours(true);
+    setCotisationErreur('');
+    try {
+      if (pinRequis) {
+        const verif = await apiRequest<{ valid?: boolean }>(API_URL, '/auth/pin/verify', {
+          method: 'POST',
+          body: JSON.stringify({ pin: cotisationPin }),
+        });
+        if (!verif?.valid) {
+          setCotisationErreur('Code PIN incorrect. Réessaie');
+          setCotisationPin('');
+          return;
+        }
+      }
+      await apiRequest<unknown>(API_URL, '/cooperatives/cotisation', {
+        method: 'POST',
+        body: JSON.stringify({ montant: COTISATION_MONTANT }),
+      });
+      toast.success('Cotisation payée avec succès');
+      speak('Ta cotisation est payée. Merci !');
+      setShowCotisationConfirm(false);
+      setCotisationPin('');
+    } catch (err: any) {
+      console.warn('[MaCooperative] cotisation failed:', err?.message);
+      toast.error('Le paiement n\'a pas passé. Vérifie ton réseau et réessaie.');
+      speak('Le paiement n\'a pas passé. Réessaie.');
+    } finally {
+      cotisationEnCoursRef.current = false;
+      setCotisationEnCours(false);
+    }
+  };
 
   const handleRejoindreListe = async () => {
     if (!selectedCoopId) return;
@@ -153,24 +218,14 @@ export function MaCooperative() {
                   Paie ta cotisation mensuelle pour rester membre actif.
                 </p>
                 <motion.button
-                  onClick={async () => {
-                    try {
-                      await apiRequest<unknown>(API_URL, '/cooperatives/cotisation', {
-                        method: 'POST',
-                        body: JSON.stringify({ montant: 25000 }),
-                      });
-                      toast.success('Cotisation payée avec succès');
-                    } catch (err: any) {
-                      console.warn('[MaCooperative] cotisation failed:', err?.message);
-                      toast.error('Erreur lors du paiement');
-                    }
-                  }}
+                  onClick={() => { setCotisationErreur(''); setShowCotisationConfirm(true); }}
                   className="w-full py-3 rounded-2xl text-white font-bold text-sm"
                   style={{ backgroundColor: 'var(--color-green-600)' }}
                   whileTap={{ scale: 0.97 }}
                 >
                   Payer ma cotisation{'\u00A0'}: 25{'\u00A0'}000 FCFA
                 </motion.button>
+                <p className="text-xs text-gray-400 mt-2 text-center">On te demandera de confirmer avant le paiement.</p>
               </motion.div>
             )}
 
@@ -292,6 +347,89 @@ export function MaCooperative() {
           </>
         )}
       </motion.div>
+
+      {/* Relecture cotisation (M-P0-2) : l'argent ne part jamais d'un seul tap. */}
+      <AnimatePresence>
+        {showCotisationConfirm && maCoopInfo && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4"
+            onClick={fermerCotisationConfirm}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirmer le paiement de ta cotisation"
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25 }}
+              className="bg-white rounded-3xl w-full max-w-2xl mx-auto shadow-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900">Confirmer le paiement</h2>
+                <motion.button
+                  onClick={fermerCotisationConfirm}
+                  className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                  aria-label="Fermer"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </motion.button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="rounded-2xl p-4" style={{ backgroundColor: `${COLOR}15` }}>
+                  <p className="text-sm text-gray-600 mb-1">Tu paies</p>
+                  <p className="text-3xl font-bold tabular-nums" style={{ color: COLOR }}>25{'\u00A0'}000 FCFA</p>
+                  <p className="text-sm text-gray-600 mt-1">à {maCoopInfo.nom || 'ta coopérative'} — cotisation mensuelle</p>
+                </div>
+                <p className="text-xs text-gray-500">Ce paiement est définitif. Vérifie bien avant de confirmer.</p>
+                {pinRequis && (
+                  <div>
+                    <label htmlFor="cotisation-pin" className="text-sm font-semibold text-gray-700 block mb-1">Ton code PIN</label>
+                    <input
+                      id="cotisation-pin"
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={4}
+                      value={cotisationPin}
+                      onChange={(e) => setCotisationPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="4 chiffres"
+                      className="w-full h-12 px-4 rounded-xl border-2 text-center text-xl font-bold tracking-[0.5em] tabular-nums focus:outline-none"
+                      style={{ borderColor: cotisationPin ? COLOR : 'var(--border)' }}
+                      aria-describedby={cotisationErreur ? 'cotisation-erreur' : undefined}
+                    />
+                  </div>
+                )}
+                {cotisationErreur && (
+                  <p id="cotisation-erreur" role="alert" className="text-sm font-semibold" style={{ color: 'var(--destructive)' }}>{cotisationErreur}</p>
+                )}
+                <div className="flex gap-3 pt-1">
+                  <motion.button
+                    onClick={fermerCotisationConfirm}
+                    disabled={cotisationEnCours}
+                    className="flex-1 py-3 rounded-2xl font-bold text-sm border-2 disabled:opacity-50"
+                    style={{ borderColor: `${COLOR}40`, color: COLOR, background: 'white' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Annuler
+                  </motion.button>
+                  <motion.button
+                    onClick={handleConfirmerCotisation}
+                    disabled={cotisationEnCours || (pinRequis && cotisationPin.length !== 4)}
+                    className="flex-1 py-3 rounded-2xl text-white font-bold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    style={{ backgroundColor: 'var(--color-green-600)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {cotisationEnCours && <RefreshCw className="w-4 h-4 animate-spin" />}
+                    {cotisationEnCours ? 'Paiement…' : 'Confirmer le paiement'}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </SubPageLayout>
   );
 }
