@@ -75,13 +75,52 @@ versionnés, code mort, dépendances fantômes, Orphelins CI.
 ### Phase 3 — Vérifications ✅
 - `nest build` (backend) et `tsc -b` + `vite build` (frontend) verts après chaque phase.
 
+### Phase 4 — Ménage approfondi (second passage, scans parallèles front + back) ✅ (aefc7fa)
+- **Backend** :
+  - suppression de `src/ansut/` (module + service) — ⚠️ **inverse le keep de la
+    Phase 1** : `sms.service.ts` implémente son **propre** client HTTP ANSUT
+    (`AnsutSmsResult`, POST `/api/message/send`) et lit lui-même les variables
+    `ANSUT_*` (qui restent donc dans `.env.example`) ; le « référencé par
+    sms.service » du diagnostic était une confusion avec ces lectures d'env.
+  - suppression des modules orphelins `producteur/cycles/` (module + service + 2 dto)
+    et `producteur/recoltes/recoltes.module.ts` + `update-recolte.dto.ts` — la
+    rationale INIT-011 (« conserver pour les relations TypeORM ») était
+    techniquement erronée : les entités sont chargées par **glob**
+    (`database.module.ts`) et le `forFeature` d'un module jamais importé est
+    inerte ; les endpoints vivants sont servis par `cycles-rest` / `recoltes-rest`.
+    **Entités conservées** (`cycles/entities/cycle.entity.ts`,
+    `recoltes/entities/recolte.entity.ts`).
+  - DTOs orphelins : `wallets/dto/credit-wallet.dto.ts`.
+  - 3 specs e2e jamais câblées (`academy`, `auth`, `stocks-rest` controllers —
+    bootent `AppModule` + `supertest`, incompatibles avec `test/unit` « pur » ;
+    à réécrire dans `test/invariants` si besoin de les réactiver).
+  - dep `@sentry/profiling-node` jamais importée (`instrument.ts` n'utilise que
+    `@sentry/node`).
+- **Frontend** :
+  - suppression de `voicePacks.ts` + `voicePacks.test.mts` (102+80 l.) —
+    remplaçant runtime : le stub vivant `voicePacksRuntime.ts` ;
+    `public/voix/manifeste.exemple.json` **conservé** (référencé par
+    `mp3Encoder.ts` et `collecteVoixDB.ts`).
+  - `studioWav.test.mts` adapté (n'importe plus `validerManifeste`) + typage
+    précis du retour de `genererManifesteStudio` — garde `test:studio` verte.
+  - `README-MOCK-SERVICE.md` (décrit des fichiers disparus) supprimé ;
+    script `test:packs` retiré (et de la chaîne `test:ci`) ;
+    `docs/PACKS_VOIX.md` → `docs/archive/`.
+- **Vérifications** : `tsc --noEmit` backend, `tsc -b` + `vite build` frontend,
+  garde `test:studio` — tous exit 0 ; lockfile resynchronisé (`npm install`).
+- **Correction d'audit (Task 9)** : « bo-permissions.ts mort » est **périmé** —
+  `config/bo-permissions.ts` est utilisé (`BOUtilisateurs.tsx`) ; les 3
+  registres de permissions sont tous vivants → chantier d'**unification
+  fonctionnelle**, pas de code mort.
+
 ## 4. Décisions reportées (à trancher par l'équipe)
 
 | Réf | Sujet | Recommandation |
 |---|---|---|
-| R18 | ~38 Mo d'images versionnées → git-lfs | Migrer vers git-lfs lors d'une fenêtre calme (coordonner tous les clones) |
+| R18 | ~16,6 Mo de binaires versionnés (clips voix `public/voix` 11 Mo, images 4,9 Mo) → git-lfs | Procédure documentée en **§7** — à exécuter en fenêtre coordonnée (rewrite d'historique) |
 | F14 | 5 chaînes frontend « horsVerify » (contournements de vérification) | Lot fonctionnel dédié, hors périmètre ménage |
 | CI | Réintroduire des gardes Playwright ? | Si oui : depuis zéro, secrets en variables d'environnement, jamais en dur |
+| PERF | Unification des 3 registres de permissions BO (tous vivants, cf. Phase 4) | Lot fonctionnel : désigner `config/bo-permissions.ts` comme source unique |
 
 ## 5. Note sécurité
 
@@ -96,3 +135,34 @@ suppression. (Référence : incident tool-results du 2026-10-05, worklog 8-bis.)
 - Branche de travail : `dev` (alignée de force sur `main` @ aa780ae le 2026-10-06 ;
   le travail INIT-016..021 antérieur de `dev` est sauvegardé sur
   `backup/dev-init-016-021`).
+
+## 7. Procédure R18 — migration git-lfs (fenêtre coordonnée)
+
+> ⚠️ Le `git lfs migrate import` **réécrit l'historique** : invalide tous les
+> clones existants et les PR ouvertes. À exécuter uniquement après annonce d'un
+> gel des pushs et avec l'accord de toute l'équipe.
+
+**Prérequis** : `git-lfs >= 3` sur tous les postes ; CI GitHub Actions :
+ajouter `git-lfs/setup-git-lfs@v0` avant le checkout (ou `GIT_LFS_SKIP_SMUDGE=1`
+pour les jobs qui n'ont pas besoin des binaires).
+
+**Mesure actuelle (2026-10-06)** : `public/voix` 11 Mo (clips mp3 tata),
+`src/assets/images` 4,2 Mo, `src/assets/redesign` 632 Ko, `public/images`
+728 Ko — soit ~16,6 Mo de binaires candidats.
+
+**Étapes** :
+1. `git tag pre-lfs-migration` (rollback facile) ; faire pousser toutes les
+   branches de travail.
+2. `git lfs install`
+3. `git lfs migrate import --everything --include="*.mp3,*.png,*.jpg,*.jpeg,*.webp,*.woff2"`
+   (le SVG du logo reste en git ordinaire : texte compressible).
+4. Vérifier : `git lfs ls-files | wc -l` ; `git count-objects -vH` (size-pack
+   avant/après) ; un `npm ci` + `vite build` sur un clone frais.
+5. Pousser : `git push origin --force --all && git push origin --force --tags`.
+6. Équipe : re-clone (ou `git lfs fetch --all && git reset --hard origin/<branche>`).
+
+**Variante sans rewrite (adoption progressive)** : commiter un `.gitattributes`
+avec les mêmes patterns dès maintenant — seules les **nouvelles** versions de
+binaires passent en LFS, l'historique garde les blobs (gain limité tant que
+l'étape 3 n'est pas jouée). Ne PAS activer sans vérifier que la CI dispose de
+git-lfs, sinon les builds et clones échouent.
