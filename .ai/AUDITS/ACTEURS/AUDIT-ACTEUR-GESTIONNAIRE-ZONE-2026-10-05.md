@@ -2,8 +2,8 @@
 
 ## 1. Identité et périmètre
 
-- **Rôle** : gestionnaire_zone (enum backend backend/src/users/entities/user.entity.ts:26) — back-office « Supervision de zone territoriale » (frontend_src/src/app/utils/role-config.ts:63, components/backoffice/BOProfil.tsx:88).
-- **Routage post-login** : gestionnaire_zone → /backoffice/dashboard (frontend_src/src/app/components/auth/LoginPassword.tsx:918).
+- **Rôle** : gestionnaire_zone (enum backend backend/src/users/entities/user.entity.ts:26) — back-office « Supervision de zone territoriale » (frontend/src/app/utils/role-config.ts:63, components/backoffice/BOProfil.tsx:88).
+- **Routage post-login** : gestionnaire_zone → /backoffice/dashboard (frontend/src/app/components/auth/LoginPassword.tsx:918).
 - **Méthode** : audit statique READ-ONLY (backend zones/users/marches/mutations/transactions/identifications/audit/misc + écrans BO) + sonde runtime (max 5 GET, lecture seule, backend :3001). Aucune écriture, aucun fichier modifié.
 - **Référentiels lus** : worklog.md, PROJECT_CONTEXT.md §1/§8, ACCESSIBILITY_GUIDE.md §4/5/6, DESIGN_SYSTEM.md §9, AUDIT-ACTEUR-GESTIONNAIRE-ZONE-2026-09-28.md (squelette statique « À RECETTER »).
 - **Limite runtime** : le seed démo ne contient **aucun compte gestionnaire_zone** (backend/src/database/seed-demo.service.ts:87-117) → pas de recette connectée possible pour ce rôle ; sondes faites en anonyme + en marchande (contrôle négatif).

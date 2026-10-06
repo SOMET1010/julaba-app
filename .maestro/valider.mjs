@@ -21,7 +21,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // La racine est celle DE CE FICHIER, jamais le répertoire d'appel : ce
-// validateur est un maillon de `verify`, qui tourne depuis `frontend_src`.
+// validateur est un maillon de `verify`, qui tourne depuis `frontend`.
 const RACINE = dirname(fileURLToPath(import.meta.url));
 
 /** Le vocabulaire Maestro utilisé par ce banc. Volontairement une liste FERMÉE :

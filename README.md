@@ -43,7 +43,7 @@ parallèle. La confiance n'est pas un ressenti : un chiffre contradictoire ou un
 ## 3. Démarrage rapide
 
 Monorepo **npm workspaces** : un seul `package-lock.json` à la racine, deux
-workspaces (`frontend_src`, `backend`). Node 22 LTS recommandé.
+workspaces (`frontend`, `backend`). Node 22 LTS recommandé.
 
 ```bash
 # 1. Cloner
@@ -76,13 +76,13 @@ julaba-app/
 ├── CONSTITUTION.md          # La loi du dépôt : 8 principes, modules sacrés, DoD
 ├── JULABA_DECISIONS.md      # Source de vérité produit (à lire en début de session)
 ├── GUIDE_DEPLOIEMENT.md     # Déploiement OVH VPS (chaîne secondaire)
-├── package.json             # Workspaces racine (frontend_src + backend)
+├── package.json             # Workspaces racine (frontend + backend)
 ├── render.yaml              # Blueprint Render = chaîne de production réelle
 ├── docker-compose.yml       # Stack locale (backend + postgres)
 ├── capacitor.config.ts      # Pont React → Android
 ├── .github/workflows/       # 9 workflows CI/CD
 ├── backend/                 # NestJS : src/ + migrations TypeORM + tests (unit, invariants)
-├── frontend_src/            # React + Vite : src/app/{pages,services,contexts,hooks,voice-offline}
+├── frontend/            # React + Vite : src/app/{pages,services,contexts,hooks,voice-offline}
 ├── android/                 # Projet Capacitor Android + scripts/installer-voix.sh
 ├── database/                # (historique — schéma géré par migrations TypeORM + DbInitService)
 ├── docs/                    # Documentation vivante (ADR, dette, invariants, parcours…)
@@ -139,7 +139,7 @@ intervenant :
 | `npm run migration:run` | Applique les migrations en attente |
 | `npm run migration:revert` | Annule la dernière migration |
 
-### Frontend (`frontend_src/package.json`)
+### Frontend (`frontend/package.json`)
 
 | Script | Action |
 |---|---|

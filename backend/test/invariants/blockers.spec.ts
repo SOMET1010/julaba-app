@@ -81,7 +81,7 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   // restait vert.
   //
   // Le maillon client est désormais tenu ailleurs, là où il doit l'être :
-  // `frontend_src/src/app/services/api/creditsCleIdempotence.test.mts`.
+  // `frontend/src/app/services/api/creditsCleIdempotence.test.mts`.
   // Depuis ARGENT-4b, une clé absente est d'ailleurs REFUSÉE par le serveur.
   //
   // FERMÉ par ARGENT-4, donc PROMU.

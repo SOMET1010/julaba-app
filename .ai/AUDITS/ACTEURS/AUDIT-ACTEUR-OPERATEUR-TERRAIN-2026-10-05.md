@@ -74,7 +74,7 @@ Le seed ne crée aucun OT (seed-demo.service.ts:87-116) → rôle incrécetable 
 
 ### OPERATEUR-12 [P2] — Offline inexistant pour le back-office
 
-Le service worker précharge pages + voix pour la marchande (frontend_src/public/sw.js:5-17) mais aucune file d'attente/outbox ni indicateur de connectivité n'existe dans components/backoffice/ (0 occurrence offline/outbox ; les 3 « Hors ligne » visibles concernent la santé serveur, BODashboard.tsx:381). Impact : l'opérateur en zone à réseau instable perd sa saisie d'enrôlement en cours (brouillons OK via /identifications/draft mais dépendants du réseau).
+Le service worker précharge pages + voix pour la marchande (frontend/public/sw.js:5-17) mais aucune file d'attente/outbox ni indicateur de connectivité n'existe dans components/backoffice/ (0 occurrence offline/outbox ; les 3 « Hors ligne » visibles concernent la santé serveur, BODashboard.tsx:381). Impact : l'opérateur en zone à réseau instable perd sa saisie d'enrôlement en cours (brouillons OK via /identifications/draft mais dépendants du réseau).
 
 ### OPERATEUR-13 [P2] — Voice-first non décliné pour ce rôle
 

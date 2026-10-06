@@ -39,7 +39,7 @@ marchande entend.
   d'encaissement (argent) et affichés tels quels ;
 - aucun `handlePay`, `enregistrerVente`, stock, auth ou logique métier ;
 - aucune nouvelle source de tokens parallèle : la charte de la caisse vit dans
-  `frontend_src/src/styles/commerce.css` (`--caisse-*`), point ;
+  `frontend/src/styles/commerce.css` (`--caisse-*`), point ;
 - conservation des attributs et de l'accessibilité dont les tests dépendent
   (`aria-label`, la ligne de rendu
   `<MicroVenteCaisse produitPreselectionne={produitPreselectionne} onIntentionEncaissement={onIntentionEncaissement} />`
@@ -53,7 +53,7 @@ marchande entend.
   existant modifié pour faire passer le lot ;
 - **capture et mesures visuelles** pour chaque écran modifié (390 × 844,
   `scrollWidth ≤ 390`, 0 élément hors viewport, cibles ≥ 44 px) — le banc
-  `frontend_src/apercu-caisse/` sait le faire ;
+  `frontend/apercu-caisse/` sait le faire ;
 - fusion **comme un lot indépendant, après contre-audit**.
 
 ## Côté plateforme
@@ -96,7 +96,7 @@ toucher à la logique métier.
 Point de rencontre : `docs/langues/JULABA-LANG-CATALOG.csv` (généré par le
 rail plateforme, rempli par Manus), les fichiers `locales/<langue>/`
 (structure côté Claude, contenu côté Manus) et le contrat d'intégration audio
-(`frontend_src/src/app/i18n/voice/contrat-audio.ts` : interface côté Claude,
+(`frontend/src/app/i18n/voice/contrat-audio.ts` : interface côté Claude,
 implémentation côté Manus).
 Les variantes STT **financières** (« oui valide », « encaisse », etc.) ne
 s'activent qu'avec `validation.finance = true`, et la liste blanche de

@@ -88,8 +88,8 @@ commentaires qui expliquent ce qui a été retiré.
 ## Portes franchies
 
 - `node ci/check-tsc-baseline.mjs` — 0
-- `npm run verify -w frontend_src` — vert
-- `npm run test:ci -w frontend_src` (gelé) — vert, non modifié
+- `npm run verify -w frontend` — vert
+- `npm run test:ci -w frontend` (gelé) — vert, non modifié
 - `npm run test:unit -w backend` — 195 tests verts
 - `npm run build` — vert
 

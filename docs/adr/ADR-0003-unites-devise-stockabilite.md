@@ -55,7 +55,7 @@ absence d'information. Inventer une perte serait aussi faux qu'inventer un gain.
 **Décision :** XOF explicite dans le modèle, invisible dans l'UX quotidienne.
 La marchande voit « F » ; la donnée sait « XOF ».
 
-**Fait :** `frontend_src/src/app/config/devise.ts` — un seul endroit DÉCIDE de
+**Fait :** `frontend/src/app/config/devise.ts` — un seul endroit DÉCIDE de
 la devise, de son symbole et de sa forme parlée. Il est importé par
 `utils/fcfa.ts` (rendu de la monnaie, 8 consommateurs) et par
 `services/margeVente.ts` (libellés de marge).

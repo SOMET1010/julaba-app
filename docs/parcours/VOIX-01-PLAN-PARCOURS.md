@@ -955,7 +955,7 @@ ce critère, et fermée (registre, révision 19).**
 
 ### 14.3 Non-régression des garde-fous, gelée, batterie
 
-`git diff a273f2e..e45feb6 -- '*.test.mts' 'frontend_src/scripts/*.mjs'` :
+`git diff a273f2e..e45feb6 -- '*.test.mts' 'frontend/scripts/*.mjs'` :
 **deux fichiers ajoutés** (`caisseCharte`, `caisseRelectureAffichee`), **aucun
 test existant modifié**. `test:ci` identique à `f0c965c` (0 ligne). Les deux
 scripts sont dans `verify`. `tsc -b` 0 · `verify` 0 · `test:ci` 0 · `build`

@@ -22,7 +22,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CI_DIR = dirname(fileURLToPath(import.meta.url));
-const FRONTEND = join(CI_DIR, '..', 'frontend_src');
+const FRONTEND = join(CI_DIR, '..', 'frontend');
 const BASELINE_FILE = join(CI_DIR, 'tsc-baseline.txt');
 
 const baseline = parseInt(readFileSync(BASELINE_FILE, 'utf8').trim(), 10);

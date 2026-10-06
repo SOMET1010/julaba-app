@@ -1,5 +1,5 @@
-frontend_src/node_modules/
-frontend_src/dist/
+frontend/node_modules/
+frontend/dist/
 backend/node_modules/
 backend/dist/
 backend/.env
@@ -37,12 +37,11 @@ erreur.txt
 !.claude/skills/
 .idea/
 
-# Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
-frontend/
-frontend_src/tsconfig.tsbuildinfo
+# (regle bare 'frontend/' retiree le 2026-10-06 : frontend/ est desormais la SOURCE ; le build reste couvert par frontend/dist/ + frontend/assets/)
+frontend/tsconfig.tsbuildinfo
 
 # Fichier intermediaire du banc de capture (apercu-caisse/capture.mjs, jetable)
-frontend_src/apercu-caisse/.viewport-2x.png
+frontend/apercu-caisse/.viewport-2x.png
 
 # Journal d'execution des invariants (ci/prouver-invariants.mjs).
 # Jetable par construction : il porte le SHA de l'arbre sur lequel il a tourne,

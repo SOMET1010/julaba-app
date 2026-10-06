@@ -11,7 +11,7 @@
     produit ne prouve rien : il donne toujours la meme reponse.
 
     LES PRODUITS CHOISIS SONT TOUS DANS LE VOCABULAIRE VOCAL EMBARQUE
-    (frontend_src/src/app/voice-offline/vocabulaire.ts, liste PRODUITS). C'est
+    (frontend/src/app/voice-offline/vocabulaire.ts, liste PRODUITS). C'est
     la condition pour que le test ait un sens : dicter un produit que
     l'application ne connait pas n'eprouve que le repli, pas la reconnaissance.
 

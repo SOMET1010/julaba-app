@@ -45,7 +45,7 @@
 
 ## Types TypeScript à utiliser côté frontend
 
-Ajouter dans `frontend_src/src/app/types/` :
+Ajouter dans `frontend/src/app/types/` :
 ```typescript
 export interface XxxRequest { ... }
 export interface XxxResponse { ... }
@@ -53,7 +53,7 @@ export interface XxxResponse { ... }
 
 ## Service API à créer
 
-Ajouter dans `frontend_src/src/app/services/api/xxx-api.ts` :
+Ajouter dans `frontend/src/app/services/api/xxx-api.ts` :
 ```typescript
 export async function createXxx(req: XxxRequest): Promise<XxxResponse> {
   return apiRequest(API_URL, '/xxx', { method: 'POST', body: JSON.stringify(req) });

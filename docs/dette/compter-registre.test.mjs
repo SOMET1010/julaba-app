@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * LE COMPTEUR DU REGISTRE RECONNAÎT-IL TOUS LES IDENTIFIANTS ?
- * Lancer : npm run test:compter-registre -w frontend_src
+ * Lancer : npm run test:compter-registre -w frontend
  *
  * POURQUOI CE FICHIER EXISTE. Le compte du registre est lu comme un fait
  * (« 113 lignes — 47 / 5 / 61 ») et sert à juger l'avancement. Un identifiant
@@ -104,7 +104,7 @@ console.log('\n[4] Ce qui ne doit PAS devenir une ligne de dette');
   const s = compter([
     '| Lot B2 | P1 | **OUVERT** | une annexe, pas une dette | — | — |',
     '| 2026-09-21 | P1 | **OUVERT** | une date | — | — |',
-    '| frontend_src/src | P1 | **FERMÉ** | un chemin | — | — |',
+    '| frontend/src | P1 | **FERMÉ** | un chemin | — | — |',
     ligne('OFF-02', 'OUVERT'),
   ]);
   verifier('seule la vraie ligne de dette est comptée', total(s) === 1, s);

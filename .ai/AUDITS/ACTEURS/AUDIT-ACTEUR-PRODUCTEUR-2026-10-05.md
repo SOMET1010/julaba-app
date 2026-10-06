@@ -3,7 +3,7 @@
 ## 1. Identité et périmètre
 
 - **Rôle** : `producteur` (+ variante `cooperateur` acceptée sur POST /publications) — acteur terrain, public le plus « peu-lecteur » après la marchande.
-- **Frontend audité** : `frontend_src/src/app/components/producteur/**` — **19 fichiers, 9 595 lignes** (CommandesProducteurPage 2 435 l., ProducteurProduction 1 398 l., Stocks 986 l., RecolteForm 785 l…), + `ProducteurContext.tsx` (731 l.), + services `api/` (producteur-api-adapter 204 l., recoltes-api 97 l., cycles-api 102 l., publications-api 195 l., commandes-api 212 l., stocks-api 42 l.), + routes `/producteur/*` **18 routes** (routes.tsx:98-117), garde `checkRouteAccess` (types/constants.ts:144).
+- **Frontend audité** : `frontend/src/app/components/producteur/**` — **19 fichiers, 9 595 lignes** (CommandesProducteurPage 2 435 l., ProducteurProduction 1 398 l., Stocks 986 l., RecolteForm 785 l…), + `ProducteurContext.tsx` (731 l.), + services `api/` (producteur-api-adapter 204 l., recoltes-api 97 l., cycles-api 102 l., publications-api 195 l., commandes-api 212 l., stocks-api 42 l.), + routes `/producteur/*` **18 routes** (routes.tsx:98-117), garde `checkRouteAccess` (types/constants.ts:144).
 - **Backend audité** : `backend/src/{producteur,producteur-rest,producteurs-rest,recoltes-rest,publications-rest,cycles-rest,revenus,boutique}` — **1 541 lignes** — + périmètre connexe `commandes-rest` (636 l. + StockReservationService) et `stocks-rest` (281 l., partagé marchand).
 - **Sonde runtime** : backend :3001 vivant (health OK). Login Awa Koné (+2250700000009, marchande) → 200 après 429 de throttle (5/min, endpoint partagé par les agents). **5 sondes GET** exécutées, aucune écriture.
 
@@ -22,7 +22,7 @@
 
 ### PRODUCTEUR-01 [P0] — La voix parlée est COUPÉE pour le producteur (`speak()` muet hors rôle marchand)
 
-`AppContext.speak` retourne immédiatement si `user?.role !== 'marchand'` (AppContext.tsx:729-730, trace `ttsIgnoree … 'role-non-marchand'`). Or les 94 appels `speak()` des écrans producteur (RecolteForm 294/301, CommandesProducteurPage 314/328/344/360/374/379, Stocks 162, ProducteurAlertes 387, Revenus 105-115, PublierRecolte 74/78/122/134…) passent tous par ce `speak`. **Impact** : le producteur (cible peu-lectrice, doctrine §1 « la voix est une propriété du PARCOURS ») n'entend AUCUNE confirmation (« C'est enregistré ! »), AUCUNE erreur, AUCUN résumé de revenus — pas même « Paiement encaissé ! L'argent est dans ton Keiwa » (CommandesProducteurPage.tsx:374). La seule voix restante = modale Tantie (clips) et STT. Le feedback d'erreur devient **uniquement visuel** (toast), doublant l'impact de PRODUCTEUR-13. **Preuve** : frontend_src/src/app/contexts/AppContext.tsx:729-730.
+`AppContext.speak` retourne immédiatement si `user?.role !== 'marchand'` (AppContext.tsx:729-730, trace `ttsIgnoree … 'role-non-marchand'`). Or les 94 appels `speak()` des écrans producteur (RecolteForm 294/301, CommandesProducteurPage 314/328/344/360/374/379, Stocks 162, ProducteurAlertes 387, Revenus 105-115, PublierRecolte 74/78/122/134…) passent tous par ce `speak`. **Impact** : le producteur (cible peu-lectrice, doctrine §1 « la voix est une propriété du PARCOURS ») n'entend AUCUNE confirmation (« C'est enregistré ! »), AUCUNE erreur, AUCUN résumé de revenus — pas même « Paiement encaissé ! L'argent est dans ton Keiwa » (CommandesProducteurPage.tsx:374). La seule voix restante = modale Tantie (clips) et STT. Le feedback d'erreur devient **uniquement visuel** (toast), doublant l'impact de PRODUCTEUR-13. **Preuve** : frontend/src/app/contexts/AppContext.tsx:729-730.
 
 ### PRODUCTEUR-02 [P1] — IDOR : POST /commandes accepte un vendeur_id arbitraire hors vente directe
 
@@ -82,7 +82,7 @@ Fermeture modale 36 px (MesRecoltesPage.tsx:70 `w-9 h-9`), 40 px (RecolteForm.ts
 
 ### PRODUCTEUR-16 [P2] — Voix producteur non migrée en clips (24 phrases a_migrer)
 
-24 entrées PROD_001…PROD_024 toutes `statut: 'a_migrer'` (catalog.ts:353-376) — le parcours producteur dépend du TTS, aucune grammaire par clips pré-cachés comme l'auth/verrou (tranché AUTH-03). **Preuve** : frontend_src/src/app/i18n/voice/catalog.ts:353-376.
+24 entrées PROD_001…PROD_024 toutes `statut: 'a_migrer'` (catalog.ts:353-376) — le parcours producteur dépend du TTS, aucune grammaire par clips pré-cachés comme l'auth/verrou (tranché AUTH-03). **Preuve** : frontend/src/app/i18n/voice/catalog.ts:353-376.
 
 ### PRODUCTEUR-17 [P2] — Photos : base64 en colonne photo_url TEXT + stratégie mixte Cloudinary/base64
 

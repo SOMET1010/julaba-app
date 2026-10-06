@@ -23,9 +23,9 @@ Ce sont des îlots, pas des feuilles isolées.
 | Preuve | Méthode | Résultat |
 |---|---|---|
 | Absence d'import statique | graphe d'imports `import`/`export … from`/`require` avec résolution d'index et d'alias `@/` | 72 candidats sans aucun importeur ; les 28 autres importés **uniquement** par d'autres candidats |
-| Absence de chargement dynamique | recherche de `import()` à spécificateur non littéral (variable/gabarit) et de `import.meta.glob` dans tout `frontend_src/src` | **aucun**. Les seuls imports dynamiques sont littéraux (`routes.tsx`, `BOSupervision`, `BOZones`) et donc déjà dans le graphe |
+| Absence de chargement dynamique | recherche de `import()` à spécificateur non littéral (variable/gabarit) et de `import.meta.glob` dans tout `frontend/src` | **aucun**. Les seuls imports dynamiques sont littéraux (`routes.tsx`, `BOSupervision`, `BOZones`) et donc déjà dans le graphe |
 | Absence de route/configuration | `routes.tsx` est dans le graphe ; `vite.config.ts`, `tsconfig.json` (`include: ["src"]`), `capacitor.config.ts` ne nomment aucun fichier individuellement | aucune référence |
-| Absence de script/build/test | recherche du chemin de chaque candidat hors `frontend_src/src` (CI, `scripts/`, `maestro/`, `package.json`, docs) | seules occurrences : les rapports `.audit_ui_*` (dumps de chaînes, pas des consommateurs) et `ADR-0003` pour `devise.ts` |
+| Absence de script/build/test | recherche du chemin de chaque candidat hors `frontend/src` (CI, `scripts/`, `maestro/`, `package.json`, docs) | seules occurrences : les rapports `.audit_ui_*` (dumps de chaînes, pas des consommateurs) et `ADR-0003` pour `devise.ts` |
 
 `tsconfig.tsbuildinfo` cite bien les 100 fichiers — c'est un artefact de build non
 versionné, produit *par* `include: ["src"]`, pas un consommateur. Il a été écarté.
@@ -183,7 +183,7 @@ Chacun a sa contrepartie en service : `WalletInline` → `WalletPage`/`WalletCar
 
 | Métrique | Avant | Après |
 |---|---|---|
-| Fichiers de `frontend_src/src/app` (hors tests et `.d.ts`) | 519 | **420** |
+| Fichiers de `frontend/src/app` (hors tests et `.d.ts`) | 519 | **420** |
 | Hors parcours depuis les points d'entrée | 100 | **1** (conservé, documenté) |
 | Lignes supprimées | — | **17 899** |
 | Fichiers de plus de 400 lignes | 124 | **116** |
@@ -210,9 +210,9 @@ après. Le 415 venait d'un motif plus étroit. La bonne paire est 440 → 433.
 ## Portes franchies
 
 - `node ci/check-tsc-baseline.mjs` — 0 erreur, cliquet tenu
-- `npm run test:ci -w frontend_src` (gelé) — vert
-- `npm run verify -w frontend_src` (54 scripts) — vert
-- `npm run build -w frontend_src` — vert, 184 chunks + 137 clips voix pré-cachés
+- `npm run test:ci -w frontend` (gelé) — vert
+- `npm run verify -w frontend` (54 scripts) — vert
+- `npm run build -w frontend` — vert, 184 chunks + 137 clips voix pré-cachés
 
 Aucun test n'a été modifié, ajouté ni supprimé. Mêmes tests à l'entrée qu'à la sortie.
 

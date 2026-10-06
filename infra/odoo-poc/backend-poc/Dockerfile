@@ -4,7 +4,7 @@
 # Pourquoi une image separee et non celle de prod :
 #
 # 1. CONTEXTE. backend/Dockerfile copie `backend/package-lock.json`, qui
-#    n'existe pas : le depot est en npm workspaces (frontend_src + backend) et
+#    n'existe pas : le depot est en npm workspaces (frontend + backend) et
 #    le lock unique vit a la RACINE. Cette image se construit donc depuis la
 #    racine, avec le vrai lock.
 # 2. LIBC. L'image de prod est Alpine (musl) et installe python3/make/g++ pour
@@ -25,7 +25,7 @@ WORKDIR /app
 # lock de workspaces si l'un des membres declares est absent.
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/
-COPY frontend_src/package.json frontend_src/
+COPY frontend/package.json frontend/
 
 # `npm ci` complet (workspaces compris) : plus long qu'un `-w backend`, mais
 # strictement conforme au lock, ce qui est le seul point qui compte pour un

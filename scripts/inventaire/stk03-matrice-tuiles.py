@@ -5,7 +5,7 @@ import json, re, unicodedata
 MAITRE = json.load(open('docs/data/catalogue-maitre-julaba.v1.json'))
 PRODUITS = MAITRE['produits']
 
-src = open('frontend_src/src/app/data/catalogue-produits.ts', encoding='utf-8').read()
+src = open('frontend/src/app/data/catalogue-produits.ts', encoding='utf-8').read()
 TUILES = [m.group(1) for m in re.finditer(r"nom:\s*'([^']+)'", src)]
 
 def norm(s):

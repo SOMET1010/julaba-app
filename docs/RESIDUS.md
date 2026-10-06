@@ -8,7 +8,7 @@ nettoyage retire une ligne d'ici ou en ajoute une, avec preuve.
 ## Nettoyé (passe 1 — v5.0.0.6, 11/08/2026)
 
 - `Ollama` (fichier vide à la racine, suivi par git) : supprimé.
-- `frontend_src/src/imports/` : 35 fichiers non-code (specs .md, logs .txt,
+- `frontend/src/imports/` : 35 fichiers non-code (specs .md, logs .txt,
   SVG en double) supprimés — aucun n'était importé (vérifié par grep, y
   compris `?raw`). Les `*-api.ts` réellement importés sont conservés.
 - `MarchandAccueil.tsx` (ancien accueil marchand) : supprimé — plus aucun

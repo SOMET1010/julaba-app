@@ -13,7 +13,7 @@ Branche : `claude/integration-main` (PR #259), tête mesurée `3381cc6`.
 
 | porte | résultat |
 |---|---|
-| `npm run test:ci -w frontend_src` | **exit 0 — vert** (44 maillons) |
+| `npm run test:ci -w frontend` | **exit 0 — vert** (44 maillons) |
 | `npm run verify` (frontend) | exit 1 — 129 verts, **3 rouges connus**, aucun rouge nouveau |
 | `npm run test:unit -w backend` | 33 suites, 251/251 |
 | `node ci/check-tsc-baseline.mjs` | 0 erreur |

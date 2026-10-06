@@ -43,10 +43,10 @@ elle refera ce qui est déjà fait.
 
 ```
 node ci/check-tsc-baseline.mjs          → 0 erreur (cliquet)
-npm run verify -w frontend_src          → vert (56 scripts)
-npm run test:ci -w frontend_src         → GELÉ et NON MODIFIÉ — ROUGE sur 3 tests (voir note)
+npm run verify -w frontend          → vert (56 scripts)
+npm run test:ci -w frontend         → GELÉ et NON MODIFIÉ — ROUGE sur 3 tests (voir note)
 npm run test:unit -w backend            → 196 tests verts
-npm run build -w frontend_src           → vert
+npm run build -w frontend           → vert
 npm run build -w backend                → vert
 
 # Invariants (PostgreSQL réel — à démarrer d'abord) :
@@ -248,7 +248,7 @@ alternative).
 ## Invariants gelés (ne pas rouvrir sans décision explicite)
 
 - **CI gelée** : `.github/workflows/ci.yml` n'appelle que `npm run test:ci
-  -w frontend_src` (+ `test:unit -w backend`). Aucun ajout à `test:ci` tant
+  -w frontend` (+ `test:unit -w backend`). Aucun ajout à `test:ci` tant
   que la recette terrain n'est pas faite — nouveaux tests dans `verify`
   uniquement (frontend) ou dans la suite `test:unit` déjà existante
   (backend, non gelée).

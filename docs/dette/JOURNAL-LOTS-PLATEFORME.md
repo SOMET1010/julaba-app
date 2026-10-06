@@ -22,7 +22,7 @@ le 20/09/2026, **fusionné** en `19eeeaa`. **Registre** : révision 21.
 API-04 (la couche pose `Authorization`), TYPE-03 (patch de `main.tsx` typé),
 API-03 (`useWebAuthn`), API-05 (`getCurrentUser`), API-07 / API-08
 (convergence de `useRealtime` et `getSystemSettings`), API-10 (compte des
-`fetch()` directs). Huit fichiers touchés, tous dans `frontend_src/`. Aucun
+`fetch()` directs). Huit fichiers touchés, tous dans `frontend/`. Aucun
 test existant modifié ; `test:ci` identique ; un script ajouté à `verify`
 (`test:api-authorization`).
 
@@ -106,7 +106,7 @@ résolu en concaténant `verify` : `+ test:voix-trace`, `+ test:voix-trace-sourc
 ### Périmètre
 
 VOICE-01 (le transcript brut et le choix de voix exposés à la recette terrain).
-14 fichiers, tous dans `frontend_src/` : journal `utils/voiceTrace.ts` (329 l.)
+14 fichiers, tous dans `frontend/` : journal `utils/voiceTrace.ts` (329 l.)
 + son test, garde-fou `scripts/test-voix-trace-source.mjs` + fixture
 `scripts/fixtures/parole-3917bb7.json`, `voiceDebug.ts` (module de rapport,
 réécrit), bouton « Rapport de test » dans `UniversalParametres.tsx`, et 7
@@ -193,7 +193,7 @@ sont *proposés* et n'entrent au registre qu'à la fusion.
 ARG-04 (idempotence de création d'un crédit), TYPE-02 (DTO du contrôleur
 crédit), ARG-11 (I6 : trace de la vente à crédit), CLIENT-02 marche 1
 (`credits.client_id`). Backend seulement : `git diff --name-only` ne montre
-aucun fichier `frontend_src`.
+aucun fichier `frontend`.
 
 ### Reproduction (rejouée par QA-B, sur base dédiée)
 
@@ -304,7 +304,7 @@ les tables qu'à la fusion.
 
 ### Périmètre
 
-20 fichiers, backend et docs, **0 sous `frontend_src`** ; `package-lock`
+20 fichiers, backend et docs, **0 sous `frontend`** ; `package-lock`
 inchangé. `docs/schema/EMPREINTE-PILOTE.json` **identique à l'octet**
 (`git diff 3917bb7 9d15935` vide) ; **`--figer` non lancé** (empreinte figée
 toujours 60/684, `genereLe: 2026-09-19`) ; l'empreinte PROPOSÉE est un fichier
@@ -663,7 +663,7 @@ entrent maintenant**.
 | `test:ci` frontend | **0** | **gelée confirmée** : md5 de la ligne identique à `f0c965c` |
 | `build` | **0** | |
 | `test:api-authorization` (lot D) | 1 seul / **0** sur fusion simulée | 164 `fetch()` inchangé, A n'en ajoute aucun |
-| fusion simulée `e18ba29` + A | **1 conflit** | `frontend_src/package.json` seul ; ensuite `api-authorization`, `voix-trace`, `voix-trace-source`, `recuperation-code` : **tous 0** |
+| fusion simulée `e18ba29` + A | **1 conflit** | `frontend/package.json` seul ; ensuite `api-authorization`, `voix-trace`, `voix-trace-source`, `recuperation-code` : **tous 0** |
 
 ### Reproduction (rouge sur la base)
 
@@ -844,7 +844,7 @@ CSV Manus (33 colonnes, 501 lignes, idempotent).
 
 | Gate | Résultat |
 |---|---|
-| `check-tsc-baseline` | **0** (script à la racine `ci/`, pas `frontend_src/ci/`) |
+| `check-tsc-baseline` | **0** (script à la racine `ci/`, pas `frontend/ci/`) |
 | `verify` | **0** — 4 gates i18n verts, énumération 2 560 000 / 19 312 / 0, 9 empreintes = base |
 | `test:ci` | **0** — chaîne **identique valeur contre valeur** à `f0c965c` |
 | `build` | **0** |

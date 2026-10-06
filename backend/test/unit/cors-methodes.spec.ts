@@ -43,7 +43,7 @@ describe('CORS-01 — les méthodes du front sont autorisées', () => {
   const autorisees = new Set(entete.split(',').map(s => s.trim()));
 
   const employees = new Set<string>();
-  for (const f of fichiersSource(join(RACINE, 'frontend_src/src/app'))) {
+  for (const f of fichiersSource(join(RACINE, 'frontend/src/app'))) {
     for (const m of readFileSync(f, 'utf-8').matchAll(/method:\s*'(GET|POST|PUT|PATCH|DELETE)'/g)) {
       employees.add(m[1]);
     }

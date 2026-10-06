@@ -29,7 +29,7 @@ export type MouvementStockCommand = MouvementStockDto;
  * N'écrit jamais directement dans Odoo depuis un appelant JULABA — toute
  * commande passe par `simulerMouvementStock`, qui applique la même
  * discipline d'idempotence que l'outbox financière déjà en production
- * (voir frontend_src/.../voice-offline/offlineCaisse.ts) : un `operationId`
+ * (voir frontend/.../voice-offline/offlineCaisse.ts) : un `operationId`
  * rejoué à l'identique ne produit jamais un second effet, un `operationId`
  * réutilisé avec un payload différent est un conflit explicite refusé, et
  * deux appels CONCURRENTS pour le même `operationId` ne déclenchent jamais

@@ -112,7 +112,7 @@ mandingue seul est ambigu entre francs et dɔrɔmɛ : « mugan » vaut 20 F ou
 5. bonus gratuit : le vocabulaire du modèle MMS dioula ne contient **aucun
    chiffre**. Il ne sait physiquement pas prononcer « 500 ».
 
-**La preuve.** `npm run test:voix-dyu-argent -w frontend_src`, dans `verify` :
+**La preuve.** `npm run test:voix-dyu-argent -w frontend`, dans `verify` :
 
 ```
 [A] aujourd'hui — dyu-ci est vide (lot B7), et l'argent est déjà français
@@ -222,7 +222,7 @@ ordinaire.
 ```bash
 # Un build d'essai complet, du modèle à l'APK
 cd android && JULABA_VOIX_DYU=1 ./scripts/installer-voix.sh
-JULABA_VOIX_DYU=1 npm run build -w frontend_src && cd android && ./gradlew assembleDebug
+JULABA_VOIX_DYU=1 npm run build -w frontend && cd android && ./gradlew assembleDebug
 ```
 
 **Les trois verrous se lèvent ENSEMBLE, et c'est le point.** En lever un seul ne
@@ -288,14 +288,14 @@ Et ce qu'il ne lève PAS, même allumé :
 | `android/scripts/convertir-voix-dyu.py` | adapte le port ONNX à sherpa, écrit `tokens.txt`, quantifie, **vérifie que ça parle** |
 | `android/scripts/installer-voix.sh` | étape 4/4, derrière `JULABA_VOIX_DYU=1` |
 | `android/app/src/main/java/com/julaba/app/SherpaTtsPlugin.kt` | un moteur par voix, repli tracé sur le français |
-| `frontend_src/src/app/i18n/voice/voixParLocale.ts` | **quelle voix dit quoi** — et pourquoi l'argent reste français |
-| `frontend_src/src/app/i18n/voice/renduVoixLocale.ts` | le branchement, sur le point d'extension prévu par `contrat-audio.ts` |
-| `frontend_src/src/app/voice-offline/nativeTtsVoix.ts` | le pont JS multilingue, à côté de `nativeTts.ts` qui reste gelé (VOICE-01) |
-| `frontend_src/src/app/i18n/voice/voixParLocale.test.mts` | la preuve que l'argent reste français, dans `verify` — **inchangée** |
-| `frontend_src/src/app/i18n/voice/drapeauxDeTest.ts` | **les deux drapeaux**, et le raisonnement complet sur le garde B7 |
-| `frontend_src/src/app/i18n/voice/locales/dyu-ci/decorDeTest.ts` | le décor construit depuis les seules `texteDyu` du dépôt, et le filtre qui l'écarte |
-| `frontend_src/src/app/i18n/voice/drapeauxDyu.test.mts` | les **trois états** côte à côte, dans `verify` |
-| `frontend_src/vite.config.ts` | les deux `define`, et l'avertissement à la construction |
+| `frontend/src/app/i18n/voice/voixParLocale.ts` | **quelle voix dit quoi** — et pourquoi l'argent reste français |
+| `frontend/src/app/i18n/voice/renduVoixLocale.ts` | le branchement, sur le point d'extension prévu par `contrat-audio.ts` |
+| `frontend/src/app/voice-offline/nativeTtsVoix.ts` | le pont JS multilingue, à côté de `nativeTts.ts` qui reste gelé (VOICE-01) |
+| `frontend/src/app/i18n/voice/voixParLocale.test.mts` | la preuve que l'argent reste français, dans `verify` — **inchangée** |
+| `frontend/src/app/i18n/voice/drapeauxDeTest.ts` | **les deux drapeaux**, et le raisonnement complet sur le garde B7 |
+| `frontend/src/app/i18n/voice/locales/dyu-ci/decorDeTest.ts` | le décor construit depuis les seules `texteDyu` du dépôt, et le filtre qui l'écarte |
+| `frontend/src/app/i18n/voice/drapeauxDyu.test.mts` | les **trois états** côte à côte, dans `verify` |
+| `frontend/vite.config.ts` | les deux `define`, et l'avertissement à la construction |
 
 ---
 

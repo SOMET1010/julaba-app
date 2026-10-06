@@ -4,7 +4,7 @@
 
 - **Rôle audité** : `cooperateur` (backend `UserRole.COOPERATEUR = 'cooperateur'`, `user.entity.ts:22`) — responsable/membre d'une coopérative de marchandes.
 - **Compte de sonde** : +2250970707070 « Coopérative Daloa » / COOP-CACAO Daloa (seed `seed-demo.service.ts:112`), mot de passe `1234`, rôle `cooperateur`, `role` résolu `president` côté besoins.
-- **Frontend** : 10 composants `frontend_src/src/app/components/cooperative/**` (8 373 lignes, MarcheHub 2 493 l., Membres 1 790 l.) + routes `/cooperative/*` (`routes.tsx:119-137`) + `CooperativeContext.tsx` + `services/api/cooperatives-api.ts`. Côté marchand : `MaCooperative.tsx`, `BesoinMarchand.tsx`.
+- **Frontend** : 10 composants `frontend/src/app/components/cooperative/**` (8 373 lignes, MarcheHub 2 493 l., Membres 1 790 l.) + routes `/cooperative/*` (`routes.tsx:119-137`) + `CooperativeContext.tsx` + `services/api/cooperatives-api.ts`. Côté marchand : `MaCooperative.tsx`, `BesoinMarchand.tsx`.
 - **Backend** : `cooperatives-rest/` (contrôleur 953 l., 4 entités, 2 DTO), `commandes-rest/` (flux commandes), `stocks-rest/` (stock personnel, non coop), `dossiers-rest/` (HORS rôle coopérative — cf. §5), `notifications/notify-member`.
 - **Sonde runtime** (GET lecture seule, backend :3001) : sans token → **401** ; avec token coopérative → `/cooperatives` 200, `/tresorerie` 200 (0 transaction), `/membres` 200 (3 membres, téléphones exposés, aucun champ sensible), `/stock` 200, `/besoins` 200 (`role: president`, 2 besoins). **Aucune écriture effectuée.**
 - **Audit précédent** : `.ai/AUDITS/ACTEURS/AUDIT-ACTEUR-COOPERATEUR-2026-09-28.md` — squelette « À RECETTER » sans preuve fichier:ligne ; validité réévaluée en §3 (COOPERATEUR-00).

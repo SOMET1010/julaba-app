@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-cd /var/www/julaba/frontend_src
+cd /var/www/julaba/frontend
 npm run build
 sudo rm -rf /var/www/julaba/frontend/dist
 sudo mkdir -p /var/www/julaba/frontend/dist

@@ -35,7 +35,7 @@ au lieu de 171) :
 Les 35 « écrasées » ont été vérifiées une par une, pas déduites : `CONSTITUTION.md`,
 `docs/adr/ADR-001`, `ADR-002`, `backend/src/fidelite-rest/`, la migration GPS des
 communes, `backend/test/invariants/keiwa-paiement-commande.spec.ts`,
-`frontend_src/src/app/services/ligneProvisoire.ts` — tous présents dans `main`.
+`frontend/src/app/services/ligneProvisoire.ts` — tous présents dans `main`.
 
 ### `claude/julaba-voice-audit-fixes-hi3jlq` — tranchée le 18/09
 
@@ -47,7 +47,7 @@ l'APK.
 **Arbitrage de Patrick : on abandonne le chemin web.** Le produit du pilote est
 l'APK, et sa voix native fonctionne — il l'a entendue sur son téléphone. Porter
 cette branche dans `main` supposerait de la replacer intégralement (elle date
-d'avant l'unification `frontend/` → `frontend_src/`), pour une capacité dont
+d'avant l'unification `frontend/` → `frontend/`), pour une capacité dont
 aucune marchande du pilote n'a besoin.
 
 Elle est donc supprimée avec les autres. Son SHA est dans le tableau ci-dessous

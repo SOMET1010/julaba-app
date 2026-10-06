@@ -17,11 +17,11 @@ Backend (`backend/`) :
 - Exports : `exceljs` (xlsx), `pdfkit` (pdf). Notifications push : `web-push`. Hash : `bcryptjs`.
 - Source : `backend/package.json`.
 
-Frontend (`frontend_src/`) :
+Frontend (`frontend/`) :
 - React + Vite + TypeScript, routage `react-router` (`createBrowserRouter`).
 - UI Radix + Tailwind 4, `framer-motion`/`motion`, `leaflet` (cartes), `jsqr` (QR), `jspdf`/`html2canvas` (export PDF), `papaparse` (CSV).
 - WebAuthn cote client (`@simplewebauthn/browser`).
-- Source : `frontend_src/package.json`, `frontend_src/src/app/routes.tsx`.
+- Source : `frontend/package.json`, `frontend/src/app/routes.tsx`.
 
 ### 1.2 Perimetre fonctionnel
 
@@ -418,7 +418,7 @@ Conclusion : code mort non expose (jamais monte) = `WalletsAdminController`, et 
 
 ## 4. Inventaire des ecrans (frontend)
 
-Source des chemins de route : `frontend_src/src/app/routes.tsx`. Les routes hors back-office sont enveloppees par `AppLayout` (ou `InstitutionLayout`, `IdentificateurLayout`) sous `RootLayout`. Le gating de role/profil est applique par `EntryGate` (auth/EntryGate.tsx) et par les composants (sous-profil marchand, president cooperative, permissions BO).
+Source des chemins de route : `frontend/src/app/routes.tsx`. Les routes hors back-office sont enveloppees par `AppLayout` (ou `InstitutionLayout`, `IdentificateurLayout`) sous `RootLayout`. Le gating de role/profil est applique par `EntryGate` (auth/EntryGate.tsx) et par les composants (sous-profil marchand, president cooperative, permissions BO).
 
 ### 4.1 Ecrans d'authentification (publics)
 
@@ -598,7 +598,7 @@ Statuts utilisateur (`user.entity.ts:31-38`) : pending, actif, suspendu, rejete,
 - Connexion email reservee aux BO_ROLES (`auth.service.ts:156-159`). Connexion bloquee pour les statuts suspendu/rejete/en_attente_validation.
 - JWT : access token 15 min par defaut, refresh token 7 jours, max 5 sessions par utilisateur (`auth.service.ts:19`), rotation single-use du refresh token.
 
-### 5.3 Matrice de permissions Back-office (source `frontend_src/src/app/config/bo-permissions.ts`)
+### 5.3 Matrice de permissions Back-office (source `frontend/src/app/config/bo-permissions.ts`)
 
 Le registre `BO_PERMISSION_TREE` definit 21 modules de permissions, chacun avec des feuilles de type view/write/danger. Modules : dashboard (avec KPI et panneaux detailles), acteurs, enrolement, supervision, zones, moderation, mutations, academy, missions, audit, marketplace, livraison, communication, contenus, monitoring_ia, analytics_produit, cron, commissions, utilisateurs (superOnly), parametres / config institution (superOnly).
 
@@ -618,7 +618,7 @@ Droits par defaut (DEFAULTS) pre-coches a l'ouverture (lignes 429-459) :
 
 Branchement reel (verifie par lecture directe) :
 - Le commentaire des lignes 14-15 de `bo-permissions.ts` ("ce fichier n'est branche nulle part", etape A) est PERIME. Le registre EST branche, mais uniquement comme source de l'UI d'edition de la matrice dans `BOUtilisateurs.tsx` (import lignes 12-17) : `BO_PERMISSION_TREE` filtre les modules affiches (l.156), `buildDefaultPermissions(role)` pre-coche (DEFAULTS), `roleCanHave(role, key)` verrouille les cases (CAPS), `allPermissionKeys()` itere. Aucun autre fichier n'importe `bo-permissions.ts`.
-- Le controle d'acces runtime est INDEPENDANT du registre. `hasPermission(permission)` est implementee dans `frontend_src/src/app/contexts/BackOfficeContext.tsx:584-592` : si `user.role === 'super_admin'` -> true (l.586) ; sinon si `user.boPermissions` est un objet -> `boPermissions[permission] === true` (l.587-589) ; sinon fallback sur une table en dur SEPAREE `BO_SCREEN_PERMISSIONS` (definie l.131-136, par role) (l.590-591). Il n'utilise ni `BO_PERMISSION_TREE`, ni les CAPS, ni les DEFAULTS du registre.
+- Le controle d'acces runtime est INDEPENDANT du registre. `hasPermission(permission)` est implementee dans `frontend/src/app/contexts/BackOfficeContext.tsx:584-592` : si `user.role === 'super_admin'` -> true (l.586) ; sinon si `user.boPermissions` est un objet -> `boPermissions[permission] === true` (l.587-589) ; sinon fallback sur une table en dur SEPAREE `BO_SCREEN_PERMISSIONS` (definie l.131-136, par role) (l.590-591). Il n'utilise ni `BO_PERMISSION_TREE`, ni les CAPS, ni les DEFAULTS du registre.
 - La sidebar (`BOLayout.tsx`) masque les entrees via `superOnly` (flag code en dur sur chaque item de `SIDEBAR_MENU`, defini dans BOLayout, pas dans le registre) ET `hasPermission(item.permission)` : items de premier niveau l.888-895, items de groupe l.661-666 (un groupe vide est masque, l.668).
 - Gardes d'acces URL sur les 6 ecrans plateforme super-only (BOMonitoringIA, BOAnalyticsProduit, BOApiKeys, BOConfigInstitution, BOInstitutions, BOScoreFinancier) : early-return en tete de composant testant directement `boUser.role !== 'super_admin'` (affiche "Acces reserve"), independamment de `hasPermission` (commit d9e89a235).
 - Point d'attention recette : il existe deux definitions paralleles non synchronisees des scopes par role (le registre `bo-permissions.ts` pour l'edition, et `BO_SCREEN_PERMISSIONS` dans BackOfficeContext pour le fallback runtime).

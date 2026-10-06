@@ -20,7 +20,7 @@
 //   ./scripts/pg-test-local.sh start
 //   npm run build -w backend && node backend/dist/main.js      (port 3010,
 //     avec CORS_ORIGIN pointant le serveur statique, base de test)
-//   VITE_API_URL=http://127.0.0.1:3010/api/v1 npm run build -w frontend_src
+//   VITE_API_URL=http://127.0.0.1:3010/api/v1 npm run build -w frontend
 //     ^ OBLIGATOIRE : sans elle, le bundle appelle sa propre origine et la
 //       connexion echoue avec « Reponse inattendue » (meme doctrine que
 //       l'APK, voir 1958d6a).

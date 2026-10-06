@@ -14,7 +14,7 @@
 | Fichier | Lignes ajoutées | Lignes supprimées | Criticité |
 |---|---|---|---|
 | `backend/src/xxx/xxx.service.ts` | +120 | -15 | Critique (module sacré) |
-| `frontend_src/src/app/pages/xxx.tsx` | +85 | -0 | Standard |
+| `frontend/src/app/pages/xxx.tsx` | +85 | -0 | Standard |
 | ... | ... | ... | ... |
 
 ## Critères de revue attendus

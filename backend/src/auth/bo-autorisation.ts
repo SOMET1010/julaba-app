@@ -6,7 +6,7 @@
 // la généralisation à tout le back-office relève des lots suivants (BO-3).
 //
 // Résolution d'une permission : copie EXACTE de `hasPermission` du front
-// (frontend_src/src/app/contexts/BackOfficeContext.tsx) pour que l'écran et le
+// (frontend/src/app/contexts/BackOfficeContext.tsx) pour que l'écran et le
 // serveur disent la même chose :
 //   1. super_admin : toujours vrai ;
 //   2. sinon, si le compte porte un objet `boPermissions`, il fait seul foi ;

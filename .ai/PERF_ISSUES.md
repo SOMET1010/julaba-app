@@ -42,11 +42,11 @@
 - **Impact** : Visibilité limitée sur la composition du bundle.
 - **Recommandation** : Ajouter `rollup-plugin-visualizer` en devDependency.
 
-### PERF-006 — `@nestjs/core` dans `frontend_src/package.json` (P2)
+### PERF-006 — `@nestjs/core` dans `frontend/package.json` (P2)
 - **Statut** : OUVERT
 - **Description** : `@nestjs/core` 11.1.28 en `dependencies` frontend — dépendance suspecte (fuite backend ? ~5+ MB).
 - **Impact** : Bundle frontend alourdi inutilement.
-- **Recommandation** : Retirer `@nestjs/core` du `frontend_src/package.json`.
+- **Recommandation** : Retirer `@nestjs/core` du `frontend/package.json`.
 
 ## Points forts perf (audit initial)
 

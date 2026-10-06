@@ -5,7 +5,7 @@
 ## Besoin frontend
 
 - **User story** : "En tant que marchande, je veux ..."
-- **Écran** : `frontend_src/src/app/pages/marchand/xxx.tsx`
+- **Écran** : `frontend/src/app/pages/marchand/xxx.tsx`
 - **Branche frontend** : `feature/XXX-front`
 
 ## Endpoints attendus

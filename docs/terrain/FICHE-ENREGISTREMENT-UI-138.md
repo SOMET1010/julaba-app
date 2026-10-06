@@ -40,14 +40,14 @@ maintenant.
 ## Où le déposer
 
 ```
-frontend_src/public/voix/tata/ui-138.mp3
+frontend/public/voix/tata/ui-138.mp3
 ```
 
 Format : MP3, comme les autres. Les clips existants font entre 19 et 52 Ko.
 
 ## Puis, une ligne de code
 
-Dans `frontend_src/src/app/services/tataUiClips.ts`, à sa place alphabétique :
+Dans `frontend/src/app/services/tataUiClips.ts`, à sa place alphabétique :
 
 ```ts
 { file: "/voix/tata/ui-138.mp3", text: "Je n'ai pas compris. Touche le micro et redis-moi." },
@@ -61,13 +61,13 @@ celle-ci, figée par `clipEchecCaisse.test.mts`.
 référence — **geste de Patrick, pas d'un agent** :
 
 ```
-node frontend_src/scripts/test-voix-trace-source.mjs --regenerer
+node frontend/scripts/test-voix-trace-source.mjs --regenerer
 ```
 
 ## Vérifier
 
 ```
-npm run test:clip-echec-caisse -w frontend_src
+npm run test:clip-echec-caisse -w frontend
 ```
 
 Tant que le clip manque, il affiche `⏳ clip PAS ENCORE ENREGISTRÉ` sans faire

@@ -1,6 +1,6 @@
 # Inventaire exhaustif des phrases vocales — JULABA
 
-> **Généré** par `npm run i18n:inventaire` (`frontend_src/scripts/i18n-inventaire.mjs`), lecture du source par l'AST TypeScript. **Ne pas éditer à la main** : le garde-fou `validateInventaire` compare ce document au source et rougit s'il est périmé.
+> **Généré** par `npm run i18n:inventaire` (`frontend/scripts/i18n-inventaire.mjs`), lecture du source par l'AST TypeScript. **Ne pas éditer à la main** : le garde-fou `validateInventaire` compare ce document au source et rougit s'il est périmé.
 >
 > Étape 0 du lot i18n — **aucune traduction ici**. On extrait ce que le code dit AUJOURD'HUI, tel quel (`frActuel`), pour que le catalogue (`src/app/i18n/voice/catalog.ts`) ne repose sur aucune phrase inventée.
 

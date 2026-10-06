@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Régénère les icônes Android natives (mipmap-*) depuis l'asset source
-"Tantie Sagesse" (frontend_src/public/images/tantie-sagesse-icon-512.png).
+"Tantie Sagesse" (frontend/public/images/tantie-sagesse-icon-512.png).
 
 Script JETABLE, à relancer si l'icône source change. Ne fait pas partie
 d'un pipeline de build : exécution manuelle ponctuelle uniquement.
@@ -17,12 +17,12 @@ from pathlib import Path
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SOURCE = REPO_ROOT / "frontend_src/public/images/tantie-sagesse-icon-512.png"
+SOURCE = REPO_ROOT / "frontend/public/images/tantie-sagesse-icon-512.png"
 RES = REPO_ROOT / "android/app/src/main/res"
 BACKGROUND_XML = RES / "values/ic_launcher_background.xml"
 
 # Couleur de fond de l'icône adaptative — token Jùlaba existant
-# (frontend_src/src/app/styles/design-tokens.ts, ROLE_COLORS.marchand),
+# (frontend/src/app/styles/design-tokens.ts, ROLE_COLORS.marchand),
 # déjà très proche de l'orange du disque derrière Tata Sagesse dans la
 # source (#B2622D mesuré) : cohérence de charte + aucune couture visible.
 # Définie ici en dur pour vérifier qu'elle reste synchronisée avec
