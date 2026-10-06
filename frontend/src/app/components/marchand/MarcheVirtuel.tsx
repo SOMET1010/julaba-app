@@ -452,7 +452,21 @@ export function MarcheVirtuel() {
       setShowErrorModal(true);
       return;
     }
-    speakSilent(montantsMasques ? `Paiement par ${label} effectué avec succès` : `Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA par ${label} effectué avec succès`);
+    // HONNÊTÉ ARGENT (AUDIT-UX-ROLES-2026-10-06 T2) : créer la commande
+    // n'écrit AUCUN mouvement wallet (invariant B2 — l'argent ne bouge qu'à
+    // l'encaissement du vendeur, POST /commandes/:id/paiement). Mobile money
+    // et carte sont déclaratifs : aucune intégration. On annonce donc une
+    // COMMANDE à régler, jamais un « paiement effectué avec succès » — même
+    // règle que le pilote caisse (POSCaisse 55-60 : pas de promesse
+    // fonctionnelle contradictoire).
+    const montantParle = montantsMasques ? '' : ` ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA`;
+    if (paymentMethod === 'keiwa') {
+      speakSilent(`Commande passée. Le montant sera débité de ton Wallet quand le vendeur encaissera.`);
+    } else if (paymentMethod === 'cash') {
+      speakSilent(`Commande passée. Tu paieras${montantParle} en espèces à la livraison.`);
+    } else {
+      speakSilent(`Commande passée. Tu règleras${montantParle} par ${label} à la livraison.`);
+    }
     resetPaymentState();
   };
 
@@ -485,7 +499,12 @@ export function MarcheVirtuel() {
       setShowErrorModal(true);
       return;
     }
-    speakSilent(montantsMasques ? 'Paiement effectué avec succès depuis ton Wallet' : `Paiement de ${(cartTotal || 0).toLocaleString()} francs CFA effectué avec succès depuis ton Wallet`);
+    // HONNÊTÉ ARGENT (T2) : le PIN CONFIRME la commande, il ne paie pas —
+    // aucun mouvement wallet n'est écrit ici (invariant B2) ; le débit réel
+    // part à l'encaissement du vendeur (POST /commandes/:id/paiement).
+    speakSilent(montantsMasques
+      ? 'Commande confirmée par ton code PIN. Le montant sera débité de ton Wallet quand le vendeur encaissera.'
+      : `Commande confirmée par ton code PIN. ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA seront débités de ton Wallet quand le vendeur encaissera.`);
     setShowPinModal(false); setPinCode(''); resetPaymentState();
   };
 
@@ -1135,8 +1154,8 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowSuccessModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant payé</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(paidTotal || 0, montantsMasques, 'FCFA')}</p></div>
-                <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Votre commande a été validée avec succès</p><p className="text-lg font-bold text-gray-900">Merci pour votre achat !</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à régler à la livraison</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(paidTotal || 0, montantsMasques, 'FCFA')}</p></div>
+                <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Ta commande est passée — rien n'est encore débité</p><p className="text-lg font-bold text-gray-900">Le règlement se fera à l'encaissement du vendeur</p></div>
                 <motion.button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
             </motion.div>
