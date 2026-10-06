@@ -384,3 +384,58 @@ Work Log:
 
 Stage Summary:
 - 9e5e0ef sur dev : SEC-07 réglé par randomInt, suite unit backend intégralement verte (251/251) ; renommage Task 12 validé par vérification indépendante ; restent SEULEMENT les 3 refus garde-argent ATTENDUS → geste humain Patrick : --figer-perimetre PUIS --figer-gardes (en déclarant GARDE-ASSOUPLIE: retrait test:packs — voicePacks supprimé Phase 4) puis re-run → vert attendu
+
+---
+Task ID: 14-a
+Agent: Explore (audit UX marchand)
+Task: Audit UX du rôle marchand (caisse, dépenses, stock, tontines, coopérative, keiwa)
+
+Work Log:
+- Lecture intégrale du cœur argent : POSCaisse (1901 l.), CaisseContext (1053 l.), voice-offline, SyncEchecsBanner, wallet (Transfert/Paiements/Wallet/modals), CloseDayModal ; lecture ciblée des 20+ écrans du parcours
+- Travail sur snapshot git archive dev (immunisé contre la bascule HEAD sandbox) — citations file:ligne = contenu dev @ 05b2cbb
+- Constats : P0×3 (PaiementsPage « Payer maintenant » sans appel réseau ; cotisation coop 25 000 F un tap sans confirmation/PIN ; transfert keiwa sans relecture ni ref synchrone) ; P1×6 (erreur recherche destinataire = « aucun compte » hors ligne ; keiwa marchand sans porte ; MarcheVirtuel annonce paiement succès déclaratif ; MesCommandes erreurs uniquement parlées ; tontines échec réseau = « aucune tontine » ; DepenseForm échec console+voix) ; P2×6
+- Points forts documentés : file hors-ligne fail-closed idempotente, relecture encaissement machine à états, triple canal, a11y 44px, clôture honnête, historique HIST-01
+
+Stage Summary:
+- La caisse reste le standard de la maison ; les ruptures marchand sont HORS caisse (paiements simulés, cotisation, transfert) — intégrées à la synthèse 14
+
+---
+Task ID: 14-b
+Agent: Explore (audit UX producteur)
+Task: Audit UX du rôle producteur (production, récoltes, stocks, commandes, revenus, keiwa)
+
+Work Log:
+- Les 19 fichiers components/producteur/ lus intégralement + WalletPage/PaiementsPage + AppContext/ProducteurContext/CommandeContext/WalletContext
+- Constats : P0×5 (speak() no-op hors marchand AppContext.tsx:729-732 → ~40 appels morts ; Revenus.tsx données fabriquées graphique dur-codé + badge toujours « en attente » typo accent ; Stocks.tsx PATCH par frappe + écrasement à 0 parseInt||0 + confirm z-index sous modal ; 5 définitions divergentes des revenus ; PaiementsPage idem marchand) ; P1×9 (RecolteForm perte de saisie + photo non compressée ; qualité jamais affichée ; stepper ±1 kg sans plafond stock ; annuler commande un tap ; validations uniquement parlées ; offline absent POST directs ; KPIs status vs statut toujours 0 ; 2 systèmes de stock parallèles ; scan QR sans décodage + tout ≠ completed = « Rejeté ») ; P2 compact
+- Points forts : RecolteForm pensé terrain (unités locales, conversion, récap), patterns confirmation existants (PublierRecolteModal, ModifierPublicationModal), WalletPage durcie, langage fr-CI imagé
+
+Stage Summary:
+- Rôle le plus fragile : données argent fabriquées/écrasables + voix muette — lots UX-1/UX-3/UX-5 — intégrées à la synthèse 14
+
+---
+Task ID: 14-c
+Agent: Explore (audit UX identificateur)
+Task: Audit UX du rôle identificateur (fiche d'identification, brouillons, suivi, acteurs)
+
+Work Log:
+- Les 16 fichiers components/identificateur/ lus (14 814 l., FicheIdentificationDynamique 5 753 l.) + layouts + roleConfig + routes + api-client
+- Constats : P0×4 (brouillon sessionStorage tué par tout kill Android + invisible dans MesBrouillons qui ne lit que le serveur + sauvegarde serveur verrouillée avant l'étape 4 ; « Reprendre le dossier » ouvre fiche VIERGE → blocage téléphone garanti, mode complément existe mais non branché ; « Modifier » envoie mode:'edit' jamais lu → création sur acteur existant ; NOT_AUTHENTICATED brut après 20-30 min de saisie + layout sans garde auth) ; P1×6 (voix morte 0 speak + bouton Tata inerte ; offline absent ; consentement jamais affiché avant signature ; IA incohérente Suivi→Rapports ; double route formulaire avec hideBottomBar asymétrique ; étape documents 7 pièces sans hiérarchie) ; P2 compact
+- Points forts : pipeline photo exemplaire (MIME, compression 800px q0.7, revokeObjectURL), GPS rigoureux bounding-box CI, écran code d'activation ADR-002, a11y réelle (aria via cloneElement), anti-doublons en amont
+
+Stage Summary:
+- Le cœur du rôle (fiche 7 étapes) est solide mais la persistence terrain (brouillon) et la reprise de dossier sont cassées — lot UX-3 — intégrées à la synthèse 14
+
+---
+Task ID: 14
+Agent: Z.ai Code (orchestrateur)
+Task: Synthèse AUDIT UX des 3 rôles (marchand, producteur, identificateur) — document livré
+
+Work Log:
+- Recon périmètre : routes.tsx relu (23/18/23 routes), structure components/ par rôle (53/19/16), premiers constats de routing relevés à la lecture (doublons identificateur, callbacks /pay)
+- 3 agents Explore parallèles (14-a/14-b/14-c, prompts dimensionnés : dimension UX 1-9, preuves file:ligne obligatoires, sévérité P0/P1/P2, points forts, couverture)
+- Spot-checks orchestrateur sur les 3 constats les plus lourds, tous CONFIRMÉS par lecture directe de l'arbre dev : gate speak() role !== 'marchand' (AppContext.tsx:729-732), PaiementsPage.tsx:262-269 onClick vide, FicheIdentificationDynamique.tsx:979-1016 sessionStorage
+- Synthèse dédupliquée : docs/audit/AUDIT-UX-ROLES-2026-10-06.md — 12 P0 (dont 1 transversal partagé PaiementsPage), 21 P1, ~25 P2 ; 8 motifs transversaux (T1 voix muette hors marchand, T2 promesses de paiement mortes, T3 erreurs rendues comme états vides, T4 contrats front/back non alignés + 5 définitions revenus, T5 IA fragmentée, T6 offline inégal, T7 parlé-non-écrit, T8 irréversibles un tap) ; plan d'action 6 lots (UX-1..UX-6) ; 6 décisions Patrick ; points forts conservés ; limites documentées
+- Interférence sandbox : HEAD basculé sur main à presque chaque commande — toute lecture passée par git show dev: / archive ; append worklog construit hors worktree puis réinjecté en commande chaînée
+
+Stage Summary:
+- AUDIT-UX-ROLES-2026-10-06.md sur dev : l'app est deux produits selon le rôle — caisse exemplaire, le reste n'a pas reçu la garde ; chantiers prioritaires : UX-1 promesses d'argent (S-M), UX-3 perdu=retrouvé (M), UX-2 décision voix (Patrick) ; liens avec la ligne PERF du plan d'orga (unification registres) et la doctrine caisse (T2)
