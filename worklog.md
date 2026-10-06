@@ -256,3 +256,18 @@ Stage Summary:
 - Dépôt allégé : ~62 000 lignes désalignées (skills/ etc.), 1786 lignes TS mortes, 16 lignes backend mortes, 10 deps, 12 images (~558 Ko) en moins
 - backup/dev-init-016-021 = le travail INIT-016..021 (vitest, i18next, strictNull, fetch) récupérable à tout moment
 - Registre sécurité : rotation des identifiants ayant figuré dans tests/specs/api.spec.ts (historique) à programmer côté équipe
+
+---
+Task ID: 10-bis (vérification indépendante)
+Agent: Z.ai Code (orchestrateur)
+Task: Reprise post-résumé — vérification indépendante de l'état livré (Task 10)
+
+Work Log:
+- Reprise de session : HEAD retrouvé sur main (tooling sandbox — reflog HEAD@{0..6} = allers-retours main↔dev) ; le disque reflétait main (c4e63ee), d'où une fausse alerte (cmdk/escrow « encore présents ») levée puis invalidée : l'état commité sur dev est correct
+- Vérifications d'état sur dev : skills/, .zscripts/, tool-results/, download/, tests/ — 0 fichier tracké ; backend tickets/ + escrow/ absents, audit-log/ présent ; package.json (front + back) sans les 10 deps retirées ; 6 Universal*BO absents, UniversalCardBO/UniversalCardBOZone conservés ; 0 marqueur de conflit dans frontend_src/src et backend/src
+- Vérifications de compilation sur dev (branche vérifiée avant/après chaque run ; checkout+build chaînés dans la même commande pour contrer l'interférence sandbox) : frontend `tsc -b` exit 0 ; backend `tsc --noEmit` exit 0
+- État branches : main local = c4e63ee (ahead 2 de origin/main, NON poussé — les pushs demandés étaient pour dev) ; backup/dev-init-016-021 = 45eaaef (travail INIT-016..021 récupérable à tout moment)
+
+Stage Summary:
+- État livré VÉRIFIÉ indépendamment : dev == origin/dev == b89b988, Phases 0-3 du plan closes, deux typechecks verts sur dev
+- Le dépôt est laissé sur dev ; le tooling sandbox rebasculant régulièrement HEAD sur main, vérifier `git branch --show-current` avant toute opération git
