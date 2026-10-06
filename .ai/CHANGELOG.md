@@ -5,6 +5,15 @@
 
 ## [Non publié]
 
+### Corrigé — Actions correctives REVIEW-003/REVIEW-004 (2026-10-06)
+Exécution des actions demandées par la revue — hors re-gel humain (Patrick) et hors `backend/package.json` (B3-3, périmètre producteur) :
+- **Verrou de schéma CI restauré** (REVIEW-004/B4-1) : `scripts/schema-pilote.mjs` et `scripts/check-nest-versions.mjs` revenus à l'état `dffe705` — `check:nest-versions` EXIT 0 (« @nestjs cohérent, major 11 »), l'appel de `.github/workflows/schema-pilote.yml` redevient valide
+- **Gels garde-argent restaurés à `dffe705`** (REVIEW-003/Act-1, INC-001) : restauration de fichiers (pas un gel) — retour mécanique aux **3 refus attendus** (périmètre 55 sortis : chemins `frontend_src` morts du renommage `628ef4e` ; chaîne test:ci gelée, pré-existante ; empreinte : 131 gardes débranchées) — le re-gel avec `racinesScannees` → `frontend/src` reste le geste humain de Patrick
+- **Gardes voix réécrites pour encoder les décisions nouvelles avec historique** (REVIEW-004/B4-2) : `paroleEntree.test.mts` §[7] encode désormais §8.1 (voix ouverte aux 3 rôles, muet = LA borne, l'ancien garde et sa trace ne reviennent pas en silence, décision consignée sur site) ; `test-voix-trace-source.mjs` A/C : refus muet = borne unique §8.1, Rapport de test = surface unique Paramètres (retrait `1c2f914` arbitré) ; fixture `parole-3917bb7.json` : seule l'entrée `contexts/AppContext.tsx` re-bénie (§8.1), les 3 divergences héritées (useVoiceCore, AppLayout, ObjectifContext) restent volontairement rouges
+- **BUGS.md** : compteur réconcilié avec le contenu (8 bugs, 5 résolus, 3 ouverts) + BUG-006/007 réservés (REVIEW-004/Act-3)
+- Vérifications : `tsc -b` 0, `tsc --noEmit` backend 0, `test:ci` 44 maillons EXIT 0, charte marchande verte, `test:parole-entree` vert, `test:voix-trace-source` = les 4 rouges hérités connus (0 nouveau), `test:maillons-orphelins` vert, `check:nest-versions` EXIT 0, garde-argent = les 3 refus attendus (re-gel humain en attente)
+
+
 ### Corrigé — Lots UX-2 « Voix pour tous » et UX-6 « IA/routing » (2026-10-06)
 Suite du suivi de l'audit UX (même source que UX-1) — périmètre marchand/identificateur/transversal (l'agent UX producteur couvre le sien) :
 - **Voix ouverte aux 3 rôles** (décision §8.1, T1 P0) : le garde `role !== 'marchand'` d'`AppContext.speak` est retiré — ~40 appels producteur reprennent vie, le bouton Tata ne meurt plus pour l'identificateur ; le muet utilisateur reste la borne

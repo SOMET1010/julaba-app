@@ -199,3 +199,34 @@ Le projet a un historique de revues très riche :
   4. Traiter B3-3 (ts-jest ^30 ou jest ^29 + run vert de preuve) — toujours ouvert.
 - **Date de validation finale** : — (bloqué jusqu'à exécution des actions 1-2)
 - **Commit validé** : — (le nettoyage de coquilles et la navigation sont approuvés informellement ; les commits ne sont pas validés en l'état)
+
+## Suivi des actions correctives — exécution du 2026-10-06 (REVIEW-003/Act-1, REVIEW-004/Act-1..3)
+
+**Exécutant** : Agent Reviewer (Z.ai Code), rôle orchestrateur — périmètre respecté : scripts CI racine, gels (RESTAURATION, pas re-gel), gardes voix, registres. Hors portée volontaire : le re-gel humain (Patrick) et `backend/package.json` (B3-3, périmètre producteur).
+
+### REVIEW-004 / Act-1 — scripts CI restaurés (B4-1 levé)
+- `scripts/schema-pilote.mjs` et `scripts/check-nest-versions.mjs` restaurés à l'état `dffe705` (`git checkout dffe705 -- scripts/schema-pilote.mjs scripts/check-nest-versions.mjs`). Preuves : `npm run check:nest-versions` → EXIT 0 « ✅ @nestjs cohérent (major 11) » ; `node --check scripts/schema-pilote.mjs` syntaxe OK et le script recharge (l'appel de `.github/workflows/schema-pilote.yml` redevient valide ; le run complet avec PostgreSQL reste à la CI, seule à disposer de la base).
+- L'état « pire des deux mondes » décrit en B4-1 (garde parti, son appel resté) cesse : workflow ET script sont de nouveau raccord.
+
+### REVIEW-003 / Act-1 — gels garde-argent restaurés à `dffe705` (INC-001, action corrective 1)
+- `ci/PERIMETRE-ARGENT.json` et `ci/EMPREINTE-GARDES.json` restaurés à l'état `dffe705` par `git checkout dffe705 -- …`. C'est une RESTAURATION de fichiers (elle annule le geste non autorisé consigné en B3-1/INC-001), PAS un gel : le re-gel reste intégralement le geste humain de Patrick, avec `racinesScannees` → `frontend/src` (INC-001, action corrective 2).
+- **Preuve mécanique** (arbre `dev` propre, aucun résidu disque) : le garde-argent revient EXACTEMENT aux **3 refus attendus**, baseline documentée depuis les lots UX-1/UX-2 :
+  1. « LE PÉRIMÈTRE A BOUGÉ sans déclaration (0 entré(s), 55 sorti(s), 0 reclassé(s)) » — le noyau figé référence des chemins `frontend_src/…` morts depuis le renommage `628ef4e` ;
+  2. « la chaîne test:ci diffère de celle de f0c965c — elle est GELÉE » (pré-existant, jamais touché par ces lots, décision humaine en attente) ;
+  3. « GARDE-FOU ASSOUPLI — 131 assertion(s) perdue(s) » — l'empreinte figée liste les gardes sous leurs chemins d'avant-rename.
+- Ces trois refus SONT le signal attendu : ils nomment publiquement le re-gel humain à faire, au lieu d'entériner en silence le périmètre amputé de `060c333` (39 fichiers, 0 frontend). Le garde redevient honnête immédiatement, comme promis en REVIEW-003.
+
+### REVIEW-004 / Act-2 — gardes voix réécrites pour encoder les décisions nouvelles (B4-2 levé)
+- `frontend/src/app/services/paroleEntree.test.mts`, section [7] : les deux assertions figées sur l'ANCIENNE doctrine (« la garde de rôle est toujours là, mot pour mot » + sa trace) sont remplacées par SEPT assertions qui encodent §8.1 AVEC historique : la décision est consignée sur le site même du garde retiré (« VOIX OUVERTE AUX TROIS RÔLES »), l'ancien garde `role !== 'marchand'` ne doit pas revenir en silence, la trace `role-non-marchand` est partie avec lui, le muet journalisé puis silencieux reste LA borne avant toute sortie sonore, l'appel reste journalisé, `paroleAutorisee` ne gouverne pas AppContext. L'en-tête du garde porte désormais les DEUX arbitrages (AKW-02 puis §8.1 qui le supersède) et précise que la voie d'entrée ([1]..[6]) ne change pas.
+- `frontend/scripts/test-voix-trace-source.mjs` : section A — l'assertion « journalise ses refus (rôle, muet) » (≥2 ttsIgnoree) devient « journalise le refus muet — LA borne unique depuis §8.1 » ; section C — l'assertion « celui de l'écran de connexion est conservé » devient « l'écran de connexion n'embarque plus le doublon (retiré 1c2f914, arbitré REVIEW-004) », la surface connectée unique étant Paramètres ; en-têtes mis à jour avec l'historique des deux décisions.
+- `frontend/scripts/fixtures/parole-3917bb7.json` : régénérée PAR LE GARDE LUI-MÊME puis fusionnée avec liste blanche — seule l'entrée `contexts/AppContext.tsx` (empreinte sans-journal) est re-bénie, conséquence directe et assumée de §8.1 (`060c333` + commentaire doctrinal) ; les 3 divergences héritées (`hooks/useVoiceCore.ts`, `components/layout/AppLayout.tsx`, `contexts/ObjectifContext.tsx` — rail voix VOICE-01) restent VOLONTAIREMENT hors référence et continuent de rougir tant que leur lot n'a pas été relu.
+- Preuves : `npm run test:parole-entree` → vert (0 échec) ; `node scripts/test-voix-trace-source.mjs` → EXACTEMENT les 4 rouges hérités connus (useVoiceCore, AppLayout, ObjectifContext ×2), 0 rouge nouveau ; batterie auth complète rejouée (voir CHANGELOG du jour).
+
+### REVIEW-004 / Act-3 — registre BUGS.md réconcilié
+- Compteur corrigé : 8 bugs (5 résolus, 3 ouverts — BUG-001..005 résolus, BUG-008/009/010 ouverts P1) au lieu de « 7 (4 résolus, 3 ouverts) » ; numéros BUG-006/007 explicités comme sautés et RÉSERVÉS (les prochains bugs prennent BUG-011+).
+
+### Restent ouverts (non exécutables par l'agent)
+- **REVIEW-003 / Act-2 et INC-001 (2)** : Patrick (HUMAIN) corrige `racinesScannees` → `frontend/src` puis re-gèle LUI-MÊME (`node ci/garde-argent.mjs --figer-perimetre` puis `--figer-gardes`) sur un arbre propre — le seul re-gel valide ; tant que ce n'est pas fait, le garde présente les 3 refus ci-dessus, et c'est voulu.
+- **REVIEW-003 / B3-3 (Act-3)** : aligner `ts-jest` ^30 (ou revenir jest ^29) + run vert de preuve — `backend/package.json`, périmètre producteur.
+- **REVIEW-003 / Act-4** : recette swagger 12 avant tout déploiement.
+- **REVIEW-004 / remarque** : recette du flux de diagnostic terrain depuis Paramètres (le garde n'assertionne que le statique).

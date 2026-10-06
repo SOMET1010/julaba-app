@@ -89,6 +89,20 @@ f7e9544 fix(wallet): T8/M-P0-3 — le transfert keiwa passe par une relecture av
 - **Revue** : ⏳ auto-revue orchestrateur (spot-checks + relecture des diffs) — revue Reviewer indépendante à planifier
 - **Détail** : BUGS.md BUG-001..004 · source audit `docs/audit/AUDIT-UX-ROLES-2026-10-06.md`
 
+## 2026-10-06 — Actions correctives REVIEW-003/REVIEW-004 (restaurations CI + gels, gardes voix, registres)
+
+**Commits** :
+```txt
+d9f08ad fix(ci): REVIEW-003/004 Act-1 — restaurer schema-pilote + check-nest-versions et les gels dffe705 (retour aux 3 refus attendus)  (JULABA, 06/10/2026)
+4eb6471 test(voix): REVIEW-004 Act-2 — encoder §8.1 et l'arbitrage Rapport de test dans les gardes voix, historique consigné  (JULABA, 06/10/2026)
+(ce commit) docs: REVIEW-003/004 — suivi des actions exécutées, INC-001 atténué, BUGS.md réconcilié, CHANGELOG, worklog 19  (JULABA, 06/10/2026)
+```
+
+- **Atomicité** : ✅ 3 commits, 1 préoccupation chacun (restauration CI / gardes voix / registres), fichiers ajoutés explicitement (pas de `git add .`)
+- **Tests** : ✅ verts — `tsc -b` 0, `tsc --noEmit` backend 0, `test:ci` 44 maillons EXIT 0, charte marchande verte, `test:parole-entree` vert, `test:voix-trace-source` = les 4 rouges hérités connus (0 nouveau), `test:maillons-orphelins` vert, `check:nest-versions` EXIT 0, garde-argent = les 3 refus attendus (re-gel humain en attente, voulu)
+- **Revue** : ✅ actions DEMANDÉES par REVIEW-003/REVIEW-004, exécutées par le reviewer-agissant-orchestrateur — preuves mécaniques dans REVIEW_LOG, section « Suivi des actions correctives » ; B4-1 et B4-2 levés, INC-001 atténué
+- **Détail** : scripts/schema-pilote.mjs + scripts/check-nest-versions.mjs (état `dffe705`) · ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json (état `dffe705` — restauration, PAS un gel) · paroleEntree.test.mts §[7] (7 assertions §8.1) · test-voix-trace-source.mjs A/C + en-têtes · fixture parole-3917bb7.json (liste blanche : seule contexts/AppContext.tsx re-bénie) · BUGS.md 8/5/3 + BUG-006/007 réservés
+
 ## Commits à venir (planifiés)
 
 ### P0 — Gouvernance (à commiter dès validation)
