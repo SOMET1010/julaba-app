@@ -726,6 +726,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const speak = async (text: string) => {
     vtrace.ttsAppel('AppContext.speak', text, { role: user?.role ?? null, muet: voiceMuted });
     if (!text?.trim()) return;
+    // VOIX OUVERTE AUX TROIS RÔLES — décision §8.1 de l'audit UX (06/10/2026,
+    // AUDIT-UX-ROLES-2026-10-06), exécutée le jour même. L'ancien garde
+    // « role !== 'marchand' → return » rendait ~40 appels producteur muets
+    // (RecolteForm, CommandesProducteurPage, Revenus…) et le bouton Tata
+    // inerte pour l'identificateur : le canal d'assistance principal d'un
+    // produit voice-first n'existait que pour un rôle sur trois, en
+    // contradiction avec la doctrine elle-même (« Aucune information
+    // importante ne doit exister uniquement sous forme de texte », Patrick
+    // 20/09). Le muet utilisateur reste LA borne : elle passe avant tout.
     if (voiceMuted) vtrace.ttsIgnoree('AppContext.speak', text, 'muet');
     if (voiceMuted) return;
     // Plus de garde « if (isSpeaking) return » : une action utilisateur DOIT
@@ -767,8 +776,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Synchroniser le flag voice_disabled selon le rôle utilisateur
   useEffect(() => {
-    // La doctrine voice-first s’applique aussi aux identificateurs : seul le
-    // rôle institutionnel conserve ici le mode silencieux historique.
+    // La doctrine voice-first s'applique aussi aux identificateurs (060c333,
+    // agent UX producteur) : seul le rôle institutionnel conserve ici le
+    // mode silencieux historique.
     const disabledRoles = ['institution'];
     if (!user || !user.role) {
       localStorage.removeItem('julaba_voice_disabled');
