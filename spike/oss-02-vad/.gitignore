@@ -1,7 +1,0 @@
-# Le banc se reconstruit : les WAV (quelques Mo) et le modèle (629 Ko) ne sont
-# pas versionnés. `generer-cas.sh` et le README disent comment les obtenir.
-cas/*.wav
-*.wav
-silero_vad.onnx
-node_modules/
-package*.json
