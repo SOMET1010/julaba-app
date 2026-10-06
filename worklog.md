@@ -520,3 +520,22 @@ Work Log:
 
 Stage Summary:
 - Review livrée : 3 entrées (2 ⚠️ APPROUVÉ AVEC REMARQUES pour UX-1 et UX-2/UX-6/BUG-005 — code sain, remarques de suivi consignées ; 1 ❌ BLOQUÉ pour 060c333 — gels + périmètre amputé + jest backend mort) ; INC-001 ouvert ; la substance frontend de 060c333 reste approuvée informellement, le commit est NON validé en l'état ; 4 actions correctives demandées, dont 2 relèvent de Patrick (re-gel humain) et 2 de l'agent producteur (ts-jest, swagger)
+
+---
+Task ID: 18
+Agent: Z.ai Code (orchestrateur, rôle Agent Reviewer)
+Task: Review des nouveaux commits poussés par l'agent producteur après REVIEW-001..003 (1c2f914 « nettoyer les modules obsolètes », 704023f « retirer les outils opérationnels et d'audit périmés »)
+
+Work Log:
+- État : origin/dev avait avancé (3e38610 → 704023f) ; fast-forward local, aucun conflit
+- Diffs examinés ligne à ligne : 2 modules NestJS supprimés (CommandesModule, PublicationsModule — coquilles vides réelles : 0 controller/provider/export, retraits cohérents d'app.module.ts) ; LoginPassword.tsx (bouton « 🐞 Rapport de test » + vlogPartager retirés, commentaires ajustés) ; Navigation.tsx (logique morte retirée : isModalOpen/location/mainRoutes/isMainRoute, render inchangé) ; frontend/package.json (script banc:terrain retiré) ; 21 fichiers scripts/ supprimés
+- Balayage des références des 21 scripts supprimés (package.json ×3, maillons-verify ×2, ci/, .github/) : 19 sans référence ; 2 avec référence VIVANTE — scripts/schema-pilote.mjs (exécuté par .github/workflows/schema-pilote.yml, le verrou de sortie de schéma SCHEMA-01/02/03) et scripts/check-nest-versions.mjs (package.json:14)
+- Preuve B4-1 : `npm run check:nest-versions` → exit 1 « Cannot find module » ; le workflow schema-pilote.yml appelle `node scripts/schema-pilote.mjs` en dernière étape (fichier absent) ; le message du commit assume le retrait (« de contrôle du schéma … devenues inapplicables ») mais workflow et entrée npm non suivis
+- Découverte B4-2 : batterie auth complète relancée — test:parole-entree exit 1 (2 échecs §[7] : la garde VOICE-01 figeait l'ancienne doctrine speak-muet-hors-marchand, supersédée par §8.1 sans réécriture de la garde) ; test:voix-trace-source exit 1 (7 échecs). Baseline établie par rejeu des deux gardes sur worktree dffe705 : voix-trace = 4 rouges hérités connus (VOICE-01 Patrick : useVoiceCore/AppLayout/ObjectifContext ×2), parole-entree = 0 rouge → 3 nouveaux à voix-trace (journal refus §8.1 ×2 + « celui de l'écran de connexion est conservé » = bouton 🐞 supprimé) et 2 nouveaux à parole-entree
+- Vérifications positives : tsc front 0, tsc back 0, test:ci 44 maillons EXIT 0, test:charte-marchande verte, test:maillons-orphelins vert, garde-argent inchangé (1 refus pré-existant — EMPREINTE/PÉRIMÈTRE intouchés par ces commits), 10/12 gardes auth vertes ; jest backend TOUJOURS mort (B3-3 non traité)
+- Registres de l'agent vérifiés : BUG-008/009/010 + PERF-007 bien routés et crédités « Agent Reviewer » (bonne coordination avec REVIEW-003) ; MAIS compteur BUGS erroné (7/4 au lieu de 8/5) et numérotation sautée BUG-006/007 inexistantes ; CHANGELOG muet sur les 21 suppressions
+- Livrable : REVIEW-004 (❌ BLOQUÉ — B4-1 garde CI décapité, B4-2 cinq assertions figées rouges nouvelles) + actions correctives (restaurer schema-pilote/check-nest-versions ou arbitrage Patrick documenté ; réécrire les gardes §8.1 avec historique ; corriger BUGS.md ; traiter B3-3)
+- Frontières respectées : aucun code modifié par la review (lecture seule + registres), gels non touchés, worktree temporaire /tmp/vt-dffe créé et supprimé pour la baseline
+
+Stage Summary:
+- REVIEW-004 poussée : 1c2f914/704023f = nettoyage en majeure partie sain (coquilles vides, logique morte, scripts sans référence) MAIS bloqué par (1) la décapitation du verrou de schéma CI sans retrait du workflow qui l'appelle et (2) cinq assertions figées rouges nouvelles issues de §8.1 (échappé à Task 16 ET à ma review — responsabilité partagée consignée) et de la suppression du bouton Rapport de test ; le solde des gardes auth passe à 2 rouges nouveaux + 4 rouges hérités connus ; 4 actions correctives demandées

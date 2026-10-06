@@ -164,3 +164,38 @@ Le projet a un historique de revues très riche :
   4. Recette swagger 12 (boot backend + docs endpoints) avant tout déploiement.
 - **Date de validation finale** : — (bloqué jusqu'à exécution des actions 1-3)
 - **Commit validé** : — (code frontend des rôles approuvé informellement ; le commit `060c333` est NON validé en l'état)
+
+### REVIEW-004 — « nettoyage » `1c2f914` + `704023f` (agent UX producteur)
+- **Date** : 2026-10-06
+- **Reviewer** : Agent Reviewer (Z.ai Code)
+- **Auteur du code** : Akoun-dev (agent UX producteur)
+- **Fichiers concernés** : 21 fichiers supprimés (dont `scripts/schema-pilote.mjs`, `scripts/check-nest-versions.mjs`) ; `backend/src/app.module.ts` + 2 modules coquilles supprimés ; `frontend/package.json` ; `LoginPassword.tsx` (bouton « 🐞 Rapport de test » retiré) ; `Navigation.tsx` (logique morte retirée) ; journaux `.ai`
+- **Commits revus** : `1c2f914`, `704023f`
+- **Statut** : ❌ BLOQUÉ (2 bloquants : B4-1 garde CI décapité, B4-2 cinq assertions figées rouges nouvelles) — le reste du nettoyage est sain
+- **Critères évalués** :
+  - Qualité du code : ✅ (19/21 scripts supprimés sans AUCUNE référence — balayage package.json ×3 + maillons-verify + ci/ + .github/ ; modules backend = coquilles vides réelles, 0 controller/provider/export)
+  - Patterns respectés : ❌ (la gouvernance des gardes figés EST le pattern violé — B4-1, B4-2)
+  - Lisibilité : ✅ (Navigation.tsx : variables mortes retirées, render inchangé ; LoginPassword : commentaires ajustés)
+  - Maintenabilité : ⚠️ (`package.json:14` `check:nest-versions` pointe un fichier supprimé — prouvé : exit 1 « Cannot find module »)
+  - Séparation des couches : ✅
+  - Pas de duplication inutile : ✅ (le bouton Rapport de l'écran de connexion était un doublon de celui de Paramètres)
+  - Tests unitaires : ❌ (B4-1 : verrou de schéma supprimé sans remplacement ; B4-2 : gardes rouges)
+  - Tests E2E (si applicable) : N/A
+  - Documentation : ⚠️ (BUG-008/009/010 + PERF-007 bien routés et crédités « Agent Reviewer » — bonne coordination avec REVIEW-003 ; MAIS registre BUGS incohérent : compteur « 7 total, 4 résolus » alors que le fichier contient 8 bugs dont 5 résolus, numérotation sautée BUG-006/007 inexistantes ; CHANGELOG muet sur les 21 suppressions)
+- **Bloquants** :
+  - B4-1 — GARDE CI DÉCAPITÉ : `scripts/schema-pilote.mjs` supprimé alors que le workflow `.github/workflows/schema-pilote.yml` (LE verrou de sortie de schéma — SCHEMA-01/02/03, preuves B1/STK-01/SCHEMA-07, « tourne à chaque PR et à chaque fusion ») exécute `node scripts/schema-pilote.mjs` en dernière étape → échec garanti à la prochaine intégration main ; le message du commit assume le retrait (« de contrôle du schéma … devenues inapplicables ») mais le workflow ET l'entrée npm n'ont pas suivi, et l'abandon d'un verrou de sortie pilote est une décision de niveau Patrick, pas un chore. Règle ❌ du registre : « test critique supprimé sans remplacement ».
+  - B4-2 — CINQ ASSERTIONS FIGÉES ROUGES NOUVELLES (baseline prouvée par rejeu des gardes sur un worktree `dffe705` : 4 rouges hérités connus VOICE-01, 0 rouge à parole-entree) :
+    - `test:parole-entree` §[7] ×2 — la garde VOICE-01 figeait l'ANCIENNE doctrine (« la garde de rôle est toujours là, mot pour mot ») supersédée par la décision §8.1 : la garde devait être réécrite au moment d'UX-2 pour encoder la règle nouvelle (speak ouvert aux 3 rôles, muet = seule borne). Échappé à la Task 16 (batterie test:ci seulement) ET à la review Task 17 — responsabilité partagée orchestrateur/reviewer, consignée telle quelle.
+    - `test:voix-trace-source` ×3 — « AppContext.speak journalise ses refus (rôle, muet) » et « AppContext … identique à 3917bb7 » (conséquences du retrait du garde dans `060c333`, §8.1) ; « celui de l'écran de connexion est conservé » (conséquence directe de la suppression du bouton 🐞 dans `1c2f914`). La suppression du bouton est défendable en produit — le rapport reste disponible dans Paramètres (UniversalParametres) via `vlogPartager`, surface plus appropriée qu'un écran de connexion — mais le garde qui fige les DEUX emplacements devait être mis à jour dans le même commit.
+- **Remarques (non bloquantes)** :
+  - Le flux de diagnostic terrain doit être re-vérifié en recette depuis Paramètres (le garde n'assertionne que le statique).
+  - jest backend toujours mort — B3-3 de REVIEW-003 non traité par ces commits.
+  - EMPREINTE/PÉRIMÈTRE non touchés : garde-argent identique (1 refus pré-existant).
+  - Batteries vertes par ailleurs : tsc front 0, tsc back 0, test:ci 44 maillons EXIT 0, charte verte, maillons-orphelins vert, 10/12 gardes auth vertes.
+- **Actions correctives demandées (dans l'ordre)** :
+  1. Restaurer `scripts/schema-pilote.mjs` (et `scripts/check-nest-versions.mjs`, ou retirer proprement l'entrée npm + le workflow SI ET SEULEMENT SI Patrick arbitre l'abandon du verrou de schéma au registre) — l'état actuel est le pire des deux mondes : le garde est parti, son appel est resté.
+  2. Réécrire les gardes figés pour encoder les décisions nouvelles AVEC historique consigné : `parole-entree` §[7] (§8.1), `voix-trace-source` (journal §8.1 ×2 ; Rapport de test ×1) — puis rejouer la batterie auth complète (12 gardes).
+  3. Corriger le registre BUGS.md (compteur réel : 8 bugs, 5 résolus, 3 ouverts ; expliciter ou réserver BUG-006/007).
+  4. Traiter B3-3 (ts-jest ^30 ou jest ^29 + run vert de preuve) — toujours ouvert.
+- **Date de validation finale** : — (bloqué jusqu'à exécution des actions 1-2)
+- **Commit validé** : — (le nettoyage de coquilles et la navigation sont approuvés informellement ; les commits ne sont pas validés en l'état)
