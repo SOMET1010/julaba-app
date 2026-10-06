@@ -43,11 +43,11 @@
 | ID | Lot | Description | Statut | Priorité |
 |---|---|---|---|---|
 | UX-1 | Promesses d'argent | Paiements services masqués (BUG-001), transfert relu + verrouillé (BUG-002), marché virtuel honnête (BUG-003), cotisation relecture + PIN (BUG-004) | **TERMINÉ** (commits `68149f2`, `f7e9544`, `67f72ef`, `41b6671`) | P0 |
-| UX-2 | Voix pour tous | Ouvrir `speak()` aux producteurs/identificateurs (décision §8.1, doctrine voice-first) + monter Tata dans IdentificateurLayout | TODO | P0 |
+| UX-2 | Voix pour tous | Ouvrir `speak()` aux producteurs/identificateurs (décision §8.1, doctrine voice-first) + monter Tata dans IdentificateurLayout | **TERMINÉ (infra)** — gate ouvert + Tata montée ; la relecture des ~40 libellés producteur est confiée à l'agent UX producteur | P0 |
 | UX-3 | Perdu = retrouvé | Brouillon identification en localStorage (I-P0-1), modes complément/edit branchés (I-P0-2/3), RecolteForm : confirmation backdrop + quantité conservée + compression photo (P-P1-1), consentement signé (décision §8.6) | TODO | P0 |
 | UX-4 | Le réseau dit la vérité | Trois situations trois phrases (T3), badge offline dans les 3 layouts (T6), gardes offline wallet, outbox récolte/fiche | TODO | P1 |
 | UX-5 | Contrats alignés | computeRevenus unique (T4/P-P0-4), énumération qualité, mapping statuts API, KPIs | TODO | P1 |
-| UX-6 | IA/routing | Routes canoniques + redirects (T5), porte keiwa marchand restaurée (décision §8.3), onglets renommés, callbacks /pay à vérifier | TODO | P1 |
+| UX-6 | IA/routing | Routes canoniques + redirects (T5), porte keiwa marchand restaurée (décision §8.3), onglets renommés, callbacks /pay à vérifier | **TERMINÉ** — redirects `identification`/`acteurs`/`statistiques`/`dashboard`, onglet Suivi → SuiviIdentifications, titre « Acteurs », tuile Mon argent restaurée, BUG-005 corrigé ; reste côté producteur (orphelines `/publier-recolte`, `Stocks.tsx:561`) : agent UX producteur | P1 |
 
 ## Tâches reportées (backlog futur)
 

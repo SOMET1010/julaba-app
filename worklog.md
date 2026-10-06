@@ -469,3 +469,20 @@ Work Log:
 
 Stage Summary:
 - Task 15 confirmée TERMINÉE et saine : 6/6 décisions §8 tranchées, lot UX-1 complet (BUG-001..004), journaux .ai à jour, tout poussé sur dev ; restent UX-2..UX-6 et les gels humains (Patrick)
+
+---
+Task ID: 16
+Agent: Z.ai Code (orchestrateur)
+Task: Lots UX-2 « Voix pour tous » + UX-6 « IA/routing » — périmètre marchand/identificateur/transversal (l'UX producteur est confié à un autre agent, contrainte de coordination de l'utilisateur)
+
+Work Log:
+- Règle d'or .ai : journaux relus avant édition ; conventions respectées (commits conventionnels atomiques, ajout explicite par fichier, bugs routés dans BUGS.md)
+- Périmètre tranché avec la contrainte « un autre agent se charge de l'UX producteur » : je prends UX-2 (infra voix transversale) + UX-6 (keiwa marchand + routing identificateur) ; DÉLÉGUÉ à l'agent producteur : relecture des ~40 libellés speak() producteur devenus vivants, P-P1-1 RecolteForm, UX-5, orphelines producteur (/publier-recolte, Stocks.tsx:561) ; NOTÉ hors lot : paroleEntree.ts (garde écrans d'entrée, rôle connecté non-marchand = cas limite, doctrine entrée spécifique) — inchangé
+- UX-2 (2672a2e) : garde role !== 'marchand' retiré d'AppContext.speak (T1, décision §8.1 — ~40 appels producteur revivent, muet utilisateur reste la borne) ; IdentificateurLayout monte TantieSagesseModal + passe onMicClick à Sidebar/BottomBar (parité AppLayout, I-P1-1)
+- UX-6 (7d1dc77, b233073, 647df36) : tuile « Mon argent » restaurée sur l'accueil marchand → /marchand/keiwa (porte UNIQUE, arbitrage §8.3 — l'historique du retrait Patrick 24/09 est consigné dans le code et supersédé, la cause d'origine « écran verrouillé muet » étant traitée par §8.1 le même jour) ; routes identificateur : /identification→/fiche-identification, /acteurs→/identifications, /statistiques+/dashboard→/rapports, onglet « Suivi »→/suivi (SuiviIdentifications), titre écran « Acteurs » aligné sur l'onglet, useScoreJULABA pointe la canonique ; BUG-005 : /paiement/failed affichait « Paiement effectué ✅ » (includes('error') seulement) → /error|failed/
+- Journaux .ai à jour : BUGS.md (BUG-005), TASKS.md (UX-2 infra TERMINÉ avec note délégation producteur, UX-6 TERMINÉ avec reste producteur), CHANGELOG.md (entrée UX-2/UX-6), COMMIT_LOG.md (4 commits)
+- Vérifications : tsc -b 0 ; garde charte marchande vert (tuile = icône vectorielle locale, teinte --caisse-gris-texte, 0 couleur en dur nouvelle) ; test:ci 44 maillons EXIT 0 ; garde-argent = exactement les 3 refus attendus (gels humains), aucun refus nouveau ; correction en vol : commentaires JSX → // dans le tableau children de routes.tsx (TS1005)
+- Interférence sandbox : bascules HEAD→main continues — édition sur copies extraites de dev (/home/z/ux26), injection + commits en chaînes immunisées
+
+Stage Summary:
+- UX-2 et UX-6 livrés et poussés sur dev : la voix existe pour les 3 rôles, Tata est vivante dans le layout identificateur, keiwa marchand a de nouveau une porte (unique, accueil), les routes identificateur sont canoniques avec redirects, /paiement/failed dit la vérité ; tout le périmètre producteur est documenté comme délégué à l'agent UX producteur (TASKS.md + worklog) ; restent UX-3 (I-* + P-P1-1), UX-4, UX-5, gels humains

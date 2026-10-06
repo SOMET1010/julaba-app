@@ -88,6 +88,12 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - **Résolution** : relecture « Tu paies 25 000 FCFA à [coop] » + PIN 4 chiffres via /auth/pin/verify si `pinSecurityEnabled` + verrou synchrone + erreur affichée (role=alert) ET parlée + montant nommé `COTISATION_MONTANT`.
 - **Commits** : `41b6671` · **Vérifications** : garde charte vert (MaCooperative reste à 0 couleur en dur)
 
+### BUG-005 — Le callback /paiement/failed affichait « Paiement effectué ✅ »
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Détecté** : 2026-10-06 (audit UX T5 « callbacks /pay à vérifier », confirmé à l'exécution UX-6)
+- **Description** : les 4 routes de callback (`/pay/success`, `/pay/error`, `/paiement/success`, `/paiement/failed`) montent toutes `PaySuccessPage`, qui ne détectait l'échec que par `pathname.includes('error')` — « failed » passe au travers : une erreur de paiement PSP s'affichait comme un succès. `PaySuccessPage.tsx:7`.
+- **Résolution** : détection `/error|failed/` — les quatre callbacks affichent désormais l'état réel.
+- **Commits** : cf. UX-6 (fix wallet BUG-005) · **Vérifications** : tsc 0, test:ci 0
+
 ## Bugs à détecter (surveillance active)
 
 L'Agent QA doit surveiller en priorité :

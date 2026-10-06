@@ -34,6 +34,18 @@ e17992a Merge pull request #246 from SOMET1010/claude/clever-allen-dnr8by (Claud
 62636e6 style(caisse): UI-03 hierarchie du premier ecran + UI-02 recu  (Claude, ~22/09/2026)
 ```
 
+## 06/10/2026 — Lots UX-2 « Voix pour tous » et UX-6 « IA/routing » (agent Z.ai Code)
+
+```
+fix(roles): UX-2/T1 — la voix Tata parle aux trois rôles (gate speak retiré, parité Tata IdentificateurLayout)
+fix(marchand): UX-6/M-P1-2 — la tuile « Mon argent » restore la porte keiwa (porte unique accueil, arbitrage §8.3)
+fix(identificateur): UX-6/T5 — routes canoniques + redirects + onglet Suivi + titre Acteurs + useScoreJULABA
+fix(wallet): BUG-005 — /paiement/failed affichait un succès (détection /error|failed/)
+docs: journaux .ai + worklog Task 16
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
 ## Statistiques Git (snapshot 2026-09-28)
 
 - **Total commits** : 780
