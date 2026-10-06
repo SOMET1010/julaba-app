@@ -36,6 +36,19 @@
 | INIT-011 | Architecture | Fusionner contrôleurs dupliqués : `cycles-rest` + `producteur/cycles`, `recoltes-rest` + `producteur/recoltes` | Back | **TERMINÉ** | P2 |
 | INIT-012 | Dette | Migrer `CATALOGUE` hardcodé (15 produits vivriers dans `caisse-rest.controller.ts`) vers `caisse_produits` ou référentiel maître Odoo | Back | **TERMINÉ** | P2 |
 
+## Tâches UX (audit UX des 3 rôles, 2026-10-06)
+
+> Source : `docs/audit/AUDIT-UX-ROLES-2026-10-06.md` (12 P0 / 21 P1 / ~25 P2, 8 motifs transversaux, 6 lots). Décisions §8 tranchées le 06/10 (détail dans le §8 du document).
+
+| ID | Lot | Description | Statut | Priorité |
+|---|---|---|---|---|
+| UX-1 | Promesses d'argent | Paiements services masqués (BUG-001), transfert relu + verrouillé (BUG-002), marché virtuel honnête (BUG-003), cotisation relecture + PIN (BUG-004) | **TERMINÉ** (commits `68149f2`, `f7e9544`, `67f72ef`, `41b6671`) | P0 |
+| UX-2 | Voix pour tous | Ouvrir `speak()` aux producteurs/identificateurs (décision §8.1, doctrine voice-first) + monter Tata dans IdentificateurLayout | TODO | P0 |
+| UX-3 | Perdu = retrouvé | Brouillon identification en localStorage (I-P0-1), modes complément/edit branchés (I-P0-2/3), RecolteForm : confirmation backdrop + quantité conservée + compression photo (P-P1-1), consentement signé (décision §8.6) | TODO | P0 |
+| UX-4 | Le réseau dit la vérité | Trois situations trois phrases (T3), badge offline dans les 3 layouts (T6), gardes offline wallet, outbox récolte/fiche | TODO | P1 |
+| UX-5 | Contrats alignés | computeRevenus unique (T4/P-P0-4), énumération qualité, mapping statuts API, KPIs | TODO | P1 |
+| UX-6 | IA/routing | Routes canoniques + redirects (T5), porte keiwa marchand restaurée (décision §8.3), onglets renommés, callbacks /pay à vérifier | TODO | P1 |
+
 ## Tâches reportées (backlog futur)
 
 ### P2

@@ -61,6 +61,20 @@ e17992a Merge pull request #246 from SOMET1010/claude/clever-allen-dnr8by (Claud
 - **Liens** : TASKS.md INIT-XXX, ADR-XXX, BUG-XXX, etc.
 ```
 
+## Commits du 2026-10-06 (système multi-agents — lot UX-1)
+
+```
+68149f2 fix(wallet): T2 — la page Paiements services ne promet plus un paiement qui n'existe pas (BUG-001)   (JULABA, 06/10/2026)
+f7e9544 fix(wallet): T8/M-P0-3 — le transfert keiwa passe par une relecture avant l'irréversible (BUG-002)   (JULABA, 06/10/2026)
+67f72ef fix(marchand): T2 — le marché virtuel annonce une COMMANDE, jamais un paiement réussi (BUG-003)      (JULABA, 06/10/2026)
+41b6671 fix(marchand): T8/M-P0-2 — la cotisation coopérative (25 000 F) passe par relecture + PIN (BUG-004)  (JULABA, 06/10/2026)
+```
+
+- **Atomicité** : ✅ 4 commits, 1 préoccupation chacun (1 bug = 1 commit), fichiers ajoutés explicitement (pas de `git add .`)
+- **Tests** : ✅ verts — `tsc -b` 0, garde charte marchande 0, `vite build` 0 (21,9 s), `test:ci` 44 maillons EXIT 0, garde-argent = les 3 refus attendus (gels humains en attente, aucun refus nouveau)
+- **Revue** : ⏳ auto-revue orchestrateur (spot-checks + relecture des diffs) — revue Reviewer indépendante à planifier
+- **Détail** : BUGS.md BUG-001..004 · source audit `docs/audit/AUDIT-UX-ROLES-2026-10-06.md`
+
 ## Commits à venir (planifiés)
 
 ### P0 — Gouvernance (à commiter dès validation)
