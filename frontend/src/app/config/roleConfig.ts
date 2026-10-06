@@ -367,6 +367,10 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
       items: [
         { label: 'Accueil', path: '/identificateur', icon: 'Home' },
         { label: 'Acteurs', path: '/identificateur/identifications', icon: 'Users' },
+        // ONGLET « SUIVI » = SUIVI — T5/I-P1-4 (audit UX 06/10) : l'onglet
+        // ouvrait Rapports alors que l'écran SuiviIdentifications vivait à
+        // /identificateur/suivi, hors barre. Un onglet = une destination
+        // nommée pareil partout. Rapports reste atteignable depuis Suivi.
         { label: 'Suivi', path: '/identificateur/suivi', icon: 'BarChart3' },
         { label: 'Moi', path: '/identificateur/profil', icon: 'User' },
       ],

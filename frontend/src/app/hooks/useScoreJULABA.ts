@@ -512,7 +512,9 @@ export function getRecommendedActions(
         description: 'Enregistre ton premier acteur',
         points: 10,
         completed: completedActions.includes('first_identification'),
-        route: '/identificateur/identification',
+        // Route canonique du formulaire (T5/I-P1-5) — l'ancienne
+        // /identificateur/identification redirige désormais.
+        route: '/identificateur/fiche-identification',
       },
       {
         id: 'enable_voice',

@@ -162,17 +162,26 @@ export const router = createBrowserRouter([
 
       { path: "/identificateur", element: <IdentificateurLayout />, children: [
         { index: true, element: L(() => import("./components/identificateur/IdentificateurHome").then(m => ({ default: m.IdentificateurHome }))), errorElement: <ErrorFallback /> },
-        { path: "identification", element: <Navigate to="/identificateur/fiche-identification" replace />, errorElement: <ErrorFallback /> },
+        // Route canonique du formulaire : /identificateur/fiche-identification
+        // (celle où la BottomBar est masquée, T5/I-P1-5). La route historique
+        // /identification redirige — un composant, une destination.
+        { path: "identification", element: <Navigate to="/identificateur/fiche-identification" replace /> },
         { path: "suivi", element: L(() => import("./components/identificateur/SuiviIdentifications").then(m => ({ default: m.SuiviIdentifications }))), errorElement: <ErrorFallback /> },
         { path: "brouillons", element: L(() => import("./components/identificateur/MesBrouillons").then(m => ({ default: m.MesBrouillons }))), errorElement: <ErrorFallback /> },
-        { path: "acteurs", element: L(() => import("./components/identificateur/Identifications").then(m => ({ default: m.Identifications }))), errorElement: <ErrorFallback /> },
+        // Canonique : /identifications (nommée comme l'écran, pointée par les
+        // notifications dossier_*, T5). /acteurs est la route historique.
+        { path: "acteurs", element: <Navigate to="/identificateur/identifications" replace /> },
         { path: "profil", element: L(() => import("./components/identificateur/IdentificateurProfil").then(m => ({ default: m.IdentificateurProfil }))), errorElement: <ErrorFallback /> },
         { path: "acteur/:numero", element: L(() => import("./components/identificateur/ActeurDetails").then(m => ({ default: m.ActeurDetails }))), errorElement: <ErrorFallback /> },
         { path: "demande-mutation", element: L(() => import("./components/identificateur/DemandeMutation").then(m => ({ default: m.DemandeMutation }))), errorElement: <ErrorFallback /> },
         { path: "identifications", element: L(() => import("./components/identificateur/Identifications").then(m => ({ default: m.Identifications }))), errorElement: <ErrorFallback /> },
-        { path: "statistiques", element: L(() => import("./components/identificateur/IdentificateurStats").then(m => ({ default: m.IdentificateurStats }))), errorElement: <ErrorFallback /> },
+        // Écrans analytiques orphelins (0 lien entrant, T5) : la fusion
+        // Dashboard + Statistiques dans Rapports/Suivi est décidée (§8.5,
+        // terme) — en attendant, les deux routes historiques rejoignent
+        // Rapports au lieu de monter 4 écrans concurrents.
+        { path: "statistiques", element: <Navigate to="/identificateur/rapports" replace /> },
         { path: "rapports", element: L(() => import("./components/identificateur/RapportsIdentificateur").then(m => ({ default: m.RapportsIdentificateur }))), errorElement: <ErrorFallback /> },
-        { path: "dashboard", element: L(() => import("./components/identificateur/IdentificateurDashboard").then(m => ({ default: m.IdentificateurDashboard }))), errorElement: <ErrorFallback /> },
+        { path: "dashboard", element: <Navigate to="/identificateur/rapports" replace /> },
         { path: "fiche-identification", element: L(() => import("./components/identificateur/FicheIdentificationDynamique").then(m => ({ default: m.FicheIdentificationDynamique }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },
         { path: "keiwa", element: L(() => import("./components/wallet/WalletPage").then(m => ({ default: m.WalletPage }))), errorElement: <ErrorFallback /> },

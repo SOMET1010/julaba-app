@@ -308,7 +308,10 @@ export function Identifications() {
   return (
     <SubPageLayout
       role="identificateur"
-      title="Identifications"
+      // TITRE = ONGLET = DESTINATION (T5/I-P1-4, audit UX 06/10) : l'onglet
+      // de la barre s'appelle « Acteurs » (roleConfig.menu2.pageTitle aussi)
+      // — l'écran listait les mêmes acteurs sous un autre nom.
+      title="Acteurs"
       noPadding={true}
       rightContent={<NotificationButton />}
     >
