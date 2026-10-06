@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, Star } from 'lucide-react';
 
 const C = '#B74725';
 const BG = '#F6F0E4';
+
+// T2 (AUDIT-UX-ROLES-2026-10-06) — PAS DE PROMESSE FONCTIONNELLE CONTRADICTOIRE.
+// Aucun prestataire de paiement (PSP) n'est branché : le bouton « Payer » de
+// cette page ne faisait RIEN — ni appel API, ni reçu — et une marchande qui
+// paie sa facture CIE en espèces le jour J parce que « l'app l'a confirmée »
+// reste avec un impayé réel. Même doctrine que le pilote caisse
+// (POSCaisse 55-60, CAISSE_MOBILE_MONEY_ACTIF). La page est donc masquée :
+// la porte du wallet est retirée et la route renvoie au wallet. La page reste
+// ici, complète, pour le jour où un PSP sera branché : basculer ce drapeau
+// réactive tout le parcours — et le bouton devra ALORS appeler l'API.
+export const PAIEMENTS_SERVICES_ACTIFS = false;
 
 type CatId = 'tout' | 'factures' | 'sante' | 'education';
 
@@ -70,6 +81,11 @@ export function PaiementsPage() {
   const [modalService, setModalService] = useState<Service | null>(null);
   const [reference, setReference] = useState('');
   const [montant, setMontant] = useState('');
+
+  // T2 : tant qu'aucun PSP n'est branché, cette page ne doit être ni visible
+  // ni atteignable — deep link compris. Redirection silencieuse vers le
+  // wallet (hooks appelés ci-dessus : le garde est après, jamais avant).
+  if (!PAIEMENTS_SERVICES_ACTIFS) return <Navigate to="/keiwa" replace />;
 
   const getFiltered = (cat: Exclude<CatId, 'tout'>): Service[] => {
     const base = SERVICES.filter(s => s.cat === cat);

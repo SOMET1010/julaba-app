@@ -8,6 +8,7 @@ import { QRCodeSVG as QRCode } from 'qrcode.react';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
 import { useWallet } from '../../contexts/WalletContext';
+import { PAIEMENTS_SERVICES_ACTIFS } from './PaiementsPage';
 import { RechargeWalletModal } from './RechargeWalletModal';
 import { WithdrawWalletModal } from './WithdrawWalletModal';
 import { API_URL } from '../../utils/api';
@@ -589,14 +590,18 @@ export function WalletPage() {
       action: () => navigate('transfert'),
       textColor: '#1d4ed8',
     },
-    {
+    // T2 (AUDIT-UX-ROLES-2026-10-06) : la porte « Paiements » n'existe que le
+    // jour où un PSP est branché (PAIEMENTS_SERVICES_ACTIFS, dans
+    // PaiementsPage). Tant qu'aucun backend de paiement n'existe, on ne met
+    // PAS l'utilisateur devant un bouton qui ne paie pas.
+    ...(PAIEMENTS_SERVICES_ACTIFS ? [{
       label: 'Paiements',
       color: 'rgba(16,185,129,0.12)',
       border: 'rgba(16,185,129,0.28)',
       icon: <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
       action: () => navigate('paiements'),
       textColor: '#047857',
-    },
+    }] : []),
     {
       label: 'Banque',
       color: 'rgba(139,92,246,0.12)',
