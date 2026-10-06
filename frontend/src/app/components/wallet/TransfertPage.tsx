@@ -57,6 +57,14 @@ export function TransfertPage() {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
+  // M-P0-3 (AUDIT-UX-ROLES-2026-10-06) : le transfert est IRRÉVERSIBLE — il
+  // passe désormais par une relecture « Tu envoies X à Y — tu confirms ? »
+  // avant l'appel, et un verrou SYNCHRONE anti double-tap (le pattern caisse :
+  // l'état React ne se met à jour qu'au render suivant, un ref bloque le 2e
+  // tap dès la même frame). La clé d'idempotence rattrape déjà le doublon
+  // côté backend ; ici on empêche le geste lui-même.
+  const envoiEnCoursRef = useRef(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [done, setDone] = useState(false);
   const [soldeApres, setSoldeApres] = useState<number | null>(null);
 
@@ -131,12 +139,14 @@ export function TransfertPage() {
   const nomCompletDe = (d: DestinataireTransfert) => `${d.prenom} ${d.nom}`.trim();
 
   const handleEnvoyer = async () => {
-    if (!destinataire || envoiEnCours) return;
+    if (!destinataire || envoiEnCoursRef.current) return;
     if (amountNum < 100) return;
     if (amountNum > soldeDisponible) {
       toast.error('Solde insuffisant pour ce transfert');
+      setShowConfirm(false);
       return;
     }
+    envoiEnCoursRef.current = true;
     setEnvoiEnCours(true);
     try {
       const resultat = await transfererVersCompte({
@@ -146,13 +156,16 @@ export function TransfertPage() {
         idempotencyKey: idempotencyKeyRef.current,
       });
       setSoldeApres(resultat.solde);
+      setShowConfirm(false);
       setDone(true);
       // Rafraîchit le solde affiché ailleurs dans l'app (accueil, etc.).
       refreshKeiwa().catch(() => {});
     } catch (e: any) {
       const message = e instanceof HttpError ? e.message : (e?.message || 'Transfert échoué');
       toast.error(message);
+      setShowConfirm(false);
     } finally {
+      envoiEnCoursRef.current = false;
       setEnvoiEnCours(false);
     }
   };
@@ -168,6 +181,7 @@ export function TransfertPage() {
     setNote('');
     setSoldeApres(null);
     setDone(false);
+    setShowConfirm(false);
   };
 
   if (done) {
@@ -465,7 +479,7 @@ export function TransfertPage() {
             )}
 
             <motion.button
-              onClick={handleEnvoyer}
+              onClick={() => setShowConfirm(true)}
               disabled={amountNum < 100 || amountNum > soldeDisponible || envoiEnCours}
               style={{
                 width: '100%', padding: 16, border: 'none', borderRadius: 18,
@@ -484,6 +498,64 @@ export function TransfertPage() {
           </motion.div>
         )}
 
+      </AnimatePresence>
+
+      {/* Relecture avant l'irréversible (M-P0-3) : l'argent ne part jamais
+          d'un seul tap — on relit destinataire, montant et moyen, puis on
+          confirme. */}
+      <AnimatePresence>
+        {showConfirm && destinataire && selectedMethod && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+            onClick={() => { if (!envoiEnCours) setShowConfirm(false); }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirmer l'envoi"
+          >
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              style={{ background: BG, borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 36px' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ width: 40, height: 4, background: 'rgba(198,106,44,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
+              <p style={{ fontSize: 18, fontWeight: 800, color: '#2a1a0a', textAlign: 'center' }}>Tu envoies</p>
+              <p style={{ fontSize: 40, fontWeight: 800, color: C, textAlign: 'center', lineHeight: 1.15, marginTop: 4 }}>
+                {amountNum.toLocaleString('fr-FR')}{' '}<span style={{ fontSize: 16, fontWeight: 700 }}>FCFA</span>
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px auto 0', padding: '12px 14px', background: 'white', borderRadius: 14, border: '1px solid rgba(198,106,44,0.1)', maxWidth: 340 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: C, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0 }}>{initialesDe(destinataire)}</div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2a1a0a' }}>{nomCompletDe(destinataire)}</p>
+                  <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>via {selectedMethod.name}{note ? ` — « ${note} »` : ''}</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 12, color: '#b8956a', textAlign: 'center', marginTop: 12 }}>
+                Un transfert est définitif : vérifie bien le nom avant de confirmer.
+              </p>
+              <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+                <motion.button
+                  onClick={() => setShowConfirm(false)}
+                  disabled={envoiEnCours}
+                  style={{ flex: 1, padding: 14, borderRadius: 16, background: 'white', border: `1.5px solid ${C}40`, color: C, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: envoiEnCours ? 0.5 : 1 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Annuler
+                </motion.button>
+                <motion.button
+                  onClick={handleEnvoyer}
+                  disabled={envoiEnCours}
+                  style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 'none', background: envoiEnCours ? 'rgba(198,106,44,0.4)' : `linear-gradient(135deg, ${C}, #D4824A)`, color: 'white', fontSize: 14, fontWeight: 700, cursor: envoiEnCours ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                  whileTap={envoiEnCours ? {} : { scale: 0.97 }}
+                >
+                  {envoiEnCours && <Loader2 size={16} className="animate-spin" />}
+                  {envoiEnCours ? 'Envoi…' : 'Confirmer l\'envoi'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
