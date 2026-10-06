@@ -20,10 +20,22 @@
  *     on retrouve l'empreinte du fichier à la référence (3917bb7). Et
  *     l'inventaire ordonné des appels de parole (site + arguments) est
  *     identique à la référence.
+ *     HISTORIQUE DE LA RÉFÉRENCE — 06/10/2026 : la seule entrée
+ *     `contexts/AppContext.tsx` a été re-bénie après §8.1 (audit UX du 06/10,
+ *     exécuté dans `060c333` + commentaire doctrinal) : le garde de rôle
+ *     « marchand seul » y a été retiré DÉCISION PATRICK, la voix est ouverte
+ *     aux trois rôles et le muet est LA borne. Les divergences connues
+ *     d'autres fichiers (useVoiceCore, AppLayout, ObjectifContext — rail
+ *     voix Manus/VOICE-01) restent VOLONTAIREMENT hors référence : elles
+ *     rougissent ici tant que leur lot n'a pas été relu.
  *
- *  C. « Le bouton Rapport de test est atteignable SANS se déconnecter. »
- *     Celui de l'écran de connexion obligeait à perdre la session pour
- *     l'envoyer — un défaut d'instrumentation en soi.
+ *  C. « Le Rapport de test est atteignable connecté, depuis UNE seule surface. »
+ *     HISTORIQUE : l'écran de connexion portait un second bouton 🐞 ; il a été
+ *     retiré par `1c2f914` (06/10) — arbitrage REVIEW-004 : la surface
+ *     connectée unique est Paramètres (UniversalParametres), surface plus
+ *     appropriée qu'un écran de connexion, et le garde devait suivre le
+ *     retrait DANS LE MÊME geste (leçon B4-2 de REVIEW-004). La garde encode
+ *     désormais le retrait : le doublon ne doit pas revenir en silence.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -195,7 +207,9 @@ console.log('\nA. Chaque voix qui part, chaque dictée, chaque intention passent
   const ac = lire('contexts/AppContext.tsx');
   const sp = corps(ac, /^  const speak = async \(text: string\) =>/m);
   verifier('AppContext.speak journalise l\'appel (source des voix d\'écran)', !!sp && /vtrace\.ttsAppel\(/.test(sp));
-  verifier('AppContext.speak journalise ses refus (rôle, muet)', !!sp && (sp.match(/vtrace\.ttsIgnoree\(/g) || []).length >= 2);
+  verifier('AppContext.speak journalise le refus muet — LA borne unique depuis §8.1',
+    !!sp && /vtrace\.ttsIgnoree\('AppContext\.speak', text, 'muet'\)/.test(sp),
+    'voix ouverte aux 3 rôles (§8.1, 06/10) : le muet est la seule borne, il doit rester tracé');
 
   const st = lire('voice-offline/offlineStt.ts');
   verifier('la dictée en direct (connexion) journalise chaque passe STT (moteur + durée)', /vtrace\.sttFin\(/.test(st));
@@ -236,13 +250,17 @@ console.log('\nB. L\'instrumentation ne change ni phrase, ni règle de choix de 
 }
 
 // ── C. Bouton atteignable sans se déconnecter ───────────────────────────────
-console.log('\nC. « Rapport de test » atteignable connecté');
+console.log('\nC. « Rapport de test » atteignable connecté — UNE seule surface (Paramètres)');
 {
   const up = lire('components/shared/UniversalParametres.tsx');
   verifier('Paramètres (UniversalParametres) propose « Rapport de test »', /Rapport de test/.test(up));
   verifier('… en réutilisant vlogPartager() (un seul rapport, une seule source)', /vlogPartager\(\)/.test(up));
+  // 1c2f914 a retiré le doublon de l'écran de connexion — arbitrage REVIEW-004 :
+  // la surface connectée unique est Paramètres. La garde encode le retrait :
+  // une seconde copie du bouton ne doit pas revenir en silence.
   const lp = lire('components/auth/LoginPassword.tsx');
-  verifier('celui de l\'écran de connexion est conservé', /Rapport de test/.test(lp) && /vlogPartager\(\)/.test(lp));
+  verifier('l\'écran de connexion n\'embarque plus le doublon (retiré 1c2f914, arbitré REVIEW-004)',
+    !/Rapport de test/.test(lp));
 }
 
 console.log(echecs ? `\n${echecs} échec(s)` : '\nTout est vert');
