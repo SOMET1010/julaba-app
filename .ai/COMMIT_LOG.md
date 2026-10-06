@@ -46,6 +46,8 @@ docs: journaux .ai + worklog Task 16
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
 
+> NB rebase (16-bis) : ces commits ont été rebasés sur `060c333` (agent UX producteur, arrivé en parallèle) — hash finaux `2e12cf6`, `0c026aa`, `7699927`, `65c1783`, `5d27f63`. Le commit « voix » rebasé ne porte plus que le commentaire doctrinal + la note `disabledRoles` : la substance du gate vit dans `060c333`. Détail : worklog Task 16-bis.
+
 ## Statistiques Git (snapshot 2026-09-28)
 
 - **Total commits** : 780
