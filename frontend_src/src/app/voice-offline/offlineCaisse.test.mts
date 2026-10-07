@@ -51,9 +51,12 @@ async function run() {
   }
 
   // T2 — transitoire (5xx) : conservé + attempts, puis parqué au CAP.
+  // ARG-03 (07/10) : le CAP ne vaut plus que pour le STOCK. Une vente ou une
+  // dépense n'est jamais abandonnée pour une erreur passagère — prouvé par
+  // test:rejeu-declencheurs. Le cap se prouve donc ici sur un ajustement de stock.
   {
     const store = oc.memoryOutboxStore();
-    await seed(store, ["x"]);
+    await oc.enfilerOperation("/stocks/s-1", { idempotency_key: "x", quantite: 2 }, UID, store, "PATCH");
     const p = posterQui({ x: 503 });
     const r1 = await oc.synchroniser(p, UID, store);
     ok(r1.reste === 1 && r1.echecs === 0, "T2 5xx conservé (essai 1)");
