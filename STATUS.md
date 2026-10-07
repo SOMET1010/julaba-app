@@ -15,6 +15,14 @@ avant toute fin de session.
 | dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
+
+## Relevé du 07/10/2026 (soir) — RC écosystème + audit approfondi
+
+- **RC = `main@4d91c4b`**, CI de main verte. APK `julaba-4d91c4b.apk` (release `pilote-latest`, run #65). Cahier : `docs/RECETTE-RC.md` (recette locale 33/35 ; 2 ❌ = arbitrage permissions).
+- Fusionnées le 07/10 : #262 #263 #264 #265 #266 #267 #268 #269 #270 #261. **#260 (Récolte) → RC suivante.**
+- **Audit approfondi** : `docs/audit/AUDIT-APPROFONDI-2026-10-07.md` (branche `claude/audit-approfondi`, pas de PR). 8 bloquants avant testeurs réels, plan de lots L1→L8.
+- **À DÉFINIR (Patrick)** : validation du plan ; SEC-01 (couper le signup public en prod) ; variables Render (`TRUST_PROXY`, `ANSUT_*`, `BACKUP_*`, `SENTRY_DSN`) et base de prod réelle ; permissions Missions/Marketplace + lien institution ; vérifier `/health` → `4d91c4b` et poser le tag `rc-20261007-4d91c4b` ; liste des testeurs ; séance d'enregistrement des 23 phrases.
+
 ---
 
 ## ⚠️ LE FAIT QUI CHANGE LE CADRE : IL N'Y A AUCUNE PREVIEW
