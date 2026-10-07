@@ -10,7 +10,8 @@ import {
   transfererVersCompte,
   type DestinataireTransfert,
 } from '../../services/api/wallets-api';
-import { HttpError } from '../../services/api/api-client';
+import { HttpError, apiRequest } from '../../services/api/api-client';
+import { API_URL } from '../../utils/api';
 import { RelectureArgent } from '../argent/RelectureArgent';
 import { METHODS, type Method } from './methodsTransfert';
 import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
@@ -35,7 +36,7 @@ function causeRechercheDe(e: unknown, enLigne: boolean): '404' | 'reseau' | 'hor
 export function TransfertPage() {
   const navigate = useNavigate();
   const { getAvailableBalance, refreshKeiwa } = useWallet();
-  const { speak } = useApp();
+  const { speak, user } = useApp();
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState('');
   const [destinataire, setDestinataire] = useState<DestinataireTransfert | null>(null);
@@ -55,6 +56,12 @@ export function TransfertPage() {
   // côté backend ; ici on empêche le geste lui-même.
   const envoiEnCoursRef = useRef(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  // M-P0-3 complété (T8) : le transfert porte le PIN conditionnel dans la
+  // relecture, comme la cotisation (MaCooperative) — vérifié contre
+  // /auth/pin/verify AVANT le POST, sous le verrou synchrone de l'appelant.
+  const pinRequis = Boolean(user?.pinSecurityEnabled);
+  const [pinEnvoi, setPinEnvoi] = useState('');
+  const [pinErreur, setPinErreur] = useState('');
   const [done, setDone] = useState(false);
   const [soldeApres, setSoldeApres] = useState<number | null>(null);
 
@@ -158,9 +165,24 @@ export function TransfertPage() {
       setShowConfirm(false);
       return;
     }
+    if (pinRequis && pinEnvoi.length !== 4) {
+      setPinErreur('Ton code PIN a 4 chiffres');
+      return;
+    }
     envoiEnCoursRef.current = true;
     setEnvoiEnCours(true);
     try {
+      if (pinRequis) {
+        const verif = await apiRequest<{ valid?: boolean }>(API_URL, '/auth/pin/verify', {
+          method: 'POST',
+          body: JSON.stringify({ pin: pinEnvoi }),
+        });
+        if (!verif?.valid) {
+          setPinErreur('Code PIN incorrect. Réessaie');
+          setPinEnvoi('');
+          return;
+        }
+      }
       const resultat = await transfererVersCompte({
         destinataireUserId: destinataire.id,
         montant: amountNum,
@@ -173,6 +195,8 @@ export function TransfertPage() {
       // voir (écran « Envoi réussi ») et se lire (solde).
       vibrerSucces();
       setDone(true);
+      setPinEnvoi('');
+      setPinErreur('');
       // Rafraîchit le solde affiché ailleurs dans l'app (accueil, etc.).
       refreshKeiwa().catch(() => {});
     } catch (e: any) {
@@ -555,7 +579,7 @@ export function TransfertPage() {
       <RelectureArgent
         ouvert={showConfirm && destinataire !== null && selectedMethod !== null}
         enCours={envoiEnCours}
-        onFermer={() => setShowConfirm(false)}
+        onFermer={() => { if (envoiEnCoursRef.current) return; setShowConfirm(false); setPinEnvoi(''); setPinErreur(''); }}
         onConfirmer={handleEnvoyer}
         titre="Tu envoies"
         montant={amountNum}
@@ -563,6 +587,10 @@ export function TransfertPage() {
           ? `à ${nomCompletDe(destinataire)} via ${selectedMethod.name}${note ? `, note : « ${note} »` : ''}`
           : undefined}
         avertissement="Un transfert est définitif : vérifie bien le nom avant de confirmer."
+        pinRequis={pinRequis}
+        pinValeur={pinEnvoi}
+        surPinChange={(v) => { setPinEnvoi(v); setPinErreur(''); }}
+        pinErreur={pinErreur}
         libelleConfirmer="Confirmer l'envoi"
         libelleEnCours="Envoi…"
         accent={C}
