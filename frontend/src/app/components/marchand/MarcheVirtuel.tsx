@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import { useToast } from '../../hooks/useToast';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { NotificationButton } from './NotificationButton';
@@ -470,7 +471,8 @@ export function MarcheVirtuel() {
       // COMMANDE à régler, jamais un « paiement effectué avec succès » — même
       // règle que le pilote caisse (POSCaisse 55-60 : pas de promesse
       // fonctionnelle contradictoire).
-      const montantParle = montantsMasques ? '' : ` ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA`;
+      // ARG-17 : montants DITS en toutes lettres (VOIX-09 / deuxFormes).
+      const montantParle = montantsMasques ? '' : ` ${nombreEnMotsFr(cartTotal || 0)} francs CFA`;
       if (paymentMethod === 'keiwa') {
         speakSilent(`Commande passée. Le montant sera débité de ton Wallet quand le vendeur encaissera.`);
       } else if (paymentMethod === 'cash') {
@@ -523,7 +525,7 @@ export function MarcheVirtuel() {
       // part à l'encaissement du vendeur (POST /commandes/:id/paiement).
       speakSilent(montantsMasques
         ? 'Commande confirmée par ton code PIN. Le montant sera débité de ton Wallet quand le vendeur encaissera.'
-        : `Commande confirmée par ton code PIN. ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA seront débités de ton Wallet quand le vendeur encaissera.`);
+        : `Commande confirmée par ton code PIN. ${nombreEnMotsFr(cartTotal || 0)} francs CFA seront débités de ton Wallet quand le vendeur encaissera.`);
       setShowPinModal(false); setPinCode(''); resetPaymentState();
     } finally {
       commandeEnCoursRef.current = false;
