@@ -8,11 +8,11 @@
  * tapé, le parent complète (ou dit qu'il n'a rien changé).
  */
 import { useState } from 'react';
-import type { CaisseProduct } from '../../contexts/CaisseContext';
+import type { ProduitSurEtal } from '../../services/premierProduit';
 import { ClavierQuantite } from './ClavierQuantite';
 
 interface Props {
-  existant: CaisseProduct;
+  existant: Pick<ProduitSurEtal, 'nom' | 'unite'>;
   enCours: boolean;
   onValider: (ajout: string) => void;
   /** Ce n'est pas le même produit (autre façon de le vendre). */
