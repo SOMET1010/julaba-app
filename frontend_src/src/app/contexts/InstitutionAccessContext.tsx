@@ -25,7 +25,7 @@ export function InstitutionAccessProvider({ children }: { children: ReactNode })
   const { user } = useUser();
   const [accessModules, setAccessModules] = useState<string[]>([
     'dashboard', 'analytics', 'acteurs', 'supervision',
-    'parametres', 'profil', 'audit-trail', 'academy', 'keiwa', 'support',
+    'parametres', 'profil', 'audit', 'academy', 'keiwa', 'support',
   ]);
 
   const hasAccess = (module: string): boolean => {

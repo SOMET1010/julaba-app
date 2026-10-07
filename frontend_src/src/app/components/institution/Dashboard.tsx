@@ -6,6 +6,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
+import { DonneeIndisponible } from './DonneeIndisponible';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 
 export function Dashboard() {
@@ -67,6 +68,9 @@ export function Dashboard() {
           {/* Volume Evolution */}
           <Card className="p-6 rounded-2xl">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Évolution du volume (Millions FCFA)</h3>
+            {volumeData.length === 0 ? (
+              <DonneeIndisponible titre="Courbe indisponible" raison="Aucun historique mensuel n'est encore servi aux institutions." />
+            ) : (
             <ResponsiveContainer key="chart-dashboard-volume" width="100%" height={300}>
               <LineChart data={volumeData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -82,6 +86,7 @@ export function Dashboard() {
                 <Line type="monotone" dataKey="volume" stroke="#702963" strokeWidth={3} dot={{ fill: '#702963', r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
+            )}
           </Card>
 
           {/* Distribution by Role */}

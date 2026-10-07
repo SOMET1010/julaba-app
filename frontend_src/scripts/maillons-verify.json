@@ -146,7 +146,8 @@
     "test:credit-hors-pilote",
     "test:modules-pilote",
     "test:rejeu-declencheurs",
-    "test:encaisser-formes-dites"
+    "test:encaisser-formes-dites",
+    "test:institution-routes"
   ],
   "horsVerify": {
     "test:argent-parle": "À STATUER — banc orphelin découvert le 03/10/2026. Vert. Jamais exécuté par aucune chaîne.",

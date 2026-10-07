@@ -22,14 +22,12 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { NotificationButton } from '../marchand/NotificationButton';
-import { toast } from 'sonner';
 import { matchesSearch } from '../../utils/searchUtils';
 import { FicheActeurDetailModal } from '../shared/FicheActeurDetailModal';
+import { DonneeIndisponible } from './DonneeIndisponible';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../services/api/api-client';
 
 const PRIMARY_COLOR = '#712864';
 
@@ -100,7 +98,7 @@ function GroupeParCategorie({ acteurs, onVoirDossier }: { acteurs: any[], onVoir
 // ── Component ─────────────────────────────────────────────────────────────────
 export function InstitutionActeurs() {
   const navigate = useNavigate();
-  const { acteurs } = useInstitutionData();
+  const { acteurs, erreurActeurs } = useInstitutionData();
   const acteurRows = acteurs as any[];
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,28 +129,6 @@ export function InstitutionActeurs() {
       return match && matchStatut && matchType && matchRegion;
     });
   }, [acteurRows, searchQuery, activeFilter, selectedType, selectedRegion]);
-
-  const handleSuspendre = async (id: string) => {
-    try {
-      await apiRequest(API_URL, `/acteurs/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ statut: 'suspendu' }),
-      });
-      window.location.reload();
-      toast.success('Acteur suspendu');
-    } catch { toast.error('Impossible de suspendre. Réessaie.'); }
-  };
-
-  const handleReactiver = async (id: string) => {
-    try {
-      await apiRequest(API_URL, `/acteurs/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ statut: 'actif' }),
-      });
-      window.location.reload();
-      toast.success('Acteur réactivé');
-    } catch { toast.error('Impossible de réactiver. Réessaie.'); }
-  };
 
   const handleVoirDossier = (acteur: any) => {
     setDetailActeur(acteur);
@@ -188,29 +164,35 @@ export function InstitutionActeurs() {
     >
       <div className="pt-6 pb-32 lg:pb-8 px-4 lg:pl-[320px] max-w-2xl lg:max-w-7xl mx-auto min-h-screen bg-gradient-to-b from-purple-50 to-white">
 
-        <KPIGrid cols={3} className="mb-5">
-          <UniversalKPI
-            label="Total"
-            animatedTarget={stats.total}
-            icon={Users}
-            color="#3B82F6"
-            delay={0}
-          />
-          <UniversalKPI
-            label="Actifs"
-            animatedTarget={stats.actifs}
-            icon={CheckCircle}
-            color="#10B981"
-            delay={30}
-          />
-          <UniversalKPI
-            label="Suspendus"
-            animatedTarget={stats.suspendus}
-            icon={XCircle}
-            color="#EF4444"
-            delay={60}
-          />
-        </KPIGrid>
+        {erreurActeurs ? (
+          <div className="mb-5">
+            <DonneeIndisponible titre="Liste des acteurs indisponible" raison={erreurActeurs} />
+          </div>
+        ) : (
+          <KPIGrid cols={3} className="mb-5">
+            <UniversalKPI
+              label="Total"
+              animatedTarget={stats.total}
+              icon={Users}
+              color="#3B82F6"
+              delay={0}
+            />
+            <UniversalKPI
+              label="Actifs"
+              animatedTarget={stats.actifs}
+              icon={CheckCircle}
+              color="#10B981"
+              delay={30}
+            />
+            <UniversalKPI
+              label="Suspendus"
+              animatedTarget={stats.suspendus}
+              icon={XCircle}
+              color="#EF4444"
+              delay={60}
+            />
+          </KPIGrid>
+        )}
 
         {/* Barre de recherche */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-4 relative">

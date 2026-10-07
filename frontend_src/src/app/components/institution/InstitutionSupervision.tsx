@@ -26,15 +26,13 @@ import {
   Shield,
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { useAudit } from '../../contexts/AuditContext';
 import { NotificationButton } from '../marchand/NotificationButton';
 import { toast } from 'sonner';
 import { matchesSearch } from '../../utils/searchUtils';
+import { DonneeIndisponible } from './DonneeIndisponible';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import { API_URL } from '../../utils/api';
-import { apiRequest } from '../../services/api/api-client';
 
 const C = '#712864';
 const C_LIGHT = '#F9F5F8';
@@ -144,8 +142,7 @@ function txDisplayFields(tx: any) {
 // ── Composant principal ──────────────────────────────────────────────────────
 export function InstitutionSupervision() {
   const { setIsModalOpen } = useApp();
-  const { transactions } = useInstitutionData();
-  const { logs } = useAudit();
+  const { transactions, erreurTransactions } = useInstitutionData();
 
   const [tab, setTab] = useState<TabType>('valides');
   const [periode, setPeriode] = useState<PeriodType>('mois');
@@ -227,11 +224,17 @@ export function InstitutionSupervision() {
             </motion.div>
 
             {/* ── KPI Cards — UniversalKPI (harmonisation) ─────────────── */}
-            <KPIGrid cols={3} className="mb-5">
-              <UniversalKPI label="Total" animatedTarget={kpis.total} icon={Activity} color="#3B82F6" iconAnimation="float" delay={0} />
-              <UniversalKPI label="En attente" animatedTarget={kpis.enAttente} icon={Clock} color="#F59E0B" iconAnimation="float" delay={0.05} />
-              <UniversalKPI label="Rejetés" animatedTarget={kpis.rejetes} icon={ShieldAlert} color="#EF4444" iconAnimation="pulse" delay={0.1} />
-            </KPIGrid>
+            {erreurTransactions ? (
+              <div className="mb-5">
+                <DonneeIndisponible titre="Transactions indisponibles" raison={erreurTransactions} />
+              </div>
+            ) : (
+              <KPIGrid cols={3} className="mb-5">
+                <UniversalKPI label="Total" animatedTarget={kpis.total} icon={Activity} color="#3B82F6" iconAnimation="float" delay={0} />
+                <UniversalKPI label="En attente" animatedTarget={kpis.enAttente} icon={Clock} color="#F59E0B" iconAnimation="float" delay={0.05} />
+                <UniversalKPI label="Rejetés" animatedTarget={kpis.rejetes} icon={ShieldAlert} color="#EF4444" iconAnimation="pulse" delay={0.1} />
+              </KPIGrid>
+            )}
 
             {/* ── Boutons action — clone "Membres / Ajouter membre" ──────── */}
             <motion.div
@@ -279,7 +282,6 @@ export function InstitutionSupervision() {
                         <Shield className="w-3.5 h-3.5 text-white" />
                       </div>
                       <span className="font-bold text-gray-900">Audit Log</span>
-                      <span className="text-xs font-black rounded-full px-2 py-0.5 bg-purple-100 text-purple-700">{(logs || []).length}</span>
                     </div>
                     <motion.button onClick={() => setShowAuditInline(false)}
                       className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center"
@@ -287,26 +289,10 @@ export function InstitutionSupervision() {
                       <X className="w-4 h-4 text-gray-500" />
                     </motion.button>
                   </div>
-                    <div className="space-y-2">
-                    {(logs || []).length === 0 && (
-                      <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: '24px 0' }}>Aucune activité récente</p>
-                    )}
-                    {(logs || []).slice().sort((a: any, b: any) => new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime()).slice(0, 10).map((log: any, idx: number) => (
-                      <motion.div key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.04 }}
-                        className={`bg-white rounded-2xl p-3.5 border-2 shadow-sm ${
-                          log.severity === 'critical' || log.type === 'error' ? 'border-red-200' :
-                          log.severity === 'warning' ? 'border-orange-200' : 'border-green-200'
-                        }`}
-                      >
-                        <p style={{ fontWeight: 600, fontSize: 13 }}>{log.action || log.type || 'Action'}</p>
-                        <p style={{ fontSize: 12, color: '#6b7280' }}>{log.user || log.utilisateur || 'Système'}</p>
-                        <p style={{ fontSize: 11, color: '#9ca3af' }}>{(log.created_at || log.timestamp) ? new Date(log.created_at || log.timestamp).toLocaleString('fr-FR') : ''}</p>
-                      </motion.div>
-                    ))}
-                  </div>
+                  <DonneeIndisponible
+                    titre="Journal d'audit indisponible"
+                    raison="Le journal des actions n'est pas encore ouvert aux institutions."
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -653,52 +639,15 @@ function SupervisionTxDrawer({ tx, onClose }: { tx: any; onClose: () => void }) 
             </div>
           )}
           <div className="flex gap-3 pt-2 pb-6">
-            {badge === 'en_attente' ? (
-              <>
-                <motion.button type="button"
-                  onClick={async () => {
-                    try {
-                      await apiRequest(API_URL, `/transactions/${tx.id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ statut: 'validee' }),
-                      });
-                      toast.success('Transaction validée');
-                      onClose();
-                    } catch { toast.error('Impossible de valider. Réessaie.'); }
-                  }}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-                  style={{ backgroundColor: '#16A34A' }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <CheckCircle className="w-4 h-4" />
-                  Valider
-                </motion.button>
-                <motion.button type="button"
-                  onClick={async () => {
-                    try {
-                      await apiRequest(API_URL, `/transactions/${tx.id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ statut: 'annulee' }),
-                      });
-                      toast.error('Transaction rejetée');
-                      onClose();
-                    } catch { toast.error('Impossible de rejeter. Réessaie.'); }
-                  }}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-white bg-red-500 flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <XCircle className="w-4 h-4" />
-                  Rejeter
-                </motion.button>
-              </>
-            ) : (
-              <motion.button type="button"
-                onClick={() => { toast('Export de la transaction'); onClose(); }}
-                className="flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-                style={{ backgroundColor: C }}
-                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Download className="w-4 h-4" />
-                Exporter ce dossier
-              </motion.button>
-            )}
+            {/* Valider / Rejeter : réservé au back-office (PATCH /transactions refusé au rôle institution). */}
+            <motion.button type="button"
+              onClick={() => { toast('Export de la transaction'); onClose(); }}
+              className="flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
+              style={{ backgroundColor: C }}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Download className="w-4 h-4" />
+              Exporter ce dossier
+            </motion.button>
           </div>
         </div>
       </motion.div>

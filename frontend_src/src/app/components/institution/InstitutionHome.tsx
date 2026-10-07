@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../../contexts/AppContext';
-import { useInstitution } from '../../contexts/InstitutionContext';
+import { DonneeIndisponible } from './DonneeIndisponible';
 import { useInstitutionPermissions } from '../../hooks/useInstitutionPermissions';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { ROLE_COLORS } from '../../config/roleConfig';
@@ -29,16 +29,9 @@ import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { AnimatedChart } from '../ui/AnimatedChart';
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
 import {
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
@@ -49,11 +42,10 @@ const tataLouImg =
 export function InstitutionHome() {
   const navigate = useNavigate();
   const { user, setIsModalOpen } = useApp();
-  const { institution } = useInstitution();
   const perms = useInstitutionPermissions(); // ✅ Permissions granulaires
   
   // ✅ Utiliser le hook centralisé pour les données
-  const { macroKPIs, resumeJour, dataEvolution, dataRepartition, dataRegions, alertes = [], alertesHigh = [], loading } = useInstitutionData();
+  const { macroKPIs, resumeJour, dataRepartition, alertes = [], alertesHigh = [], loading, error } = useInstitutionData();
   type AlerteRow = { id: string; severity: 'high' | 'medium' | 'low'; message: string };
   const alertesList = alertes as AlerteRow[];
 
@@ -210,6 +202,11 @@ export function InstitutionHome() {
           </motion.button>
         )}
 
+        {error ? (
+          <div className="mb-6">
+            <DonneeIndisponible titre="Chiffres indisponibles" raison={error} />
+          </div>
+        ) : (<>
         {/* ── Bloc KPI Macro — 9 indicateurs avec compteurs animés et modals ────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -458,33 +455,7 @@ export function InstitutionHome() {
             subtitle="Progression du volume d'activité"
             delay={300}
           >
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={dataEvolution || []}>
-                <defs>
-                  <linearGradient id="gradTx" x1="0" y1="0" x2="0" y2="1">
-                    <stop key="gradTx-start" offset="5%" stopColor={ROLE_COLORS.institution} stopOpacity={0.3} />
-                    <stop key="gradTx-end" offset="95%" stopColor={ROLE_COLORS.institution} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: `2px solid ${ROLE_COLORS.institution}40` }}
-                  formatter={(v: any) => [(v || 0).toLocaleString(), 'Transactions']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="transactions"
-                  stroke={ROLE_COLORS.institution}
-                  strokeWidth={2}
-                  fill="url(#gradTx)"
-                  animationDuration={2000}
-                  animationBegin={500}
-                  animationEasing="ease-in-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <DonneeIndisponible titre="Courbe indisponible" raison="Aucun historique mensuel n'est encore servi aux institutions." />
           </AnimatedChart>
 
           {/* Répartition acteurs par type */}
@@ -543,29 +514,7 @@ export function InstitutionHome() {
             subtitle="Répartition géographique des acteurs"
             delay={400}
           >
-            <div className="overflow-x-auto">
-              <div style={{ minWidth: 320 }}>
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={dataRegions || []} barSize={28}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="region" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '16px', border: `2px solid ${ROLE_COLORS.institution}40` }}
-                      formatter={(v: any) => [(v || 0).toLocaleString(), 'Acteurs']}
-                    />
-                    <Bar
-                      dataKey="acteurs"
-                      fill={ROLE_COLORS.institution}
-                      radius={[8, 8, 0, 0]}
-                      animationBegin={500}
-                      animationDuration={1500}
-                      animationEasing="ease-out"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            <DonneeIndisponible titre="Courbe indisponible" raison="La répartition par région n'est pas encore servie aux institutions." />
           </AnimatedChart>
 
           {/* Courbe adoption */}
@@ -574,35 +523,10 @@ export function InstitutionHome() {
             subtitle="Évolution de la valeur monétaire"
             delay={450}
           >
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={dataEvolution || []}>
-                <defs>
-                  <linearGradient id="gradVal" x1="0" y1="0" x2="0" y2="1">
-                    <stop key="gradVal-start" offset="5%" stopColor="#16A34A" stopOpacity={0.3} />
-                    <stop key="gradVal-end" offset="95%" stopColor="#16A34A" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip
-                  contentStyle={{ borderRadius: '16px', border: '2px solid #16A34A40' }}
-                  formatter={(v: any) => [`${v} Mds FCFA`, 'Valeur']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="valeur"
-                  stroke="#16A34A"
-                  strokeWidth={2}
-                  fill="url(#gradVal)"
-                  animationBegin={500}
-                  animationDuration={2000}
-                  animationEasing="ease-in-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <DonneeIndisponible titre="Courbe indisponible" raison="Aucun historique mensuel n'est encore servi aux institutions." />
           </AnimatedChart>
         </motion.div>
+        </>)}
 
         {/* ── Accès rapide ────────────────────────────────────────────────── */}
         <motion.div

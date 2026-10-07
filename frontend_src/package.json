@@ -109,6 +109,7 @@
     "test:prix-catalogue": "tsx src/app/services/prixCatalogueVocal.test.mts",
     "test:verrou-connexion": "node scripts/test-verrou-connexion.mjs",
     "test:canal-code": "node scripts/test-canal-code.mjs",
+    "test:institution-routes": "node scripts/test-institution-routes.mjs",
     "test:recuperation-admin": "node scripts/test-recuperation-admin.mjs",
     "test:carte-xss": "tsx src/app/components/backoffice/carte-popup.test.mts",
     "test:source-vente": "node scripts/test-source-vente.mjs",

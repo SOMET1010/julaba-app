@@ -144,7 +144,6 @@ export const router = createBrowserRouter([
         { path: "parametres", element: L(() => import("./components/institution/InstitutionParametres").then(m => ({ default: m.InstitutionParametres }))), errorElement: <ErrorFallback /> },
         { path: "profil", element: L(() => import("./components/institution/InstitutionProfil").then(m => ({ default: m.InstitutionProfil }))), errorElement: <ErrorFallback /> },
         { path: "dashboard", element: L(() => import("./components/institution/Dashboard").then(m => ({ default: m.Dashboard }))), errorElement: <ErrorFallback /> },
-        { path: "dashboard-analytics", element: L(() => import("./components/institution/DashboardAnalytics").then(m => ({ default: m.DashboardAnalytics }))), errorElement: <ErrorFallback /> },
         { path: "audit-trail", element: L(() => import("./components/institution/AuditTrail").then(m => ({ default: m.AuditTrail }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },
         { path: "keiwa", element: L(() => import("./components/wallet/WalletPage").then(m => ({ default: m.WalletPage }))), errorElement: <ErrorFallback /> },

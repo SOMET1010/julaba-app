@@ -16,6 +16,7 @@ import {
   Heart,
   TrendingDown,
 } from 'lucide-react';
+import { DonneeIndisponible } from './DonneeIndisponible';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { AnimatedChart } from '../ui/AnimatedChart';
@@ -386,6 +387,9 @@ export function Analytics() {
               subtitle="Nombre de transactions et valeur totale"
               delay={200}
             >
+              {filteredEvolution.length === 0 ? (
+                <DonneeIndisponible titre="Courbe indisponible" raison="Aucun historique mensuel n'est encore servi aux institutions." />
+              ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <AreaChart data={filteredEvolution}>
                   <defs>
@@ -412,6 +416,7 @@ export function Analytics() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              )}
             </AnimatedChart>
 
             <AnimatedChart

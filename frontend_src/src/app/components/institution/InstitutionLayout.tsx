@@ -14,16 +14,6 @@ import { ScrollToTop } from '../layout/ScrollToTop';
 
 const PRIMARY_COLOR = '#712864';
 
-// Map modules -> routes institution
-const MODULE_ROUTES: Record<keyof ModuleAcces, string[]> = {
-  dashboard: ['/institution', '/institution/dashboard', '/institution/dashboard-analytics'],
-  analytics: ['/institution/analytics'],
-  acteurs: ['/institution/acteurs'],
-  supervision: ['/institution/supervision'],
-  audit: ['/institution/audit-trail'],
-  export: [],
-};
-
 // Items de navigation complets — filtrés selon les permissions
 const ALL_NAV_ITEMS = [
   { label: 'Accueil', path: '/institution', icon: Home, module: 'dashboard' as keyof ModuleAcces, exact: true },
