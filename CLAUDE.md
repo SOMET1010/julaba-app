@@ -150,6 +150,7 @@ Contrôle
 - Le script « check » passe avant chaque push.
 
 ## Passation
+- `docs/PASSATION.md` et `docs/JOURNAL.md` sont ARCHIVÉS (décision Patrick 07/10) : ne plus les mettre à jour.
 - STATUS.md = source de vérité : livrable, DoD, fait / reste à faire, décisions (sources), hypothèses, À DÉFINIR, backlog, PR, agents mobilisés.
 - Mise à jour à chaque étape franchie et avant toute fin de session.
 - Contexte long (résumé automatique) : mets à jour STATUS.md et dis-moi « Ouvre une nouvelle session ».
