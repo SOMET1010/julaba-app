@@ -186,8 +186,14 @@ export function MesCommandes() {
   // VISIBLE ; il ne le remplace pas. Les boutons ne sont pas désactivés : un
   // bouton grisé ne dit rien à une marchande qui ne lit pas, le refus parlé si.
   const direEchecReseau = (cause: CauseEchecReseau) => {
-    if (cause === 'hors_ligne') speak(t('MARCHAND_HORS_LIGNE_ACTION'));
-    else speak(t('MARCHAND_ENVOI_TOMBE_ACTION'));
+    // T7 : le réseau qui tombe se DIT et s'ÉCRIT — même phrase du catalogue.
+    if (cause === 'hors_ligne') {
+      toast.error(t('MARCHAND_HORS_LIGNE_ACTION'));
+      speak(t('MARCHAND_HORS_LIGNE_ACTION'));
+    } else {
+      toast.error(t('MARCHAND_ENVOI_TOMBE_ACTION'));
+      speak(t('MARCHAND_ENVOI_TOMBE_ACTION'));
+    }
   };
 
   const handleAnnuler = async (id: string) => {
@@ -199,6 +205,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(message);
       speak(message);
     }
   };
@@ -212,6 +219,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(message);
       speak(message);
     }
   };
@@ -225,6 +233,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(message);
       speak(message);
     }
   };
@@ -238,6 +247,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(message);
       speak(message);
     }
   };
@@ -259,6 +269,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(`Erreur : ${message}`);
       speak(`Erreur : ${message}`);
     } finally {
       setSubmittingNeg(null);
@@ -276,6 +287,7 @@ export function MesCommandes() {
       const cause = causeEchec(e);
       if (cause) { direEchecReseau(cause); return; }
       const message = e instanceof Error ? e.message : 'Erreur inattendue';
+      toast.error(`Erreur : ${message}`);
       speak(`Erreur : ${message}`);
     } finally {
       setSubmittingNeg(null);
