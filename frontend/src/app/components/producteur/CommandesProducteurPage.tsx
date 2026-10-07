@@ -56,6 +56,7 @@ import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
 import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
+import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO,
   IMG_PRODUIT_MANIOC, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS, IMG_PRODUIT_RIZ,
@@ -395,12 +396,16 @@ export function ProducteurCommandes() {
     setIsRecupererPaiementLoading(true);
     try {
       await recupererPaiement(cmd.id);
+      // Triple canal (inclusion) : l'argent encaissé se VOIT (toast),
+      // s'ENTEND (la même phrase) et se SENT (vibration succès).
+      vibrerSucces();
       toast.success("Paiement récupéré ! L'argent est dans ton Keiwa.");
-      await speak(`Paiement récupéré ! L'argent est dans ton Keiwa.`);
+      await speak("Paiement récupéré ! L'argent est dans ton Keiwa.");
       setShowDemandeDetailModal(false);
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleRecupererPaiement failed:', e?.message);
       const message = messageUtilisateur(e, 'Erreur lors de la récupération du paiement');
+      vibrerErreur();
       toast.error(message);
       speak(message);
     }
@@ -2459,7 +2464,11 @@ export function ProducteurCommandes() {
           setShowReceptionModal(false);
           setSelectedCmdForReception(null);
           await refreshCommandes();
-          toast.success("Paiement encaissé avec succès !");
+          // T7 + triple canal : la MÊME phrase dite et écrite, et
+          // l'encaissement se SENT — en bruit de marché, la vibration
+          // porte la nouvelle (F-V5, audit voix 07/10).
+          vibrerSucces();
+          toast.success("Paiement encaissé ! L'argent est dans ton Keiwa.");
           speak("Paiement encaissé ! L'argent est dans ton Keiwa.");
         }}
       />
