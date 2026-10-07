@@ -55,3 +55,8 @@ docs/voix/ENTREES-TATA-UI-CLIPS.txt
 # Sorties brutes du tooling sandbox (journaux d’outils, jamais versionnés — peuvent contenir des échos d’URL authentifiées)
 tool-results/
 /bun.lock
+
+# Sorties de l’outillage sandbox Z.ai (skills génériques sans rapport avec Jùlaba),
+# retirées de main le 07/10/2026 sur décision de Patrick. Les skills du projet
+# vivent dans .claude/skills/.
+/skills/
