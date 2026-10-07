@@ -85,6 +85,15 @@ verifier(
   '`parle(message)` = texte dynamique sans clip = marchande muette.',
 );
 
+// Assertion d'origine (avant AUTH-03), RESTAURÉE : GARDE-ARGENT interdit d'en
+// retirer une. Elle reste vraie et utile — au moins deux prises de parole
+// dans le flux du verrou ; la garde PAR CLIP ci-dessous dit en plus lesquelles.
+verifier(
+  'ce qui est affiché est aussi DIT',
+  (code.match(/parle\(/g) || []).length >= 2,
+  'les deux cas comptent : l’attente ET l’avertissement.',
+);
+
 verifier(
   'les deux cas (attente + avertissement) sont dits PAR CLIP',
   (code.match(/parle\(\s*[^)]*ENTREE_VOICE_CLIPS\./g) || []).length >= 2,
