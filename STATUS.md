@@ -53,9 +53,16 @@ l'aperçu local**, pas sur une URL de preview.
 
 ## Livrable en cours
 
-**Aucun.** La session précédente a livré le Lot A (authentification d'agent) et
-l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
-« Proposition » plus bas.
+**RC 07/10 + retours terrain de PIE (testeur marchand détaillant)** — demande de Patrick du 07/10.
+Cahier de recette : `docs/RECETTE-RC.md`.
+
+| Critère | Statut | Preuve |
+|---|---|---|
+| RC taguée sur main, CI verte | ✅ code / ⬜ tag | `main@4d91c4b`, repère `claude/rc-20261007-4d91c4b` ; tag à poser par Patrick (proxy) |
+| Retours PIE corrigés (stock sans doublon, « encaisser », synchro hors ligne, photo caméra, marché/commune en liste) | ✅ | #271 et #272 fusionnées → `main@24b40b3` |
+| APK de main | ✅ | `julaba-24b40b3.apk` (= `julaba-latest.apk`), release `pilote-latest`, sha256 `76403886cdd52c5a9ff3f42d523afeddf03071ecedf7ed8a70436c26d5b4245a` |
+| Render sert main | ⬜ | `/health` à vérifier par Patrick (hôte bloqué pour l'agent) |
+| Profil institution testable | 🟡 PR #273 | invariant `institution-rattachement` 4/4, invariants 294/294 |
 
 ---
 
@@ -264,21 +271,12 @@ zéro alerte** : il tient le plancher et refusera toute aggravation.
 
 ## Pull requests
 
-**PR #261 — « cadre de travail » — OUVERTE, NON FUSIONNÉE.**
-https://github.com/SOMET1010/julaba-app/pull/261 · `claude/cadre-de-travail` → `main`
-· 3 commits, 19 fichiers · `mergeable_state: unstable` (la CI `check` y est
-rouge, du rouge préexistant SEC-07 décrit plus haut).
+- Fusionnées le 07/10 : #261, #262, #263, #264, #265, #266, #267, #268, #269, #270, #271, #272.
+- **#273** — Institution : rattachement du responsable, profil sans 403 ni zéros — **OUVERTE** (feu vert Patrick « correctif Institution »).
+- #260 (Récolte) : RC suivante, non fusionnée (décision 6).
+- ⚠️ **PR #245 — interdite de merge** (Keiwa, hors pilote).
 
-**Pourquoi elle n'est pas fusionnée alors que l'autorisation était donnée :**
-l'autorisation (« je t'autorise à les faire arriver sur la branche par
-défaut ») a été donnée **avant** que l'enquête n'établisse qu'il n'existe
-aucune preview et que `autoDeploy: true` porte sur `main`. Fusionner, c'est
-**déployer la production**. Cet effet n'était pas connu au moment de
-l'autorisation : la fusion attend donc une confirmation explicite.
-
-Règle permanente : *aucune PR sans que le propriétaire la demande.*
-
-⚠️ **PR #245 — interdite de merge** (Keiwa, hors pilote).
+Règle permanente : *aucune PR ni fusion sans que le propriétaire la demande.*
 
 ---
 
