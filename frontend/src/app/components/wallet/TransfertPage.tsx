@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, Check, Loader2 } from 'lucide-react';
 import { useWallet } from '../../contexts/WalletContext';
-import { IMG_LOGO_WAVE, IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV } from '../../assets/images';
 import { toast } from 'sonner';
 import {
   rechercherDestinataire,
@@ -11,40 +10,15 @@ import {
   type DestinataireTransfert,
 } from '../../services/api/wallets-api';
 import { HttpError } from '../../services/api/api-client';
+import { RelectureArgent } from '../argent/RelectureArgent';
+import { METHODS, type Method } from './methodsTransfert';
+import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+import { genererCleIdempotence } from '../../utils/idempotence';
 
 const C = '#B74725';
 const BG = '#F6F0E4';
 
-interface Method {
-  id: string;
-  logo?: string;
-  imgLogo?: string;
-  color: string;
-  textColor?: string;
-  name: string;
-  sub: string;
-  featured: boolean;
-  badge: string;
-  disponible: boolean;
-}
-
-const METHODS: Method[] = [
-  { id: 'julaba', logo: 'JL',  color: C,         name: 'Compte Julaba',    sub: 'Instantané · Sans frais', featured: true,  badge: '', disponible: true },
-  { id: 'wave',   logo: 'WV',  imgLogo: IMG_LOGO_WAVE,          color: '#00b9f5', name: 'Wave',             sub: 'Rapide · Sans frais',     featured: false, badge: 'Bientôt', disponible: false },
-  { id: 'orange', logo: 'OM',  imgLogo: IMG_LOGO_ORANGE_MONEY,  color: '#FF6600', name: 'Orange Money',     sub: 'Disponible partout',      featured: false, badge: 'Bientôt', disponible: false },
-  { id: 'mtn',    logo: 'MTN', imgLogo: IMG_LOGO_MTN,           color: '#FFCC00', textColor: '#333', name: 'MTN MoMo', sub: 'Réseau étendu', featured: false, badge: 'Bientôt', disponible: false },
-  { id: 'moov',   logo: 'MV',  imgLogo: IMG_LOGO_MOOV,          color: '#0057A8', name: 'Moov Money',       sub: 'Faibles commissions',     featured: false, badge: 'Bientôt', disponible: false },
-  { id: 'banque', logo: 'BQ',  color: '#2d7a4f', name: 'Virement bancaire', sub: 'Sous 24h ouvrées',       featured: false, badge: 'Bientôt', disponible: false },
-];
-
 type Step = 1 | 2 | 3;
-
-function genererCleIdempotence(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `xfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
 
 export function TransfertPage() {
   const navigate = useNavigate();
@@ -68,11 +42,7 @@ export function TransfertPage() {
   const [done, setDone] = useState(false);
   const [soldeApres, setSoldeApres] = useState<number | null>(null);
 
-  // Clé d'idempotence : une par tentative d'envoi. Rejouer le MÊME appel
-  // (retry réseau, double-clic sur "Envoyer maintenant") réutilise cette même
-  // clé, ce qui empêche le backend de créer un second mouvement — cf.
-  // WalletsService.transfererVersUtilisateur. Régénérée uniquement quand on
-  // recommence un nouveau transfert.
+  // Clé d'idempotence — une par TENTATIVE (contrat dans utils/idempotence).
   const idempotencyKeyRef = useRef<string>(genererCleIdempotence());
 
   const stepLabels: Record<Step, string> = {
@@ -157,12 +127,16 @@ export function TransfertPage() {
       });
       setSoldeApres(resultat.solde);
       setShowConfirm(false);
+      // Triple canal (inclusion) : l'envoi réussi se SENT, en plus de se
+      // voir (écran « Envoi réussi ») et se lire (solde).
+      vibrerSucces();
       setDone(true);
       // Rafraîchit le solde affiché ailleurs dans l'app (accueil, etc.).
       refreshKeiwa().catch(() => {});
     } catch (e: any) {
       const message = e instanceof HttpError ? e.message : (e?.message || 'Transfert échoué');
       toast.error(message);
+      vibrerErreur();
       setShowConfirm(false);
     } finally {
       envoiEnCoursRef.current = false;
@@ -500,63 +474,27 @@ export function TransfertPage() {
 
       </AnimatePresence>
 
-      {/* Relecture avant l'irréversible (M-P0-3) : l'argent ne part jamais
-          d'un seul tap — on relit destinataire, montant et moyen, puis on
-          confirme. */}
-      <AnimatePresence>
-        {showConfirm && destinataire && selectedMethod && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
-            onClick={() => { if (!envoiEnCours) setShowConfirm(false); }}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirmer l'envoi"
-          >
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              style={{ background: BG, borderRadius: '28px 28px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 36px' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div style={{ width: 40, height: 4, background: 'rgba(198,106,44,0.2)', borderRadius: 2, margin: '0 auto 20px' }} />
-              <p style={{ fontSize: 18, fontWeight: 800, color: '#2a1a0a', textAlign: 'center' }}>Tu envoies</p>
-              <p style={{ fontSize: 40, fontWeight: 800, color: C, textAlign: 'center', lineHeight: 1.15, marginTop: 4 }}>
-                {amountNum.toLocaleString('fr-FR')}{' '}<span style={{ fontSize: 16, fontWeight: 700 }}>FCFA</span>
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px auto 0', padding: '12px 14px', background: 'white', borderRadius: 14, border: '1px solid rgba(198,106,44,0.1)', maxWidth: 340 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: C, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0 }}>{initialesDe(destinataire)}</div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2a1a0a' }}>{nomCompletDe(destinataire)}</p>
-                  <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>via {selectedMethod.name}{note ? ` — « ${note} »` : ''}</p>
-                </div>
-              </div>
-              <p style={{ fontSize: 12, color: '#b8956a', textAlign: 'center', marginTop: 12 }}>
-                Un transfert est définitif : vérifie bien le nom avant de confirmer.
-              </p>
-              <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
-                <motion.button
-                  onClick={() => setShowConfirm(false)}
-                  disabled={envoiEnCours}
-                  style={{ flex: 1, padding: 14, borderRadius: 16, background: 'white', border: `1.5px solid ${C}40`, color: C, fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: envoiEnCours ? 0.5 : 1 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  Annuler
-                </motion.button>
-                <motion.button
-                  onClick={handleEnvoyer}
-                  disabled={envoiEnCours}
-                  style={{ flex: 1.4, padding: 14, borderRadius: 16, border: 'none', background: envoiEnCours ? 'rgba(198,106,44,0.4)' : `linear-gradient(135deg, ${C}, #D4824A)`, color: 'white', fontSize: 14, fontWeight: 700, cursor: envoiEnCours ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                  whileTap={envoiEnCours ? {} : { scale: 0.97 }}
-                >
-                  {envoiEnCours && <Loader2 size={16} className="animate-spin" />}
-                  {envoiEnCours ? 'Envoi…' : 'Confirmer l\'envoi'}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Relecture avant l'irréversible (M-P0-3) — la primitive maison T8
+          (R1-3 : extraite, plus de copie inline) : dite ET affichée depuis la
+          même source (R1-4), Radix focus-trap/ESC (R1-5 / AUTH-05), vibration
+          d'attente pendant l'envoi. Le verrou synchrone reste ICI
+          (envoiEnCoursRef), la primitive n'appelle jamais à notre place. */}
+      <RelectureArgent
+        ouvert={showConfirm && destinataire !== null && selectedMethod !== null}
+        enCours={envoiEnCours}
+        onFermer={() => setShowConfirm(false)}
+        onConfirmer={handleEnvoyer}
+        titre="Tu envoies"
+        montant={amountNum}
+        sousLigne={destinataire && selectedMethod
+          ? `à ${nomCompletDe(destinataire)} via ${selectedMethod.name}${note ? `, note : « ${note} »` : ''}`
+          : undefined}
+        avertissement="Un transfert est définitif : vérifie bien le nom avant de confirmer."
+        libelleConfirmer="Confirmer l'envoi"
+        libelleEnCours="Envoi…"
+        accent={C}
+        accentConfirmer={`linear-gradient(135deg, ${C}, #D4824A)`}
+      />
     </div>
   );
 }
