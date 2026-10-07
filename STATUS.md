@@ -3,6 +3,9 @@
 **Source de vérité de la passation.** Mise à jour à chaque étape franchie et
 avant toute fin de session.
 
+> Décision de Patrick (07/10/2026, point 7) : **ce fichier fait foi**. `docs/PASSATION.md`
+> et `docs/JOURNAL.md` sont archivés (bandeau en tête, plus mis à jour) et renvoient ici.
+
 | | |
 |---|---|
 | relevé | **05/10/2026** |
