@@ -7,13 +7,13 @@
 
 | Élément | Valeur |
 |---|---|
-| Code | `main` = **`75c8b06`** (07/10/2026) — CI de main **verte** (filet d'intégration + GARDE-ARGENT) |
-| Repère git | branche **`claude/rc-20261007-75c8b06`**. Le tag est à poser par Patrick, car le proxy git de l'agent refuse les tags : `git fetch origin && git tag -a rc-20261007-75c8b06 75c8b06 -m "RC 07/10" && git push origin rc-20261007-75c8b06` |
-| APK | [`julaba-75c8b06.apk`](https://github.com/SOMET1010/julaba-app/releases/download/pilote-latest/julaba-75c8b06.apk) — release `pilote-latest`, `apk.yml` run #64, paramètres standard (API `https://julaba-api.onrender.com/api/v1`, clips prototypes et dioula éteints, modules hors pilote masqués). sha256 `d43772dbb3456dcaf70f9e06c615141b3a52dcb4c4a3bc6c06d39c8c50146763`, 272 977 875 octets |
+| Code | `main` = **`4d91c4b`** (07/10/2026) — CI de main **verte** (filet d'intégration, GARDE-ARGENT, invariants, check) |
+| Repère git | branche **`claude/rc-20261007-4d91c4b`** (= `9553d20` : `4d91c4b` + logigramme, documentation seule). Le tag est à poser par Patrick, car le proxy git de l'agent refuse les tags : `git fetch origin && git tag -a rc-20261007-4d91c4b 4d91c4b -m "RC 07/10" && git push origin rc-20261007-4d91c4b` |
+| APK | [`julaba-4d91c4b.apk`](https://github.com/SOMET1010/julaba-app/releases/download/pilote-latest/julaba-4d91c4b.apk) — release `pilote-latest`, `apk.yml` run #65, paramètres standard (API `https://julaba-api.onrender.com/api/v1`, clips prototypes et dioula éteints, modules hors pilote masqués). sha256 `13fff5d97de50abb28383657f45b16940d36dadffd0d3a3b61e1d4baa3e78ace`, 272 977 863 octets |
 | Web | https://julaba-web.onrender.com — BO : `/backoffice/login` |
 | API | https://julaba-api.onrender.com/api/v1 — `GET /health` rend `commit` |
 
-**À vérifier par Patrick :** Render a redéployé main tout seul (`autoDeploy: true`). Ouvre `https://julaba-api.onrender.com/api/v1/health` : il doit rendre `"commit":"75c8b06"`. L'hôte `onrender.com` est bloqué dans la session de l'agent.
+**À vérifier par Patrick :** Render a redéployé main tout seul (`autoDeploy: true`). Ouvre `https://julaba-api.onrender.com/api/v1/health` : il doit rendre `"commit":"4d91c4b"`. L'hôte `onrender.com` est bloqué dans la session de l'agent.
 
 ### Contenu de la RC par rapport à `9fb4655`
 
@@ -24,15 +24,15 @@
 | #264 | `skills/` et `tool-results/` retirés de main (sorties sandbox) |
 | #267 | inventaire vocal régénéré (`test:i18n-source`) |
 | #268 | **modules hors pilote portant de l'argent masqués** (drapeau `VITE_JULABA_MODULES_HORS_PILOTE`, garde de route, rien supprimé) |
+| #266 | périmètre d'argent : BO Zones (500 → OK), membres de coopérative (404 → OK), « mes ventes » vocal (404 → OK) — CI verte, 23 invariants d'argent |
+| #261 | cadre de travail : `STATUS.md` fait foi, agents, garde-fous (`check`) |
+| #269 | logigramme des parcours et des voix (`docs/logigramme/`) |
 
-**Hors RC, par décision :**
-- #260 (Récolte) passe à la RC suivante.
-- #261 (cadre) est à jour, mais c'est Patrick qui la fusionne.
-- #266 (périmètre d'argent) est réservée à Patrick. Elle corrige BO Zones, les membres de coopérative et « mes ventes » vocal. Sa CI est verte.
+**Hors RC, par décision :** #260 (Récolte) passe à la RC suivante.
 
 ### Où les statuts ont été constatés
 
-Sur une **stack locale construite depuis `75c8b06`** : PostgreSQL 16 sur une base neuve, API Nest avec le seed de démo (`/health` → `commit 75c8b06`), web servi par `vite preview`. La vérification passe par un script d'appels API et par Chromium/Playwright en 412×915.
+Sur une **stack locale construite depuis `4d91c4b`** : PostgreSQL 16 sur une base neuve, API Nest avec le seed de démo (`/health` → `commit 4d91c4b`), web servi par `vite preview`. La vérification passe par un script d'appels API et par Chromium/Playwright en 412×915.
 
 Légende : ✅ constaté OK · ❌ constaté cassé · ⬜ non testé (raison donnée) · 🔒 masqué dans cette RC.
 
@@ -42,7 +42,7 @@ Arbitrage (03/10) : **identifiants remis par SMS, jamais en clair**. Aucun ident
 
 | Profil | Comment l'obtenir en production |
 |---|---|
-| marchand, producteur, coopérateur, identificateur | Back-office → Acteurs → Nouvel acteur : compte inerte + code d'activation, puis `/activation` dans l'app. ⚠️ Le sélecteur de zone exige `GET /zones`, en 500 tant que **#266** n'est pas fusionnée |
+| marchand, producteur, coopérateur, identificateur | Back-office → Acteurs → Nouvel acteur : compte inerte + code d'activation, puis `/activation` dans l'app. sélecteur de zone OK (`GET /zones` 200 depuis #266) |
 | Recette ANSUT | Numéros de `AUTH_TELEPHONES_TEST`, déjà présents en production |
 | admin BO | BO → Utilisateurs (super_admin), mot de passe envoyé par SMS (BO-1) |
 | institution | Créable, mais tableau de bord en 403 tant que le lien compte → institution n'est pas tranché (arbitrage 5) |
@@ -65,7 +65,7 @@ Le code d'activation d'un acteur est rendu à l'administrateur, il ne part pas p
 | M7 | Dépense « transport 500 » | ligne dans Mes dépenses | ✅ | `POST /caisse/depense` 201 ; `/marchand/cahier` |
 | M8 | Mon stock | produits, valeur | ✅ | `/marchand/stock` |
 | M9 | Ouvrir puis clôturer la journée | écart cohérent | ✅ (lecture) / ⬜ clôture | `GET /caisse/session/<jour>` 200 ; invariants `caisse-fond-declare`, `cai-02` verts |
-| M10 | Dire « mes ventes » au micro | ouvre Ventes passées | ❌ | 404 : corrigé dans **#266** (Patrick) |
+| M10 | Dire « mes ventes » au micro | ouvre Ventes passées | ✅ code / ⬜ téléphone | route `/marchand/ventes-passees` (#266) |
 | M11 | Crédit / acompte | introuvable | ✅ | `CAISSE_CREDIT_ACTIF=false` |
 | M12 | Keiwa, tontines, commandes, marché, protection sociale, cotisation | **masqués** : retour à l'accueil | 🔒 ✅ | les URL `/marchand/keiwa`, `/tontines`, `/commandes`, `/marche` renvoient sur `/marchand` ; barre du bas : Accueil, Moi |
 
@@ -85,7 +85,7 @@ Le code d'activation d'un acteur est rendu à l'administrateur, il ne part pas p
 |---|---|---|---|---|
 | C1 | Connexion président → accueil | nom de la coop, membres | ✅ | login 200 |
 | C2 | Membres → liste | membres | ✅ | 3 membres |
-| C3 | Suspendre ou réactiver un membre | statut changé | ❌ | 404 : corrigé dans **#266** (Patrick) |
+| C3 | Suspendre ou réactiver un membre | statut changé | ✅ | PATCH 200 (#266) |
 | C4 | Trésorerie | solde, entrées, sorties | ✅ | `GET /cooperatives/tresorerie` 200 |
 
 ### 3.4 Identificateur
@@ -108,7 +108,7 @@ Le code d'activation d'un acteur est rendu à l'administrateur, il ne part pas p
 | # | Écran / action | Attendu | Statut | Preuve |
 |---|---|---|---|---|
 | B1 | Connexion, tableau de bord, acteurs, supervision, audit, enrôlement, institutions | pages chargées | ✅ | navigateur + API 200 |
-| B2 | Zones | liste des zones | ❌ | `GET /zones` 500, appelé sur **toutes** les pages BO et nécessaire au choix de zone à la création d'acteur : **#266** (Patrick) |
+| B2 | Zones | liste des zones | ✅ | `GET /zones` 200 (#266) |
 | B3 | Créer un acteur (avec zone) | compte inerte + code, **jamais de mot de passe** | ✅ | 201, réponse sans mot de passe |
 | B4 | Modération : signaler, lister | signalement visible | ✅ | POST 201, GET 200 (#262) |
 | B5 | Institutions : suspendre | statut « suspendu » | ✅ | PATCH 200, statut relu (#262) |
@@ -130,11 +130,10 @@ Le code d'activation d'un acteur est rendu à l'administrateur, il ne part pas p
 | T4 | Odoo `/odoo-poc/*` | fermé en prod (voulu) | `ODOO_POC_ENABLED=false` |
 | T5 | Diffusion temps réel des ventes à tous les comptes connectés | ❌ | `events.gateway.ts`, room `all` : non corrigé |
 
-**Bilan API automatisé sur `75c8b06` : 31 ✅ / 4 ❌.** Les 4 ❌ sont attendus : 2 relèvent de #266, 2 de l'arbitrage 5.
+**Bilan API automatisé sur `4d91c4b` : 33 ✅ / 2 ❌.** Les 2 ❌ relèvent de l'arbitrage 5 (permissions).
 
 ## 4. Ce qu'il reste à Patrick
 
-1. Vérifier `/health` → `75c8b06`, puis poser le tag (commande au §1).
-2. Fusionner **#266** (périmètre d'argent, CI verte) : elle débloque BO Zones (et donc la création d'acteurs depuis le BO), les membres de coopérative et « mes ventes » vocal.
-3. Fournir la liste des testeurs (nom, téléphone, profil) et donner son accord pour créer les comptes en prod.
-4. Arbitrage 5 : permissions Missions (rôles BO, identificateur) et Marketplace, lien compte → institution.
+1. Vérifier `/health` → `4d91c4b`, puis poser le tag (commande au §1).
+2. Fournir la liste des testeurs (nom, téléphone, profil) et donner son accord pour créer les comptes en prod.
+3. Arbitrage 5 : permissions Missions (rôles BO, identificateur) et Marketplace, lien compte → institution. La session de l'agent refuse d'élargir des permissions sans accord explicite.
