@@ -11,6 +11,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card } from '../ui/card';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { cheminMasque } from '../../config/modulesPilote';
 
 const PRODUITS = [
   { id: 'tomate', name: 'Tomates', icon: '🍅' },
@@ -120,13 +121,20 @@ export function PublierRecolte() {
       });
 
       await speak(`Récolte de ${produitName} publiée avec succès sur le marché virtuel`);
-      toast.success('Publication créée ! Retrouve tes commandes dans l\'onglet Commandes.', {
-        duration: 4000,
-        action: {
-          label: 'Voir commandes',
-          onClick: () => navigate('/producteur/commandes'),
-        },
-      });
+      // L'onglet Commandes est masqué hors drapeau (« Récupérer keiwa » y
+      // crédite le wallet — config/modulesPilote.ts) : on ne renvoie pas vers
+      // une porte fermée.
+      if (cheminMasque('/producteur/commandes')) {
+        toast.success('Publication créée !', { duration: 4000 });
+      } else {
+        toast.success('Publication créée ! Retrouve tes commandes dans l\'onglet Commandes.', {
+          duration: 4000,
+          action: {
+            label: 'Voir commandes',
+            onClick: () => navigate('/producteur/commandes'),
+          },
+        });
+      }
       navigate('/producteur/recoltes');
     } catch (e: any) {
       console.warn('[PublierRecolte] handleSubmit failed:', e?.message);
