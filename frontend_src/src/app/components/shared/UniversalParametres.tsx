@@ -29,6 +29,7 @@ import { API_URL } from '../../utils/api';
 import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
 import { t } from '../../i18n/voice/runtime';
+import { moduleVisible } from '../../config/modulesPilote';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -895,9 +896,13 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               <RowAction label="Ma zone assignée" sublabel={(user as any)?.zone || 'Zone non définie'} icon={MapPin} onClick={() => navigate('/identificateur/suivi')} />
               <RowAction label="Historique des identifications" sublabel="Tous mes dossiers soumis" onClick={() => navigate('/identificateur/suivi')} />
             </Section>
-            <Section title="Wallet et Commissions" icon={BarChart3} color={color}>
-              <RowAction label="Mon Keiwa" sublabel="Solde et historique de commissions" onClick={() => navigate('/identificateur/keiwa')} />
-            </Section>
+            {/* Keiwa (transfert, paiements…) est hors pilote : la ligne n'existe
+                que si le build l'autorise (config/modulesPilote.ts, 07/10/2026). */}
+            {moduleVisible('keiwa') && (
+              <Section title="Wallet et Commissions" icon={BarChart3} color={color}>
+                <RowAction label="Mon Keiwa" sublabel="Solde et historique de commissions" onClick={() => navigate('/identificateur/keiwa')} />
+              </Section>
+            )}
             <Section title="Sécurité" icon={Fingerprint} color={color}>
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex-1 pr-4">
