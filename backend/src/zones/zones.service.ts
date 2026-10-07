@@ -44,7 +44,7 @@ export class ZonesService {
           0
         ) AS "tauxActivite"
       FROM zones z
-      LEFT JOIN stocks s ON s.zone_id = z.id::text
+      LEFT JOIN stocks s ON s.zone_id = z.id
       LEFT JOIN users u ON u.zone_id IS NOT NULL
         AND u.zone_id != ''
         AND u.zone_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
@@ -181,7 +181,7 @@ export class ZonesService {
     if (!existing.length) throw new NotFoundException(`Zone ${id} introuvable`);
 
     const acteurs = await this.dataSource.query(
-      'SELECT COUNT(*) as count FROM users WHERE zone_id = $1::text', [id]
+      'SELECT COUNT(*) as count FROM users WHERE zone_id = $1::uuid', [id]
     );
     const nbActeurs = Number(acteurs[0]?.count || 0);
     if (nbActeurs > 0) {
