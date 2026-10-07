@@ -44,4 +44,11 @@
          Capacitor (BridgeWebChromeClient.onPermissionRequest). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- A2 (terrain PIE 07/10) : sans elle, la WebView n'émet pas `online` et
+         la file hors ligne ne repartait qu'au redémarrage de l'appli. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Caméra (photo produit, autre lot). NON requise : un téléphone sans
+         caméra doit pouvoir installer l'appli. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 </manifest>

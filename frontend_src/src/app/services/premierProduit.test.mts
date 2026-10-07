@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import {
   etapeCourante, unitesProposees, produitPret, produitACreer,
   UNITES_DU_MARCHE, type BrouillonProduit,
-  peutValider, etapeSuivante,
+  peutValider, etapeSuivante, produitDejaSurEtal, stockComplete,
 } from './premierProduit.js';
 
 let echecs = 0;
@@ -290,6 +290,64 @@ console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
      'un nombre à virgule est tronqué, pas arrondi vers le haut');
 }
 
+
+// ── A1 — LE DOUBLON AU STOCK, retour terrain PIE du 07/10 ───────────────────
+//
+// Elle avait déjà des tomates au kg ; elle redit « tomate », le parcours
+// posait une SECONDE ligne « Tomate » : deux tuiles, deux stocks, et la vente
+// ne savait plus lequel décompter. Un produit qu'elle a déjà se COMPLÈTE.
+//
+// ÉGALITÉ STRICTE du nom normalisé, pas l'inclusion d'`apparierProduit` :
+// « tomate » n'est pas « tomate cerise ». Et l'UNITÉ compte : la tomate au kg
+// et la tomate au tas sont deux prix, donc deux produits.
+{
+  console.log('\n[A1] Un produit qu\'elle a déjà se complète, il ne se recrée pas');
+  const etal = [
+    { id: 't1', nom: 'Tomate', unite: 'kg', prix: 800, stock: 5 },
+    { id: 'o1', nom: 'Oignon', unite: 'tas', prix: 500, stock: 3 },
+    { id: 'c1', nom: 'Tomate cerise', unite: 'kg', prix: 1500, stock: 2 },
+  ];
+  for (const dit of ['Tomates', 'tomate ', 'TOMATE', 'Tomaté'])
+    ok(produitDejaSurEtal({ nom: dit, unite: 'kg' }, etal)?.id === 't1',
+       `« ${dit} » au kg retrouve la Tomate au kg qu'elle a déjà`);
+  ok(produitDejaSurEtal({ nom: 'Tomate', unite: 'KG' }, etal)?.id === 't1',
+     "l'unité se compare normalisée, elle aussi");
+  ok(produitDejaSurEtal({ nom: 'Tomate', unite: 'tas' }, etal) === null,
+     'la tomate au TAS n\'est pas la tomate au kg : kg ≠ tas');
+  ok(produitDejaSurEtal({ nom: 'Tomate cerise', unite: 'kg' }, etal)?.id === 'c1'
+     && produitDejaSurEtal({ nom: 'cerise', unite: 'kg' }, etal) === null,
+     'pas d\'inclusion : « tomate » ≠ « tomate cerise »');
+  ok(produitDejaSurEtal({ nom: 'Tomate', unite: '' }, etal)?.id === 't1',
+     "à l'étape du NOM (unité pas encore dite), un homonyme unique se retrouve déjà");
+  const deux = [...etal, { id: 't2', nom: 'tomates', unite: 'kg', prix: 900, stock: 1 }];
+  ok(produitDejaSurEtal({ nom: 'Tomate', unite: 'kg' }, deux) === null,
+     'deux homonymes : on ne choisit pas à sa place → null');
+  ok(produitDejaSurEtal({ nom: 'Tomate', unite: '' },
+       [...etal, { id: 't3', nom: 'Tomate', unite: 'tas', prix: 200, stock: 1 }]) === null,
+     'même nom sous deux unités, unité pas encore dite : ambigu → null');
+  ok(produitDejaSurEtal({ nom: 'Piment', unite: 'kg' }, etal) === null, 'un nom neuf : rien à compléter');
+  ok(produitDejaSurEtal({ nom: '', unite: '' }, etal) === null, 'un nom vide ne retrouve rien');
+
+  ok(stockComplete({ stock: 5 }, 3) === 8, 'elle en ajoute 3 sur 5 : le stock passe à 8');
+  ok(stockComplete({ stock: 5 }, null) === null, 'quantité non dite : on n\'écrit RIEN');
+  ok(stockComplete({ stock: 5 }, 0) === null, 'zéro ajouté : rien à écrire');
+  ok(stockComplete({ stock: 5 }, -2) === null, 'une quantité absurde n\'est pas ajoutée');
+  ok(stockComplete({ stock: Number.NaN }, 3) === null,
+     'un stock illisible ne se complète pas en devinant (jamais `|| 0`)');
+
+  // LA GARDE DE SOURCE : l'écran CONSULTE l'étal AVANT de créer.
+  const ap = readFileSync(
+    new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').split('\n')
+    .filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+  const consulte = ap.search(/produitDejaSurEtal\s*\(/);
+  const cree = ap.search(/addProduct\s*\(/);
+  ok(consulte >= 0 && cree > consulte,
+     "AjoutProduitGuide consulte `produitDejaSurEtal` AVANT d'appeler `addProduct`");
+  ok(/updateProduct\s*\([^)]*\{\s*stock\s*:/.test(ap),
+     "un produit déjà là se complète par `updateProduct(id, { stock })`, le chemin de « + Ajouter »");
+  ok(/useCaisse\(\)/.test(ap) && /\bproducts\b/.test(ap), "l'écran lit son étal (`products` de la caisse)");
+}
 
 console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
