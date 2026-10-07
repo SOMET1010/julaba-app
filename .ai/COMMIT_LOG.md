@@ -131,7 +131,25 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 - **Fichiers migrés** : TransfertPage (562→499), MaCooperative (440→382) — comportement métier inchangé (mêmes endpoints, verrous, textes)
 - **Détail** : worklog Task 22 (REVIEW_LOG, « Suivi des corrections — 2e session ») ; batteries vertes, garde-argent aux 3 refus attendus
 
-## Commits à venir (planifiés)
+## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
+
+| Commit | Type | Contenu (1 préoccupation = 1 commit) |
+|---|---|---|
+| `e780436` | fix(caisse) | T7 — l'échec générique d'encaissement/ajout s'écrit aussi (POS Caisse, AjoutProduitGuide, MicroVenteCaisse) |
+| `4ab3452` | fix(marchand) | T7 — MesCommandes (6 handlers + 2 négos + hors-ligne) et DepenseForm s'écrivent |
+| `14662b9` | fix(marchand) | Tontines — trois situations trois phrases + Réessayer (M-P1-5) |
+| `968c454` | fix(argent) | MarchéVirtuel — verrou anti double-tap + PIN honnête (BUG-011) |
+| `56c0293` | fix(argent) | TransfertPage — trois situations 404/panne/hors-ligne + échec dicté (M-P1-1, T7) |
+| `34f8c0a` | fix(argent) | TransfertPage — PIN conditionnel dans la relecture ; M-P0-3 COMPLET |
+| `eba2380` | fix(voix) | T7 producteur — messageUtilisateur + toasts appariés + UUID retirés (9 sites + RecolteForm) |
+| `1f44736` | fix(voix) | ARG-17 — montants dictés en toutes lettres (4 sites, nombreEnMotsFr) |
+| `5a56cb3` | fix(voix) | Encaissement producteur — parité dit/écrit + triple canal (haptique) |
+| `48b868f` | fix(voix) | Le muet §8.1 lisible — réglage « Voix coupée » dans les Paramètres |
+| (ce commit) | docs | Audit `AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` + BUGS 011-014 + DEBT CODE-NEW-8/9 + CHANGELOG + COMMIT_LOG + worklog 23 |
+
+Batteries rejetées sur l'état final : tsc front/back 0 · charte EXIT 0 · test:ci EXIT 0 (622 vertes) · parole-entree EXIT 0 · voix-trace-source = les 4 rouges héritées exactes · garde-argent = les 3 refus attendus.
+
+
 
 ### P0 — Gouvernance (à commiter dès validation)
 1. `docs(readme): créer README.md racine point d'entrée universel` (INIT-001)

@@ -11,6 +11,16 @@
 - **Bugs P3** : 0
 - **Bugs résolus** : 5
 
+## État au 2026-10-07
+
+- **Total bugs** : 12 (9 résolus, 3 ouverts)
+- **Bugs P0** : 0 ouvert
+- **Bugs P1** : 3 ouverts (BUG-008/009/010 — producteur)
+- **Bugs P2** : 0 ouvert
+- **Bugs P3** : 0
+- **Bugs résolus** : 9 (BUG-011..014 détectés ET résolus le jour même — audit voix 07/10)
+- **Bugs résolus** : 5
+
 > Numérotation : BUG-006 et BUG-007 n'ont jamais été attribués (numéros sautés par l'histoire du registre — constaté en REVIEW-004). Ils restent RÉSERVÉS : ne pas les réattribuer, les prochains bugs prennent BUG-011 et suivants.
 
 ## Format d'enregistrement
@@ -125,6 +135,41 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - **Tests liés** : à créer — commandes par statut, cohérence KPI/écran revenus/voix.
 
 ## Bugs à détecter (surveillance active)
+### BUG-011 — Double-tap sur le PIN du MarchéVirtuel = commandes dupliquées
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-07
+- **Détecté par** : exploration 2-a, audit `AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` (N-1)
+- **Environnement** : dev / terrain
+- **Description** : `handlePinValidation` et `handlePayment` appelaient `createOrdersFromCart()` sans verrou synchrone ni `disabled` — un double-tap sur « Valider » créait les commandes DEUX fois (le même défaut que BUG-002 fermait sur TransfertPage, non propagé).
+- **Fichiers concernés** : `frontend/src/app/components/marchand/MarcheVirtuel.tsx` (handlePayment, handlePinValidation, boutons :1119/:1140)
+- **Résolution** : verrou synchrone `commandeEnCoursRef` (pattern caisse POSCaisse 208-210) + boutons désactivés avec libellés d'attente + fermeture (overlay/X) refusée pendant l'envoi + PIN honnête (« Confirmer la commande », « Montant de la commande » — le PIN confirme, il ne paie pas, invariant B2).
+- **Commits liés** : `968c454`
+- **Leçon apprise** : tout nouveau POST d'argent naît avec son ref synchrone — le pattern ne se propage pas tout seul, il se vérifie surface par surface.
+
+### BUG-012 — L'échec générique d'encaissement est parlé mais jamais écrit (T7, au cœur de la caisse)
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-07
+- **Détecté par** : exploration 2-a (F-V1) — la branche 4xx écrit sa raison (`POSCaisse 547-551`), le générique ne fait que `direMessage('TATA_VENTE_ECHEC')` ; en mode « lecture », l'échec était TOTALEMENT muet. Mêmes trous : AjoutProduitGuide, MicroVenteCaisse, MesCommandes (6 handlers + hors-ligne), DepenseForm.
+- **Fichiers concernés** : `POSCaisse.tsx:552`, `AjoutProduitGuide.tsx:210`, `MicroVenteCaisse.tsx:676`, `MesCommandes.tsx:191-280`, `DepenseForm.tsx:120`
+- **Résolution** : `toast.error` apparié à la MÊME phrase que dit le catalogue, partout ; l'échec réseau de MesCommandes s'écrit aussi (`direEchecReseau`).
+- **Commits liés** : `e780436`, `4ab3452`
+- **Leçon apprise** : la règle T7 se vérifie PAR BRANCHE de catch, pas par écran — le meilleur écran de l'app avait une branche muette.
+
+### BUG-013 — Le producteur dicte le message serveur BRUT (et des UUID) sans jamais l'écrire
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-07
+- **Détecté par** : explorations 2-b/2-c (F-V2) — 9 handlers `speak(\`Erreur : ${e.message}\`)` sans toast + 2 UUID d'acheteur dictés à voix haute.
+- **Fichiers concernés** : `CommandesProducteurPage.tsx` (9 sites), `RecolteForm.tsx` (toast brut ≠ voix fixe)
+- **Résolution** : helper `messageUtilisateur` — la raison métier 4xx (déjà écrite pour l'utilisateur, doctrine caisse) se dit telle quelle ; jeton technique (NOT_AUTHENTICATED, Failed to fetch…) ou panne → repli français ; `toast.error` apparié partout ; UUID retirés des phrases.
+- **Commits liés** : `eba2380`
+- **Leçon apprise** : `« Erreur : ${e.message} »` est un anti-pattern voix — un jeton technique s'épèle chiffre par chiffre à l'oreille.
+
+### BUG-014 — ARG-17 résiduel : des montants DICTÉS en chiffres (à épeler par le moteur)
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-07
+- **Détecté par** : exploration 2-c (F-V3) — le mécanisme `nombreEnMotsFr` (VOIX-09/deuxFormes) existait mais n'était pas posé sur ces sites.
+- **Fichiers concernés** : `CommandesProducteurPage.tsx` (contre-proposition :344), `MarcheVirtuel.tsx` (annonces commande :462 + confirmation PIN :504), `Stocks.tsx` (valeur totale :280)
+- **Résolution** : `nombreEnMotsFr` sur les 4 sites — « cinq mille FCFA », jamais « cinq zéro zéro zéro ».
+- **Commits liés** : `1f44736`
+- **Leçon apprise** : jamais de `toLocaleString` dans une phrase parlée — la forme écran et la forme parlée dérivent de la source, l'une de l'autre jamais.
+
+
 
 L'Agent QA doit surveiller en priorité :
 1. **Vente offline** : cohérence DB après rejeu
