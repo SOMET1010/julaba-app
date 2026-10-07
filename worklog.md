@@ -599,3 +599,23 @@ Stage Summary:
 - B3-3 FERMÉ avec preuve par exécution (251 tests verts) ET preuve nouvelle (swagger 12 irrésoluble par peers — la recette demandée ne pouvait pas booter, l'upgrade est retiré) ; REVIEW-003 : ses 3 bloquants sont levés (B3-1/B3-2 restauration REVIEW-005, B3-3 ici), reste le re-gel humain Patrick
 - R1-1, R2-1, R2-2 FERMÉS ; restent R1-2/R1-3/R1-4/R1-5 (lot UX suivant), R2-3 (option), maillon backend test:ci (au re-gel), INC-001 action 2 (Patrick)
 - Frontières : backend/package.json + racine + lock touchés SUR ORDRE EXPLICITE de l'utilisateur, documenté ; aucun gel exécuté, chaîne test:ci intouchée, suppression des orphelins laissée au producteur
+---
+Task ID: 22
+Agent: Z.ai Code (orchestrateur, rôle Agent Reviewer)
+Task: « On enchaine » — lot REVIEW-001/R1-2..R1-5 : extraction des primitives maison T8 (RelectureArgent + PinArgent), voix sur les relectures, Radix Dialog (AUTH-05), TransfertPage < 500, triple canal haptique.
+
+Work Log:
+- Anti-collision OK (dev == origin/dev a7c60bc) ; lecture des 3 copies du geste : TransfertPage (relecture seule, 562 l.), MaCooperative (relecture + PIN inline, 440 l.), MarcheVirtuel (modal PIN historique :1130, montantsMasqués + speakSilent)
+- Doctrine relue avant de coder : reco T8 (« voix + texte + vibration attente », « deux primitives... les rendre inévitables »), POSCaisse 558-665 (relecture dite et affichée même source), 509-528 (vibrerAttente 90 ms, refuse de vibrer succès), ARG-17 (forme parlée ≠ forme écran), haptique.ts (vibrerAttente/vibrerSucces/vibrerErreur), AUTH-05 (Radix), PaiementsPage = formulaire (hors périmètre), WalletPage = rien
+- Briques confirmées : useApp().speak (AppContext 1322), components/ui/dialog.tsx (Radix), tw-animate-css importé, fixture voix NE hache PAS TransfertPage/MaCooperative (édits sûrs), COLOR = var(--commerce-action)
+- Écrits (bash heredoc immunisé) : components/argent/RelectureArgent.tsx (Radix DialogPrimitive, feuille basse slide-in/out, Title/Description Radix, garde de fermeture pendant enCours, parole à l'ouverture via ref d'ouverture, vibrerAttente au début d'envoi, bloc PinArgent optionnel, accent + accentConfirmer props) ; components/argent/PinArgent.tsx (champ contrôlé, role=alert relié) ; components/wallet/methodsTransfert.ts (Method+METHODS, données seules) ; utils/idempotence.ts (genererCleIdempotence + contrat)
+- Migrations : TransfertPage — feuille inline (57 l.) remplacée par <RelectureArgent>, METHODS délocalisés, idempotence extraite, vibrerSucces/vibrerErreur aux issues → 499 l. ; MaCooperative — feuille (81 l.) remplacée, X/AnimatePresence imports retirés, vibrerSucces/vibrerErreur ajoutés → 382 l.
+- INCIDENTS SANDBOX : 4e bascule de branche (disque repassé sur main en début de lot, détectée par Read « file not found ») — re-basculé dev, chaînage immunisé ; l'extraction idempotence a été PERDUE par une bascule transitoire entre deux commandes (fichier écrit disparu) et REFAITE — vérifiée après coup (499 l. confirmé) ; une fermeture de composant avalée par un remplacement python (fin tronquée) a cassé tsc une fois — réparée immédiatement (fin restaurée)
+- Debug tsc : TS1005 (fermeture manquante MaCooperative — ma faute de borne de remplacement), TS2304 (type Method non importé) — corrigés
+- Batteries finales : tsc -b 0 ; charte EXIT 0 ; test:ci EXIT 0 (622 vertes, 0 croix) ; parole-entree EXIT 0 ; voix-trace-source = 4 rouges hérités, 0 nouveau ; garde-argent = exactement les 3 refus attendus (les nouveaux fichiers, hors racines mortes, invisibles du garde — état documenté)
+- Commit dcc6716 (6 fichiers, git add explicite) ; registres : REVIEW_LOG (Suivi 2e session), CHANGELOG (Ajouté — Primitives d'argent maison T8), COMMIT_LOG (section datée), worklog 22
+
+Stage Summary:
+- R1-2, R1-3, R1-4, R1-5 FERMÉS : les deux primitives T8 existent une seule fois, la relecture parle depuis la même source qu'elle affiche, l'attente se sent, les surfaces extraites passent par Radix (trap/ESC), TransfertPage 499 < 500
+- MarcheVirtuel : modal PIN historique conservé, migration tracée lot à part (dette assumée dans l'en-tête de la primitive)
+- Restent : re-gel humain Patrick (INC-001/2), maillon backend test:ci (au re-gel), R2-3 (option), migration MarcheVirtuel (lot à part)

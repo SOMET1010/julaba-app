@@ -5,6 +5,17 @@
 
 ## [Non publié]
 
+### Ajouté — Primitives d'argent maison T8 (2026-10-07)
+Suite des corrections de l'audit UX (REVIEW-001, actions R1-2..R1-5) — les deux primitives obligatoires pour tout mouvement d'argent existent désormais UNE fois et sont inévitables pour les nouveaux parcours :
+- **`RelectureArgent`** (`components/argent/`) : l'écran de relecture sur Radix Dialog (focus trap, ESC, AUTH-05) — relecture **dite et affichée depuis la même source** (montant nombre → « FCFA » à l'écran, « francs » à la voix, ARG-17), **vibration d'attente** (90 ms, motif maison POSCaisse) pendant l'envoi, fermeture refusée tant que l'irréversible est en vol, verrou synchrone conservé chez l'appelant. Migrée dans TransfertPage (transfert keiwa) et MaCooperative (cotisation)
+- **`PinArgent`** (`components/argent/`) : le champ PIN 4 chiffres (contrôlé, erreur `role="alert"`) — la vérification `/auth/pin/verify` reste chez l'appelant, avant le POST d'argent
+- **Triple canal complété** : `vibrerSucces()`/`vibrerErreur()` ajoutés aux issues du transfert et de la cotisation (haptique.ts)
+- **TransfertPage 562 → 499 lignes** (R1-2) : `genererCleIdempotence` extraite vers `utils/idempotence.ts` (contrat réutilisable), catalogue des moyens vers `methodsTransfert.ts` ; **MaCooperative 440 → 382 lignes**
+- MarcheVirtuel garde son modal PIN historique (`montantsMasqués` + `speakSilent`) — migration tracée comme lot à part
+- Vérifications : `tsc -b` 0, charte EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = les 4 rouges hérités (0 nouveau), garde-argent = les 3 refus attendus
+
+
+
 ### Corrigé — Corrections des revues (2026-10-07)
 Exécution des corrections restantes des REVIEW-001/002/003, sur ordre explicite de l'utilisateur (« Continues les corrections ») — hors re-gel humain (Patrick) et hors chaîne `test:ci` (gelée, décision humaine en attente) :
 - **B3-3 fermé — suite de tests backend ressuscitée** : les majeures non prouvées sont retirées (`jest` ^30.5.2 → ^29.7.0, `@types/jest` ^30 → ^29.5.14, `@nestjs/swagger` ^12.0.2 → ^11.4.7 — backend ET racine, retour byte-identique à `dffe705` vérifié). Preuves : suite unitaire **33 suites / 251 tests EXIT 0**, `tsc --noEmit` 0, `nest build` EXIT 0, versions installées vérifiées (jest 29.7.0 / ts-jest 29.4.14 / swagger 11.4.7). Preuve nouvelle : l'upgrade swagger 12 était **irrésoluble** — `@nestjs/swagger@12.0.2` exige un peer `@nestjs/common@^12` contre common 11.2.6 (ERESOLVE npm) — la recette swagger 12 demandée en REVIEW-003/action 4 est morte-non-lieu : l'upgrade est retiré, pas prouvé. Les invariants (Postgres jetable) restent l'affaire de la CI (aucun Postgres dans le sandbox). Un maillon backend dans `test:ci` n'a PAS été ajouté : la chaîne est GELÉE (refus 2 du garde-argent, décision humaine en attente)
