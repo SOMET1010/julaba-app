@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Building2, Plus, Search, Edit2, Trash2, Shield, X,
-  Mail, User, Phone, MapPin, CheckCircle, XCircle, Calendar, AlertCircle,
+  User, MapPin, CheckCircle, XCircle, Calendar, AlertCircle,
   FileText, Download, ChevronDown, Eye, Lock, Unlock, Save,
   BarChart3, Activity, Users,
 } from 'lucide-react';
@@ -10,15 +10,11 @@ import { toast } from 'sonner';
 import { useBackOffice, InstitutionBO, TypeInstitution, ModuleAcces, NiveauAcces, DEFAULT_INSTITUTION_PERMISSIONS, InstitutionPermissions } from '../../contexts/BackOfficeContext';
 import { BO_PRIMARY, BO_DARK } from './bo-theme';
 import { springSnappy } from './bo-animations';
-import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { PermissionsEditor } from './BOInstitutionsPermissions';
+import { ChampsRattachement, ResponsableRattache, Rattachement, SANS_RATTACHEMENT, versServeur, messageServeur } from './BOInstitutionRattachement';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 
 const INST_COLOR = '#712864';
-
-function formatPhone(v: string): string {
-  return v.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-}
 
 const TYPE_CONFIG: Record<TypeInstitution, { label: string; color: string; bg: string }> = {
   // Institutions financières
@@ -81,7 +77,7 @@ const MODULES_CONFIG: Array<{ key: keyof ModuleAcces; label: string; desc: strin
   { key: 'dashboard',  label: 'Dashboard',   desc: 'KPIs et vue d\'ensemble nationale', icon: BarChart3 },
   { key: 'analytics',  label: 'Analytics',   desc: 'Graphiques et statistiques avancées', icon: Activity },
   { key: 'acteurs',    label: 'Acteurs',     desc: 'Liste et fiches des acteurs vivrés', icon: Users },
-  { key: 'supervision',label: 'Supervision', desc: 'Transactions et flux financiers', icon: Eye },
+  { key: 'transactions', label: 'Supervision', desc: 'Transactions et flux financiers', icon: Eye },
   { key: 'audit',      label: 'Audit Log',   desc: 'Historique des actions systèmes', icon: FileText },
   { key: 'export',     label: 'Export',      desc: 'Téléchargement rapports PDF/Excel/CSV', icon: Download },
 ];
@@ -100,7 +96,7 @@ const ACCES_DOCUMENTATION: Record<keyof ModuleAcces, { lecture: string; complet:
     lecture: 'Voir la liste des acteurs, consulter les fiches détaillées',
     complet: 'Lecture + modifier profils, suspendre/réactiver, supprimer, valider dossiers',
   },
-  supervision: {
+  transactions: {
     lecture: 'Voir les transactions, consulter l\'historique des flux financiers',
     complet: 'Lecture + geler/débloquer transactions, annuler, résoudre litiges, rembourser',
   },
@@ -126,7 +122,7 @@ const inputCls = 'w-full border-2 border-gray-200 rounded-2xl px-4 py-3 text-sm 
 
 const DEFAULT_MODULES: ModuleAcces = {
   dashboard: 'aucun', analytics: 'aucun', acteurs: 'aucun',
-  supervision: 'aucun', audit: 'aucun', export: 'aucun',
+  transactions: 'aucun', audit: 'aucun', export: 'aucun',
 };
 
 function ModuleNiveauPicker({
@@ -169,6 +165,7 @@ function InstitutionCard({
   onDelete: (inst: InstitutionBO) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { zones } = useBackOffice();
   const typeCfg = TYPE_CONFIG[inst.type ?? 'autre'];
   const actifs = Object.values(inst.modules ?? {}).filter(v => v !== 'aucun').length;
 
@@ -215,7 +212,7 @@ function InstitutionCard({
 
             <div className="flex items-center gap-3 text-xs text-gray-500 mt-2">
               <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3" />{inst.region}
+                <MapPin className="w-3 h-3" />{zones.find(z => z.id === inst.zone_id)?.nom ?? (inst.zone_id ? 'Zone rattachée' : 'Aucune zone')}
               </span>
               <span className="flex items-center gap-1">
                 <Shield className="w-3 h-3" />
@@ -256,6 +253,7 @@ function InstitutionCard({
             <span className="text-[10px] text-gray-400 italic">Aucun accès accordé</span>
           )}
         </div>
+        <ResponsableRattache inst={inst} />
       </div>
 
       {/* Section expandée */}
@@ -272,9 +270,6 @@ function InstitutionCard({
               {/* Infos contact */}
               <div className="grid grid-cols-1 gap-2">
                 {[
-                  { icon: User, label: inst.referentNom, sub: 'Référent' },
-                  { icon: Phone, label: inst.referentTelephone, sub: 'Téléphone' },
-                  { icon: Mail, label: inst.email, sub: 'Email' },
                   { icon: Calendar, label: new Date(inst.dateCreation ?? '').toLocaleDateString('fr-FR'), sub: 'Créée le' },
                   { icon: User, label: inst.creePar, sub: 'Créée par' },
                 ].map(item => (
@@ -315,7 +310,7 @@ function InstitutionCard({
                   whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
                 >
                   <Edit2 className="w-4 h-4" />
-                  Modifier accès
+                  Modifier
                 </motion.button>
 
                 <motion.button
@@ -351,7 +346,7 @@ export function BOInstitutions() {
   const {
     institutions,
     addInstitution,
-    updateInstitutionModules,
+    updateInstitution,
     updateInstitutionStatut,
     deleteInstitution,
     hasPermission,
@@ -382,20 +377,19 @@ export function BOInstitutions() {
   const [deleteTarget, setDeleteTarget] = useState<InstitutionBO | null>(null);
 
   // Form state
-  const [form, setForm] = useState({
-    nom: '', type: 'cnps' as TypeInstitution, region: 'National',
-    email: '', referentNom: '', referentTelephone: '',
-  });
+  const [form, setForm] = useState({ nom: '', type: 'cnps' as TypeInstitution });
+  const [formRattachement, setFormRattachement] = useState<Rattachement>({ ...SANS_RATTACHEMENT });
+  const [editRattachement, setEditRattachement] = useState<Rattachement>({ ...SANS_RATTACHEMENT });
   const [formModules, setFormModules] = useState<ModuleAcces>({ ...DEFAULT_MODULES });
 
   // Edit modules state
   const [editModules, setEditModules] = useState<ModuleAcces>({ ...DEFAULT_MODULES });
 
-  const filtered = institutions.filter(i => {
+  const filtered = institutions.filter((i: InstitutionBO) => {
     if (filterStatut !== 'all' && i.statut !== filterStatut) return false;
     if (search) {
       const q = search.toLowerCase();
-      return i.nom.toLowerCase().includes(q) || (i.referentNom ?? '').toLowerCase().includes(q) || (i.region ?? '').toLowerCase().includes(q);
+      return (i.nom ?? '').toLowerCase().includes(q) || (i.responsable?.nom ?? '').toLowerCase().includes(q);
     }
     return true;
   });
@@ -405,44 +399,30 @@ export function BOInstitutions() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.nom || !form.email || !form.referentNom) {
-      toast.error('Veuillez remplir tous les champs obligatoires');
+    if (!form.nom) {
+      toast.error('Le nom de l\'institution est obligatoire');
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (form.email && !emailRegex.test(form.email)) {
-      toast.error('Format email invalide');
-      return;
-    }
-    if (form.referentTelephone) {
-      const digits = form.referentTelephone.replace(/\D/g, '');
-      if (digits.length < 8) {
-        toast.error('Numéro de téléphone invalide');
-        return;
-      }
-    }
-    const referentTelephoneDigits = form.referentTelephone.replace(/\D/g, '').slice(0, 10);
     try {
-      await addInstitution({ ...form, referentTelephone: referentTelephoneDigits, statut: 'actif', modules: formModules });
+      await addInstitution({ ...form, statut: 'actif', modules: formModules, ...versServeur(formRattachement) });
       toast.success(`Institution "${form.nom}" créée avec succès`);
-      setForm({ nom: '', type: 'cnps', region: 'National', email: '', referentNom: '', referentTelephone: '' });
+      setForm({ nom: '', type: 'cnps' });
+      setFormRattachement({ ...SANS_RATTACHEMENT });
       setFormModules({ ...DEFAULT_MODULES });
       setShowForm(false);
     } catch (err) {
-      console.warn('[BOInstitutions] handleCreate failed:', err instanceof Error ? err.message : err);
-      toast.error('Impossible de créer l\'institution. Réessaie.');
+      toast.error(messageServeur(err, 'Impossible de créer l\'institution. Réessaie.'));
     }
   };
 
   const handleSaveModules = async () => {
     if (!editTarget) return;
     try {
-      await updateInstitutionModules(editTarget.id, editModules);
-      toast.success('Accès modules mis à jour');
+      await updateInstitution(editTarget.id, { modules: editModules, ...versServeur(editRattachement) });
+      toast.success('Institution mise à jour');
       setEditTarget(null);
     } catch (err) {
-      console.warn('[BOInstitutions] handleSaveModules failed:', err instanceof Error ? err.message : err);
-      toast.error('Impossible de mettre à jour les modules. Réessaie.');
+      toast.error(messageServeur(err, 'Impossible de mettre à jour l\'institution. Réessaie.'));
     }
   };
 
@@ -474,6 +454,7 @@ export function BOInstitutions() {
   const openEditModules = (inst: InstitutionBO) => {
     setEditTarget(inst);
     setEditModules({ ...(inst.modules ?? {}) });
+    setEditRattachement({ responsable_id: inst.responsable_id ?? '', zone_id: inst.zone_id ?? '' });
   };
 
   return (
@@ -574,7 +555,7 @@ export function BOInstitutions() {
                 </div>
                 <div>
                   <h2 className="font-black text-gray-900">Nouvelle Institution</h2>
-                  <p className="text-xs text-gray-500">Identifiants envoyés par email — Action journalisée</p>
+                  <p className="text-xs text-gray-500">Action journalisée</p>
                 </div>
               </div>
               <motion.button
@@ -664,62 +645,14 @@ export function BOInstitutions() {
                         </optgroup>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Région de supervision *</label>
-                      <select value={form.region} onChange={e => setForm(p => ({ ...p, region: e.target.value }))} className={inputCls}>
-                        {CIV_REGIONS_LIST.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Email institution *</label>
-                    <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required className={inputCls} placeholder="contact@institution.ci" />
                   </div>
                 </div>
               </div>
 
-              {/* Référent */}
+              {/* Rattachement : le compte qui se connecte, la zone qu'il supervise */}
               <div>
-                <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">Référent</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Nom complet *</label>
-                    <input value={form.referentNom} onChange={e => setForm(p => ({ ...p, referentNom: e.target.value }))} required className={inputCls} placeholder="NOM Prénom" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Téléphone</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span
-                        aria-hidden
-                        style={{
-                          fontSize: 16,
-                          fontWeight: 900,
-                          color: '#2a1a0a',
-                          background: 'rgba(198,106,44,0.08)',
-                          borderRadius: 12,
-                          padding: '10px 12px',
-                          letterSpacing: 0.5,
-                          userSelect: 'none',
-                          flexShrink: 0,
-                        }}
-                      >
-                        +225
-                      </span>
-                      <input
-                        type="tel"
-                        value={form.referentTelephone}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                          setForm(p => ({ ...p, referentTelephone: digits ? formatPhone(digits) : '' }));
-                        }}
-                        className={inputCls}
-                        placeholder="07 00 00 00 00"
-                        maxLength={14}
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <p className="text-xs font-black text-gray-500 uppercase tracking-wider mb-3">Rattachement</p>
+                <ChampsRattachement valeur={formRattachement} onChange={setFormRattachement} />
               </div>
 
               {/* Modules accès */}
@@ -790,7 +723,7 @@ export function BOInstitutions() {
               <div className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50 border-2 border-amber-200">
                 <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-amber-700">
-                  L'institution verra uniquement les modules que vous avez activés. Les identifiants de connexion seront envoyés par email au référent.
+                  L'institution verra uniquement les modules que vous avez activés, dans sa zone. Le compte responsable se connecte avec son propre code (reçu par SMS).
                 </p>
               </div>
 
@@ -860,7 +793,7 @@ export function BOInstitutions() {
                   <Shield className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-black text-gray-900 text-sm leading-tight">Modifier les accès</p>
+                  <p className="font-black text-gray-900 text-sm leading-tight">Modifier l'institution</p>
                   <p className="text-xs text-gray-500 truncate">{editTarget.nom}</p>
                 </div>
                 <motion.button onClick={() => setEditTarget(null)} className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center" whileTap={{ scale: 0.9 }}>
@@ -870,7 +803,8 @@ export function BOInstitutions() {
 
               {/* Corps scrollable */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-                <p className="text-xs text-gray-500 mb-1">Choisissez le niveau d'accès pour chaque module. Les changements s'appliquent immédiatement.</p>
+                <ChampsRattachement valeur={editRattachement} onChange={setEditRattachement} institutionId={editTarget.id} />
+                <p className="text-xs text-gray-500 mb-1">Choisissez le niveau d'accès pour chaque module.</p>
                 {MODULES_CONFIG.map(m => (
                   <div key={m.key} className="bg-gray-50 rounded-2xl p-4 border-2 border-gray-100">
                     <div className="flex items-center gap-2 mb-3">

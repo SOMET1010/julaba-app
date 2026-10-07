@@ -1,6 +1,6 @@
 /**
  * Hook centralisé pour les données Institution
- * Source unique : GET /api/v1/institution/dashboard
+ * Sources : GET /api/v1/institution/{dashboard,acteurs,transactions}
  */
 import { useState, useEffect } from 'react';
 import { API_URL } from '../utils/api';
@@ -18,15 +18,13 @@ export const DEFAULT_RESUME_JOUR = {
   transactionsDuJour: 0, alertesCritiquesActives: 0,
 };
 
-export const DATA_EVOLUTION = [
-  { mois: 'Sep', transactions: 5200, valeur: 2.1 },
-  { mois: 'Oct', transactions: 6100, valeur: 2.6 },
-  { mois: 'Nov', transactions: 7800, valeur: 3.2 },
-  { mois: 'Dec', transactions: 6900, valeur: 2.9 },
-  { mois: 'Jan', transactions: 8400, valeur: 3.8 },
-  { mois: 'Fev', transactions: 9100, valeur: 4.3 },
-  { mois: 'Mar', transactions: 9287, valeur: 4.86 },
-];
+/** Aucune route `/institution/*` ne fournit encore d'historique mensuel :
+ *  la courbe reste vide et l'écran affiche « indisponible ». */
+export type PointEvolution = { mois: string; transactions: number; valeur: number };
+const EVOLUTION_INDISPONIBLE: PointEvolution[] = [];
+
+const messageErreur = (e: unknown) =>
+  e instanceof Error && e.message ? e.message : 'Données indisponibles pour le moment.';
 
 export const DATA_REPARTITION_DEFAULT = [
   { name: 'Marchands',       value: 0, color: '#C66A2C' },
@@ -43,27 +41,33 @@ export function useInstitutionData() {
   const [acteurs, setActeurs]                 = useState<any[]>([]);
   const [transactions, setTransactions]       = useState<any[]>([]);
   const [error, setError]                     = useState<string | null>(null);
+  const [erreurActeurs, setErreurActeurs]     = useState<string | null>(null);
+  const [erreurTransactions, setErreurTransactions] = useState<string | null>(null);
   const [loading, setLoading]                 = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      // Trois lectures indépendantes : un module refusé (403) n'efface pas
+      // les deux autres, et chacun dit sa propre erreur.
+      const lireOuNoter = (route: string, noter: (m: string) => void) =>
+        apiRequest<any>(API_URL, route, { method: 'GET' })
+          .catch((e: unknown) => { noter(messageErreur(e)); return null; });
       try {
         const [dashboard, acteursRes, txRes] = await Promise.all([
-          apiRequest<any>(API_URL, '/institution/dashboard', { method: 'GET' }),
-          apiRequest<any>(API_URL, '/institution/acteurs', { method: 'GET' }).catch(() => ({ data: [] })),
-          apiRequest<any>(API_URL, '/institution/transactions', { method: 'GET' }).catch(() => ({ data: [] })),
+          // 403 = compte non rattaché à une institution, ou périmètre incomplet :
+          // le message du serveur le dit, on le montre au lieu de zéros.
+          lireOuNoter('/institution/dashboard', setError),
+          lireOuNoter('/institution/acteurs', setErreurActeurs),
+          lireOuNoter('/institution/transactions', setErreurTransactions),
         ]);
-
-        if (dashboard.macroKPIs) setMacroKPIs(dashboard.macroKPIs);
-        if (dashboard.resumeJour) setResumeJour(dashboard.resumeJour);
-        if (dashboard.dataRepartition?.length) setDataRepartition(dashboard.dataRepartition);
-        if (dashboard.byRole?.length) setByRole(dashboard.byRole);
+        if (dashboard?.macroKPIs) setMacroKPIs(dashboard.macroKPIs);
+        if (dashboard?.resumeJour) setResumeJour(dashboard.resumeJour);
+        if (dashboard?.dataRepartition?.length) setDataRepartition(dashboard.dataRepartition);
+        if (dashboard?.byRole?.length) setByRole(dashboard.byRole);
         if (Array.isArray(acteursRes?.data)) setActeurs(acteursRes.data);
         if (Array.isArray(txRes?.data)) setTransactions(txRes.data);
-      } catch {
-        setError('Impossible de charger les données institution');
       } finally {
         setLoading(false);
       }
@@ -72,8 +76,8 @@ export function useInstitutionData() {
   }, []);
 
   return {
-    macroKPIs, resumeJour, loading, error,
-    dataEvolution: DATA_EVOLUTION,
+    macroKPIs, resumeJour, loading, error, erreurActeurs, erreurTransactions,
+    dataEvolution: EVOLUTION_INDISPONIBLE,
     dataRepartition,
     byRole,
     acteurs, transactions,
