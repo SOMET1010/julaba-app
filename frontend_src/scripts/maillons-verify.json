@@ -144,7 +144,10 @@
     "test:prix-sans-quantite",
     "test:flows-maestro",
     "test:credit-hors-pilote",
-    "test:modules-pilote"
+    "test:modules-pilote",
+    "test:lieux-marchands",
+    "test:photo-carte",
+    "test:lien-activation"
   ],
   "horsVerify": {
     "test:argent-parle": "À STATUER — banc orphelin découvert le 03/10/2026. Vert. Jamais exécuté par aucune chaîne.",
