@@ -147,7 +147,9 @@
     "test:modules-pilote",
     "test:lieux-marchands",
     "test:photo-carte",
-    "test:lien-activation"
+    "test:lien-activation",
+    "test:rejeu-declencheurs",
+    "test:encaisser-formes-dites"
   ],
   "horsVerify": {
     "test:argent-parle": "À STATUER — banc orphelin découvert le 03/10/2026. Vert. Jamais exécuté par aucune chaîne.",

@@ -32,9 +32,13 @@ import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import {
   etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante, raisonDuRefus,
+  produitDejaSurEtal, stockComplete,
   type BrouillonProduit, type EtapeAjout, type RaisonRefus,
 } from '../../services/premierProduit';
+import type { CaisseProduct } from '../../contexts/CaisseContext';
 import { BoutonDirePrix } from './BoutonDirePrix';
+import { ClavierQuantite } from './ClavierQuantite';
+import { ComplementEtal } from './ComplementEtal';
 
 const ORANGE = 'var(--commerce-action)';
 const VERT = 'var(--color-green-700)';
@@ -81,7 +85,7 @@ const PHRASE_DU_REFUS: Record<RaisonRefus, string> = {
 
 export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Props) {
   const { speak } = useApp();
-  const { addProduct, refreshProducts } = useCaisse();
+  const { addProduct, updateProduct, refreshProducts, products } = useCaisse();
   const [nom, setNom] = useState(depart?.nom ?? '');
   const [unite, setUnite] = useState(depart?.unite ?? '');
   const [prix, setPrix] = useState(
@@ -137,6 +141,13 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     nom: depart?.nom ?? '', unite: depart?.unite ?? '',
     prix: typeof depart?.prix === 'number' && depart.prix > 0 ? depart.prix : null,
   }));
+  /**
+   * A1 — LE PRODUIT QU'ELLE A DÉJÀ (retour terrain PIE, 07/10). Trouvé dès
+   * qu'elle l'a nommé : on ne lui fait pas reposer un produit qui est sur son
+   * étal, on lui demande combien elle en AJOUTE.
+   */
+  const [existant, setExistant] = useState<CaisseProduct | null>(() => (depart?.nom
+    ? produitDejaSurEtal({ nom: depart.nom, unite: depart.unite ?? '' }, products) : null));
   const aCreer = produitACreer(brouillon);
   const peutAvancer = peutValider(etapeVue, brouillon);
   /**
@@ -148,6 +159,10 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    * une information PUREMENT VISUELLE dans un parcours fait pour l'oreille.
    */
   const avancer = () => {
+    if (peutAvancer && etapeVue === 'nom') {
+      const deja = produitDejaSurEtal({ nom, unite: '' }, products);
+      if (deja) { setExistant(deja); return; }
+    }
     if (peutAvancer) { setEtapeVue(etapeSuivante(etapeVue)); return; }
     const refus = raisonDuRefus(etapeVue, brouillon);
     if (refus) direMessage(PHRASE_DU_REFUS[refus]);
@@ -177,6 +192,34 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etapeVue]);
 
+  useEffect(() => {
+    if (existant) direMessage('STOCK_055', { produit: existant.nom, unite: existant.unite });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existant]);
+
+  /**
+   * A1 — COMPLÉTER, PAS CRÉER. Même chemin que « + Ajouter » du stock
+   * (`updateProduct(id, { stock })`). Son PRIX reste le sien : s'il en a dit
+   * un autre, on le lui dit, on ne l'écrit pas. Quantité non dite : rien
+   * n'est écrit, et on le dit.
+   */
+  const completer = async (deja: CaisseProduct, ajout: unknown, prixDit: number | null) => {
+    const stock = stockComplete(deja, ajout);
+    if (stock == null) { direMessage('STOCK_058'); return; }
+    setEnCours(true);
+    try {
+      await updateProduct(deja.id, { stock: stock });
+      await refreshProducts();
+      const dit = { produit: deja.nom, stock, unite: deja.unite };
+      if (prixDit != null && prixDit !== deja.prix) direMessage('STOCK_057', { ...dit, montant: deja.prix });
+      else direMessage('STOCK_056', dit);
+      onPose();
+    } catch {
+      direMessage('TATA_VENTE_ECHEC');
+      setEnCours(false);
+    }
+  };
+
   /**
    * `quantiteForcee` — STK-04. « Je ne sais pas » doit poser le produit avec un
    * stock INCONNU, même si elle avait déjà tapé un chiffre avant de changer
@@ -198,6 +241,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       if (refus) direMessage(PHRASE_DU_REFUS[refus]);
       return;
     }
+    const deja = produitDejaSurEtal(aPoser, products);
+    if (deja) { await completer(deja, aPoser.stock, aPoser.prix); return; }
     setEnCours(true);
     try {
       await addProduct(aPoser as never);
@@ -221,8 +266,15 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   return (
     <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
+      {/* ─── A1. ELLE L'A DÉJÀ : COMBIEN ELLE EN AJOUTE ─────────────── */}
+      {existant && (
+        <ComplementEtal existant={existant} enCours={enCours}
+          onValider={(ajout) => { void completer(existant, ajout, brouillon.prix); }}
+          onAutre={() => { setExistant(null); setEtapeVue('unite'); }} />
+      )}
+
       {/* ─── 1. SON NOM ─────────────────────────────────────────────── */}
-      {etapeVue === 'nom' && (
+      {!existant && etapeVue === 'nom' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             Quel produit tu veux ajouter ?
@@ -252,7 +304,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       )}
 
       {/* ─── 2. SON UNITÉ ───────────────────────────────────────────── */}
-      {etapeVue === 'unite' && (
+      {!existant && etapeVue === 'unite' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             {nom}, tu le vends comment ?
@@ -303,7 +355,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       )}
 
       {/* ─── 3. SON PRIX ────────────────────────────────────────────── */}
-      {etapeVue === 'prix' && (
+      {!existant && etapeVue === 'prix' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             Le {unite}, à combien ?
@@ -361,7 +413,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
 
           ET SON ZÉRO EST UNE RÉPONSE. Si elle tape 0, le stock vaut zéro : elle
           a dit qu'elle n'en avait plus. C'est « passer » qui laisse inconnu. */}
-      {etapeVue === 'quantite' && (
+      {!existant && etapeVue === 'quantite' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             Tu en as combien ?
@@ -369,20 +421,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${quantite ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
             {quantite ? `${Number(quantite).toLocaleString('fr-FR')} ${unite}` : '—'}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {CHIFFRES.map(d => (
-              <button key={d} type="button" onClick={() => setQuantite(q => (q + d).slice(0, 6))}
-                style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>{d}</button>
-            ))}
-            <button type="button" onClick={() => setQuantite(q => q.slice(0, -1))} aria-label="Effacer un chiffre"
-              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: ORANGE, cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
-            <button type="button" onClick={() => setQuantite(q => (q + '0').slice(0, 6))}
-              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
-            <button type="button" onClick={() => { void poser(); }} disabled={enCours} aria-label="Enregistrer"
-              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: VERT, color: 'white', fontSize: 20, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Check size={22} />
-            </button>
-          </div>
+          <ClavierQuantite valeur={quantite} onChange={setQuantite}
+            onValider={() => { void poser(); }} enCours={enCours} />
           <button type="button" onClick={() => { void poser(null); }} disabled={enCours}
             aria-label="Je ne sais pas combien j'en ai"
             style={{ minHeight: CIBLE + 8, borderRadius: 14, border: `2px solid ${ORANGE}`, background: 'white', color: ORANGE, fontSize: 17, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
