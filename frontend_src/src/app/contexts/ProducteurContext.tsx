@@ -235,20 +235,23 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
       if (e?.message === NOT_AUTHENTICATED) throw new Error('Tu dois te connecter pour créer une plantation');
       throw e;
     }
-    const cycle = res;
+    // POST /cycles rend `{ cycle }` (ligne SQL brute, en snake_case) : lire
+    // `res.id` / `cycle.datePlantation` donnait une plantation sans id et aux
+    // dates invalides (« plantation fantôme »). Même lecture que la liste (l.202).
+    const cycle = res?.cycle ?? res;
     const newCycle: Cycle = {
       id: cycle.id,
       culture: cycle.culture,
       surface: Number(cycle.surface),
       parcelle: cycle.parcelle,
-      datePlantation: new Date(cycle.datePlantation),
-      dateRecolteEstimee: new Date(cycle.dateRecolteEstimee),
-      dateRecolteReelle: cycle.dateRecolteReelle ? new Date(cycle.dateRecolteReelle) : undefined,
-      quantiteEstimee: Number(cycle.quantiteEstimee),
-      quantiteReelle: cycle.quantiteReelle ? Number(cycle.quantiteReelle) : undefined,
+      datePlantation: new Date(cycle.datePlantation || cycle.date_plantation),
+      dateRecolteEstimee: new Date(cycle.dateRecolteEstimee || cycle.date_recolte_estimee),
+      dateRecolteReelle: (cycle.dateRecolteReelle || cycle.date_recolte_reelle) ? new Date(cycle.dateRecolteReelle || cycle.date_recolte_reelle) : undefined,
+      quantiteEstimee: Number(cycle.quantiteEstimee ?? cycle.quantite_estimee),
+      quantiteReelle: (cycle.quantiteReelle ?? cycle.quantite_reelle) != null ? Number(cycle.quantiteReelle ?? cycle.quantite_reelle) : undefined,
       status: cycle.status,
       notes: cycle.notes,
-      photoUrl: cycle.photoUrl,
+      photoUrl: cycle.photoUrl || cycle.photo_url,
     };
     setCycles(prev => [newCycle, ...prev]);
     refreshStats().catch(() => {});
@@ -647,7 +650,9 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     try {
       const data = await apiRequest<any>(API_URL, '/commandes?role=producteur', { method: 'GET' });
       if (data) {
-        const items = data.data || (Array.isArray(data) ? data : []);
+        // GET /commandes rend `{ commandes, meta }` : lire `data.data` laissait
+        // la liste du producteur toujours vide.
+        const items = data.commandes || data.data || (Array.isArray(data) ? data : []);
         setCommandes(items.map((c: any) => ({
           id: c.id,
           acheteurId: c.acheteur_id || c.acheteurId || '',
