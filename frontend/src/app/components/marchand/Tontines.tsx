@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, Plus, X, Search, Trash2, RefreshCw } from 'lucide-react';
+import { Users, Plus, X, Search, Trash2, RefreshCw, WifiOff } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -45,13 +45,21 @@ export function Tontines() {
   const navigate = useNavigate();
   const [tontines, setTontines] = useState<TontineListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
+  // Trois situations, trois phrases (règle caisse, AUDIT-UX-ROLES-2026-10-06
+  // T3) : chargement / échec réseau avec Réessayer / vide réel. Un échec
+  // réseau ne peut plus se rendre comme « Aucune tontine pour l'instant ».
   const charger = () => {
     setLoading(true);
+    setErreurChargement(false);
     apiRequest<TontineListItem[]>(API_URL, '/tontines/mes-tontines', { method: 'GET' })
       .then((d) => setTontines(Array.isArray(d) ? d : []))
-      .catch(() => setTontines([]))
+      .catch(() => {
+        setTontines([]);
+        setErreurChargement(true);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -72,6 +80,20 @@ export function Tontines() {
             <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}>
               <RefreshCw className="w-8 h-8" style={{ color: COLOR }} />
             </motion.div>
+          </div>
+        ) : erreurChargement ? (
+          <div className="text-center py-16 px-4">
+            <WifiOff className="w-12 h-12 mx-auto mb-3 opacity-40" style={{ color: COLOR }} />
+            <p className="text-sm font-bold text-gray-700">Impossible de charger tes tontines</p>
+            <p className="text-xs text-gray-500 mt-1">Vérifie ton réseau, puis réessaie.</p>
+            <button
+              type="button"
+              onClick={charger}
+              className="mt-4 px-5 py-2.5 rounded-xl text-white text-sm font-bold min-h-[44px]"
+              style={{ background: COLOR }}
+            >
+              Réessayer
+            </button>
           </div>
         ) : tontines.length === 0 ? (
           <div className="text-center py-16 px-4">
