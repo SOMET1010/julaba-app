@@ -5,6 +5,16 @@
 
 ## [Non publié]
 
+### Corrigé — Corrections des revues (2026-10-07)
+Exécution des corrections restantes des REVIEW-001/002/003, sur ordre explicite de l'utilisateur (« Continues les corrections ») — hors re-gel humain (Patrick) et hors chaîne `test:ci` (gelée, décision humaine en attente) :
+- **B3-3 fermé — suite de tests backend ressuscitée** : les majeures non prouvées sont retirées (`jest` ^30.5.2 → ^29.7.0, `@types/jest` ^30 → ^29.5.14, `@nestjs/swagger` ^12.0.2 → ^11.4.7 — backend ET racine, retour byte-identique à `dffe705` vérifié). Preuves : suite unitaire **33 suites / 251 tests EXIT 0**, `tsc --noEmit` 0, `nest build` EXIT 0, versions installées vérifiées (jest 29.7.0 / ts-jest 29.4.14 / swagger 11.4.7). Preuve nouvelle : l'upgrade swagger 12 était **irrésoluble** — `@nestjs/swagger@12.0.2` exige un peer `@nestjs/common@^12` contre common 11.2.6 (ERESOLVE npm) — la recette swagger 12 demandée en REVIEW-003/action 4 est morte-non-lieu : l'upgrade est retiré, pas prouvé. Les invariants (Postgres jetable) restent l'affaire de la CI (aucun Postgres dans le sandbox). Un maillon backend dans `test:ci` n'a PAS été ajouté : la chaîne est GELÉE (refus 2 du garde-argent, décision humaine en attente)
+- **R1-1 fermé — le montant cotisation ne vit plus qu'à un endroit** : `COTISATION_MONTANT_LIBELLE` dérivé de `COTISATION_MONTANT` dans `MaCooperative.tsx` (bouton « Payer ma cotisation » + récap du modal) — rendu byte-identique prouvé (`25\u00A0000 FCFA`, insécables préservés) ; la promesse « une seule ligne à changer à la bascule API » tient désormais aussi pour l'affichage
+- **R2-2 fermé — newline final `AppContext.tsx`** + fixture `parole-3917bb7.json` re-bénie PAR LE GARDE en liste blanche (seule l'empreinte `contexts/AppContext.tsx` change, les 3 divergences héritées restent volontairement rouges — diff fixture = 1 ligne)
+- **R2-1 fermé par traçage — CODE-NEW-7** dans `DEBT_REPORT.md` : écrans orphelins `IdentificateurStats.tsx` + `IdentificateurDashboard.tsx` (orphelinat re-vérifié mécaniquement : 0 route, 0 import) — la suppression reste le geste de la fusion §8.5 définitive (producteur)
+- Vérifications : `tsc -b` front 0, `tsc --noEmit` back 0, `test:charte-marchande` EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = les 4 rouges hérités connus (0 nouveau), garde-argent = les 3 refus attendus (re-gel humain en attente), `npm run test:unit` backend 251/251
+
+
+
 ### Corrigé — Actions correctives REVIEW-003/REVIEW-004 (2026-10-06)
 Exécution des actions demandées par la revue — hors re-gel humain (Patrick) et hors `backend/package.json` (B3-3, périmètre producteur) :
 - **Verrou de schéma CI restauré** (REVIEW-004/B4-1) : `scripts/schema-pilote.mjs` et `scripts/check-nest-versions.mjs` revenus à l'état `dffe705` — `check:nest-versions` EXIT 0 (« @nestjs cohérent, major 11 »), l'appel de `.github/workflows/schema-pilote.yml` redevient valide
