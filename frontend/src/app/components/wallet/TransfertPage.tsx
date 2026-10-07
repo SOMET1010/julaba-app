@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, Check, Loader2 } from 'lucide-react';
 import { useWallet } from '../../contexts/WalletContext';
+import { useApp } from '../../contexts/AppContext';
 import { toast } from 'sonner';
 import {
   rechercherDestinataire,
@@ -20,13 +21,28 @@ const BG = '#F6F0E4';
 
 type Step = 1 | 2 | 3;
 
+// Trois situations, trois phrases (règle caisse POSCaisse 1331-1347, T3 de
+// l'audit 06/10) : un numéro inconnu n'est pas une panne, une panne n'est pas
+// un numéro inconnu, et hors ligne on n'accuse personne. 404 = le serveur a
+// RÉPONDU que le compte n'existe pas ; tout le reste est réseau/hors ligne.
+function causeRechercheDe(e: unknown, enLigne: boolean): '404' | 'reseau' | 'horsligne' {
+  if (!enLigne) return 'horsligne';
+  const status = (e as { status?: unknown } | null)?.status;
+  if (typeof status === 'number' && status === 404) return '404';
+  return 'reseau';
+}
+
 export function TransfertPage() {
   const navigate = useNavigate();
   const { getAvailableBalance, refreshKeiwa } = useWallet();
+  const { speak } = useApp();
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState('');
   const [destinataire, setDestinataire] = useState<DestinataireTransfert | null>(null);
   const [recherche, setRecherche] = useState<'idle' | 'loading' | 'error'>('idle');
+  // Pourquoi la recherche a échoué — l'écran ne dit plus « compte introuvable »
+  // à une panne (M-P1-1 : hors ligne, on accusait un numéro valide d'être absent).
+  const [causeRecherche, setCauseRecherche] = useState<'404' | 'reseau' | 'horsligne'>('404');
   const [selectedMethod, setSelectedMethod] = useState<Method | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -69,21 +85,47 @@ export function TransfertPage() {
     let annule = false;
     setRecherche('loading');
     const timer = setTimeout(async () => {
+      // Hors ligne, on ne part pas en erreur de réseau : la cause est dite.
+      if (!navigator.onLine) {
+        if (!annule) {
+          setDestinataire(null);
+          setCauseRecherche('horsligne');
+          setRecherche('error');
+        }
+        return;
+      }
       try {
         const trouve = await rechercherDestinataire(phone);
         if (!annule) {
           setDestinataire(trouve);
           setRecherche('idle');
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (!annule) {
           setDestinataire(null);
+          setCauseRecherche(causeRechercheDe(e, navigator.onLine));
           setRecherche('error');
         }
       }
     }, 450);
     return () => { annule = true; clearTimeout(timer); };
   }, [phone]);
+
+  // Réessayer : la même recherche, hors du debounce — le bouton porte le
+  // numéro courant de son render (pas de closure périmée).
+  const relancerRecherche = async () => {
+    setDestinataire(null);
+    setRecherche('loading');
+    try {
+      const trouve = await rechercherDestinataire(phone);
+      setDestinataire(trouve);
+      setRecherche('idle');
+    } catch (e: unknown) {
+      setDestinataire(null);
+      setCauseRecherche(causeRechercheDe(e, navigator.onLine));
+      setRecherche('error');
+    }
+  };
 
   const handleNumpad = (key: string) => {
     if (key === '⌫') {
@@ -134,8 +176,16 @@ export function TransfertPage() {
       // Rafraîchit le solde affiché ailleurs dans l'app (accueil, etc.).
       refreshKeiwa().catch(() => {});
     } catch (e: any) {
-      const message = e instanceof HttpError ? e.message : (e?.message || 'Transfert échoué');
+      // T7 (F-V2/N-4 audit voix) : l'issue de l'irréversible se DIT et
+      // s'ÉCRIT — la raison métier 4xx du serveur (déjà écrite pour
+      // l'utilisateur, doctrine caisse), un générique honnête sinon (on ne
+      // dicte pas « Failed to fetch »).
+      const status = (e as { status?: unknown } | null)?.status;
+      const message = typeof status === 'number' && status >= 400 && status < 500 && e instanceof HttpError && e.message?.trim()
+        ? e.message
+        : "Le transfert n'a pas passé. Vérifie ton réseau et réessaie.";
       toast.error(message);
+      speak(message);
       vibrerErreur();
       setShowConfirm(false);
     } finally {
@@ -265,9 +315,32 @@ export function TransfertPage() {
               </div>
             )}
             {recherche === 'error' && (
-              <p style={{ marginBottom: 16, color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
-                Aucun compte Julaba trouvé pour ce numéro.
-              </p>
+              <div style={{ marginBottom: 16 }}>
+                {causeRecherche === '404' && (
+                  <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                    Aucun compte Julaba trouvé pour ce numéro.
+                  </p>
+                )}
+                {causeRecherche === 'horsligne' && (
+                  <p style={{ color: '#b8956a', fontSize: 13, fontWeight: 600 }}>
+                    Tu es hors ligne — impossible de vérifier ce numéro. Reconnecte-toi, puis réessaie.
+                  </p>
+                )}
+                {causeRecherche === 'reseau' && (
+                  <p style={{ color: '#ef4444', fontSize: 13, fontWeight: 600 }}>
+                    Impossible de vérifier ce numéro — problème de réseau.
+                  </p>
+                )}
+                {causeRecherche !== '404' && (
+                  <button
+                    type="button"
+                    onClick={relancerRecherche}
+                    style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, color: C, fontSize: 13, fontWeight: 700, minHeight: 44, cursor: 'pointer' }}
+                  >
+                    Réessayer
+                  </button>
+                )}
+              </div>
             )}
             {destinataire && (
               <motion.div
