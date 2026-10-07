@@ -5,6 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 import { useProducteur } from '../../contexts/ProducteurContext';
 import { useNavigate } from 'react-router';
 import { Montant, MontantCard } from '../shared/Montant';
+import { cheminMasque } from '../../config/modulesPilote';
 
 const PRIMARY_COLOR = '#2E8B57';
 
@@ -232,9 +233,13 @@ export function VentesModal({ isOpen, onClose }: VentesModalProps) {
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <StyledButton onClick={() => { onClose(); navigate('/producteur/commandes'); }} fullWidth>
-              Voir commandes
-            </StyledButton>
+            {/* Commandes : « Récupérer keiwa » y crédite le wallet — masqué
+                hors drapeau (config/modulesPilote.ts, 07/10/2026). */}
+            {!cheminMasque('/producteur/commandes') && (
+              <StyledButton onClick={() => { onClose(); navigate('/producteur/commandes'); }} fullWidth>
+                Voir commandes
+              </StyledButton>
+            )}
             <StyledButton onClick={onClose} variant="outline">
               Fermer
             </StyledButton>
