@@ -1,3 +1,7 @@
+> **ARCHIVÉ le 07/10/2026 — ne plus mettre à jour.** Décision de Patrick (07/10, point 7) :
+> **[`STATUS.md`](../STATUS.md) fait foi** pour la passation. Ce fichier est conservé tel quel
+> pour l'historique ; tout nouvel état, décision ou « À DÉFINIR » va dans `STATUS.md`.
+
 # Passation — JULABA historique
 
 Maintenu par l'instance **JULABA historique** (celle-ci), seule autorisée à

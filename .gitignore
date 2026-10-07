@@ -35,6 +35,15 @@ erreur.txt
 # Outils locaux (config/état de session, pas les skills partagées de l'équipe)
 .claude/*
 !.claude/skills/
+# Cadre de travail — 05/10/2026. Partagés avec l'équipe, donc versionnés :
+# les consignes des agents et les autorisations communes.
+!.claude/agents/
+!.claude/settings.json
+# JAMAIS versionné : les réglages locaux peuvent porter des chemins ou des
+# secrets propres à une machine (ALERTE-SEC-01), et les worktrees sont des
+# copies de travail.
+.claude/settings.local.json
+.claude/worktrees/
 .idea/
 
 # Build frontend versionne par erreur (la source est dans frontend_src/, build via frontend_src/Dockerfile)
