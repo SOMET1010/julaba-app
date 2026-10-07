@@ -54,6 +54,7 @@
 | CODE-NEW-4 | `Sentry.expressErrorHandler` commenté (`// app.use(Sentry.expressErrorHandler());`) | P3 | S | OUVERT (audit) |
 | CODE-NEW-5 | `node_modules` dans l'historique git (>24 000 fichiers) | P3 | XL | OUVERT (registre) |
 | CODE-NEW-6 | `frontend/src/imports/` mélange code + prompts obsolètes | P3 | M | OUVERT (registre) |
+| CODE-NEW-7 | Écrans orphelins `IdentificateurStats.tsx` + `IdentificateurDashboard.tsx` (0 route, 0 import — morts en source depuis la fusion §8.5, non bundlés car routes lazy ; supprimer à la fusion définitive) | P3 | S | OUVERT (REVIEW-002/R2-1, vérifié orphelin le 07/10) |
 
 ### TYPAGE (2 dettes)
 | ID | Description | Priorité | Effort | Statut |
