@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Institution } from './institution.entity';
 import { AuditService } from '../audit/audit.service';
+import { InstitutionResponsableService } from './institution-responsable.service';
 
 // RC 07/10 — l'écran BO Institutions parle en `statut` ('actif' | 'suspendu'),
 // l'entité ne connaît que `actif` (booléen). `repo.update` avec `statut` (ou
@@ -28,7 +29,18 @@ export class InstitutionsController {
   constructor(
     @InjectRepository(Institution) private repo: Repository<Institution>,
     private readonly auditService: AuditService,
+    private readonly responsables: InstitutionResponsableService,
   ) {}
+
+  private journaliserResponsable(req: any, institutionId: string, responsableId: string | null) {
+    return this.auditService.log({
+      userId: req?.user?.id ?? null,
+      action: responsableId ? 'RATTACHER_RESPONSABLE_INSTITUTION' : 'DETACHER_RESPONSABLE_INSTITUTION',
+      entite: 'institution',
+      entiteId: institutionId,
+      details: { responsable_id: responsableId },
+    });
+  }
 
   // Isolement inter-institutions (correctif audit securite/vie privee) : un
   // compte institution ne doit voir QUE sa propre fiche institution (celle
@@ -45,7 +57,7 @@ export class InstitutionsController {
         order: { created_at: 'DESC' } as any,
       })
       : await paginate(this.repo, query, { order: { created_at: 'DESC' } as any });
-    return { ...page, data: page.data.map(avecStatut) };
+    return { ...page, data: await this.responsables.exposer(page.data.map(avecStatut)) };
   }
 
   @Get(':id')
@@ -59,7 +71,8 @@ export class InstitutionsController {
         throw new NotFoundException('Institution introuvable');
       }
     }
-    return avecStatut(institution);
+    if (!institution) return institution;
+    return (await this.responsables.exposer([avecStatut(institution)]))[0];
   }
   @Post()
   @Roles('super_admin', 'admin_general')
@@ -71,8 +84,11 @@ export class InstitutionsController {
         throw new BadRequestException('modules doit être un objet JSON');
       }
     }
-    const entity = this.repo.create(safeBody as any);
+    const responsableId = this.responsables.lire(body ?? {});
+    if (responsableId) await this.responsables.verifier(responsableId);
+    const entity = this.repo.create({ ...safeBody, responsable_id: responsableId ?? null } as any);
     const saved = await this.repo.save(entity) as unknown as Institution;
+    if (responsableId) await this.journaliserResponsable(req, saved.id, responsableId);
     if (safeBody.modules !== undefined) {
       await this.auditService.log({
         userId: req?.user?.id ?? null,
@@ -82,7 +98,7 @@ export class InstitutionsController {
         details: { modules: safeBody.modules },
       });
     }
-    return saved;
+    return (await this.responsables.exposer([avecStatut(saved)]))[0];
   }
   @Patch(':id')
   @Roles('super_admin', 'admin_general')
@@ -93,7 +109,14 @@ export class InstitutionsController {
         throw new BadRequestException('modules doit être un objet JSON');
       }
     }
+    const responsableId = this.responsables.lire(body ?? {});
+    if (responsableId !== undefined) {
+      if (!(await this.repo.findOne({ where: { id } }))) throw new NotFoundException('Institution introuvable');
+      if (responsableId) await this.responsables.verifier(responsableId, id);
+      safeBody.responsable_id = responsableId;
+    }
     if (Object.keys(safeBody).length) await this.repo.update(id, safeBody);
+    if (responsableId !== undefined) await this.journaliserResponsable(req, id, responsableId);
     if (safeBody.modules !== undefined) {
       await this.auditService.log({
         userId: req?.user?.id ?? null,
@@ -103,7 +126,8 @@ export class InstitutionsController {
         details: { modules: safeBody.modules },
       });
     }
-    return avecStatut(await this.repo.findOne({ where: { id } }));
+    const maj = await this.repo.findOne({ where: { id } });
+    return maj ? (await this.responsables.exposer([avecStatut(maj)]))[0] : maj;
   }
   @Delete(':id')
   @Roles('super_admin')
