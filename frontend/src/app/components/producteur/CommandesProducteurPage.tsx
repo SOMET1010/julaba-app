@@ -94,6 +94,20 @@ const PRODUITS_ICONS: { id: string; img: string }[] = [
 
 type StatutType = 'nouvelle' | 'acceptee' | 'preparation' | 'livraison' | 'livree' | 'litige' | 'cloturee';
 
+// T7 (F-V2, AUDIT-UX-...-VOIX-2026-10-07) : on ne dicte plus le message
+// serveur BRUT (ni un UUID). La raison métier 4xx est déjà écrite pour
+// l'utilisateur (doctrine caisse, POSCaisse 531-545) : elle se dit telle
+// quelle. Un jeton technique (NOT_AUTHENTICATED, Failed to fetch…) ou une
+// panne : le repli français, dit ET écrit — jamais l'un sans l'autre.
+function messageUtilisateur(e: unknown, repli: string): string {
+  const status = (e as { status?: unknown } | null)?.status;
+  const brut = e instanceof Error ? e.message.trim() : '';
+  if (typeof status === 'number' && status >= 400 && status < 500 && brut && !/^[A-Z_0-9]+$/.test(brut)) {
+    return brut;
+  }
+  return repli;
+}
+
 interface Commande {
   id: string;
   produit: string;
@@ -311,11 +325,13 @@ export function ProducteurCommandes() {
     setIsSubmittingDemande(true);
     try {
       await accepterCommande(cmd.id);
-      await speak(`Commande de ${cmd.acheteurId} acceptée. Le marchand va maintenant payer.`);
+      await speak('Commande acceptée. Le marchand va maintenant payer.');
       setShowDemandeDetailModal(false);
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleAccepterDemande failed:', e?.message);
-      speak(`Erreur : ${e.message}`);
+      const message = messageUtilisateur(e, "Impossible d'accepter la commande. Réessaie.");
+      toast.error(message);
+      speak(message);
     }
     setIsSubmittingDemande(false);
   };
@@ -331,7 +347,9 @@ export function ProducteurCommandes() {
       setRaisonRefus('');
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleRefuserDemande failed:', e?.message);
-      speak(`Erreur : ${e.message}`);
+      const message = messageUtilisateur(e, 'Impossible de refuser la commande. Réessaie.');
+      toast.error(message);
+      speak(message);
     }
     setIsSubmittingDemande(false);
   };
@@ -348,7 +366,9 @@ export function ProducteurCommandes() {
       setMessageContrePropo('');
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleContreProposer failed:', e?.message);
-      speak(`Erreur : ${e.message}`);
+      const message = messageUtilisateur(e, "Impossible d'envoyer la contre-proposition. Réessaie.");
+      toast.error(message);
+      speak(message);
     }
     setIsSubmittingDemande(false);
   };
@@ -361,7 +381,9 @@ export function ProducteurCommandes() {
       setShowDemandeDetailModal(false);
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleMarquerLivre failed:', e?.message);
-      speak(`Erreur : ${e.message}`);
+      const message = messageUtilisateur(e, 'Impossible de marquer la commande livrée. Réessaie.');
+      toast.error(message);
+      speak(message);
     }
     setIsSubmittingDemande(false);
   };
@@ -375,8 +397,9 @@ export function ProducteurCommandes() {
       setShowDemandeDetailModal(false);
     } catch (e: any) {
       console.warn('[CommandesProducteur] handleRecupererPaiement failed:', e?.message);
-      toast.error(e?.message || 'Erreur lors de la récupération du paiement');
-      speak(`Erreur : ${e.message}`);
+      const message = messageUtilisateur(e, 'Erreur lors de la récupération du paiement');
+      toast.error(message);
+      speak(message);
     }
     setIsRecupererPaiementLoading(false);
   };
@@ -513,7 +536,9 @@ export function ProducteurCommandes() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';
       console.warn('[CommandesProducteur] changerStatut failed:', msg);
-      speak(msg ? `Erreur : ${msg}` : 'Impossible de mettre à jour la commande');
+      const message = messageUtilisateur(e, 'Impossible de mettre à jour la commande');
+      toast.error(message);
+      speak(message);
     } finally {
       setIsUpdatingStatut(false);
     }
@@ -606,7 +631,9 @@ export function ProducteurCommandes() {
       setNewProduitImage('');
     } catch (e: any) {
       console.warn('[CommandesProducteur] ajouterCommande failed:', e?.message);
-      speak(e?.message ? `Erreur : ${e.message}` : 'Impossible d\'ajouter la commande');
+      const message = messageUtilisateur(e, "Impossible d'ajouter la commande. Réessaie.");
+      toast.error(message);
+      speak(message);
     }
   };
 
@@ -772,7 +799,7 @@ export function ProducteurCommandes() {
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 60, height: 0, overflow: 'hidden' }}
                         transition={{ delay: idx * 0.07, type: 'spring', stiffness: 260, damping: 26 }}
-                        onClick={() => { setSelectedDemande(cmd); setShowDemandeDetailModal(true); speak(`Demande de ${cmd.acheteurId} pour ${cmd.produit}`); }}
+                        onClick={() => { setSelectedDemande(cmd); setShowDemandeDetailModal(true); speak(`Demande pour ${cmd.produit}`); }}
                         className="rounded-3xl border-2 overflow-hidden cursor-pointer shadow-md"
                         style={{
                           borderColor: '#f97316',
@@ -1546,8 +1573,9 @@ export function ProducteurCommandes() {
                                     speak('Commande marquée comme livrée');
                                     setShowDetailModal(false);
                                   } catch (e: unknown) {
-                                    const msg = e instanceof Error ? e.message : '';
-                                    speak(msg ? `Erreur : ${msg}` : 'Impossible de marquer comme livrée');
+                                    const message = messageUtilisateur(e, 'Impossible de marquer comme livrée');
+                                    toast.error(message);
+                                    speak(message);
                                   }
                                 }}
                                 className="w-full py-4 rounded-2xl text-white font-bold flex items-center justify-center gap-2"
@@ -1650,7 +1678,9 @@ export function ProducteurCommandes() {
                                     setShowDetailModal(false);
                                   } catch (e: any) {
                                     console.warn('[CommandesProducteur] cancelCommande failed:', e?.message);
-                                    speak(`Erreur : ${e.message}`);
+                                    const message = messageUtilisateur(e, "Impossible d'annuler la commande. Réessaie.");
+                                    toast.error(message);
+                                    speak(message);
                                   }
                                 }}
                                 className="flex-[35] py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
@@ -1671,7 +1701,9 @@ export function ProducteurCommandes() {
                                   setShowDetailModal(false);
                                 } catch (e: any) {
                                   console.warn('[CommandesProducteur] cancelCommande failed:', e?.message);
-                                  speak(`Erreur : ${e.message}`);
+                                  const message = messageUtilisateur(e, "Impossible d'annuler la commande. Réessaie.");
+                                  toast.error(message);
+                                  speak(message);
                                 }
                               }}
                               className="w-full py-4 rounded-2xl bg-red-500 text-white font-bold flex items-center justify-center gap-2"
