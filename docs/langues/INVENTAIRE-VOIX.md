@@ -8,13 +8,13 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **411** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 432 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **416** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 437 |
 | — littéraux (phrase fixe en dur) | 196 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 84 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 78 |
 | — relais (`dire = (t) => speak(t)`) | 20 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 54 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 59 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
 | Dont dynamiques (avec variables) | 84 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **55** |
@@ -30,12 +30,12 @@
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 14 | 15 | 0 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 17 | 9 | 0 | 7 | 2 | 0 | 1 |
+| `components/marchand/AjoutProduitGuide.tsx` | autre | 16 | 0 | 0 | 2 | 1 | 13 | 0 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 15 | 11 | 4 | 0 | 0 | 0 | 10 |
 | `components/marchand/GestionStock.tsx` | stock | 14 | 8 | 4 | 2 | 1 | 0 | 2 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
 | `components/auth/LoginPassword.tsx` | auth | 11 | 7 | 1 | 7 | 0 | 0 | 0 |
-| `components/marchand/AjoutProduitGuide.tsx` | autre | 11 | 0 | 0 | 2 | 1 | 8 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 10 | 0 | 0 | 3 | 2 | 6 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
@@ -119,8 +119,8 @@
 | vente | 27 | 0 | 0 |
 | auth | 23 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
+| autre | 19 | 1 | 0 |
 | moteur_vocal | 18 | 9 | 1 |
-| autre | 14 | 1 | 0 |
 | pages | 10 | 5 | 0 |
 | depense | 9 | 8 | 2 |
 | credit | 8 | 7 | 4 |
@@ -181,8 +181,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 850 | `speak` | literal | Au revoir. Déconnexion du Back-Office. |  |  |
-| 1058 | `speak` | template_compose | Bonjour {prenom}. Vous êtes connecté en tant que {role}. Il y a {nouveauxCount} ticket{s} en attente. Comment puis-je vous aider ? | `prenom` `role` `nouveauxCount` `s` |  |
+| 855 | `speak` | literal | Au revoir. Déconnexion du Back-Office. |  |  |
+| 1063 | `speak` | template_compose | Bonjour {prenom}. Vous êtes connecté en tant que {role}. Il y a {nouveauxCount} ticket{s} en attente. Comment puis-je vous aider ? | `prenom` `role` `nouveauxCount` `s` |  |
 
 ### `components/backoffice/BOLogin.tsx` — auth
 
@@ -272,17 +272,22 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 92 | `speak` | relais | t |  |  |
-| 153 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 171 | `direMessage` | cle_i18n | STOCK_047 |  |  |
-| 172 | `direMessage` | cle_i18n | STOCK_048 |  |  |
-| 173 | `direMessage` | cle_i18n | STOCK_049 |  |  |
-| 174 | `direMessage` | cle_i18n | STOCK_054 |  |  |
-| 198 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 207 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 210 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 218 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 265 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 96 | `speak` | relais | t |  |  |
+| 168 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 186 | `direMessage` | cle_i18n | STOCK_047 |  |  |
+| 187 | `direMessage` | cle_i18n | STOCK_048 |  |  |
+| 188 | `direMessage` | cle_i18n | STOCK_049 |  |  |
+| 189 | `direMessage` | cle_i18n | STOCK_054 |  |  |
+| 196 | `direMessage` | cle_i18n | STOCK_055 |  |  |
+| 208 | `direMessage` | cle_i18n | STOCK_058 |  |  |
+| 214 | `direMessage` | cle_i18n | STOCK_057 |  |  |
+| 215 | `direMessage` | cle_i18n | STOCK_056 |  |  |
+| 218 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 241 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 252 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 255 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 263 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 317 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
@@ -396,7 +401,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 483 | `speak` | dynamique | texte |  |  |
+| 489 | `speak` | dynamique | texte |  |  |
 
 ### `components/marchand/MarchandDepenses.tsx` — depense
 
@@ -646,8 +651,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 385 | `speak` | literal | Création de plantation agricole |  |  |
-| 447 | `speak` | literal | Déclaration de récolte |  |  |
+| 390 | `speak` | literal | Création de plantation agricole |  |  |
+| 452 | `speak` | literal | Déclaration de récolte |  |  |
 
 ### `components/producteur/ProducteurProduction.tsx` — producteur
 
@@ -667,11 +672,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 74 | `speak` | literal | Remplis tous les champs obligatoires |  |  |
-| 78 | `speak` | literal | Le stock disponible ne peut pas dépasser la quantité totale de la récolte |  |  |
-| 83 | `speak` | literal | Indique le nom du produit |  |  |
-| 122 | `speak` | template | Récolte de {produitName} publiée avec succès sur le marché virtuel | `produitName` |  |
-| 134 | `speak` | literal | Erreur lors de la publication, réessaie |  |  |
+| 75 | `speak` | literal | Remplis tous les champs obligatoires |  |  |
+| 79 | `speak` | literal | Le stock disponible ne peut pas dépasser la quantité totale de la récolte |  |  |
+| 84 | `speak` | literal | Indique le nom du produit |  |  |
+| 123 | `speak` | template | Récolte de {produitName} publiée avec succès sur le marché virtuel | `produitName` |  |
+| 142 | `speak` | literal | Erreur lors de la publication, réessaie |  |  |
 
 ### `components/producteur/PublierRecolteModal.tsx` — producteur
 
@@ -798,12 +803,12 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 170 | `speak` | relais | message |  |  |
-| 307 | `speak` | literal | Journée réduite |  |  |
-| 307 | `speak` | literal | Détails de la journée |  |  |
-| 421 | `speak` | literal | Combien tu as en caisse ce matin ? |  |  |
-| 475 | `speak` | literal | Bienvenue sur le terminal de vente. Ajoute tes produits au panier |  |  |
-| 547 | `speak` | literal | Ouverture de ton Wallet Jùlaba |  |  |
+| 171 | `speak` | relais | message |  |  |
+| 308 | `speak` | literal | Journée réduite |  |  |
+| 308 | `speak` | literal | Détails de la journée |  |  |
+| 422 | `speak` | literal | Combien tu as en caisse ce matin ? |  |  |
+| 476 | `speak` | literal | Bienvenue sur le terminal de vente. Ajoute tes produits au panier |  |  |
+| 552 | `speak` | literal | Ouverture de ton Wallet Jùlaba |  |  |
 
 ### `components/shared/ScoreResumeCard.tsx` — partage
 
@@ -819,11 +824,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 631 | `speak` | literal | Paramètres sauvegardés |  |  |
-| 751 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
-| 751 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
-| 936 | `speak` | literal | Export en cours |  |  |
-| 1075 | `speak` | literal | Déconnexion en cours |  |  |
+| 632 | `speak` | literal | Paramètres sauvegardés |  |  |
+| 752 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
+| 752 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
+| 941 | `speak` | literal | Export en cours |  |  |
+| 1080 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 

@@ -23,7 +23,8 @@
  * CE MODULE EST PUR. Ni React, ni DOM, ni appel réseau.
  */
 
-/** Les trois questions, dans l'ordre où elles se posent. */
+import { normaliserNom } from './venteVocale';
+
 /**
  * STK-04 — UNE QUATRIÈME ÉTAPE, ET ELLE SE SAUTE.
  *
@@ -272,4 +273,46 @@ export function quantiteDelle(v: unknown): number | null {
   const n = Number(v);
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.trunc(n);
+}
+
+/**
+ * A1 — UN PRODUIT QU'ELLE A DÉJÀ SE COMPLÈTE, IL NE SE RECRÉE PAS.
+ * Retour terrain PIE du 07/10 : elle redit « tomate », le parcours posait une
+ * seconde ligne « Tomate » — deux tuiles, deux stocks, et la vente ne savait
+ * plus lequel décompter.
+ *
+ * ÉGALITÉ STRICTE du nom normalisé, PAS l'inclusion d'`apparierProduit` :
+ * « tomate » n'est pas « tomate cerise ». L'unité compte aussi : au kg et au
+ * tas, ce sont deux prix, donc deux produits. Unité pas encore dite (étape du
+ * nom) : on compare le nom seul. Deux candidats : on ne choisit pas à sa
+ * place, `null`.
+ */
+export interface ProduitSurEtal {
+  readonly id: string;
+  readonly nom: string;
+  readonly unite: string;
+  readonly prix: number;
+  readonly stock: number;
+}
+
+export function produitDejaSurEtal<P extends ProduitSurEtal>(
+  b: Pick<BrouillonProduit, 'nom' | 'unite'>, etal: readonly P[],
+): P | null {
+  const nom = normaliserNom(b.nom);
+  if (!nom) return null;
+  const unite = normaliserNom(b.unite);
+  const memes = etal.filter(p => normaliserNom(p.nom ?? '') === nom
+    && (!unite || normaliserNom(p.unite ?? '') === unite));
+  return memes.length === 1 ? memes[0] : null;
+}
+
+/**
+ * Le stock après qu'elle a ajouté `quantite` — ou `null` : RIEN à écrire.
+ * Quantité non dite, nulle ou absurde : on n'écrit pas. Stock illisible : on
+ * ne devine pas (jamais `|| 0`, ACC-03).
+ */
+export function stockComplete(existant: Pick<ProduitSurEtal, 'stock'>, quantite: unknown): number | null {
+  const q = quantiteDelle(quantite);
+  if (q == null || q <= 0 || !Number.isFinite(existant.stock)) return null;
+  return existant.stock + q;
 }
