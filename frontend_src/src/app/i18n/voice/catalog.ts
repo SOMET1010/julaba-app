@@ -702,6 +702,15 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'STOCK_054', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Tu en as combien ? Si tu ne sais pas, passe.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'STK-04 — quatrieme etape, FACULTATIVE. La phrase dit elle-meme qu on peut la sauter : sans ca, une non-lectrice croit que la question bloque.' },
   { id: 'STOCK_049', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: 'Le {unite}, à combien ?', frMarche: null, variables: ['unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Étape « prix ». Sur l\'argent : l\'unité est redite, sans quoi « à combien » est ambigu entre le tas et le kilo.' },
 
+  // ── A1 — UN PRODUIT QU'ELLE A DÉJÀ SE COMPLÈTE, retour terrain PIE 07/10 ──
+  // Elle redit « tomate » : on ne pose plus une seconde ligne, on COMPLÈTE la
+  // sienne. Les phrases disent « complété », jamais « créé » ; et son prix
+  // reste le sien — s'il en dit un autre, on le lui dit, on ne l'écrit pas.
+  { id: 'STOCK_055', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{produit}, tu en as déjà. Combien de {unite} tu ajoutes ?', frMarche: null, variables: ['produit', 'unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — homonyme trouve sur son etal : on enchaine sur la quantite a ajouter, pas sur une creation.' },
+  { id: 'STOCK_056', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{produit} complété. Tu en as {stock} {unite}.', frMarche: null, variables: ['produit', 'stock', 'unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — le stock du produit existant est complete (meme chemin que « + Ajouter »). Complete, pas cree.' },
+  { id: 'STOCK_057', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: '{produit} complété. Tu en as {stock} {unite}. Ton prix reste {montant} {devise} le {unite}.', frMarche: null, variables: ['produit', 'stock', 'montant', 'unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — complete, ET elle avait dit un autre prix : le prix existant est CONSERVE, et on le lui dit dans la meme phrase (une phrase dite ne se reprend pas).' },
+  { id: 'STOCK_058', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Dis combien tu en ajoutes. Je n\'ai rien changé.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — quantite inconnue sur un produit existant : on n ecrit rien, et on le dit.' },
+
   // ── POURQUOI ELLE NE PEUT PAS AVANCER — STK-24, 27/09/2026 ──────────────
   //
   // Le grand bouton « C'est bon » était `disabled` tant que l'étape n'était
