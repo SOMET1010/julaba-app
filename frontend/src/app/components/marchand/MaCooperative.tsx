@@ -19,6 +19,11 @@ const COLOR = 'var(--commerce-action)';
 // ICI et nulle part ailleurs, nommé, pour que le jour de la bascule API il ne
 // bouge qu'une seule ligne.
 const COTISATION_MONTANT = 25000;
+// R1-1 (REVIEW-001) : le libellé affiché DÉRIVE désormais du montant — la
+// promesse « il vit ICI et nulle part ailleurs » tient aussi pour l'affichage :
+// le jour de la bascule API, une seule ligne à changer (et aucun libellé oublié).
+// (\u00A0 = espace insécable, rendu identique à l'ancien libellé en dur.)
+const COTISATION_MONTANT_LIBELLE = `${COTISATION_MONTANT.toLocaleString('fr-FR').replace(/[\s\u00A0\u202F]/g, '\u00A0')} FCFA`;
 
 /** Réponse `GET /api/v1/cooperatives/ma-cooperative` (objet plat) */
 interface MaCooperativeInfo {
@@ -223,7 +228,7 @@ export function MaCooperative() {
                   style={{ backgroundColor: 'var(--color-green-600)' }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Payer ma cotisation{'\u00A0'}: 25{'\u00A0'}000 FCFA
+                  Payer ma cotisation{'\u00A0'}: {COTISATION_MONTANT_LIBELLE}
                 </motion.button>
                 <p className="text-xs text-gray-400 mt-2 text-center">On te demandera de confirmer avant le paiement.</p>
               </motion.div>
@@ -379,7 +384,7 @@ export function MaCooperative() {
               <div className="p-6 space-y-4">
                 <div className="rounded-2xl p-4" style={{ backgroundColor: `${COLOR}15` }}>
                   <p className="text-sm text-gray-600 mb-1">Tu paies</p>
-                  <p className="text-3xl font-bold tabular-nums" style={{ color: COLOR }}>25{'\u00A0'}000 FCFA</p>
+                  <p className="text-3xl font-bold tabular-nums" style={{ color: COLOR }}>{COTISATION_MONTANT_LIBELLE}</p>
                   <p className="text-sm text-gray-600 mt-1">à {maCoopInfo.nom || 'ta coopérative'} — cotisation mensuelle</p>
                 </div>
                 <p className="text-xs text-gray-500">Ce paiement est définitif. Vérifie bien avant de confirmer.</p>
