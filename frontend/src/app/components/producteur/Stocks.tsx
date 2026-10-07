@@ -39,6 +39,7 @@ import { matchesSearch } from '../../utils/searchUtils';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_OIGNON,
   IMG_PRODUIT_PIMENT, IMG_PRODUIT_IGNAME, IMG_PRODUIT_PLANTAIN,
@@ -277,7 +278,8 @@ export function Stocks() {
     // Valeur totale du stock
     if (lowerCommand.includes('valeur') && lowerCommand.includes('totale')) {
       const totalValue = stocks.reduce((sum, s) => sum + (s.quantity * s.productionCost), 0);
-      void speak(`La valeur totale de ta production est de ${(totalValue || 0).toLocaleString()} francs CFA`);
+      // ARG-17 : « trois mille francs », jamais « trois zéro zéro zéro ».
+      void speak(`La valeur totale de ta production est de ${nombreEnMotsFr(totalValue || 0)} francs CFA`);
       return;
     }
 

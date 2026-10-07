@@ -55,6 +55,7 @@ import { NotificationButton } from '../marchand/NotificationButton';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO,
   IMG_PRODUIT_MANIOC, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS, IMG_PRODUIT_RIZ,
@@ -359,7 +360,9 @@ export function ProducteurCommandes() {
     setIsSubmittingDemande(true);
     try {
       await contreProposerPrix(selectedDemande.id, nouveauPrix, messageContrePropo);
-      await speak(`Contre-proposition de ${(nouveauPrix || 0).toLocaleString('fr-FR')} FCFA envoyée au marchand.`);
+      // ARG-17 : la forme parlée ne contient AUCUN chiffre à épeler —
+      // « cinq mille FCFA », pas « cinq zéro zéro zéro ».
+      await speak(`Contre-proposition de ${nombreEnMotsFr(nouveauPrix || 0)} FCFA envoyée au marchand.`);
       setShowContrePropoModal(false);
       setShowDemandeDetailModal(false);
       setNouveauPrix(0);
