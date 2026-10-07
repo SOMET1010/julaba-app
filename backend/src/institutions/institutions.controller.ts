@@ -8,6 +8,20 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Institution } from './institution.entity';
 import { AuditService } from '../audit/audit.service';
 
+// RC 07/10 — l'écran BO Institutions parle en `statut` ('actif' | 'suspendu'),
+// l'entité ne connaît que `actif` (booléen). `repo.update` avec `statut` (ou
+// email/adresse…, absents de l'entité) levait « No entity column » → 500 :
+// suspendre, réactiver, supprimer étaient impossibles. On traduit aux bords.
+const COLONNES_MODIFIABLES = ['nom', 'type', 'zone_id', 'modules'];
+function versColonnes(body: Record<string, unknown>): Record<string, unknown> {
+  const out = Object.fromEntries(Object.entries(body).filter(([k]) => COLONNES_MODIFIABLES.includes(k)));
+  if (body.statut !== undefined) out.actif = body.statut === 'actif';
+  return out;
+}
+function avecStatut<T extends { actif?: boolean } | null>(inst: T): T {
+  return inst ? ({ ...inst, statut: inst.actif === false ? 'suspendu' : 'actif' } as T) : inst;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('institutions')
 export class InstitutionsController {
@@ -25,13 +39,13 @@ export class InstitutionsController {
   @Get()
   @Roles('super_admin', 'admin_general', 'institution')
   async findAll(@Query() query: any, @Request() req: any) {
-    if (req?.user?.role === 'institution') {
-      return paginate(this.repo, query, {
+    const page = req?.user?.role === 'institution'
+      ? await paginate(this.repo, query, {
         where: { responsable_id: req.user.id } as any,
         order: { created_at: 'DESC' } as any,
-      });
-    }
-    return paginate(this.repo, query, { order: { created_at: 'DESC' } as any });
+      })
+      : await paginate(this.repo, query, { order: { created_at: 'DESC' } as any });
+    return { ...page, data: page.data.map(avecStatut) };
   }
 
   @Get(':id')
@@ -45,7 +59,7 @@ export class InstitutionsController {
         throw new NotFoundException('Institution introuvable');
       }
     }
-    return institution;
+    return avecStatut(institution);
   }
   @Post()
   @Roles('super_admin', 'admin_general')
@@ -73,14 +87,13 @@ export class InstitutionsController {
   @Patch(':id')
   @Roles('super_admin', 'admin_general')
   async update(@Param('id') id: string, @Body() body: any, @Request() req: any) {
-    const allowed = ['nom', 'type', 'description', 'adresse', 'telephone', 'email', 'logo', 'statut', 'zone_id', 'modules'];
-    const safeBody = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+    const safeBody = versColonnes(body ?? {});
     if (safeBody.modules !== undefined) {
       if (typeof safeBody.modules !== 'object' || safeBody.modules === null || Array.isArray(safeBody.modules)) {
         throw new BadRequestException('modules doit être un objet JSON');
       }
     }
-    await this.repo.update(id, safeBody);
+    if (Object.keys(safeBody).length) await this.repo.update(id, safeBody);
     if (safeBody.modules !== undefined) {
       await this.auditService.log({
         userId: req?.user?.id ?? null,
@@ -90,9 +103,9 @@ export class InstitutionsController {
         details: { modules: safeBody.modules },
       });
     }
-    return this.repo.findOne({ where: { id } });
+    return avecStatut(await this.repo.findOne({ where: { id } }));
   }
   @Delete(':id')
   @Roles('super_admin')
-  remove(@Param('id') id: string) { return this.repo.update(id, { statut: 'supprime' } as any); }
+  remove(@Param('id') id: string) { return this.repo.update(id, { actif: false }); }
 }

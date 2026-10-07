@@ -5,6 +5,8 @@
  * - Seule la couleur primaire et les données métier changent
  */
 
+import { sansModulesMasques } from './modulesPilote';
+
 export const ROLE_COLORS = {
   marchand: '#B74725',
   producteur: '#2E8B57',
@@ -99,12 +101,20 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     // « Historique » déjà présent dans MarcheVirtuel.tsx couvre le suivi des
     // commandes passées. Le micro « Tata » n'est plus un item ici : il devient
     // un bouton flottant distinct dans BottomBar.tsx (audit accueil/profil).
+    //
+    // « Commandes » passe par `sansModulesMasques` (07/10/2026) : ce n'est PAS
+    // le cahier des crédits clientes, c'est l'achat fournisseur, dont la
+    // réception paie par keiwa (POST /commandes/:id/paiement, wallet à
+    // wallet). Hors pilote ET argent → masqué tant que le drapeau
+    // VITE_JULABA_MODULES_HORS_PILOTE n'est pas à `true` (config/modulesPilote.ts).
+    // Il reste alors Accueil et Moi : la caisse, le stock, les dépenses et les
+    // ventes partent de l'accueil.
     bottomBar: {
-      items: [
+      items: sansModulesMasques([
         { label: 'Accueil', path: '/marchand', icon: 'Home' },
         { label: 'Commandes', path: '/marchand/commandes', icon: 'ShoppingBag' },
         { label: 'Moi', path: '/marchand/profil', icon: 'User' },
-      ],
+      ]),
     },
     dashboardKPIs: {
       kpi1: {
@@ -165,13 +175,15 @@ export const ROLE_CONFIGS: Record<RoleType, RoleConfig> = {
     gradientTo: 'to-white',
     bgWarm: '#F6F0E4',
     greeting: 'Enregistre tes récoltes et ventes aujourd\'hui',
+    // « Commandes » : « Récupérer keiwa » y crédite le wallet du producteur —
+    // masqué hors drapeau, même règle que le marchand (config/modulesPilote.ts).
     bottomBar: {
-      items: [
+      items: sansModulesMasques([
         { label: 'Accueil', path: '/producteur', icon: 'Home' },
         { label: 'Production', path: '/producteur/production', icon: 'Sprout' },
         { label: 'Commandes', path: '/producteur/commandes', icon: 'ShoppingCart' },
         { label: 'Moi', path: '/producteur/profil', icon: 'User' },
-      ],
+      ]),
     },
     dashboardKPIs: {
       kpi1: {
