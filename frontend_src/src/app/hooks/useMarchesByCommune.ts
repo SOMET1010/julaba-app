@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { API_URL } from '../utils/api';
+import { fetchMarchesPublics } from '../services/api/marches-api';
 
 export interface MarcheItem {
   id: string;
@@ -24,21 +25,12 @@ export function useMarchesByCommune(commune?: string) {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    fetch(`${API_URL}/marches?exclude_statut=en_attente`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then(r => r.ok ? r.json() : [])
-      .then(data => {
+    fetchMarchesPublics(controller.signal)
+      .then(liste => {
         if (!isMountedRef.current) return;
-        if (Array.isArray(data)) {
-          setAllMarches(data);
-          if (commune) {
-            setMarches(data.filter((m: MarcheItem) => m.commune === commune));
-          } else {
-            setMarches(data);
-          }
-        }
+        const data = liste as MarcheItem[];
+        setAllMarches(data);
+        setMarches(commune ? data.filter(m => m.commune === commune) : data);
       })
       .catch(e => {
         if (e?.name === 'AbortError') return;
