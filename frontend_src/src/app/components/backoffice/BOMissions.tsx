@@ -270,8 +270,10 @@ export function BOMissions() {
       {/* Liste missions */}
       <div className="space-y-4">
         {filtered.map((mission, index) => {
-          const typeConf = TYPE_CONFIG[mission.type];
-          const statutConf = STATUT_CONFIG[mission.statut];
+          // Repli : une mission d'un type ou d'un statut hors table (dont
+          // `supprime`, écrit par DELETE) faisait planter tout l'écran.
+          const typeConf = TYPE_CONFIG[mission.type] ?? { label: String(mission.type ?? 'Mission'), color: BO_PRIMARY, icon: Target };
+          const statutConf = STATUT_CONFIG[mission.statut] ?? { label: String(mission.statut ?? '—'), bg: 'bg-gray-100', text: 'text-gray-700', icon: Target };
           const TypeIcon = typeConf.icon || Target;
           const StatutIcon = statutConf.icon || Target;
           const isExpanded = expanded === mission.id;
