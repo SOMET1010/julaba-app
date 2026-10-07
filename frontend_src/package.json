@@ -192,6 +192,9 @@
     "test:encaisser-formes-dites": "tsx src/app/voice-offline/encaisserFormesDites.test.mts",
     "test:maillons-orphelins": "node scripts/test-maillons-orphelins.mjs",
     "test:auth-charte": "tsx src/app/components/auth/authCharte.test.mts",
+    "test:lieux-marchands": "tsx src/app/services/lieuxMarchands.test.mts",
+    "test:photo-carte": "tsx src/app/components/shared/photoCarte.test.mts",
+    "test:lien-activation": "tsx src/app/components/auth/lienActivation.test.mts",
     "test:enum-check-phone": "node scripts/test-enum-check-phone.mjs",
     "test:warn-dev": "node scripts/test-warn-dev.mjs",
     "test:coffre-web": "node scripts/test-coffre-web.mjs"
