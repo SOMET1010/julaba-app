@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
+import { toast } from 'sonner';
 import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import TATA_BLEU from '../../../assets/images/tata-nanti-lou.png';
@@ -117,7 +118,7 @@ export function DepenseForm() {
       await reloadTransactions();
       speak('Dépense de ' + nombreEnMotsFr(m) + ' francs enregistrée');
       navigate(-1);
-    } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); speak("Erreur lors de l'enregistrement"); }
+    } catch (e: any) { console.warn('[DepenseForm] handleSave failed:', e?.message); toast.error("Erreur lors de l'enregistrement"); speak("Erreur lors de l'enregistrement"); }
     finally { enregEnCoursRef.current = false; setIsProcessing(false); }
   };
 
