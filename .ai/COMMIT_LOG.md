@@ -118,6 +118,19 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 - **R1-1** : rendu byte-identique prouvé (`25\u00A0000 FCFA`) ; **R2-2** : diff fixture = 1 ligne (hash AppContext seul) ; **R2-1** : orphelinat re-vérifié mécaniquement (0 référence externe) avant traçage
 - Détail : worklog Task 21 (REVIEW_LOG, section « Suivi des corrections »)
 
+## 07/10/2026 — Lot primitives d'argent T8 (agent Z.ai Code)
+
+```
+dcc6716 refactor(argent): REVIEW-001/R1-3 — primitives maison RelectureArgent + PinArgent (une seule copie) ; R1-4 voix sur relectures (même source, ARG-17) + vibrerAttente ; R1-5 Radix Dialog (AUTH-05) ; R1-2 TransfertPage 499 l. (idempotence extraite, méthodes vers methodsTransfert) ; MaCooperative 382 l.
+docs: journaux .ai + worklog Task 22
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+- **Nouveaux fichiers** : `components/argent/RelectureArgent.tsx` (199 l.), `components/argent/PinArgent.tsx` (47 l.), `utils/idempotence.ts` (17 l.), `components/wallet/methodsTransfert.ts` (29 l.)
+- **Fichiers migrés** : TransfertPage (562→499), MaCooperative (440→382) — comportement métier inchangé (mêmes endpoints, verrous, textes)
+- **Détail** : worklog Task 22 (REVIEW_LOG, « Suivi des corrections — 2e session ») ; batteries vertes, garde-argent aux 3 refus attendus
+
 ## Commits à venir (planifiés)
 
 ### P0 — Gouvernance (à commiter dès validation)

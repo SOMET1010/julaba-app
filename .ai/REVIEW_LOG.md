@@ -301,3 +301,32 @@ Le projet a un historique de revues très riche :
 - **REVIEW-004** : blocage levé (REVIEW-005).
 - **INC-001** : OUVERT atténué — actions 1 (restauration) et 3 (jest/ts-jest, via le retrait des majeures) sont faites ; reste l'action 2 (re-gel humain Patrick).
 - **Restent ouverts** : R1-2, R1-3, R1-4, R1-5 (lot UX suivant) ; re-gel humain Patrick ; maillon backend dans test:ci (au moment du re-gel).
+## Suivi des corrections — 2e session du 2026-10-07 (REVIEW-001/R1-2..5, lot primitives T8)
+
+**Exécutant** : Agent Reviewer (Z.ai Code), rôle orchestrateur — sur « On enchaine » (l'utilisateur), anti-collision vérifié (dev == origin/dev à `a7c60bc`, 0 commit producteur).
+
+### REVIEW-001 / R1-3 — FERMÉ : les deux primitives maison T8 existent, une seule copie du geste
+- **`components/argent/RelectureArgent.tsx`** (199 l.) : l'écran de relecture — feuille basse sur **Radix Dialog** (focus trap, ESC, retour de focus, rôle dialog + titre/description = AUTH-05) ; contrat : `ouvert`/`enCours`/`onFermer`/`onConfirmer`/`titre`/`montant (nombre)`/`sousLigne`/`avertissement`/bloc PIN optionnel/libellés/accent. Le **verrou synchrone anti double-tap reste chez l'appelant** (pattern caisse POSCaisse 208-210) — la primitive n'appelle jamais à sa place ; la fermeture (ESC, overlay, X) est refusée tant que `enCours`.
+- **`components/argent/PinArgent.tsx`** (47 l.) : le champ PIN 4 chiffres (contrôlé, role="alert" relié, AUTH-05) — la VÉRIFICATION reste chez l'appelant (`/auth/pin/verify` AVANT le POST).
+- Migration de **`TransfertPage`** (relecture) et **`MaCooperative`** (relecture + PIN conditionnel) — les deux feuilles inline supprimées ; comportements métier inchangés (mêmes endpoints, mêmes verrous, mêmes textes d'avertissement, PIN vérifié avant POST).
+- **MarcheVirtuel garde son modal PIN historique** (3e copie, `:1130`) : il porte `montantsMasqués` et `speakSilent` — sa migration est tracée dans l'en-tête de la primitive comme lot à part (dette assumée, pas une justification d'ARCHITECTURE.md : l'objectif T8 est deux primitives INÉVITABLES pour les nouveaux parcours, atteint).
+
+### REVIEW-001 / R1-4 — FERMÉ : la relecture parle
+- « **Dite et affichée depuis la même source** » (POSCaisse 558-665) : le montant est UN nombre — la forme écran (« 5 000 FCFA ») et la forme parlée (« 5 000 francs », ARG-17) en dérivent toutes deux ; la phrase reproduit exactement ce qui est affiché (titre + montant + destinataire + avertissement) et parle UNE fois par ouverture (garde par ref). T7 respecté : tout ce qui est parlé est écrit.
+- **Triple canal** complété : `vibrerAttente()` (90 ms, le motif maison « pris mais pas encore parti », POSCaisse 509-528) au début de l'envoi, dans la primitive ; `vibrerSucces()`/`vibrerErreur()` ajoutés aux issues chez l'appelant (TransfertPage done/catch, MaCooperative succès/échec) — haptique.ts doctrine respectée partout.
+
+### REVIEW-001 / R1-5 — FERMÉ pour les surfaces extraites : Radix Dialog (AUTH-05)
+- Les deux nouvelles surfaces d'argent passent par `DialogPrimitive` : focus trap, ESC, `aria-modal` + titre/description reliés, et **fermeture impossible pendant l'envoi**. Évaluation demandée par R1-5 → **adoptée** ; les futures surfaces d'argent prennent `RelectureArgent`, pas de nouvelle feuille custom.
+
+### REVIEW-001 / R1-2 — FERMÉ : TransfertPage sous la norme
+- `TransfertPage.tsx` : 562 → **499 lignes**. Deux découpes cohérentes avec R1-3 : `genererCleIdempotence` → `utils/idempotence.ts` (contrat réutilisable pour tout POST d'argent rejouable, doc avec la fonction) et le catalogue `Method`/`METHODS` → `components/wallet/methodsTransfert.ts` (données seules). `MaCooperative.tsx` : 440 → 382 lignes.
+
+### Batteries (rejeu complet sur l'état final)
+`tsc -b` frontend 0 ; `test:charte-marchande` EXIT 0 ; `test:ci` EXIT 0 (**622 assertions vertes, 0 croix**) ; `test:parole-entree` EXIT 0 ; `test-voix-trace-source` = les 4 rouges hérités connus, 0 nouveau ; garde-argent = **exactement les 3 refus attendus**. (Backend non touché par ce lot — pas de re-run tsc backend.)
+
+### INCIDENTS SANDBOX (4e bascule de branche de la session, écartés sans dégât)
+- Le disque est repassé sur `main` en début de lot (détecté : `Read` voyait un fichier inexistant côté outil) — re-basculé `dev`, re-chaînage immunisé.
+- L'extraction `idempotence.ts` a dû être **refaite** (bascule transitoire entre deux commandes : le fichier écrit a disparu, le reste des éditions a tenu) — re-vérifié après coup, `TransfertPage` à 499 lignes confirmé.
+
+### Restent ouverts
+- Migration du modal PIN de MarcheVirtuel sur `PinArgent` (lot à part) ; R2-3 (option cosmétique) ; maillon backend dans `test:ci` (chaîne gelée — au re-gel de Patrick) ; **re-gel humain Patrick** (INC-001/2 — le seul re-gel valide).
