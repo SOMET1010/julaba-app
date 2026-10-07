@@ -13,7 +13,7 @@ import { jourLocal } from '../utils/jourLocal';
 import { etatCatalogueCaisse, type EtatCatalogueCaisse, type LectureCatalogue } from '../services/etatCatalogueCaisse';
 // Couche 2 offline : file d'attente durable des ventes/dépenses + synchro.
 import {
-  enfilerOperation, synchroniser,
+  enfilerOperation, synchroniser, surMiseEnFile,
   nbEchecs as offlineNbEchecs, lettresMortes as offlineLettresMortes, purgerLettreMorte as offlinePurger,
   ventesParties, ventesEncoreEnFile,
   type OfflineEndpoint, type OfflineMethod, type LettreMorte,
@@ -429,16 +429,21 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     // alerte, et absente du chiffre d'affaires.
     //
     // On relance donc nous-mêmes, en espaçant : 5 s, 15 s, 1 min, puis toutes
-    // les 5 minutes. L'espacement protège un réseau de marché déjà fragile ;
+    // les 2 minutes. L'espacement protège un réseau de marché déjà fragile ;
     // l'absence de limite protège l'argent, qui ne doit jamais être abandonné.
+    // A2 (terrain PIE 07/10) : plafond ramené de 5 à 2 min — une vente doit
+    // partir moins de 5 min après le retour du réseau, `online` ou pas.
     const DELAIS_MS = [5000, 15000, 60000];
-    const DELAI_MAX_MS = 5 * 60 * 1000;
+    const DELAI_MAX_MS = 2 * 60 * 1000;
     let minuterie: ReturnType<typeof setTimeout> | null = null;
     let essai = 0;
     let arrete = false;
 
     const programmerRelance = () => {
       if (arrete) return;
+      // Une seule minuterie à la fois : la mise en file peut armer pendant
+      // qu'un tour est en vol.
+      if (minuterie) clearTimeout(minuterie);
       const delai = DELAIS_MS[essai] ?? DELAI_MAX_MS;
       essai++;
       minuterie = setTimeout(() => { void sync(); }, delai);
@@ -495,12 +500,23 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // A2 — DEUX DÉCLENCHEURS DE PLUS (terrain PIE 07/10 : les ventes ne
+    // partaient qu'au redémarrage). Une MISE EN FILE arme la relance, depuis
+    // le premier palier ; et quand la page redevient VISIBLE (elle rallume son
+    // téléphone), on rejoue tout de suite. `online` seul ne suffit pas : la
+    // WebView ne l'émet pas toujours.
+    const desabonner = surMiseEnFile(() => { essai = 0; programmerRelance(); });
+    const surVisible = () => { if (document.visibilityState === 'visible') void sync(); };
+
     void sync(); // rattrape une file laissée par une session hors-ligne précédente — la SIENNE uniquement
     window.addEventListener('online', sync);
+    document.addEventListener('visibilitychange', surVisible);
     return () => {
       arrete = true;
       if (minuterie) clearTimeout(minuterie);
+      desabonner();
       window.removeEventListener('online', sync);
+      document.removeEventListener('visibilitychange', surVisible);
     };
   }, [appUser?.id, rafraichirEchecs]);
 
