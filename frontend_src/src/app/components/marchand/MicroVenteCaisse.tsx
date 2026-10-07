@@ -407,7 +407,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         }
         await enregistrerDepense(montant, action.description || 'Dépense vocale');
       } else if (action?.type === 'consulter_ventes' || data.intent === 'consulter_ventes') {
-        navigate('/marchand/ventes');
+        navigate('/marchand/ventes-passees'); // `/marchand/ventes` n'existe pas (404)
       } else if (action?.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
         navigate('/marchand/stock');
       }
