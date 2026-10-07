@@ -28,6 +28,7 @@ import tataLouImg from "../../../assets/images/tantie-marchand.png";
 import { RoleConfig } from '../../config/roleConfig';
 import { CompactProfileCard } from './CompactProfileCard';
 import { WalletCard } from '../wallet/WalletCard';
+import { moduleVisible } from '../../config/modulesPilote';
 import { AcademyWidget } from '../academy/AcademyWidget';
 import { ScoreResumeCard } from './ScoreResumeCard';
 import { RoleType } from '../../config/roleConfig';
@@ -539,8 +540,12 @@ export function RoleDashboard({
         </motion.div>
       )}
 
-      {/* WALLET - Juste après Kassa */}
-      {showKeiwa && (
+      {/* WALLET - Juste après Kassa.
+          Keiwa est hors pilote et débite/crédite un wallet réel : la carte ne
+          se montre que si le build l'autorise (config/modulesPilote.ts,
+          décision du 07/10/2026). `showKeiwa` reste le choix de l'écran
+          appelant ; le drapeau le coupe en amont, pour tous les profils. */}
+      {showKeiwa && moduleVisible('keiwa') && (
         <WalletCard 
           roleColor={primaryColor} 
           onNavigate={() => {
