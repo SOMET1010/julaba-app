@@ -986,7 +986,11 @@ export function BOEnrolement() {
     setBusy(dossier.id, true);
     try {
       const motif = motifComplement.trim() ? `COMPLEMENT: ${motifComplement.trim()}` : 'COMPLEMENT requis';
-      await updateDossierStatut(dossier.id, 'complement_requis', motif);
+      // Valeur CANONIQUE du serveur : `complement` (identifications.controller,
+      // SMS « complément requis ») et de l'écran identificateur. `complement_requis`
+      // n'est qu'un libellé d'affichage (normalizeStatut) : l'écrire en base coupait
+      // le SMS et faisait disparaître le dossier côté identificateur.
+      await updateDossierStatut(dossier.id, 'complement', motif);
       toast.success(`Demande de complément envoyée pour ${dossier.acteurNom || 'ce dossier'}.`);
       setComplementModal({ open: false, dossier: null });
       setMotifComplement('');
