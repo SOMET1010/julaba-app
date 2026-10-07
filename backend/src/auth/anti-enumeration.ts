@@ -1,3 +1,5 @@
+import { randomInt } from 'node:crypto';
+
 // AUTH-07 (audit UI auth 05/10/2026) — outils anti-énumération côté serveur.
 //
 // LE CONSTAT. L'audit UI auth a laissé deux dettes serveur, écrites en clair
@@ -105,7 +107,10 @@ const GIGUE_MS = 80;
  * travail, puis appelle ceci juste avant de retourner la réponse.
  */
 export async function repondreAEcheanceUniforme(debut: number): Promise<void> {
-  const echeance = debut + PLANCHER_MS + Math.floor(Math.random() * GIGUE_MS);
+  // `randomInt` plutôt que `Math.random` : la gigue n'est pas un secret, mais
+  // le banc SEC-07 (pin-jamais-rendu.spec.ts) refuse tout `Math.random` dans
+  // backend/src/auth — on s'y plie au lieu de lui ouvrir une exemption.
+  const echeance = debut + PLANCHER_MS + randomInt(GIGUE_MS);
   const reste = echeance - Date.now();
   if (reste > 0) await new Promise((resoudre) => setTimeout(resoudre, reste));
 }
