@@ -145,6 +145,9 @@
     "test:flows-maestro",
     "test:credit-hors-pilote",
     "test:modules-pilote",
+    "test:lieux-marchands",
+    "test:photo-carte",
+    "test:lien-activation",
     "test:rejeu-declencheurs",
     "test:encaisser-formes-dites"
   ],
