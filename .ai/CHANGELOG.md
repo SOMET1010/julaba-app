@@ -3,6 +3,13 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+
+### Ajouté — Audit UX marchand/producteur/vente vocale + lots UX-7 « La voix dit vrai » et UX-8 « Argent marchand sous la garde » (2026-10-07, 2ᵉ session)
+Sur demande utilisateur (« améliorer l'UX marchand et producteur, meilleur UX pour la vente vocale ») — audit re-état puis exécution :
+- **Audit** : `docs/audit/AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` — 3 explorations parallèles (marchand, producteur, vente vocale), re-état des constats du 06/10 (la majorité corrigée, preuves `dev@5e773ae`), carte du pipeline voix, frictions F-V1..F-V7, plan UX-7..UX-10, 5 décisions à trancher (Patrick). Faux positif documenté : « erreur de syntaxe TantieSagesseModal:73 » = artefact de transport `[m` avalé à l'affichage (vérifié grep-pattern + tsc vert).
+- **UX-7 (voix)** : T7 caisse — l'échec générique d'encaissement S'ÉCRIT (`e780436`) ; T7 marchand — MesCommandes/DepenseForm/hors-ligne s'écrivent (`4ab3452`) ; Tontines — trois situations trois phrases + Réessayer (`14662b9`) ; T7 producteur — plus aucun message serveur brut ni UUID dictés, `messageUtilisateur` + toasts appariés (`eba2380`) ; ARG-17 — montants dictés en toutes lettres (`nombreEnMotsFr`, `1f44736`) ; encaissement producteur — même phrase dit/écrite + triple canal vibrerSucces/vibrerErreur (`5a56cb3`) ; le muet §8.1 devient lisible — réglage « Voix coupée » dans les Paramètres (`48b868f`)
+- **UX-8 (argent marchand)** : MarchéVirtuel — verrou synchrone anti double-tap (commandes dupliquées impossibles, BUG-011) + PIN honnête (« Confirmer la commande ») + fermeture refusée pendant l'envoi (`968c454`) ; TransfertPage — recherche destinataire trois situations (404 ≠ panne ≠ hors ligne + Réessayer, M-P1-1) + échec d'envoi dit et écrit (`56c0293`) ; PIN conditionnel dans la relecture — **M-P0-3 COMPLET** (`34f8c0a`)
+- Vérifications : `tsc -b` front 0, `tsc --noEmit` back 0, `test:charte-marchande` EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = EXACTEMENT les 4 rouges héritées connues (0 nouveau — AppContext reste verte), garde-argent = EXACTEMENT les 3 refus attendus (re-gel humain Patrick en attente)
 ## [Non publié]
 
 ### Ajouté — Primitives d'argent maison T8 (2026-10-07)
