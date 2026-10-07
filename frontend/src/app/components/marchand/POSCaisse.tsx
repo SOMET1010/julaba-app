@@ -549,6 +549,10 @@ function POSCaisseInner() {
         toast.error(raison);
         dire(raison);
       } else {
+        // T7 (AUDIT-UX-...-VOIX-2026-10-07, F-V1) : tout ce qui est parlé
+        // doit être écrit — la branche 4xx écrit sa raison, le générique
+        // écrit la MÊME phrase que dit le catalogue.
+        toast.error("La vente n'a pas pu être enregistrée. Réessaie.");
         direMessage('TATA_VENTE_ECHEC');
       }
     }

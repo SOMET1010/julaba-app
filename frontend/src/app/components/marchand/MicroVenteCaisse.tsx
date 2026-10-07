@@ -673,6 +673,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       vibrerSucces();
       if (guidageVocal()) speakMessage('TATA_PRODUIT_AJOUTE_BOUTIQUE', { produit: propositionProduit.nom });
     } catch {
+      // T7 : l'échec s'écrit aussi — en mode lecture, l'écran reste le seul
+      // canal ; la phrase écrite est celle du catalogue.
+      toast.error("Ça n'a pas marché. Tu pourras l'ajouter depuis Mon stock.");
       if (guidageVocal()) speakMessage('TATA_AJOUT_BOUTIQUE_ECHEC');
     } finally {
       setCreationEnCours(false);

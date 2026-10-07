@@ -28,6 +28,7 @@ import { Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { guidageVocal } from '../../utils/accessMode';
+import { toast } from 'sonner';
 import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import {
@@ -207,6 +208,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       direMessage('TATA_PRODUIT_POSE', { produit: aPoser.nom, montant: aPoser.prix, unite: aPoser.unite });
       onPose();
     } catch {
+      // T7 : l'échec s'écrit aussi (même phrase que le catalogue dit).
+      toast.error("La vente n'a pas pu être enregistrée. Réessaie.");
       direMessage('TATA_VENTE_ECHEC');
       setEnCours(false);
     }
