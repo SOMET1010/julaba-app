@@ -166,7 +166,8 @@ interface BackOfficeContextType {
   updateBOUserActif: (id: string, a: boolean) => Promise<void>;
   updateBOUserPermissions: (id: string, permissions: Record<string, boolean>) => Promise<void>;
   addInstitution: (institution: any) => Promise<void>;
-  updateInstitutionModules: (id: string, modules: any) => Promise<void>;
+  /** PATCH /institutions/:id — modules, compte responsable, zone supervisée. */
+  updateInstitution: (id: string, patch: InstitutionPatch) => Promise<void>;
   updateInstitutionStatut: (id: string, s: string) => Promise<void>;
   deleteInstitution: (id: string) => Promise<void>;
   refreshUser: () => Promise<boolean>;
@@ -734,8 +735,8 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       await boCreateInstitution(i);
       await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
-    updateInstitutionModules: async (id: string, m: any) => {
-      await boUpdateInstitution(id, { modules: m });
+    updateInstitution: async (id: string, patch: InstitutionPatch) => {
+      await boUpdateInstitution(id, patch);
       await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
     updateInstitutionStatut: async (id: string, s: string) => {
@@ -898,15 +899,24 @@ export const DEFAULT_INSTITUTION_PERMISSIONS: InstitutionPermissions = {
   territoires: [],
 };
 
+export interface InstitutionPatch {
+  modules?: ModuleAcces;
+  responsable_id?: string | null;
+  zone_id?: string | null;
+}
+
 export interface InstitutionBO {
   id: string;
   name?: string;
   nom?: string;
   type?: TypeInstitution;
   permissions?: InstitutionPermissions;
-  email?: string;
-  referentNom?: string;
-  referentTelephone?: string;
+  /** Compte (rôle institution) qui se connecte pour cette fiche : c'est lui qu'ouvre la garde `/institution/*`. */
+  responsable_id?: string | null;
+  /** Rendu par le serveur : nom et téléphone MASQUÉ du compte responsable. */
+  responsable?: { id: string; nom: string; telephone: string } | null;
+  /** Zone supervisée : sans elle, la garde serveur refuse tout (403). */
+  zone_id?: string | null;
   dateCreation?: string;
   creePar?: string;
   region?: string;
