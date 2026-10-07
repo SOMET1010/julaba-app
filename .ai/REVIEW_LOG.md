@@ -268,3 +268,36 @@ Le projet a un historique de revues très riche :
 - **Batteries rejouées indépendamment le 2026-10-07** sur `dev@c379731` : tsc front/back 0 ; charte EXIT 0 ; `test:ci` EXIT 0 (622 assertions vertes, 0 croix) ; `check:nest-versions` EXIT 0 ; `parole-entree` EXIT 0 (7/7 §[7]) ; `voix-trace-source` = 4 rouges hérités connus, 0 nouveau ; `garde-argent` = exactement les 3 refus attendus ; **jest backend toujours mort (B3-3)** — sonde : « Test suite failed to run », 0 suite exécutable
 - **En attente d'humain (Patrick)** : re-gel garde-argent (`racinesScannees` → `frontend/src` puis `--figer-perimetre` puis `--figer-gardes`) — tant que ce n'est pas fait, les 3 refus du garde SONT le signal voulu
 - **En attente producteur** : B3-3 (ts-jest/jest + preuve par run vert backend) ; recette swagger 12 avant tout déploiement
+## Suivi des corrections — exécution du 2026-10-07 (REVIEW-001/R1-1, REVIEW-002/R2-1..2, REVIEW-003/B3-3)
+
+**Exécutant** : Agent Reviewer (Z.ai Code), rôle orchestrateur — sur ordre explicite de l'utilisateur (« Continues les corrections »), après vérification anti-collision (aucun commit producteur depuis `1c2f914`/`704023f`, dev == origin/dev à `be5e437`). Hors portée tenue : re-gel humain (Patrick), chaîne `test:ci` (gelée), gels (aucun exécuté).
+
+### REVIEW-003 / B3-3 — FERMÉ : suite de tests backend ressuscitée par retrait des majeures non prouvées
+- Décision : l'option « revenir jest ^29 » de l'action corrective (REVIEW-003) est retenue, étendue aux TROIS majeures non prouvées de `060c333` — `jest` ^30.5.2 → **^29.7.0**, `@types/jest` ^30.0.0 → **^29.5.14**, `@nestjs/swagger` ^12.0.2 → **^11.4.7** — dans `backend/package.json` ET `package.json` racine (le producteur avait bumpé les deux). `backend/package.json` redevient **byte-identique à `dffe705`** (preuve : `git diff dffe705 -- backend/package.json` VIDE).
+- **Preuve nouvelle (mécanique)** : l'upgrade swagger 12 était IRRÉSOLUBLE — `npm install` échoue en ERESOLVE : `@nestjs/swagger@12.0.2` exige un peer `@nestjs/common@^12.0.0` alors que le projet tourne en `@nestjs/common@11.2.6`. La « recette swagger 12 » demandée en action 4 est **morte-non-lieu** : l'upgrade ne pouvait pas booter ; il est retiré, pas prouvé.
+- **Preuve par exécution** : `npm install` EXIT 0 ; versions installées vérifiées (jest **29.7.0**, ts-jest **29.4.14**, swagger **11.4.7**, @types/jest **29.5.14**) ; suite unitaire backend **33 suites / 251 tests, EXIT 0** (la suite morte depuis `060c333` — cf. B3-3 — est entièrement exécutable) ; `tsc --noEmit` backend 0 ; `nest build` EXIT 0.
+- Bornes honnêtes : les invariants (Postgres jetable) ne peuvent pas tourner dans le sandbox (aucun Postgres) — ils restent l'affaire de la CI ; un maillon backend exécutable dans `test:ci` (demandé en REVIEW-003) n'est PAS ajouté car la chaîne est GELÉE (refus 2 du garde-argent — décision humaine en attente ; à faire au moment du re-gel de Patrick).
+- Commit : `c7e2715`.
+
+### REVIEW-001 / R1-1 — FERMÉ : le montant cotisation ne vit plus qu'à un endroit
+- `MaCooperative.tsx` : ajout de `COTISATION_MONTANT_LIBELLE` (dérivé de `COTISATION_MONTANT` via `toLocaleString('fr-FR')` + normalisation des insécables), utilisé par le bouton « Payer ma cotisation » ET le récap du modal — les deux libellés en dur disparaissent. Rendu **byte-identique prouvé** (node : `25\u00A0000 FCFA` ≡ ancien libellé).
+- Restent ouverts (lot UX suivant, non traités ici) : R1-2 (TransfertPage 562 lignes), R1-3 (composants partagés RelectureArgent/PinArgent), R1-4 (voix sur relectures), R1-5 (Radix Dialog surfaces argent).
+- Commit : `6db87ed`.
+
+### REVIEW-002 / R2-1 — FERMÉ par traçage ; R2-2 — FERMÉ ; R2-3 — non traité (option)
+- **R2-1 (traçage choisi plutôt que suppression)** : `CODE-NEW-7` ajouté au `DEBT_REPORT.md` — écrans orphelins `IdentificateurStats.tsx` + `IdentificateurDashboard.tsx`, orphelinat RE-VÉRIFIÉ mécaniquement le 07/10 (`git grep` : 0 référence externe) ; la suppression reste le geste de la fusion §8.5 définitive (périmètre producteur).
+- **R2-2** : newline final ajouté à `AppContext.tsx` ; la fixture `parole-3917bb7.json` est re-bénie PAR LE GARDE (`--regenerer`) puis **fusionnée en liste blanche** — seule l'empreinte `contexts/AppContext.tsx` change (`1dc2a065…` → `64f884e0…`), diff = 1 ligne ; les 3 divergences héritées (useVoiceCore, AppLayout, ObjectifContext ×2) restent volontairement rouges (baseline REVIEW-005 préservée).
+- R2-3 (template literal sans interpolation, option) : non traité — cosmétique, aucune valeur de garde.
+- Commit : `c292812`.
+
+### INCIDENT transitoire consigné (résolu dans la même session)
+- Le mode `--regenerer` du garde `test-voix-trace-source.mjs` a brièvement BÉNI TOUTES les empreintes courantes (garde passé « Tout est vert », baseline des 4 rouges hérités écrasée) — détecté immédiatement (fusion initiale en échec : la fixture porte les clés `reference`/`empreintes`/`appels`, pas `fichiers`), corrigé par la fusion liste blanche, rejeu = EXACTEMENT les 4 rouges hérités, 0 nouveau. **Leçon** : `--regenerer` est un geste à double tranchant — il ne doit JAMAIS tourner sans fusion immédiate et contrôlée ; proposition (registre gardes) : le mode devrait REFUSER de régénérer si des divergences héritées connues seraient bénies au passage.
+
+### Batteries finales (état `dev` post-corrections, rejeu complet le 2026-10-07)
+`tsc -b` frontend 0 ; `tsc --noEmit` backend 0 ; `test:charte-marchande` EXIT 0 ; `test:ci` EXIT 0 (**622 assertions vertes, 0 croix**) ; `test:parole-entree` EXIT 0 ; `test-voix-trace-source` = les 4 rouges hérités connus, 0 nouveau ; garde-argent = **exactement les 3 refus attendus** ; `npm run test:unit` backend **251/251** ; `nest build` EXIT 0.
+
+### État des bloquants après cette session
+- **REVIEW-003** : B3-1/B3-2 annulés (restauration vérifiée en REVIEW-005) + B3-3 corrigé ici → les 3 bloquants sont levés ; reste l'action 2 (re-gel humain Patrick) — remédiation du garde, pas un défaut du commit ; la validation finale de `060c333` reste conditionnée à ce re-gel pour la partie garde-argent.
+- **REVIEW-004** : blocage levé (REVIEW-005).
+- **INC-001** : OUVERT atténué — actions 1 (restauration) et 3 (jest/ts-jest, via le retrait des majeures) sont faites ; reste l'action 2 (re-gel humain Patrick).
+- **Restent ouverts** : R1-2, R1-3, R1-4, R1-5 (lot UX suivant) ; re-gel humain Patrick ; maillon backend dans test:ci (au moment du re-gel).

@@ -579,3 +579,23 @@ Stage Summary:
 - REVIEW-005 ✅ : les actes correctifs font exactement ce qu'ils annoncent — gels et scripts byte-identiques à dffe705 (restauration, pas un gel), gardes voix réencodées avec historique, baseline des 4 rouges hérités préservée, toutes les batteries vertes ou exactement aux baselines attendues, rejouées indépendamment
 - État des bloquants : REVIEW-003 reste ❌ mais réduite à B3-3 (producteur) + re-gel humain Patrick ; REVIEW-004 blocage LEVÉ ; INC-001 atténué (garde honnête aux 3 refus, en attendant le re-gel humain)
 - Frontières respectées : AUCUN gel exécuté, backend/package.json et lock non touchés, aucun fichier producteur modifié
+---
+Task ID: 21
+Agent: Z.ai Code (orchestrateur, rôle Agent Reviewer)
+Task: « Continues les corrections » — exécution des corrections restantes des revues : B3-3 (jest/ts-jest/swagger), R1-1 (montant cotisation), R2-1 (traçage orphelins), R2-2 (newline AppContext + fixture), preuve backend complète, registres.
+
+Work Log:
+- Anti-collision : dev == origin/dev à be5e437, 0 commit producteur depuis 1c2f914/704023f — B3-3 (backend/package.json) entre dans mon périmètre par ORDRE EXPLICITE de l'utilisateur
+- INCIDENT SANDBOX (écarté) : bascule dev→main en cours de session (2e artefact du genre) — l'outil Read/Edit voyait l'état main (jest 29 déjà présent) alors que bash voyait dev ; TOUTES les éditions repo passées en bash-python strict (remplacements assertés) ; aucun dégât (le MultiEdit a refusé proprement sur le faux état)
+- B3-3 : diff dffe705..dev backend/package.json = exactement 3 majeures (jest, @types/jest, swagger) + racine (swagger) ; reverts → backend/package.json BYTE-IDENTIQUE dffe705 ; découverte : npm install ERESOLVE prouve que swagger 12 exige peer common ^12 vs common 11.2.6 — upgrade irrésoluble, recette swagger 12 = morte-non-lieu
+- Preuves B3-3 : npm install EXIT 0 ; jest 29.7.0 / ts-jest 29.4.14 / swagger 11.4.7 / @types/jest 29.5.14 installés ; test:unit 33 suites / 251 tests EXIT 0 ; tsc --noEmit 0 ; nest build EXIT 0 ; invariants = CI (pas de Postgres sandbox) ; maillon backend dans test:ci NON ajouté (chaîne gelée — refus 2, décision humaine)
+- R1-1 : le montant vit dans MaCooperative.tsx (PAS PaiementsPage — recherche préalable) ; COTISATION_MONTANT_LIBELLE dérivé, 2 libellés en dur remplacés (bouton + récap) ; rendu byte-identique prouvé en node (« 25\u00A0000 FCFA » ≡ ancien)
+- R2-2 : newline final AppContext.tsx ; fixture parole-3917bb7 re-bénie PAR LE GARDE (--regenerer) — INCIDENT transitoire consigné : le regen brut a béni TOUTES les empreintes (garde « Tout est vert », baseline écrasée), détecté à la fusion (clés réelles : reference/empreintes/appels), corrigé par fusion liste blanche — seule AppContext re-bénie (1dc2a065→64f884e0, diff fixture = 1 ligne), rejeu = exactement les 4 rouges hérités ; leçon : --regenerer jamais sans fusion immédiate contrôlée (proposition de garde au registre)
+- R2-1 : orphelinat re-vérifié (git grep 0 référence externe) → CODE-NEW-7 au DEBT_REPORT (traçage choisi, suppression = geste de fusion §8.5 au producteur)
+- Batteries finales : tsc front/back 0 ; charte EXIT 0 ; test:ci EXIT 0 (622 vertes, 0 croix) ; parole-entree EXIT 0 ; voix-trace-source = 4 rouges hérités, 0 nouveau ; garde-argent = exactement les 3 refus attendus (MaCooperative hors noyau figé — aucune alerte périmètre) ; test:unit 251/251 ; nest build 0
+- Commits : c7e2715 (B3-3, 3 fichiers), 6db87ed (R1-1), c292812 (R2-2 + fixture + CODE-NEW-7) — git add explicite, 1 préoccupation chacun ; registres : COMMIT_LOG (section datée avant « Commits à venir »), CHANGELOG (section Corrigé 07/10), REVIEW_LOG (Suivi des corrections + état des bloquants), worklog 21
+
+Stage Summary:
+- B3-3 FERMÉ avec preuve par exécution (251 tests verts) ET preuve nouvelle (swagger 12 irrésoluble par peers — la recette demandée ne pouvait pas booter, l'upgrade est retiré) ; REVIEW-003 : ses 3 bloquants sont levés (B3-1/B3-2 restauration REVIEW-005, B3-3 ici), reste le re-gel humain Patrick
+- R1-1, R2-1, R2-2 FERMÉS ; restent R1-2/R1-3/R1-4/R1-5 (lot UX suivant), R2-3 (option), maillon backend test:ci (au re-gel), INC-001 action 2 (Patrick)
+- Frontières : backend/package.json + racine + lock touchés SUR ORDRE EXPLICITE de l'utilisateur, documenté ; aucun gel exécuté, chaîne test:ci intouchée, suppression des orphelins laissée au producteur

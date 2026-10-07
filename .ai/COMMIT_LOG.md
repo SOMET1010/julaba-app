@@ -103,6 +103,21 @@ d9f08ad fix(ci): REVIEW-003/004 Act-1 — restaurer schema-pilote + check-nest-v
 - **Revue** : ✅ actions DEMANDÉES par REVIEW-003/REVIEW-004, exécutées par le reviewer-agissant-orchestrateur — preuves mécaniques dans REVIEW_LOG, section « Suivi des actions correctives » ; B4-1 et B4-2 levés, INC-001 atténué
 - **Détail** : scripts/schema-pilote.mjs + scripts/check-nest-versions.mjs (état `dffe705`) · ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json (état `dffe705` — restauration, PAS un gel) · paroleEntree.test.mts §[7] (7 assertions §8.1) · test-voix-trace-source.mjs A/C + en-têtes · fixture parole-3917bb7.json (liste blanche : seule contexts/AppContext.tsx re-bénie) · BUGS.md 8/5/3 + BUG-006/007 réservés
 
+## 07/10/2026 — Corrections des revues REVIEW-001/002/003 (agent Z.ai Code)
+
+```
+c7e2715 fix(backend): REVIEW-003/B3-3 — retire les majeures non prouvées (jest 29.7.0, @types/jest 29.5.14, swagger 11.4.7, backend + racine, retour dffe705)
+6db87ed fix(marchand): REVIEW-001/R1-1 — le libellé cotisation dérive de COTISATION_MONTANT (bouton + récap modal)
+c292812 chore(voix): REVIEW-002/R2-2 — newline AppContext + fixture re-bénie par le garde (liste blanche) ; docs: R2-1 CODE-NEW-7
+docs: journaux .ai + worklog Task 21
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+- **B3-3** : preuve par exécution — suite unitaire backend **33 suites / 251 tests EXIT 0** (la suite morte ressuscitée), `tsc --noEmit` 0, `nest build` EXIT 0 ; preuve nouvelle : l'upgrade swagger 12 était **irrésoluble** (peer `@nestjs/common ^12` vs common 11.2.6 — ERESOLVE npm), la « recette swagger 12 » est morte-non-lieu (upgrade retiré, pas prouvé)
+- **R1-1** : rendu byte-identique prouvé (`25\u00A0000 FCFA`) ; **R2-2** : diff fixture = 1 ligne (hash AppContext seul) ; **R2-1** : orphelinat re-vérifié mécaniquement (0 référence externe) avant traçage
+- Détail : worklog Task 21 (REVIEW_LOG, section « Suivi des corrections »)
+
 ## Commits à venir (planifiés)
 
 ### P0 — Gouvernance (à commiter dès validation)
