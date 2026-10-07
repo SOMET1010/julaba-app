@@ -23,7 +23,7 @@ Faute d'accès à Render, l'agent a joué la recette sur une **stack locale** co
 - web servi par `vite preview` ;
 - passage navigateur avec Chromium/Playwright (412×915), plus des appels API directs.
 
-Pour les écrans BO, coopérative et producteur, la stack locale portait aussi les correctifs de la PR `claude/rc-correctifs` (§4). Chaque ligne dit si le statut vaut **sur main** ou **avec les correctifs**.
+Pour les écrans BO, coopérative et producteur, la stack locale portait aussi les correctifs de la PR #262 (`claude/rc-correctifs`). Chaque ligne dit si le statut vaut **sur main** ou **avec les correctifs**.
 
 Légende : ✅ constaté OK · ❌ constaté cassé · 🟡 partiel · ⬜ non testé (raison donnée) · 🔒 hors pilote (accessible, non masqué).
 
@@ -154,7 +154,7 @@ Constaté avec un **super_admin**, plus un admin_general pour les contrôles de 
 
 | Suite | Résultat |
 |---|---|
-| CI GitHub sur main (`CI — filet d'intégration`) | ❌ **rouge** : 1 échec sur 251, `pin-jamais-rendu.spec.ts` SEC-07 (`Math.random` dans `anti-enumeration.ts`, AUTH-07). Corrigé dans `claude/rc-correctifs` |
+| CI GitHub sur main (`CI — filet d'intégration`) | ❌ **rouge** : 1 échec sur 251, `pin-jamais-rendu.spec.ts` SEC-07 (`Math.random` dans `anti-enumeration.ts`, AUTH-07). Corrigé par la PR #262 (`claude/rc-correctifs`) |
 | CI GitHub `GARDE-ARGENT` sur main | ❌ **rouge** : une assertion retirée de `test-verrou-connexion.mjs` par 4bef809 (AUTH-03). Le refigeage est réservé à Patrick |
 | Backend unitaires (avec correctifs) | ✅ 251/251 |
 | Backend invariants PostgreSQL (avec correctifs) | ✅ 290/290 (57 suites) |
