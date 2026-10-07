@@ -230,3 +230,41 @@ Le projet a un historique de revues très riche :
 - **REVIEW-003 / B3-3 (Act-3)** : aligner `ts-jest` ^30 (ou revenir jest ^29) + run vert de preuve — `backend/package.json`, périmètre producteur.
 - **REVIEW-003 / Act-4** : recette swagger 12 avant tout déploiement.
 - **REVIEW-004 / remarque** : recette du flux de diagnostic terrain depuis Paramètres (le garde n'assertionne que le statique).
+
+### REVIEW-005 — actes correctifs REVIEW-003/004 (`d9f08ad` + `4eb6471` + `c379731`)
+- **Date** : 2026-10-07
+- **Reviewer** : Agent Reviewer (Z.ai Code) — instance de continuation (Task 20)
+- **Auteur du code** : Agent Reviewer (Z.ai Code) — instance précédente, rôle orchestrateur (Task 19)
+- **Fichiers concernés** : `ci/PERIMETRE-ARGENT.json` + `ci/EMPREINTE-GARDES.json` (restauration), `scripts/schema-pilote.mjs` + `scripts/check-nest-versions.mjs` (restauration), `frontend/src/app/services/paroleEntree.test.mts`, `frontend/scripts/test-voix-trace-source.mjs`, `frontend/scripts/fixtures/parole-3917bb7.json`, registres `.ai/{BUGS,INCIDENTS,CHANGELOG,COMMIT_LOG,REVIEW_LOG}.md`, `worklog.md`
+- **Commits revus** : `d9f08ad` (Act-1 : scripts CI + gels), `4eb6471` (Act-2 : gardes voix), `c379731` (Act-3 + suivis)
+- **Statut** : ✅ APPROUVÉ — les trois actes font exactement ce qu'ils annoncent, preuves mécaniques re-faites indépendamment par cette revue
+- **Critères évalués** :
+  - Qualité du code : ✅ (les 4 fichiers restaurés sont **byte-identiques à `dffe705`** — `git diff dffe705 dev -- ci/… scripts/…` VIDE, preuve mécanique ; gardes voix réécrites : assertions strictes par signature exacte, nesting < 3, fonctions courtes)
+  - Patterns respectés : ✅ (la frontière des gels est tenue : RESTAURATION de fichiers qui annule le geste non autorisé de `060c333`, pas un re-gel — le re-gel est explicitement re-réservé à Patrick dans les 3 registres ; aucun `--figer-*` exécuté)
+  - Lisibilité : ✅ (l'historique des DEUX arbitrages — AKW-02 puis §8.1 qui le supersède — est consigné dans les en-têtes des deux gardes ET sur le site même du garde retiré (`AppContext.tsx` « VOIX OUVERTE AUX TROIS RÔLES », asserté par la garde) ; les assertions des sections [1]..[6] sont inchangées — seuls commentaires et en-têtes ajustés, vérifié au diff)
+  - Maintenabilité : ✅ (baseline des rouges hérités PRÉSERVÉE : 4 rouges connus, 0 nouveau — la liste blanche de la fixture ne re-bénit qu'UNE entrée (`contexts/AppContext.tsx`), conséquence directe et tracée de §8.1 ; BUG-006/007 réservés, les prochains bugs prennent BUG-011+)
+  - Séparation des couches : ✅ (aucune logique métier touchée ; périmètre = scripts CI racine + gardes frontend + registres ; `backend/package.json` et lock NON touchés)
+  - Pas de duplication inutile : ✅ (la garde C encode désormais l'UNICITÉ de la surface Rapport de test — Paramètres — et refuse le retour silencieux du doublon de l'écran de connexion)
+  - Tests unitaires : ✅ (toutes les batteries rejouées indépendamment le 2026-10-07 sur `dev@c379731` : `tsc -b` frontend 0 ; `tsc --noEmit` backend 0 ; `test:charte-marchande` EXIT 0 ; `test:ci` EXIT 0 — **622 assertions vertes, 0 croix** ; `check:nest-versions` EXIT 0 ; `node --check scripts/schema-pilote.mjs` OK ; `test:parole-entree` EXIT 0 — 7/7 assertions §[7] ; `test-voix-trace-source` = EXACTEMENT les 4 rouges hérités (useVoiceCore, AppLayout, ObjectifContext ×2), 0 rouge nouveau ; `garde-argent` = EXACTEMENT les 3 refus attendus : périmètre 55 sortis (chemins `frontend_src` morts), chaîne test:ci gelée (pré-existant), 131 assertions débranchées)
+  - Tests E2E (si applicable) : N/A (la recette du flux de diagnostic terrain depuis Paramètres reste au registre — non assertionnable statiquement)
+  - Documentation : ✅ (INC-001 : suivi ajouté, statut OUVERT **atténué** avec preuve des 3 refus ; BUGS.md réconcilié 8/5/3 ; CHANGELOG « Corrigé — Actions correctives REVIEW-003/REVIEW-004 (2026-10-06) » exact ; COMMIT_LOG et worklog Task 19 à jour)
+- **Remarques** :
+  - R5-1 : le bloc « État au 2026-10-06 » du présent journal n'a pas été incrémenté quand REVIEW-004 y a été ajoutée (total resté à 3) — supersédé par le bloc « État au 2026-10-07 » ci-dessous (compteurs corrigés) ; le bloc ancien reste en l'état, discipline append-only.
+  - R5-2 : B3-3 **re-confirmé vivant par sonde indépendante** : `npx jest test/unit/schema-flags.spec.ts` → « Test suite failed to run » (SyntaxError babel sur le transform jamais chargé), 0 suite exécutable. Toujours `backend/package.json` = périmètre producteur.
+  - R5-3 : situation lecture-seule des branches parallèles poussées ce jour (`claude/rc-20261007-75c8b06`, `claude/rc-correctifs`, `claude/rc-perimetre-argent`, `claude/recette-rc`) et de `main` (PR #263/#265/#267/#268) : **AUCUNE ne touche** `ci/*.json`, `scripts/` ni `backend/package.json` relativement à `origin/dev` — pas de risque de re-gel d'agent par ces portes ; leur contenu sera revu s'il atterrit sur dev.
+  - R5-4 (à savoir, non bloquant) : la garde §[7] asserte désormais des signatures exactes d'`AppContext.tsx` (ex. `if (voiceMuted) return;`) — couplage empreinte assumé, mais toute refactorisation du contexte global devra passer par le garde.
+- **Actions correctives demandées** : aucune nouvelle. Les restes ouverts sont inchangés et déjà consignés : re-gel humain Patrick (INC-001/2 — `racinesScannees` → `frontend/src` puis `--figer-perimetre`/`--figer-gardes` sur arbre propre), B3-3 (ts-jest ^30 ou jest ^29 + run vert, producteur), recette swagger 12 avant déploiement, recette diagnostic terrain.
+- **Date de validation finale** : 2026-10-07 (la présente revue)
+- **Commit validé** : `d9f08ad`, `4eb6471`, `c379731`
+
+## État au 2026-10-07 (supersède le bloc « État au 2026-10-06 »)
+
+- **Total revues** : 5
+- **Revues positives** : 1 (REVIEW-005 — actes correctifs vérifiés)
+- **Revues bloquantes actives** : 1 (REVIEW-003 — B3-1/B3-2 **annulés** par la restauration `d9f08ad` vérifiée en REVIEW-005 ; restent **B3-3** producteur et le re-gel humain Patrick)
+- **Revues avec remarques** : 2 (REVIEW-001, REVIEW-002)
+- **REVIEW-004** : blocage **LEVÉ** — B4-1 (verrou de schéma raccord au workflow) et B4-2 (gardes voix réencodées avec historique, baseline 4 rouges hérités préservée) exécutés et vérifiés en REVIEW-005 ; le nettoyage `1c2f914`/`704023f` est approuvé dans l'état de l'arbre `c379731`
+- **INC-001** : OUVERT **atténué** — action 1 faite (gels restaurés à `dffe705`, le garde nomme la dérive au lieu de la taire : 3 refus attendus) ; restent l'action 2 (re-gel humain Patrick) et l'action 3 (jest/ts-jest, producteur)
+- **Batteries rejouées indépendamment le 2026-10-07** sur `dev@c379731` : tsc front/back 0 ; charte EXIT 0 ; `test:ci` EXIT 0 (622 assertions vertes, 0 croix) ; `check:nest-versions` EXIT 0 ; `parole-entree` EXIT 0 (7/7 §[7]) ; `voix-trace-source` = 4 rouges hérités connus, 0 nouveau ; `garde-argent` = exactement les 3 refus attendus ; **jest backend toujours mort (B3-3)** — sonde : « Test suite failed to run », 0 suite exécutable
+- **En attente d'humain (Patrick)** : re-gel garde-argent (`racinesScannees` → `frontend/src` puis `--figer-perimetre` puis `--figer-gardes`) — tant que ce n'est pas fait, les 3 refus du garde SONT le signal voulu
+- **En attente producteur** : B3-3 (ts-jest/jest + preuve par run vert backend) ; recette swagger 12 avant tout déploiement
