@@ -55,23 +55,6 @@ export class CooperativesRestController {
     );
   }
 
-  /**
-   * Les actions sur un membre (statut, rôle, retrait) reçoivent l'id que
-   * l'écran a sous la main : `GET /cooperatives/membres` rend l'id de
-   * l'UTILISATEUR, pas celui de l'adhésion — chaque action finissait en 404
-   * « Membre introuvable ». On accepte les deux : id d'adhésion d'abord
-   * (contrat historique), sinon adhésion de cet utilisateur DANS la coopérative
-   * de l'appelant. Le contrôle « président de cette coopérative » reste fait
-   * par l'appelant, inchangé.
-   */
-  private async trouverAdhesion(id: string, userId: string): Promise<CooperativeMembre | null> {
-    const parAdhesion = await this.membreRepo.findOne({ where: { id } });
-    if (parAdhesion) return parAdhesion;
-    const { coop } = await this.resolveUserCooperative(userId);
-    if (!coop) return null;
-    return this.membreRepo.findOne({ where: { membre_id: id, cooperative_id: coop.id } });
-  }
-
   private async resolveUserCooperative(userId: string): Promise<{ coop: any | null; role: 'president' | 'membre' | null }> {
     const coops = await this.repo.query(
       `SELECT * FROM cooperatives WHERE responsable_id = $1 LIMIT 1`,
@@ -517,7 +500,7 @@ export class CooperativesRestController {
     const STATUTS = ['actif', 'suspendu', 'en_attente', 'exclu'];
     const statut = String(body?.statut || '').trim();
     if (!STATUTS.includes(statut)) throw new NotFoundException('Statut invalide');
-    const membre = await this.trouverAdhesion(id, userId);
+    const membre = await this.membreRepo.findOne({ where: { id } });
     if (!membre) throw new NotFoundException('Membre introuvable');
     const { coop, role } = await this.resolveUserCooperative(userId);
     if (!coop || role !== 'president' || membre.cooperative_id !== coop.id) {
@@ -531,7 +514,7 @@ export class CooperativesRestController {
   async deleteMembre(@Param('id') id: string, @CurrentUser() currentUser: User) {
     const userId = currentUser?.id;
     if (!userId) throw new ForbiddenException('Non authentifié');
-    const membre = await this.trouverAdhesion(id, userId);
+    const membre = await this.membreRepo.findOne({ where: { id } });
     if (!membre) throw new NotFoundException('Membre introuvable');
     const { coop, role } = await this.resolveUserCooperative(userId);
     if (!coop || role !== 'president' || membre.cooperative_id !== coop.id) {
@@ -552,7 +535,7 @@ export class CooperativesRestController {
     const ROLES = ['membre', 'president'];
     const role = String(body?.role || '').trim();
     if (!ROLES.includes(role)) throw new NotFoundException('Rôle invalide');
-    const membre = await this.trouverAdhesion(id, userId);
+    const membre = await this.membreRepo.findOne({ where: { id } });
     if (!membre) throw new NotFoundException('Membre introuvable');
     const { coop, role: callerRole } = await this.resolveUserCooperative(userId);
     if (!coop || callerRole !== 'president' || membre.cooperative_id !== coop.id) {
