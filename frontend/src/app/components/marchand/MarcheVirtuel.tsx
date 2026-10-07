@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Search, ShoppingCart, Heart, Star, MapPin, Minus, Plus, X, Package,
@@ -135,6 +135,12 @@ export function MarcheVirtuel() {
   }, [user?.prenoms, user?.nom, user?.telephone, user?.commune, livraisonTierce]);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinCode, setPinCode] = useState('');
+  // Verrou synchrone anti double-tap (pattern caisse POSCaisse 208-210 ;
+  // le même défaut que BUG-002 fermait sur TransfertPage) : un 2e tap dans
+  // la même frame ne crée PAS deux fois les commandes — l'état React ne se
+  // met à jour qu'au render suivant, le ref bloque dès la première frame.
+  const [commandeEnCours, setCommandeEnCours] = useState(false);
+  const commandeEnCoursRef = useRef(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [showMobileOperators, setShowMobileOperators] = useState(false);
@@ -442,32 +448,41 @@ export function MarcheVirtuel() {
       }
       if (user?.pinSecurityEnabled) {
         setShowPaymentModal(false); setShowPinModal(true);
-        speakSilent('Entre ton code PIN à 4 chiffres pour confirmer le paiement'); return;
+        speakSilent('Entre ton code PIN à 4 chiffres pour confirmer la commande'); return;
       }
     }
-    const label = getPaymentLabel(paymentMethod, selectedOperator || undefined);
-    const ok = await createOrdersFromCart();
-    if (!ok) {
-      setErrorMessage('Erreur lors de la création des commandes. Réessaie.');
-      setShowErrorModal(true);
-      return;
+    // Verrou synchrone : le POST ne part qu'une fois (N-1 de l'audit voix).
+    if (commandeEnCoursRef.current) return;
+    commandeEnCoursRef.current = true;
+    setCommandeEnCours(true);
+    try {
+      const label = getPaymentLabel(paymentMethod, selectedOperator || undefined);
+      const ok = await createOrdersFromCart();
+      if (!ok) {
+        setErrorMessage('Erreur lors de la création des commandes. Réessaie.');
+        setShowErrorModal(true);
+        return;
+      }
+      // HONNÊTÉ ARGENT (AUDIT-UX-ROLES-2026-10-06 T2) : créer la commande
+      // n'écrit AUCUN mouvement wallet (invariant B2 — l'argent ne bouge qu'à
+      // l'encaissement du vendeur, POST /commandes/:id/paiement). Mobile money
+      // et carte sont déclaratifs : aucune intégration. On annonce donc une
+      // COMMANDE à régler, jamais un « paiement effectué avec succès » — même
+      // règle que le pilote caisse (POSCaisse 55-60 : pas de promesse
+      // fonctionnelle contradictoire).
+      const montantParle = montantsMasques ? '' : ` ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA`;
+      if (paymentMethod === 'keiwa') {
+        speakSilent(`Commande passée. Le montant sera débité de ton Wallet quand le vendeur encaissera.`);
+      } else if (paymentMethod === 'cash') {
+        speakSilent(`Commande passée. Tu paieras${montantParle} en espèces à la livraison.`);
+      } else {
+        speakSilent(`Commande passée. Tu règleras${montantParle} par ${label} à la livraison.`);
+      }
+      resetPaymentState();
+    } finally {
+      commandeEnCoursRef.current = false;
+      setCommandeEnCours(false);
     }
-    // HONNÊTÉ ARGENT (AUDIT-UX-ROLES-2026-10-06 T2) : créer la commande
-    // n'écrit AUCUN mouvement wallet (invariant B2 — l'argent ne bouge qu'à
-    // l'encaissement du vendeur, POST /commandes/:id/paiement). Mobile money
-    // et carte sont déclaratifs : aucune intégration. On annonce donc une
-    // COMMANDE à régler, jamais un « paiement effectué avec succès » — même
-    // règle que le pilote caisse (POSCaisse 55-60 : pas de promesse
-    // fonctionnelle contradictoire).
-    const montantParle = montantsMasques ? '' : ` ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA`;
-    if (paymentMethod === 'keiwa') {
-      speakSilent(`Commande passée. Le montant sera débité de ton Wallet quand le vendeur encaissera.`);
-    } else if (paymentMethod === 'cash') {
-      speakSilent(`Commande passée. Tu paieras${montantParle} en espèces à la livraison.`);
-    } else {
-      speakSilent(`Commande passée. Tu règleras${montantParle} par ${label} à la livraison.`);
-    }
-    resetPaymentState();
   };
 
   const resetPaymentState = () => {
@@ -493,19 +508,27 @@ export function MarcheVirtuel() {
       });
       if (!data?.valid) { setErrorMessage('Code PIN incorrect. Réessaye'); setShowErrorModal(true); speakSilent('Code PIN incorrect'); setPinCode(''); return; }
     } catch { setErrorMessage('Erreur réseau. Réessaye.'); setShowErrorModal(true); return; }
-    const ok = await createOrdersFromCart();
-    if (!ok) {
-      setErrorMessage('Erreur lors de la création des commandes. Réessaie.');
-      setShowErrorModal(true);
-      return;
+    if (commandeEnCoursRef.current) return;
+    commandeEnCoursRef.current = true;
+    setCommandeEnCours(true);
+    try {
+      const ok = await createOrdersFromCart();
+      if (!ok) {
+        setErrorMessage('Erreur lors de la création des commandes. Réessaie.');
+        setShowErrorModal(true);
+        return;
+      }
+      // HONNÊTÉ ARGENT (T2) : le PIN CONFIRME la commande, il ne paie pas —
+      // aucun mouvement wallet n'est écrit ici (invariant B2) ; le débit réel
+      // part à l'encaissement du vendeur (POST /commandes/:id/paiement).
+      speakSilent(montantsMasques
+        ? 'Commande confirmée par ton code PIN. Le montant sera débité de ton Wallet quand le vendeur encaissera.'
+        : `Commande confirmée par ton code PIN. ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA seront débités de ton Wallet quand le vendeur encaissera.`);
+      setShowPinModal(false); setPinCode(''); resetPaymentState();
+    } finally {
+      commandeEnCoursRef.current = false;
+      setCommandeEnCours(false);
     }
-    // HONNÊTÉ ARGENT (T2) : le PIN CONFIRME la commande, il ne paie pas —
-    // aucun mouvement wallet n'est écrit ici (invariant B2) ; le débit réel
-    // part à l'encaissement du vendeur (POST /commandes/:id/paiement).
-    speakSilent(montantsMasques
-      ? 'Commande confirmée par ton code PIN. Le montant sera débité de ton Wallet quand le vendeur encaissera.'
-      : `Commande confirmée par ton code PIN. ${(cartTotal || 0).toLocaleString('fr-FR')} francs CFA seront débités de ton Wallet quand le vendeur encaissera.`);
-    setShowPinModal(false); setPinCode(''); resetPaymentState();
   };
 
   const handleSignaler = (commande: CommandeMarche) => {
@@ -1116,8 +1139,8 @@ export function MarcheVirtuel() {
                     </div>
                   );
                 })}
-                <motion.button onClick={handlePayment} disabled={!paymentMethod} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
-                  {paymentMethod ? 'Valider la commande' : 'Choisir un mode de paiement'}
+                <motion.button onClick={handlePayment} disabled={!paymentMethod || commandeEnCours} className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg mt-4 ${paymentMethod ? 'bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`} whileTap={paymentMethod ? { scale: 0.95 } : {}} whileHover={paymentMethod ? { scale: 1.02 } : {}}>
+                  {commandeEnCours ? 'Envoi en cours…' : paymentMethod ? 'Valider la commande' : 'Choisir un mode de paiement'}
                 </motion.button>
               </div>
             </motion.div>
@@ -1128,16 +1151,16 @@ export function MarcheVirtuel() {
       {/* Modal PIN */}
       <AnimatePresence>
         {showPinModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4" onClick={() => { setShowPinModal(false); setPinCode(''); }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-end px-4 pb-4" onClick={() => { if (commandeEnCoursRef.current) return; setShowPinModal(false); setPinCode(''); }}>
             <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 25 }} onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl w-full max-w-2xl mx-auto shadow-2xl overflow-hidden">
               <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                <h2 className="text-xl font-bold text-gray-900">Confirmer le paiement</h2>
-                <motion.button onClick={() => { setShowPinModal(false); setPinCode(''); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
+                <h2 className="text-xl font-bold text-gray-900">Confirmer la commande</h2>
+                <motion.button onClick={() => { if (commandeEnCoursRef.current) return; setShowPinModal(false); setPinCode(''); }} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant de la commande</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Entrez votre code PIN à 4 chiffres</p><input type="password" value={pinCode} onChange={(e) => setPinCode(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-white border-2 border-gray-200 focus:border-[var(--commerce-action)] focus:outline-none text-base placeholder:text-gray-400 shadow-sm" maxLength={4} /></div>
-                <motion.button onClick={handlePinValidation} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Valider</motion.button>
+                <motion.button onClick={handlePinValidation} disabled={commandeEnCours} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>{commandeEnCours ? 'Envoi…' : 'Valider'}</motion.button>
               </div>
             </motion.div>
           </motion.div>
@@ -1173,7 +1196,7 @@ export function MarcheVirtuel() {
                 <motion.button onClick={() => setShowErrorModal(false)} className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center" whileHover={{ rotate: 90, scale: 1.1 }} whileTap={{ scale: 0.9 }}><X className="w-5 h-5 text-gray-600" /></motion.button>
               </div>
               <div className="p-6 space-y-4">
-                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant à payer</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
+                <div className="bg-orange-50 rounded-2xl p-4 mb-6"><p className="text-sm text-gray-600 mb-1">Montant de la commande</p><p className="text-3xl font-bold text-[var(--commerce-action)]">{montantPrive(cartTotal || 0, montantsMasques, 'FCFA')}</p></div>
                 <div className="bg-gray-50 rounded-2xl p-4"><p className="text-sm text-gray-600 mb-1">Une erreur s'est produite</p><p className="text-lg font-bold text-red-500">{errorMessage}</p></div>
                 <motion.button onClick={() => setShowErrorModal(false)} className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--commerce-action)] to-[var(--herite-ambre-fonce)] text-white font-bold text-lg shadow-lg" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>Fermer</motion.button>
               </div>
