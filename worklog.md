@@ -559,3 +559,23 @@ Work Log:
 
 Stage Summary:
 - Les 4 actions correctives exécutables par un agent sont faites et prouvées : verrou de schéma CI raccord (B4-1 levé), gels honnêtes (retour aux 3 refus attendus = signal de re-gel humain), gardes voix encodant §8.1 et l'arbitrage Rapport de test avec historique (B4-2 levé, baseline des 4 rouges hérités préservée), BUGS.md réconcilié (Act-3) ; restent ouverts : re-gel humain de Patrick (INC-001/2), B3-3 ts-jest (producteur), recette swagger 12
+---
+Task ID: 20
+Agent: Z.ai Code (orchestrateur, rôle Agent Reviewer — instance de continuation)
+Task: REVIEW-005 — revue indépendante des actes correctifs REVIEW-003/004 (d9f08ad, 4eb6471, c379731) poussés sur dev depuis 9316bd9, après la demande « continues » ; vérification des restitutions, rejeu complet des batteries, mise à jour du REVIEW_LOG.
+
+Work Log:
+- Situation : dev == origin/dev à c379731 ; commits depuis 3e38610 = 1c2f914/704023f (producteur, bloqués en REVIEW-004), 9316bd9 (REVIEW-004), d9f08ad/4eb6471/c379731 (actes correctifs) — objet de la présente revue : les actes
+- Preuve mécanique n°1 : `git diff dffe705 dev -- ci/PERIMETRE-ARGENT.json ci/EMPREINTE-GARDES.json scripts/schema-pilote.mjs scripts/check-nest-versions.mjs` → VIDE (les 4 restitutions sont byte-identiques à dffe705) — B4-1 levé, INC-001 action 1 réelle
+- Examen ligne à ligne des diffs 4eb6471 : §[7] de paroleEntree.test.mts = 7 assertions encodant §8.1 (décision consignée sur site, ancien garde + trace absents, muet journalisé puis silencieux = LA borne, appel journalisé, paroleAutorisee hors AppContext) ; sections [1]..[6] assertions inchangées ; test-voix-trace-source A/C réécrites avec historique ; fixture : UNE seule entrée re-bénie (AppContext)
+- Registres vérifiés : BUGS.md 8/5/3 + BUG-006/007 réservés ; INC-001 suivi « OUVERT atténué » ; CHANGELOG « Corrigé 06/10 » exact ; worklog Task 19 cohérent
+- Batteries rejetées indépendamment (dev@c379731, chaînage immunisé `git checkout dev -q`) : tsc -b front 0 ; tsc --noEmit back 0 ; test:charte-marchande EXIT 0 ; test:ci EXIT 0 — 622 assertions vertes, 0 croix ; check:nest-versions EXIT 0 (« @nestjs cohérent major 11 ») ; node --check schema-pilote OK ; test:parole-entree EXIT 0 (7/7 §[7]) ; test-voix-trace-source = EXACTEMENT les 4 rouges hérités (useVoiceCore, AppLayout, ObjectifContext ×2), 0 nouveau ; garde-argent = EXACTEMENT les 3 refus attendus (périmètre 55 sortis, chaîne test:ci gelée, 131 assertions débranchées)
+- Sonde B3-3 : npx jest test/unit/schema-flags.spec.ts → « Test suite failed to run » (babel SyntaxError), 0 suite exécutable — B3-3 TOUJOURS OUVERT, backend/package.json inchangé (jest ^30.5.2 / ts-jest ^29.4.12 / swagger ^12.0.2), périmètre producteur respecté
+- Situation lecture-seule branches rc-* et main : AUCUNE ne touche ci/*.json, scripts/ ni backend/package.json relativement à origin/dev — pas de risque de re-gel d'agent par ces portes (consigné en R5-3)
+- REVIEW-005 rédigée (✅ APPROUVÉ : d9f08ad/4eb6471/c379731 validés) + bloc « État au 2026-10-07 » (supersède 2026-10-06, compteurs corrigés : 5 revues, 1 bloquante active = REVIEW-003 sur B3-3 + re-gel humain, REVIEW-004 blocage levé) ; R5-1 : l'ancien bloc d'état n'avait pas incrémenté le compteur à l'arrivée de REVIEW-004 — constaté, corrigé par le nouveau bloc (append-only)
+- Injection chaînée : .ai/REVIEW_LOG.md + worklog.md, git add explicite (pas de `git add .`), push origin dev
+
+Stage Summary:
+- REVIEW-005 ✅ : les actes correctifs font exactement ce qu'ils annoncent — gels et scripts byte-identiques à dffe705 (restauration, pas un gel), gardes voix réencodées avec historique, baseline des 4 rouges hérités préservée, toutes les batteries vertes ou exactement aux baselines attendues, rejouées indépendamment
+- État des bloquants : REVIEW-003 reste ❌ mais réduite à B3-3 (producteur) + re-gel humain Patrick ; REVIEW-004 blocage LEVÉ ; INC-001 atténué (garde honnête aux 3 refus, en attendant le re-gel humain)
+- Frontières respectées : AUCUN gel exécuté, backend/package.json et lock non touchés, aucun fichier producteur modifié
