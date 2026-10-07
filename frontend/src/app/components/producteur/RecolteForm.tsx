@@ -303,10 +303,18 @@ export function RecolteForm() {
       scheduleTimeout(() => navigate('/producteur/production'), 320);
     } catch (err: unknown) {
       setIsSubmitting(false);
-      const message = err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement de la récolte';
       console.warn('[RecolteForm] createRecolte failed:', err instanceof Error ? err.message : err);
+      // T7 (F-V2, audit voix 07/10) : la MÊME phrase est dite et écrite —
+      // la raison métier 4xx du serveur (déjà écrite pour le producteur,
+      // doctrine caisse), un repli français sinon. Pas de message brut, pas
+      // de phrase différente entre l'oreille et l'écran.
+      const status = (err as { status?: unknown } | null)?.status;
+      const brut = err instanceof Error ? err.message.trim() : '';
+      const message = typeof status === 'number' && status >= 400 && status < 500 && brut && !/^[A-Z_0-9]+$/.test(brut)
+        ? brut
+        : "La récolte n'a pas pu être enregistrée. Vérifie ton réseau et réessaie.";
       toast.error(message);
-      speak("Ça n'a pas marché. Réessaie, s'il te plaît.");
+      speak(message);
     }
   };
 
