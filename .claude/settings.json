@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git branch:*)", "Bash(git checkout:*)",
+      "Bash(git switch:*)", "Bash(git fetch:*)", "Bash(git pull:*)", "Bash(git push:*)",
+      "Bash(git stash:*)", "Bash(git worktree:*)", "Bash(git rev-parse:*)",
+      "Bash(git remote:*)", "Bash(git blame:*)", "Bash(git cat-file:*)",
+
+      "Bash(npm install:*)", "Bash(npm ci:*)", "Bash(npm run:*)", "Bash(npm test:*)",
+      "Bash(npx tsc:*)", "Bash(npx jest:*)", "Bash(npx tsx:*)", "Bash(npx eslint:*)",
+      "Bash(npx vitest:*)", "Bash(npx knip:*)", "Bash(npx jscpd:*)", "Bash(npx madge:*)",
+      "Bash(npx dpdm:*)", "Bash(npx prettier:*)", "Bash(npx playwright:*)",
+
+      "Bash(node ci/garde-argent.mjs)", "Bash(node ci/*.mjs)",
+      "Bash(node scripts/*.mjs)", "Bash(node frontend_src/scripts/*.mjs)",
+      "Bash(node --check:*)", "Bash(node -e:*)",
+
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)",
+      "Bash(grep:*)", "Bash(rg:*)", "Bash(find:*)", "Bash(sed:*)", "Bash(awk:*)",
+      "Bash(sort:*)", "Bash(uniq:*)", "Bash(diff:*)", "Bash(mkdir:*)", "Bash(cp:*)",
+      "Bash(python3:*)", "Bash(jq:*)", "Bash(curl:*)", "Bash(nc:*)", "Bash(pg_isready:*)",
+
+      "Bash(gh api:*)",
+
+      "Read", "Write", "Edit", "Glob", "Grep", "Agent", "Skill", "TodoWrite", "WebFetch"
+    ],
+    "deny": [
+      "Bash(node ci/garde-argent.mjs --figer-perimetre)",
+      "Bash(node ci/garde-argent.mjs --figer-gardes)",
+      "Bash(npx tsx src/app/i18n/voice/validators/empreintesArgent.mts --calculer)",
+      "Bash(node scripts/test-voix-trace-source.mjs --regenerer)",
+      "Bash(npm run test:voix-trace-source -- --regenerer)",
+
+      "Bash(git push --force:*)",
+      "Bash(git push origin main:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+
+      "Bash(playwright install:*)",
+      "Bash(npx playwright install:*)",
+
+      "Bash(psql:*)",
+      "Bash(DROP:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

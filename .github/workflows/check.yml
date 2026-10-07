@@ -1,0 +1,36 @@
+# LE SCRIPT « CHECK » EN CI — cadre de travail, 05/10/2026.
+#
+# Le même script que le hook `pre-push`, pour que la machine d'un développeur
+# et la CI contrôlent exactement la même chose. Une CI plus clémente que le
+# hook laisse passer ce que le hook refusait ; une CI plus stricte fait
+# échouer un push qu'on croyait propre. Les deux cas coûtent la confiance
+# qu'on accorde au contrôle.
+name: check — garde-fous anti-spaghetti
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # `npm ci` et non `npm install` : la CI installe ce que le lockfile dit,
+      # sans jamais le réécrire. Un lockfile modifié par la CI rendrait ses
+      # résultats irreproductibles.
+      - name: Installer
+        run: npm ci --no-audit --no-fund
+
+      - name: check
+        run: npm run check
