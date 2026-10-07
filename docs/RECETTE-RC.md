@@ -8,7 +8,7 @@
 | Élément | Valeur |
 |---|---|
 | Code | `main` = **`4d91c4b`** (07/10/2026) — CI de main **verte** (filet d'intégration, GARDE-ARGENT, invariants, check) |
-| Repère git | branche **`claude/rc-20261007-4d91c4b`**. Le tag est à poser par Patrick, car le proxy git de l'agent refuse les tags : `git fetch origin && git tag -a rc-20261007-4d91c4b 4d91c4b -m "RC 07/10" && git push origin rc-20261007-4d91c4b` |
+| Repère git | branche **`claude/rc-20261007-4d91c4b`** (= `9553d20` : `4d91c4b` + logigramme, documentation seule). Le tag est à poser par Patrick, car le proxy git de l'agent refuse les tags : `git fetch origin && git tag -a rc-20261007-4d91c4b 4d91c4b -m "RC 07/10" && git push origin rc-20261007-4d91c4b` |
 | APK | [`julaba-4d91c4b.apk`](https://github.com/SOMET1010/julaba-app/releases/download/pilote-latest/julaba-4d91c4b.apk) — release `pilote-latest`, `apk.yml` run #65, paramètres standard (API `https://julaba-api.onrender.com/api/v1`, clips prototypes et dioula éteints, modules hors pilote masqués). sha256 `13fff5d97de50abb28383657f45b16940d36dadffd0d3a3b61e1d4baa3e78ace`, 272 977 863 octets |
 | Web | https://julaba-web.onrender.com — BO : `/backoffice/login` |
 | API | https://julaba-api.onrender.com/api/v1 — `GET /health` rend `commit` |
