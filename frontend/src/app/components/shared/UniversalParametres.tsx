@@ -497,7 +497,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
   const cfg = ROLE_CONFIG[role];
   const { color } = cfg;
 
-  const { speak, isOnline, user, setUser, niveauVoix, setNiveauVoix } = useApp();
+  const { speak, isOnline, user, setUser, niveauVoix, setNiveauVoix, voiceMuted, toggleVoiceMuted } = useApp();
   const { updateUser } = useUser();
   // Déconnexion volontaire — orchestration centralisée (hook réutilisable).
   const logout = useVoluntaryLogout();
@@ -750,6 +750,20 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
                 // retouche de formulation. Une seule vérité.
                 speak(v ? t('REGLAGE_VOIX_ESSENTIEL') : t('REGLAGE_VOIX_COMPLET'));
               }}
+              color={color}
+            />
+            {/* LE MUET EST LA BORNE (§8.1) — et une borne invisible n'est pas
+                une borne (F-V4, audit voix 07/10) : la voix se coupe et se
+                remet ICI, pas seulement depuis le backoffice. Pas de phrase
+                parlée à la remise en route : au moment du onChange, l'état
+                muet est encore celui d'avant (AppContext est haché par le
+                garde voix — on n'y touche pas) et l'interrupteur EST le
+                retour. */}
+            <RowToggle
+              label="Voix coupée"
+              sublabel="Tantie se tait complètement. Tu peux la remettre ici à tout moment."
+              value={voiceMuted}
+              onChange={toggleVoiceMuted}
               color={color}
             />
           </Section>
