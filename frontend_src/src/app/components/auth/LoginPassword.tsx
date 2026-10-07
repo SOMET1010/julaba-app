@@ -98,6 +98,7 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // AUTH-10 — le ROUAGE de dictée vit dans son hook ; l'écran garde la POLITIQUE
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
+import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
 // AUTH-10 — le geste caché du mode développeur, sorti de l'écran.
 import { useDevMode } from '../../hooks/useDevMode';
 // AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
@@ -201,6 +202,8 @@ export function LoginPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [pinInput, setPinInput] = useState('');
+  // Vrai tant que l'écran du code attend son premier chiffre (UX-02).
+  const attenteCodeRef = useRef(false);
   const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? (compteConnu.biometrie ? 'reconnaissance' : 'password') : 'phone');
   // AUTH-10 — isListening / isFinalizingDictation et toute la mécanique de
   // dictée EN DIRECT vivent dans useDicteeLive ; l'écran consomme la surface.
@@ -287,6 +290,9 @@ export function LoginPassword() {
   useEffect(() => {
     phoneRef.current = phone;
   }, [phone]);
+  useEffect(() => {
+    attenteCodeRef.current = step === 'password' && pinInput === '';
+  }, [step, pinInput]);
 
   // Une phrase fixe n'est dite que si son clip Tantie exact est embarqué.
   // Aucune voix navigateur étrangère ne remplace un clip manquant.
@@ -374,7 +380,8 @@ export function LoginPassword() {
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
     if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas de consigne auto
-    void direConsigne('code');
+    // UX-02 — puis le bouton « code de mon agent » se dit, si rien n'est tapé.
+    void direConsigne('code').then(() => { if (attenteCodeRef.current) void direConsigneCodeAgent(); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
@@ -1489,6 +1496,7 @@ export function LoginPassword() {
                 </button>
               </div>
             </div>
+            <BoutonCodeAgent disabled={isLoading} />
             </motion.div>
           )}
         </AnimatePresence>
