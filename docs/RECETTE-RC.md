@@ -1,162 +1,140 @@
 # Recette RC — écosystème complet (07/10/2026)
 
 > Demande de Patrick (07/10) : « une RC à tester de l'ensemble des fonctionnalités, pas seulement la vente ».
-> Ce document est le **cahier de recette** : un parcours par profil, le résultat attendu, et le statut **constaté** par l'agent avec sa preuve.
+> Le même jour, Patrick a délégué ses décisions : « GO 2-3-6-7-8-9 ». Ce document est le **cahier de recette** de la RC qui en résulte. Pour chaque profil, il donne le parcours, le résultat attendu et le statut **constaté**, avec sa preuve.
 
 ## 1. La RC
 
 | Élément | Valeur |
 |---|---|
-| Code | `main` = **`9fb4655`** (05/10/2026), commits « Z User » (AUTH-01…14) compris |
-| Repère git | branche **`claude/rc-20261007`** (= `9fb4655`). Tag prévu : `rc-20261007-9fb4655`. Le proxy git de la session de l'agent refuse les tags ; Patrick le pose avec `git tag -a rc-20261007-9fb4655 9fb4655 -m "RC 07/10" && git push origin rc-20261007-9fb4655` |
-| APK | [`julaba-9fb4655.apk`](https://github.com/SOMET1010/julaba-app/releases/download/pilote-latest/julaba-9fb4655.apk) dans la release `pilote-latest`. Construit par `apk.yml` (run #63, 07/10 00:27 UTC) depuis `main@9fb4655`, avec les paramètres standard : API `https://julaba-api.onrender.com/api/v1`, clips prototypes éteints, dioula éteint. sha256 `4bfab03ba960807d93b57866d8e9631960e1ada3380e9fa27521e0423d1bf768` |
-| Web | https://julaba-web.onrender.com (BO : `/backoffice/login`) |
-| API | https://julaba-api.onrender.com/api/v1 — `GET /health` rend `commit` (7 caractères) |
+| Code | `main` = **`75c8b06`** (07/10/2026) — CI de main **verte** (filet d'intégration + GARDE-ARGENT) |
+| Repère git | branche **`claude/rc-20261007-75c8b06`**. Le tag est à poser par Patrick, car le proxy git de l'agent refuse les tags : `git fetch origin && git tag -a rc-20261007-75c8b06 75c8b06 -m "RC 07/10" && git push origin rc-20261007-75c8b06` |
+| APK | [`julaba-75c8b06.apk`](https://github.com/SOMET1010/julaba-app/releases/download/pilote-latest/julaba-75c8b06.apk) — release `pilote-latest`, `apk.yml` run #64, paramètres standard (API `https://julaba-api.onrender.com/api/v1`, clips prototypes et dioula éteints, modules hors pilote masqués). sha256 `d43772dbb3456dcaf70f9e06c615141b3a52dcb4c4a3bc6c06d39c8c50146763`, 272 977 875 octets |
+| Web | https://julaba-web.onrender.com — BO : `/backoffice/login` |
+| API | https://julaba-api.onrender.com/api/v1 — `GET /health` rend `commit` |
 
-**⚠️ Pas encore vérifié : Render sert-il bien `9fb4655` ?** L'hôte `onrender.com` est bloqué par la politique réseau de la session de l'agent (403 au proxy). `render.yaml` porte `autoDeploy: true`, donc main a probablement été déployé. **Première action de Patrick** : ouvrir `https://julaba-api.onrender.com/api/v1/health` et vérifier que `"commit":"9fb4655"`.
+**À vérifier par Patrick :** Render a redéployé main tout seul (`autoDeploy: true`). Ouvre `https://julaba-api.onrender.com/api/v1/health` : il doit rendre `"commit":"75c8b06"`. L'hôte `onrender.com` est bloqué dans la session de l'agent.
+
+### Contenu de la RC par rapport à `9fb4655`
+
+| PR | Contenu |
+|---|---|
+| #265 | main au vert : assertion du verrou restaurée (GARDE-ARGENT), SEC-07 (`crypto.randomInt`) |
+| #262 | BO Modération (500 → OK, route `/user-flags`), BO Enrôlement « complément », BO Institutions (suspendre / réactiver / supprimer), écran Missions qui ne plante plus, producteur (commandes, plantation) |
+| #264 | `skills/` et `tool-results/` retirés de main (sorties sandbox) |
+| #267 | inventaire vocal régénéré (`test:i18n-source`) |
+| #268 | **modules hors pilote portant de l'argent masqués** (drapeau `VITE_JULABA_MODULES_HORS_PILOTE`, garde de route, rien supprimé) |
+
+**Hors RC, par décision :**
+- #260 (Récolte) passe à la RC suivante.
+- #261 (cadre) est à jour, mais c'est Patrick qui la fusionne.
+- #266 (périmètre d'argent) est réservée à Patrick. Elle corrige BO Zones, les membres de coopérative et « mes ventes » vocal. Sa CI est verte.
 
 ### Où les statuts ont été constatés
 
-Faute d'accès à Render, l'agent a joué la recette sur une **stack locale** construite depuis `9fb4655` :
-- PostgreSQL 16 jetable ;
-- API Nest avec le seed de démo ;
-- web servi par `vite preview` ;
-- passage navigateur avec Chromium/Playwright (412×915), plus des appels API directs.
+Sur une **stack locale construite depuis `75c8b06`** : PostgreSQL 16 sur une base neuve, API Nest avec le seed de démo (`/health` → `commit 75c8b06`), web servi par `vite preview`. La vérification passe par un script d'appels API et par Chromium/Playwright en 412×915.
 
-Pour les écrans BO, coopérative et producteur, la stack locale portait aussi les correctifs de la PR #262 (`claude/rc-correctifs`). Chaque ligne dit si le statut vaut **sur main** ou **avec les correctifs**.
-
-Légende : ✅ constaté OK · ❌ constaté cassé · 🟡 partiel · ⬜ non testé (raison donnée) · 🔒 hors pilote (accessible, non masqué).
+Légende : ✅ constaté OK · ❌ constaté cassé · ⬜ non testé (raison donnée) · 🔒 masqué dans cette RC.
 
 ## 2. Comptes de test
 
-Arbitrage Patrick (03/10) : **identifiants remis par SMS, jamais en clair**. Aucun identifiant ne figure donc ici.
+Arbitrage (03/10) : **identifiants remis par SMS, jamais en clair**. Aucun identifiant n'apparaît ici. **Aucun compte n'a été créé en production** : c'est une écriture en prod, et le point 4 attend la liste des testeurs fournie par Patrick.
 
-| Profil | Comment l'obtenir en production | État |
-|---|---|---|
-| marchand, producteur, coopérateur | Le BO (`Acteurs → Nouvel acteur`) crée un compte inerte et produit un code d'activation. La personne saisit ce code dans l'app (`/activation`) et choisit son code secret. | ⬜ **à créer par Patrick**, voir ci-dessous |
-| identificateur | BO → nouvel acteur, rôle identificateur. Code d'activation, plus PIN envoyé par SMS. | ⬜ idem |
-| institution | BO → nouvel acteur, rôle institution | ❌ **inutilisable** : rien ne relie un compte à une institution (§3.5) |
-| admin BO (admin_general / admin_national / gestionnaire_zone / operateur_terrain) | BO → Utilisateurs (super_admin). Mot de passe envoyé **par SMS** (BO-1). | ⬜ idem |
-| super_admin | Compte existant de Patrick | — |
-| partenaire API | BO → Clés API (super_admin). La clé n'est montrée qu'une fois. | ⬜ idem |
+| Profil | Comment l'obtenir en production |
+|---|---|
+| marchand, producteur, coopérateur, identificateur | Back-office → Acteurs → Nouvel acteur : compte inerte + code d'activation, puis `/activation` dans l'app. ⚠️ Le sélecteur de zone exige `GET /zones`, en 500 tant que **#266** n'est pas fusionnée |
+| Recette ANSUT | Numéros de `AUTH_TELEPHONES_TEST`, déjà présents en production |
+| admin BO | BO → Utilisateurs (super_admin), mot de passe envoyé par SMS (BO-1) |
+| institution | Créable, mais tableau de bord en 403 tant que le lien compte → institution n'est pas tranché (arbitrage 5) |
+| partenaire API | BO → Clés API (super_admin), clé montrée une seule fois |
 
-**Pourquoi l'agent n'a créé aucun compte en production :**
-1. Créer un compte en production est une **écriture en prod**, donc un point d'arrêt qui demande l'accord de Patrick.
-2. L'API de production n'est pas joignable depuis la session.
-3. La skill `identifier` exige des **noms et numéros réels** de testeurs et interdit de les inventer.
-
-**Décision attendue de Patrick :** la liste des testeurs (prénom, nom, téléphone, profil), et le chemin à utiliser. Deux chemins existent :
-- **BO + code d'activation** (recommandé) : conforme à « identifiants par SMS ».
-- **`POST /auth/signup`**, le chemin de la skill : il crée un compte **actif** avec le code par défaut et `mustChangePassword=true`, **sans SMS**. Il est contraire à l'esprit de BO-1bis (3).
-
-**Note BO-1bis (3).** Le code d'activation d'un acteur est **rendu à l'administrateur** dans la réponse (`activationCode`), il n'est pas envoyé par SMS. C'est le point « à faire après intégration », toujours ouvert. En recette, l'administrateur transmet donc le code lui-même.
-
-Comptes locaux de l'agent : ceux du seed de démo (`backend/src/database/seed-demo.service.ts`). Les secrets étaient tirés au hasard dans un fichier hors dépôt, détruit avec la session.
+Le code d'activation d'un acteur est rendu à l'administrateur, il ne part pas par SMS. Le point BO-1bis (3) reste ouvert.
 
 ## 3. Parcours par profil
 
 ### 3.1 Marchand (cœur du pilote, APK)
 
-| # | Parcours pour Patrick | Attendu | Statut | Preuve |
+| # | Parcours | Attendu | Statut | Preuve |
 |---|---|---|---|---|
-| M1 | Ouvrir l'app → numéro → code | Accueil « Ton comptoir est prêt », caisse du jour | ✅ main | Navigateur, `/marchand` |
-| M2 | Caisse → toucher « Banane » ×2 → Encaisser | Vente enregistrée, stock −2 | ✅ main | `POST /caisse/vente` 201, stock 40→38 |
-| M3 | Même vente renvoyée (double tap / réseau instable) | **Une seule** vente, un seul décrément | ✅ main | Même `idempotency_key` deux fois : 201, 201, stock 38 (pas 36) ; invariant `i2-idempotence-vente` |
-| M4 | Vente à la voix : « Vends deux tas de tomates à 500 » → oui | Confirmation parlée puis encaissement | ⬜ téléphone requis | Couvert par `verify` (`test:vendre-unifie`, `test:offline-voice-hook` verts) |
-| M5 | Mode avion → vendre → réseau | Vente marquée « en attente » puis synchronisée, **sans doublon** | ⬜ téléphone requis | maestro `05-hors-ligne.yaml` ; `test:vente-hors-ligne-statut`, `test:vente-synchronisee` verts |
-| M6 | Mes ventes (`Ventes passées`) | Les ventes du jour, total juste | ✅ main | « 3 ventes aujourd'hui · 2 700 F » |
-| M7 | Annuler une vente | Vente annulée, stock restitué | ⬜ non joué | Invariant `annulation-remise-stock` vert |
-| M8 | Mon stock : ajouter un produit, vérifier les mouvements | Produit visible, valeur du stock | ✅ main (lecture) | `/marchand/stock` : 3 produits, valeur affichée |
-| M9 | Dépense « transport 500 » | Ligne dans « Mes dépenses », caisse diminuée | ✅ main | `POST /caisse/depense` 201 ; visible dans `/marchand/cahier` |
-| M10 | Ouvrir puis clôturer la journée | Écart affiché cohérent | ⬜ non joué | Invariants `caisse-fond-declare`, `cai-02` verts |
-| M11 | Dire « mes ventes » au micro de la caisse | Ouvre Mes ventes | ❌ main | `MicroVenteCaisse.tsx:410` navigue vers `/marchand/ventes`, qui n'existe pas. Fichier du **périmètre d'argent gelé** : non corrigé, décision Patrick |
-| M12 | Crédit / acompte | **Introuvable** (hors pilote) | ✅ main | `CAISSE_CREDIT_ACTIF=false`, `test:credit-hors-pilote` |
-| M13 | Tontines, Keiwa, protection sociale, marché, coopérative | 🔒 accessibles depuis le menu, avec des actions d'argent | 🔒 | Arbitrage « masquer les modules hors pilote » toujours ouvert |
+| M1 | Ouvrir l'app → numéro → code | « Ton comptoir est prêt » | ✅ | navigateur `/marchand` ; login 200 |
+| M2 | Caisse → toucher un produit ×2 → Encaisser | vente enregistrée, stock −2 | ✅ | `POST /caisse/vente` 201, stock 40→38 |
+| M3 | Même vente renvoyée (réseau instable) | **une seule** vente | ✅ | même clé rejouée : 201/201, stock 38 (pas 36) |
+| M4 | Vente à la voix « Vends deux tas de tomates à 500 » | confirmation puis encaissement | ⬜ téléphone | `verify` : `test:vendre-unifie`, `test:offline-voice-hook` verts |
+| M5 | Mode avion → vendre → réseau | synchronisée, sans doublon | ⬜ téléphone | maestro `05-hors-ligne.yaml` |
+| M6 | Ventes passées | ventes et total du jour | ✅ | « 3 ventes aujourd'hui » |
+| M7 | Dépense « transport 500 » | ligne dans Mes dépenses | ✅ | `POST /caisse/depense` 201 ; `/marchand/cahier` |
+| M8 | Mon stock | produits, valeur | ✅ | `/marchand/stock` |
+| M9 | Ouvrir puis clôturer la journée | écart cohérent | ✅ (lecture) / ⬜ clôture | `GET /caisse/session/<jour>` 200 ; invariants `caisse-fond-declare`, `cai-02` verts |
+| M10 | Dire « mes ventes » au micro | ouvre Ventes passées | ❌ | 404 : corrigé dans **#266** (Patrick) |
+| M11 | Crédit / acompte | introuvable | ✅ | `CAISSE_CREDIT_ACTIF=false` |
+| M12 | Keiwa, tontines, commandes, marché, protection sociale, cotisation | **masqués** : retour à l'accueil | 🔒 ✅ | les URL `/marchand/keiwa`, `/tontines`, `/commandes`, `/marche` renvoient sur `/marchand` ; barre du bas : Accueil, Moi |
 
-### 3.2 Producteur (🔒 hors pilote)
+### 3.2 Producteur
 
 | # | Parcours | Attendu | Statut | Preuve |
 |---|---|---|---|---|
-| P1 | Connexion → accueil | Kg produits, revenus | ✅ main | Navigateur `/producteur` |
-| P2 | Déclarer une récolte (30 kg tomate) | Ligne dans « Mes récoltes » | ✅ main | `POST /recoltes` 201 ; `/producteur/recoltes` |
-| P3 | Déclarer « 3 paniers » | Saisie d'origine conservée | ❌ main | Le poids est inventé (`unite:'kg'` en dur). Corrigé par **PR #260**, non fusionnée |
-| P4 | Nouvelle plantation | Plantation visible avec ses dates | ❌ main → ✅ correctifs | Le front lisait `res.id` alors que l'API rend `{cycle}` |
-| P5 | Mes commandes | Les demandes des acheteurs | ❌ main → ✅ correctifs | La liste restait vide (`data.data` au lieu de `data.commandes`) ; avec le correctif : « 2 commandes » |
-| P6 | Revenus | Écran revenus | ❌ main | Lien mort (`Stocks.tsx:561`), non corrigé (écran à créer) |
+| P1 | Connexion → accueil | kg produits, revenus, **sans carte Keiwa** | ✅ | navigateur `/producteur` |
+| P2 | Déclarer une récolte | ligne dans Mes récoltes | ✅ | `POST /recoltes` 201 |
+| P3 | Nouvelle plantation | plantation avec id et dates | ✅ | `POST /cycles` 201, `cycle.id` présent (#262) |
+| P4 | Commandes | 🔒 masquées (paiement keiwa) | 🔒 ✅ | `/producteur/commandes` → accueil. API corrigée (#262) : 2 commandes lues |
+| P5 | Déclarer « 3 paniers » | saisie d'origine conservée | ❌ | poids inventé ; corrigé par #260, prévue pour la RC suivante |
 
-### 3.3 Coopérative (🔒 hors pilote)
-
-| # | Parcours | Attendu | Statut | Preuve |
-|---|---|---|---|---|
-| C1 | Connexion (président) → accueil | Nom de la coop, membres | ✅ main | `/cooperative` |
-| C2 | Membres → suspendre un membre → réactiver | Statut changé | ❌ main → ✅ correctifs | main : 404 « Membre introuvable » ; correctifs : 200. Un président d'une **autre** coopérative reste refusé (404) |
-| C3 | Trésorerie | Solde, entrées, sorties | ✅ main | `/cooperative/tresorerie` |
-| C4 | Commandes groupées | Liste | ⏳ coquille | La route rend toujours `[]` (table jamais créée) |
-| C5 | Une adhésion « en attente » donne-t-elle accès à la trésorerie ? | Non | ⬜ non joué | Audit §6 : oui, c'est une fuite. Non corrigé |
-
-### 3.4 Identificateur (enrôlement J0)
+### 3.3 Coopérative
 
 | # | Parcours | Attendu | Statut | Preuve |
 |---|---|---|---|---|
-| I1 | Connexion → accueil | Ses identifications | ✅ main | `/identificateur`, 4 identifications |
-| I2 | Nouvelle fiche marchande (7 étapes) → PIN → soumettre | Dossier créé, compte en attente d'activation, code d'activation | ⬜ téléphone requis | Écran de choix du profil OK ; route `create-with-acteur` couverte par les invariants `p0-activation*` |
-| I3 | Sur le téléphone de la marchande : `/activation` + code | Compte actif, connexion avec le nouveau code | ✅ main (chemin BO) | BO crée → login refusé avant activation (401) → activer 200 → **rejeu du code refusé** (401) |
-| I4 | Suivi / Acteurs | Liste des dossiers | ✅ main | `/identificateur/suivi`, `/acteurs` |
-| I5 | Missions | Missions de l'agent | ❌ main | `GET /missions` → 403 (`@Roles('admin')` en minuscules) : **arbitrage de permission** |
+| C1 | Connexion président → accueil | nom de la coop, membres | ✅ | login 200 |
+| C2 | Membres → liste | membres | ✅ | 3 membres |
+| C3 | Suspendre ou réactiver un membre | statut changé | ❌ | 404 : corrigé dans **#266** (Patrick) |
+| C4 | Trésorerie | solde, entrées, sorties | ✅ | `GET /cooperatives/tresorerie` 200 |
+
+### 3.4 Identificateur
+
+| # | Parcours | Attendu | Statut | Preuve |
+|---|---|---|---|---|
+| I1 | Connexion → accueil, suivi, acteurs | ses identifications | ✅ | `GET /identifications` 200 |
+| I2 | Nouvelle fiche (7 étapes) → PIN → soumettre | compte en attente + code d'activation | ⬜ téléphone | invariants `p0-activation*` verts |
+| I3 | Activation sur le téléphone de l'acteur | compte actif, rejeu du code refusé | ✅ | activer 200, rejeu 401 |
+| I4 | Missions | ses missions | ❌ | 403 : **arbitrage 5** (permissions) |
 
 ### 3.5 Institution
 
 | # | Parcours | Attendu | Statut | Preuve |
 |---|---|---|---|---|
-| N1 | Connexion → tableau de bord | Indicateurs de l'institution | ❌ main | 403 sur `/institution/dashboard`, `acteurs` et `transactions`, **affichés comme des zéros**. Rien ne relie un compte à son institution (`responsable_id`). Arbitrage + évolution, non corrigé |
+| N1 | Connexion → tableau de bord | indicateurs | ❌ | 403, affiché comme des zéros : lien compte → institution, **arbitrage 5** |
 
-### 3.6 Back-office
-
-Constaté avec un **super_admin**, plus un admin_general pour les contrôles de droits.
+### 3.6 Back-office (super_admin)
 
 | # | Écran / action | Attendu | Statut | Preuve |
 |---|---|---|---|---|
-| B1 | Connexion BO (email ou téléphone) | Tableau de bord | ✅ main | `/backoffice/dashboard` |
-| B2 | Acteurs : liste, filtres | Comptes par rôle | ✅ main | 18 acteurs, compteurs par rôle |
-| B3 | Acteurs → Nouvel acteur (marchand, avec zone) | Compte inerte + code d'activation, **jamais de mot de passe** | ✅ main | 201, réponse sans mot de passe |
-| B4 | Zones : liste, création | Zones listées | ❌ main → ✅ correctifs | main : `GET /zones` en 500 (varchar = uuid). **Bloque aussi B3**, car la création d'acteur exige une zone |
-| B5 | Modération : liste et création de signalements | Liste | ❌ main → ✅ correctifs | main : 500 (route avalée par `/users/:id`, puis jointure uuid/varchar) ; correctifs : POST 201, GET 200 |
-| B6 | Enrôlement → « demander un complément » | SMS à l'acteur, dossier visible chez l'identificateur | ❌ main → ✅ correctifs (code) | Le BO écrivait `complement_requis`, le serveur attend `complement` ; ⬜ SMS non joué |
-| B7 | Supervision, Audit, Rapports, Notifications, Support, Mutations, Contenus, Monitoring IA, Analytics, Score financier, Livraison, Communication, Cron, Config institution, Carte, Utilisateurs, Profil, Paramètres (lecture) | Page chargée sans erreur API | ✅ main | Navigateur : aucune erreur API sur ces pages (certaines sont des coquilles, voir l'audit) |
-| B8 | Academy | Modules et stats | ❌ main | 401 sur `/academy/modules` et `/academy/stats` (appels sans jeton) |
-| B9 | Missions : création par un admin_general | Mission créée | ❌ main | 403 (seul super_admin passe) : **arbitrage de permission** |
-| B10 | Institutions : créer puis suspendre | Suspendue | 🟡 main | Création 201, **suspension 500** (colonne `statut` absente de l'entité) |
-| B11 | Marketplace : modérer une publication | Publication suspendue | ❌ main | 403 « accès refusé » même pour un super_admin (route réservée au propriétaire) : **arbitrage** |
-| B12 | Paramètres : enregistrer | Sauvegardé | ❌ main (code) | `PUT` absent côté serveur |
-| B13 | Clés API : lister, créer | Clé montrée une fois, jamais relisible | ❌ base neuve | 500 : la table `api_keys` est absente des migrations (SCHEMA-05). ⬜ **En prod la table existe probablement** : à vérifier par Patrick dans le BO |
-| B14 | Keiwa (wallets) | 🔒 | ❌ | 500 sur `/admin/wallets/config/items` ; lecture ouverte à tous les rôles BO |
-| B15 | Sécurité BO-0/BO-1 : crédit de wallet, escalade, clé de récupération | Refusés / supprimés | ✅ main | Invariants `bo0-s1..s4`, `bo1-*` verts (290/290) |
+| B1 | Connexion, tableau de bord, acteurs, supervision, audit, enrôlement, institutions | pages chargées | ✅ | navigateur + API 200 |
+| B2 | Zones | liste des zones | ❌ | `GET /zones` 500, appelé sur **toutes** les pages BO et nécessaire au choix de zone à la création d'acteur : **#266** (Patrick) |
+| B3 | Créer un acteur (avec zone) | compte inerte + code, **jamais de mot de passe** | ✅ | 201, réponse sans mot de passe |
+| B4 | Modération : signaler, lister | signalement visible | ✅ | POST 201, GET 200 (#262) |
+| B5 | Institutions : suspendre | statut « suspendu » | ✅ | PATCH 200, statut relu (#262) |
+| B6 | Enrôlement : demander un complément | SMS + dossier visible chez l'identificateur | ✅ code / ⬜ SMS | statut canonique `complement` (#262) |
+| B7 | Missions | liste | ✅ super_admin / ❌ admin_general | 403 pour les autres rôles BO : **arbitrage 5** |
+| B8 | Keiwa | 🔒 masqué | 🔒 ✅ | `/backoffice/keiwa` → tableau de bord |
+| B9 | Academy | modules | ❌ | 401 sur `/academy/*` (appels sans jeton) |
+| B10 | Clés API | clé montrée une fois | ❌ base neuve / ⬜ prod | table `api_keys` absente des migrations (SCHEMA-05) ; en prod elle existe probablement |
+| B11 | Marketplace : modérer | publication suspendue | ❌ | 403 : **arbitrage 5** |
+| B12 | Sécurité BO-0/BO-1 | refus | ✅ | invariants `bo0-s1..s4`, `bo1-*` verts |
 
-### 3.7 Partenaire API
-
-| # | Parcours | Attendu | Statut | Preuve |
-|---|---|---|---|---|
-| A1 | BO → Clés API → créer (type bank) | Clé affichée une seule fois | ⬜ prod / ❌ base neuve | Voir B13 |
-| A2 | `curl -H "x-api-key: <clé>" …/partner/financial-score/<id>` | Score rendu ; fausse clé → 401 | ⬜ | Sans table : 500 au lieu de 401 |
-
-### 3.8 Transverses
+### 3.7 Transverses
 
 | # | Sujet | Statut | Preuve |
 |---|---|---|---|
-| T1 | Inscription publique (`/auth/signup`) | ✅ main | 201, compte actif, `mustChangePassword=true` ; rôle admin refusé (403) |
-| T2 | Anti-rafale de connexion (5 par minute et par IP) | ✅ main | 429 constaté. ⚠️ Au marché, plusieurs téléphones derrière une même IP NAT : TRUST_PROXY non calibré (prérequis GO-PILOTE) |
-| T3 | Hors ligne (caisse) | ⬜ téléphone requis | Voir M5 |
-| T4 | Voix hors ligne (sherpa) | ⬜ téléphone requis | APK : voix FR embarquée (`installer-voix.sh`) |
-| T5 | Odoo (`/odoo-poc/*`) | ✅ local (mock, drapeau allumé) / fermé en prod | `ODOO_POC_ENABLED=false` en prod → 404 voulu ; aucun écran |
-| T6 | Diffusion temps réel des ventes à tous les comptes connectés | ❌ main | `events.gateway.ts`, room `all` (audit) : non corrigé |
+| T1 | Inscription publique ; rôle admin refusé | ✅ | signup 201 ; admin 403 |
+| T2 | Anti-rafale de connexion (5 par minute et par IP) | ✅ | 429 constaté. ⚠️ Au marché, avec plusieurs téléphones derrière une même IP NAT, TRUST_PROXY reste à calibrer (prérequis GO-PILOTE) |
+| T3 | Voix hors ligne, hors ligne caisse | ⬜ téléphone | APK : voix FR embarquée |
+| T4 | Odoo `/odoo-poc/*` | fermé en prod (voulu) | `ODOO_POC_ENABLED=false` |
+| T5 | Diffusion temps réel des ventes à tous les comptes connectés | ❌ | `events.gateway.ts`, room `all` : non corrigé |
 
-## 4. État des tests sur `9fb4655`
+**Bilan API automatisé sur `75c8b06` : 31 ✅ / 4 ❌.** Les 4 ❌ sont attendus : 2 relèvent de #266, 2 de l'arbitrage 5.
 
-| Suite | Résultat |
-|---|---|
-| CI GitHub sur main (`CI — filet d'intégration`) | ❌ **rouge** : 1 échec sur 251, `pin-jamais-rendu.spec.ts` SEC-07 (`Math.random` dans `anti-enumeration.ts`, AUTH-07). Corrigé par la PR #262 (`claude/rc-correctifs`) |
-| CI GitHub `GARDE-ARGENT` sur main | ❌ **rouge** : une assertion retirée de `test-verrou-connexion.mjs` par 4bef809 (AUTH-03). Le refigeage est réservé à Patrick |
-| Backend unitaires (avec correctifs) | ✅ 251/251 |
-| Backend invariants PostgreSQL (avec correctifs) | ✅ 290/290 (57 suites) |
-| Front `tsc -b` + baseline | ✅ 0 erreur |
-| Front `verify` | 🟡 135/138. Nouveau rouge : `test:i18n-source` (inventaire 412 contre source 411), **déjà rouge sur main**. Les 2 autres rouges sont connus |
+## 4. Ce qu'il reste à Patrick
+
+1. Vérifier `/health` → `75c8b06`, puis poser le tag (commande au §1).
+2. Fusionner **#266** (périmètre d'argent, CI verte) : elle débloque BO Zones (et donc la création d'acteurs depuis le BO), les membres de coopérative et « mes ventes » vocal.
+3. Fournir la liste des testeurs (nom, téléphone, profil) et donner son accord pour créer les comptes en prod.
+4. Arbitrage 5 : permissions Missions (rôles BO, identificateur) et Marketplace, lien compte → institution.
