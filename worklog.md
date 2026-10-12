@@ -641,3 +641,23 @@ Work Log:
 Stage Summary:
 - 10 commits code + 1 docs poussés sur dev : la vente vocale dit vrai (T7 fermé caisse+marchand+producteur, ARG-17 fermé, muet lisible, encaissement en triple canal) et les flux d'argent marchand sont sous la garde caisse (verrou PIN MarchéVirtuel, PIN transfert complet, vérité réseau sur le transfert et Tontines)
 - Reste ouvert (proposé, non exécuté) : UX-9 producteur (BUG-009 annulation, vente directe plafond/verrou, BUG-010 computeRevenus + cloturee≠annulee), migration PinConfirmModal (CODE-NEW-8, décision Patrick), UX-10 réseau honnête (4 surfaces), bonus voix (diction récolte, « Tu as dit » uniformisé) — 5 décisions Patrick listées dans l'audit
+
+---
+Task ID: 24
+Agent: Z.ai Code
+Task: « regarde les derniers push de main, fais un audit et fais un merge des dernières améliorations » + rappel : « push sur dev, jamais sur main » — audit REVIEW-006 des pushs main (PR #261→#272, 63 commits) puis fusion dans dev, push dev uniquement
+
+Work Log:
+- État sandbox détecté : HEAD basculé sur `main` local par session concurrente (main local = 21646d0, dev local resté c379731, origine avancée) — ff local interrompu à mi-course
+- Contre-mesure : ref `dev` recalée sur `origin/dev` (ff, dev non coché nulle part) puis WORKTREE ISOLÉ `/home/z/wt-merge` portant `dev` — tout le reste du travail s'est fait hors de portée des bascules ; `main` jamais écrit ni poussé
+- Audit pré-merge (lecture seule) : gels `ci/*.json` intacts côté main ; chaîne `test:ci` gelée intouchée (main étend la chaîne verify +6 maillons, restaure l'assertion verrou) ; cadre CI racine de main (check.mjs, eslint, knip, jscpd) additif ; SEC-07 = même fix randomInt des deux côtés ; dev a refactoré audit→audit-log (main ne l'importe pas dans ses fichiers modifiés) ; renommage dev frontend_src→frontend vs main resté frontend_src (46 fichiers frontend : 14 ajoutés, 32 modifiés, 31 chevauchant dev)
+- Merge `--no-commit --no-ff origin/main` : rename-follow git a suivi le renommage (32 fichiers auto-fusionnés DANS frontend/, 14 ajouts en CONFLICT file location aux chemins frontend/ acceptés) ; 2 conflits de contenu seulement (.gitignore union, anti-enumeration même-fix→dev) + package.json (workspaces dev + scripts main, swagger 11.4.7 intacts, asserté JSON) + package-lock régénéré (npm --package-lock-only)
+- Correctif d'intégration (1b32929) : 6 occurrences frontend_src→frontend dans l'outillage main (check.mjs, eslint.config.mjs, knip.jsonc, .jscpd.json) ; chemin en dur du banc rejeuDeclencheurs traduit (A2 vert) ; test:i18n-source rouge par 4 phrases dites absentes du catalogue — PREUVE par diff que le rouge est HÉRITÉ de dev tip (phrases présentes à 21646d0, diff catalog main +13/−0, MaCooperative identique au merge) — 4 entrées a_migrer posées selon le motif PIE de main + INVENTAIRE régénéré (425 sites/242 phrases)
+- Batteries finales sur 1b32929 (worktree) : tsc ×2 = 0 ; charte 0 ; test:ci 0 ; parole-entree 0 ; voix-trace = 4 rouges hérités exactement (0 nouveau) ; garde-argent = 3 refus attendus exactement ; jest 251/251 ; nest build 0 ; 6 bancs verify main verts + verrou vert ; i18n source/argent/locales/empreintes verts
+- Registres : REVIEW_LOG (REVIEW-006), CHANGELOG (section Fusionné), COMMIT_LOG (2 entrées), worklog 24 — appends par anchors/assertions, zéro réécriture d'existant
+- Push `origin dev` (seule branche poussée) ; worktree conservé pour la suite ; `main` local et distant jamais touchés
+
+Stage Summary:
+- dev @ (merge 265062e + fix 1b32929 + registres) : les retours terrain PIE 07/10 (A1 stock sans doublon, A2 file hors ligne rejouable, A3 « encaisser » ASR), profil/activation (photo caméra, lieuxMarchands, bouton code agent), les correctifs RC backend (Modération CAST, Zones, Institutions, Missions, Enrôlement, SEC-07) et le cadre CI racine de main sont FUSIONNÉS dans dev et traduits sur l'arbre renommé frontend/
+- Zéro résidu frontend_src/ dans dev ; gels et chaîne test:ci intacts ; aucun rouge nouveau (toutes les baselines exactes)
+- Ouvert : npm run check racine (après npm install), re-gel humain Patrick, CODE-NEW-8, UX-9/UX-10 (restes producteur/réseau honnête tracés dans l'audit 07/10)
