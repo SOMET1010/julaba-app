@@ -5,6 +5,19 @@
 
 
 
+### Ajouté — Micro de dictée au bout de la ligne numéro (2026-10-12, 7ᵉ session)
+
+Demande du 12/10 sur la maquette validée : un bouton micro en FIN de la
+carte du numéro (🇨🇮 +225 •• •• … [œil] [micro]) pour dicter sans
+chercher la carte ni le pavé. Même contrat voix que les surfaces
+existantes : handler `dicterNumero` réutilisé (zéro appel de parole
+nouveau), visibilité seulement moteur vocal prêt (aucun micro trompeur),
+pastille verte qui pulse quand le micro écoute. La marge des paires
+passe en classe `.login-paire` pour laisser la ligne respirer
+(paliers ≤430/≤360 px, vérifié 390 et 320 px sans débordement). Étapes
+code/reconnaissance, carte dictée et pavé inchangés. Gardes : voix-trace
+15/15 identiques, charte EXIT 0, tsc EXIT 0, 0 erreur console.
+
 ### Modifié — Écran de connexion : « Ton numéro de téléphone » au design validé (2026-10-12, 6ᵉ session)
 
 Sur demande utilisateur (maquette 12/10, « ajoute toutes les fonctionnalités présentes sur ce design ») — refonte VISUELLE de l'étape numéro (75c869d), fonctionnalités 100 % conservées :

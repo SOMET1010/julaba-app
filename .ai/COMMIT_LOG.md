@@ -165,6 +165,12 @@ Maquette 12/10 appliquée à l'écran de connexion (75c869d, dev en worktree iso
 
 Gardes : voix-trace LoginPassword 15/15 appels identiques (ordre + arguments) ; auth-charte 24/26 hex, zéro nouveau ; verrou/canal/entrée-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande EXIT 0 ; tsc -b EXIT 0. Vérifié au navigateur (Vite + agent-browser) : rendu, saisie, progression, étape code, 0 erreur console.
 
+## 12/10/2026 — Micro de dictée au bout de la ligne numéro (agent Z.ai Code)
+
+Demande du 12/10 (`7b146b4`, dev en worktree isolé, main jamais poussé) : bouton micro en fin de la carte numéro, même contrat que la carte dictée et la touche du pavé (handler réutilisé, visible seulement moteur vocal prêt, pastille qui pulse). Paires de chiffres passées en classe `.login-paire` + paliers responsive ≤430/≤360 px (ligne à trois gestes sans débordement, vérifié 390 et 320 px).
+
+Gardes : voix-trace LoginPassword 15/15 appels identiques ; auth-charte EXIT 0 (zéro hex nouveau TSX) ; verrou/canal/entrée-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande/entree-numero-voix EXIT 0 ; tsc -b EXIT 0. Vérifié au navigateur (Vite + agent-browser) : micro 44×44 en bout de ligne, œil avant micro, repli honnête sans moteur, 0 erreur console.
+
 ## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
 
 | Commit | Type | Contenu (1 préoccupation = 1 commit) |
