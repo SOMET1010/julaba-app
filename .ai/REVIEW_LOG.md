@@ -367,3 +367,37 @@ Le projet a un historique de revues très riche :
 - `npm run check` (cadre racine de main) : outils eslint/knip/jscpd absents du node_modules racine du worktree d'audit — à jouer après un `npm install` racine (déps déjà au lock) ; les 6 maillons verify individuels sont verts.
 - Re-gel humain Patrick (périmètre + gardes) inchangé ; maillon backend dans `test:ci` toujours gelé ; CODE-NEW-8 (MarcheVirtuel PIN 4ᵉ copie) inchangé.
 - Les bancs A1/A2/A3/profil vivent maintenant dans `frontend/` côté dev — toute retouche future de ces écrans doit se faire là (plus jamais dans `frontend_src/`).
+## REVIEW-007 — Audit et libération des variables d'environnement mortes (2026-10-12, agent Z.ai Code)
+
+### Demande
+« OK, je veux que tu regardes dans le projet complet, les variables d'environnements qui ne sont plus utilisées, libère tout » — rappel de bordée : « push sur dev, jamais sur main ».
+
+### Méthode (double inventaire croisé, tous canaux)
+- **Déclarations** : `backend/.env.example`, `infra/odoo-poc/.env.example` (17 clés, sous-système POC vivant — inchangé), `render.yaml` (envVars julaba-api + julaba-web), `frontend/Dockerfile` (ARG/ENV VITE_API_URL), `backend/Dockerfile` (ENV NODE_ENV), `infra/odoo-poc/backend-poc/docker-compose.yml`, 12 workflows GitHub (blocs env + 8 secrets tous référencés), Caddyfile (aucun placeholder).
+- **Usages** : `process.env.X` statique, `process.env[k]` dynamique (main.ts seul — fail-fast secrets `JWT_SECRET`/`REFRESH_TOKEN_SALT`/`PIN_ENCRYPTION_KEY`), `configService.get('X')` (33 clés backend), helper `env.X` backend, `import.meta.env.X` (Vite, y compris `?.`), destructuring (aucun), `System.getenv` gradle (aucun), dotenv (`envFilePath` `.env`|`.env.test`, data-source `dotenv.config()`), scripts e2e/bancs (`frontend/e2e`, `frontend/apercu-caisse`, `frontend/scripts`), workflows.
+- Chaque candidate vérifiée mot-exact (`rg -w -F`) sur fichiers code uniquement (hors docs/.ai/worklog) + mécanisme de lecture examiné : les constantes de code homonymes ne comptent PAS comme lecture de l'env.
+
+### Verdict : 8 déclarations mortes libérées (122aedb)
+- `backend/.env.example` −5 : `BPAY_RECONCILIATION` (le cron passe par le registre `CRON_JOB_BPAY_RECONCILIATION`), `FEEDBAK_SMS_TEMPLATES` (constante TS `feedbak-sms.constants.ts`), `VOICE_PROVIDERS` (constante TS du DTO `['elevenlabs','azure_speech']`), `VOICE_METRIC_LABELS` (constante TS du service métriques), `ODOO_CLIENT` (symbole d'injection NestJS ; la bascule mock/real = `ODOO_CLIENT_MODE`)
+- `render.yaml` + `infra/odoo-poc/backend-poc/docker-compose.yml` : `TTS_DISABLE_CLOUD` (jamais lue par le backend ; le flag réel = `VOICE_LOCAL_TTS` via config.get)
+- `frontend/src/vite-env.d.ts` : type `VITE_SENTRY_DSN` (typé, jamais lu ni posé — DSN Sentry en dur dans `sentry.ts`, choix existant non modifié)
+- Net : 10 lignes supprimées, 4 fichiers, zéro code touché.
+
+### Inventaire utilisé-mais-non-déclaré (constaté, laissé en l'état — délibéré)
+- `VITE_CLOUDINARY_URL` / `VITE_CLOUDINARY_PRESET` : lues (`CommandesProducteurPage.tsx`, import.meta.env avec repli), posées ad hoc, non typées dans vite-env.d.ts.
+- `AUTH_TELEPHONES_TEST` : doctrine AUTH-07 (liste autoritaire par environnement, repli code dev) — pas de valeur par défaut committable par design.
+- Outillage posé ad hoc (documenté dans ses scripts) : `BANC_*`, `APERCU_LARGE`, `MAQUETTE_CAISSE`, `PASSE_CAPTURE`, `PW_CHROMIUM`, `CHROMIUM_BIN`, `RECETTE_*`, `REFERENCES_ATTENDUES`, `REF_CODE`/`REF_NOM`, `BASE_URL`, `GARDE_ARGENT_VERBEUX`, `TRUST_PROXY_ABSENT_XYZ` (sentinelle de test), `JULABA_VOIX_DYU`/`JULABA_DYU_ARGENT` (build APK, aussi lues par vite.config), `VITE_JULABA_MODULES_HORS_PILOTE`.
+
+### Hors de portée du dépôt (signalé, rien fait)
+- `backend/.env.production` vit sur le serveur (deploy.yml / docker-compose env_file) : s'il contient encore les clés mortes ci-dessus, elles y sont inertes — nettoyage facultatif à la prochaine maintenance (Patrick).
+
+### Batteries (sur 122aedb, worktree isolé)
+`typecheck` (tsc -b frontend) EXIT 0 ; `test:ci` EXIT 0 (chaîne gelée intacte) ; `test:enum-check-phone` EXIT 0 ; garde-argent = baseline héritée EXACTE (3 refus connus : périmètre 55 sortis, chaîne test:ci vs f0c965c, garde-fou 131 assertions débranchées — chemins frontend_src des empreintes) ; `rg` confirme qu'AUCUN fichier touché n'apparaît dans la sortie du garde ; re-gel humain Patrick inchangé.
+
+### Incidents sandbox
+- Aucun majeur. Vérifications post-édition via l'index git (`git show :0:`) — contre-mesure habituelle aux lectures périmées ; worktree isolé `/home/z/wt-merge` recréé (l'ancien avait été purgé) portant `dev @ e1bfbae`.
+
+### Restent ouverts
+- Re-gel humain Patrick (périmètre + gardes) inchangé — inchangé par ce commit.
+- Typage `VITE_CLOUDINARY_*` dans vite-env.d.ts (proposition, non fait).
+- `npm run check` racine complet (knip/jscpd) à rejouer après install racine (inchangé de REVIEW-006).

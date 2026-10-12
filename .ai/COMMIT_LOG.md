@@ -141,6 +141,15 @@ Audit REVIEW-006 (PR #261→#272 : cadre CI racine, correctifs RC, retours terra
 
 Batteries finales : tsc ×2 = 0 ; charte 0 ; test:ci 0 ; parole-entree 0 ; voix-trace = 4 hérités ; garde-argent = 3 refus attendus ; jest 251/251 ; nest build 0 ; 6 bancs main + verrou + i18n verts.
 
+## 12/10/2026 — Libération des variables d'environnement mortes (agent Z.ai Code)
+
+Audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis nettoyage sur dev en worktree isolé. `main` jamais poussé. Gels et chaîne `test:ci` intacts.
+
+1. `122aedb` — `chore(env): libère 8 variables d'environnement jamais lues (audit complet)` : backend/.env.example −5 (BPAY_RECONCILIATION, FEEDBAK_SMS_TEMPLATES, VOICE_PROVIDERS, VOICE_METRIC_LABELS, ODOO_CLIENT — homonymes = constantes de code, env jamais lue) ; render.yaml + compose odoo-poc −TTS_DISABLE_CLOUD (flag réel = VOICE_LOCAL_TTS) ; vite-env.d.ts −VITE_SENTRY_DSN (DSN en dur dans sentry.ts)
+2. Registres : REVIEW_LOG (REVIEW-007), CHANGELOG (section Nettoyé), COMMIT_LOG (cette entrée), worklog 25
+
+Batteries : typecheck EXIT 0 ; test:ci EXIT 0 (chaîne gelée intacte) ; enum-check-phone EXIT 0 ; garde-argent = baseline héritée exacte (3 refus connus, aucun fichier touché impliqué).
+
 ## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
 
 | Commit | Type | Contenu (1 préoccupation = 1 commit) |

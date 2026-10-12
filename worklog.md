@@ -661,3 +661,21 @@ Stage Summary:
 - dev @ (merge 265062e + fix 1b32929 + registres) : les retours terrain PIE 07/10 (A1 stock sans doublon, A2 file hors ligne rejouable, A3 « encaisser » ASR), profil/activation (photo caméra, lieuxMarchands, bouton code agent), les correctifs RC backend (Modération CAST, Zones, Institutions, Missions, Enrôlement, SEC-07) et le cadre CI racine de main sont FUSIONNÉS dans dev et traduits sur l'arbre renommé frontend/
 - Zéro résidu frontend_src/ dans dev ; gels et chaîne test:ci intacts ; aucun rouge nouveau (toutes les baselines exactes)
 - Ouvert : npm run check racine (après npm install), re-gel humain Patrick, CODE-NEW-8, UX-9/UX-10 (restes producteur/réseau honnête tracés dans l'audit 07/10)
+---
+Task ID: 25
+Agent: Z.ai Code
+Task: « OK, je veux que tu regardes dans le projet complet, les variables d'environnements qui ne sont plus utilisées, libère tout » (+ directive permanente : push dev uniquement, jamais main) — audit complet usages↔déclarations puis libération des variables mortes
+
+Work Log:
+- Découverte : le merge REVIEW-006 avait déjà été finalisé et poussé sur dev par la session concurrente (265062e + 1b32929 + e1bfbae : fix banc rejeuDeclencheurs, REVIEW-006, worklog 24) — vérifié (gels intacts, 0 résidu frontend_src) ; ancien worktree /home/z/wt-merge purgé → recréé sur dev @ e1bfbae
+- Double inventaire : déclarations (backend/.env.example, infra/odoo-poc/.env.example, render.yaml, Dockerfiles, compose, 12 workflows GitHub, Caddyfile) × usages tous canaux (process.env statique, process.env[k] dynamique = main.ts fail-fast seul, configService.get — 33 clés, helper env., import.meta.env y compris ?., destructuring néant, System.getenv néant, dotenv/envFilePath, scripts e2e/bancs)
+- Vérification mot-exact code-only (rg -w -F, hors docs/.ai/worklog) de chaque candidate + examen du mécanisme de lecture : pièges levés — FEEDBAK_SMS_TEMPLATES / VOICE_PROVIDERS / VOICE_METRIC_LABELS / ODOO_CLIENT sont des constantes de CODE homonymes (l'env homonyme n'est jamais lue) ; BPAY_RECONCILIATION ≠ CRON_JOB_BPAY_RECONCILIATION (registre)
+- Libération (122aedb, python strict assertions + vérif index git) : backend/.env.example −5 clés ; TTS_DISABLE_CLOUD retirée de render.yaml ET infra/odoo-poc/backend-poc/docker-compose.yml (flag réel = VOICE_LOCAL_TTS) ; type VITE_SENTRY_DSN retiré de vite-env.d.ts (DSN Sentry en dur dans sentry.ts) — 10 lignes, 4 fichiers, zéro code touché
+- Batteries : typecheck EXIT 0 ; test:ci EXIT 0 (chaîne gelée intacte) ; test:enum-check-phone EXIT 0 ; garde-argent = baseline héritée EXACTE (3 refus connus + garde-fou 131 débranchées, chemins frontend_src des empreintes) — rg confirme qu'aucun fichier touché n'apparaît dans la sortie du garde
+- Registres : REVIEW_LOG (REVIEW-007), CHANGELOG (section Nettoyé), COMMIT_LOG, worklog 25 — appends/insertions par anchors/assertions, zéro réécriture d'existant
+- Push `origin dev` (seule branche poussée, jamais main, jamais force)
+
+Stage Summary:
+- dev @ 122aedb + docs : 8 déclarations d'env mortes libérées (5 dans backend/.env.example, 2× TTS_DISABLE_CLOUD, 1 type VITE_SENTRY_DSN) — la doc d'environnement décrit désormais exactement ce que le backend lit
+- Inventaire utilisé-mais-non-déclaré documenté (VITE_CLOUDINARY_*, AUTH_TELEPHONES_TEST, outillage BANC_*/RECETTE_*/CHROMIUM_BIN/PW_CHROMIUM, JULABA_VOIX_DYU/JULABA_DYU_ARGENT) — volontaire, non modifié
+- Signalé à Patrick : backend/.env.production (serveur, hors dépôt) peut encore contenir les clés mortes — inertes, nettoyage facultatif ; re-gel périmètre/gardes inchangé
