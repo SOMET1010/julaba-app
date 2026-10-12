@@ -679,3 +679,23 @@ Stage Summary:
 - dev @ 122aedb + docs : 8 déclarations d'env mortes libérées (5 dans backend/.env.example, 2× TTS_DISABLE_CLOUD, 1 type VITE_SENTRY_DSN) — la doc d'environnement décrit désormais exactement ce que le backend lit
 - Inventaire utilisé-mais-non-déclaré documenté (VITE_CLOUDINARY_*, AUTH_TELEPHONES_TEST, outillage BANC_*/RECETTE_*/CHROMIUM_BIN/PW_CHROMIUM, JULABA_VOIX_DYU/JULABA_DYU_ARGENT) — volontaire, non modifié
 - Signalé à Patrick : backend/.env.production (serveur, hors dépôt) peut encore contenir les clés mortes — inertes, nettoyage facultatif ; re-gel périmètre/gardes inchangé
+
+---
+Task ID: 26
+Agent: Z.ai Code
+Task: « verifie si il ne sont pas mort ainsi que ses composants » — passe de vérification des variables d'environnement libérées (mort confirmée), des déclarations restantes (vivantes) et de leurs composants hôtes (modules, workflows, infra) ; directive permanente : push dev uniquement, jamais main
+
+Work Log:
+- Découverte d'état : dev == origin/dev @ bb9052a (REVIEW-006 merge + REVIEW-007 libération déjà poussés par la session 4) ; worktree /home/z/wt-merge recréé sur dev (l'ancien avait été purgé)
+- Preuve de mort des 7 noms uniques libérés (122aedb) : 0 canal de lecture (process.env direct/['X'], get('X'), get<type>('X'), import.meta.env, secrets, compose/render/Dockerfiles/Caddyfile, littéraux code) — 3 noms à 0 mention totale (BPAY_RECONCILIATION, TTS_DISABLE_CLOUD, VITE_SENTRY_DSN) ; 4 homonymes de CODE vivants et consommés (FEEDBAK_SMS_TEMPLATES, VOICE_PROVIDERS, VOICE_METRIC_LABELS, ODOO_CLIENT=Symbol) ; note honnête : « 8 » du message 122aedb = 8 déclarations / 7 noms (TTS_DISABLE_CLOUD dans 2 fichiers)
+- Vivacité des déclarations restantes : 61 clés backend/.env.example (process.env direct ; config.get y compris get<type>('X',déf) ; helper env.X = fonctions NodeJS.ProcessEnv à défaut process.env : motDePasseBackOffice, buildThrottlers(process.env) dans app.module, lireModeClientOdoo) ; 24 clés render.yaml (backend + VITE_API_URL) ; 17 clés POC odoo toutes consommées (compose, init.sh, smoke-test.sh, test_create_api_key.py) ; frontend VITE_API_URL/VITE_WS_URL (WebSocketTransport:36)/VITE_JULABA_MODULES_HORS_PILOTE (modulesPilote:120)/VITE_CLOUDINARY_URL+PRESET (CommandesProducteurPage:589-590)
+- Composants hôtes tous vivants : modules (Bpay/Sms/FeedbakSms/Oneci/Voice/OdooGateway/Notifications/CaisseRest/CatalogueMaitre) câblés dans app.module.ts ; sentry.ts←main.tsx, instrument.ts←main.ts:1 ; WebSocketTransport←eventBus/NotificationsContext/BODashboard ; 12 workflows → scripts tous existants (piège working-directory: android levé : android/scripts/installer-voix.sh présent) ; 8 secrets référencés ; render.yaml (blueprint) + deploy.yml (manuel documenté) coexistence délibérée ; scripts racine schema-pilote.mjs/check-nest-versions.mjs et backend/scripts/setup-piper.sh référencés ; Caddyfile présent
+- Pièges écartés : (1) motif get('X' seul → 29 faux « morts » corrigés par mot-exact + lecture des mécanismes ; (2) verdict sur sortie tronquée par head → VITE_WS_URL faussement morte, re-scan complet = vivante ; (3) existence naïve de scripts workflows sans working-directory — fausse alerte installer-voix.sh
+- Clôture du point ouvert REVIEW-007 (c912d8a) : typage VITE_CLOUDINARY_URL/PRESET dans vite-env.d.ts (python strict + assertions + vérification index git) — tsc -b frontend EXIT 0
+- Registres : REVIEW_LOG (REVIEW-008), CHANGELOG (section Vérifié), COMMIT_LOG, worklog 26 — insertions par anchors/assertions, zéro réécriture d'existant
+- Push `origin dev` (seule branche poussée, jamais main, jamais force)
+
+Stage Summary:
+- dev @ c912d8a + registres : AUCUNE variable ni composant mort restant — l'audit REVIEW-007 est confirmé et l'environnement déclaré décrit exactement ce que le code lit ; unique changement de code = typage des 2 VITE_CLOUDINARY_* (point ouvert 007 clos)
+- Leçons consignées dans REVIEW-008 : jamais de verdict sur motif unique ni sur sortie tronquée ; toujours tenir compte de working-directory
+- Gels ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json intacts (diff bb9052a vide) ; chaîne test:ci non touchée ; re-gel humain Patrick inchangé

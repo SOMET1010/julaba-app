@@ -5,6 +5,16 @@
 
 
 
+### Vérifié — Variables d'environnement et composants : rien de mort restant (2026-10-12, 5ᵉ session)
+
+Sur demande utilisateur (« verifie si il ne sont pas mort ainsi que ses composants ») — passe de vérification REVIEW-008 :
+
+- **7 noms libérés en 122aedb : mort confirmée** (0 canal de lecture, 0 déclaration résiduelle) ; les homonymes de code (constantes TS feedbak-sms/voice, Symbol ODOO_CLIENT) sont des composants vivants.
+- **Toutes les déclarations restantes sont vivantes** : 61 clés backend/.env.example (process.env, config.get<type>, helper env.X), 24 clés render.yaml, 17 clés du POC odoo (compose/scripts), VITE_API_URL / VITE_WS_URL (WebSocketTransport) / VITE_JULABA_MODULES_HORS_PILOTE (modulesPilote) / VITE_CLOUDINARY_* (CommandesProducteurPage).
+- **Composants hôtes tous vivants** : modules backend câblés dans app.module.ts, sentry.ts/instrument.ts chargés, WebSocketTransport consommé, 12 workflows → scripts tous existants (y compris android/scripts/installer-voix.sh via working-directory), 8 secrets référencés, render.yaml/deploy.yml/infra-odoo-poc/Caddyfile en place.
+- **Clôture point ouvert REVIEW-007** : VITE_CLOUDINARY_URL/PRESET désormais typées dans vite-env.d.ts (c912d8a) — tsc -b EXIT 0.
+- Gels ci/*.json intacts, chaîne test:ci non touchée, vite-env.d.ts hors empreintes garde-argent.
+
 ### Nettoyé — Libération des variables d'environnement mortes (2026-10-12, 4ᵉ session)
 
 Sur demande utilisateur (« regarde dans le projet complet, les variables d'environnements qui ne sont plus utilisées, libère tout ») — audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis libération :

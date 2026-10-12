@@ -150,6 +150,15 @@ Audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis ne
 
 Batteries : typecheck EXIT 0 ; test:ci EXIT 0 (chaîne gelée intacte) ; enum-check-phone EXIT 0 ; garde-argent = baseline héritée exacte (3 refus connus, aucun fichier touché impliqué).
 
+## 12/10/2026 — Vérification « pas morts » variables + composants (agent Z.ai Code)
+
+Passe de vérification REVIEW-008 sur dev (worktree isolé, main jamais poussé) : preuve de mort des 7 noms libérés (122aedb), vivacité des 102 déclarations restantes (61 .env.example + 24 render.yaml + 17 POC), audit des composants hôtes (modules app.module, sentry/instrument, WebSocketTransport, 12 workflows → scripts, secrets, render/deploy/POC/Caddyfile) — **aucune variable ni composant mort restant**.
+
+1. `c912d8a` — `chore(env-types): type VITE_CLOUDINARY_URL/PRESET dans vite-env.d.ts` : clôture du point ouvert REVIEW-007 (type seul, +4 lignes)
+2. Registres : REVIEW_LOG (REVIEW-008), CHANGELOG (section Vérifié), COMMIT_LOG (cette entrée), worklog 26
+
+Batteries : `tsc -b` frontend EXIT 0 ; gels ci/*.json intacts (diff bb9052a vide) ; vite-env.d.ts hors empreintes garde-argent.
+
 ## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
 
 | Commit | Type | Contenu (1 préoccupation = 1 commit) |
