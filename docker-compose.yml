@@ -1,8 +1,42 @@
+# Stack Docker locale / DR (OVH) — backend + postgres + frontend nginx.
+# La BD est DANS la stack : dans backend/.env.production, utiliser
+# DB_HOST=postgres (nom du service, PAS localhost ni host.docker.internal).
+# Modele d'env : backend/.env.production.example (cp -> .env.production).
 services:
+  postgres:
+    # BD de la stack — version de reference du projet (CI invariants, .env.example)
+    image: postgres:16-alpine
+    container_name: julaba_postgres
+    restart: always
+    environment:
+      # Garder cohérent avec backend/.env.production :
+      # DB_USERNAME / DB_PASSWORD / DB_NAME
+      POSTGRES_USER: julaba
+      POSTGRES_PASSWORD: julaba
+      POSTGRES_DB: julaba_dev
+    ports:
+      # Outils depuis l'hote (psql, pg_dump) : 5433 pour ne pas heurter
+      # un PostgreSQL local deja present sur 5432. Le backend, lui,
+      # passe par le reseau interne (DB_HOST=postgres, port 5432).
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - julaba_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U julaba -d julaba_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
   backend:
     build: ./backend
     container_name: julaba_backend
     restart: always
+    # Attend la BD saine avant le boot (prepareDatabase construit le
+    # schema tout seul sur base vierge — voir backend/src/main.ts).
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "3001:3000"
     env_file:
@@ -29,6 +63,9 @@ services:
     volumes:
       - ./frontend/dist:/usr/share/nginx/html
       - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf
+
+volumes:
+  julaba_pgdata:
 
 networks:
   default:
