@@ -61,7 +61,6 @@ services:
       # derriere JwtAuthGuard et il faut donc pouvoir se connecter.
       SEED_DEMO: "true"
       SEED_DEMO_PASSWORD: "1234"
-      TTS_DISABLE_CLOUD: "true"
       # --- Gateway Odoo -----------------------------------------------------
       ODOO_CLIENT_MODE: real
       # Nom de service Docker et PORT INTERNE : depuis un conteneur,
