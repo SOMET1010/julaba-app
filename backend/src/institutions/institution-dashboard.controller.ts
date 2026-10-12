@@ -1,235 +1,201 @@
-import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, Repository, SelectQueryBuilder } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
+import { CaisseTransaction } from '../caisse-rest/caisse-transaction.entity';
+import { bilanVentesDeCaisse, conditionVenteRetenue, montantLisible } from '../commun/vente-de-caisse';
 import { InstitutionScopeGuard, InstitutionScope } from './guards/institution-scope.guard';
 import { RequireInstitutionModule } from './decorators/institution-required-module.decorator';
 import { CurrentInstitutionScope } from './decorators/institution-scope.decorator';
+
+const ACTEUR_ROLES = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
+
+/** Indicateurs sur les acteurs du perimetre (aucun argent ici). */
+function indicateursActeurs(acteurs: User[], now: Date) {
+  const pct = (n: number) => (acteurs.length > 0 ? Math.round((n / acteurs.length) * 100) : 0);
+  const estActif = (u: any) => u.status === 'actif' || u.validated === true;
+  const parRole = (role: string) => acteurs.filter(u => u.role === role).length;
+  const today = now.toISOString().slice(0, 10);
+  const creesAujourdhui = acteurs.filter(u => new Date(u.createdAt).toISOString().slice(0, 10) === today);
+  const acteursActifs = acteurs.filter(estActif).length;
+  return {
+    macroActeurs: {
+      totalActeurs: acteurs.length,
+      acteursActifs,
+      acteursSuspendus: acteurs.filter(u => (u as any).status === 'suspendu').length,
+      tauxActivite: pct(acteursActifs),
+      nouveauxCeMois: acteurs.filter(u => {
+        const d = new Date(u.createdAt);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }).length,
+      pctInclusionCNPS: pct(acteurs.filter(u => Boolean((u as any).cnps)).length),
+      pctInclusionCNAM: pct(acteurs.filter(u => Boolean((u as any).cnam)).length),
+    },
+    resumeActeurs: {
+      nouveauxInscrits: creesAujourdhui.length,
+      dossiersValides: creesAujourdhui.filter(estActif).length,
+      dossiersRejetes: creesAujourdhui.filter(u => (u as any).status === 'rejete').length,
+    },
+    dataRepartition: [
+      { name: 'Marchands',       value: parRole('marchand'),       color: '#C66A2C' },
+      { name: 'Producteurs',     value: parRole('producteur'),     color: '#2E8B57' },
+      { name: 'Coopératives',    value: parRole('cooperateur'),    color: '#2072AF' },
+      { name: 'Identificateurs', value: parRole('identificateur'), color: '#9F8170' },
+    ],
+    byRole: ACTEUR_ROLES.map(role => ({ role, count: parRole(role) })),
+  };
+}
 
 // Isolement inter-institutions (correctif audit securite/vie privee) :
 // InstitutionScopeGuard resout, pour le role `institution` uniquement, le
 // perimetre reel du compte (zone) et le pose sur la requete en
 // `institutionScope`. Chaque endpoint filtre EXPLICITEMENT ses requetes SQL
 // par cette zone -- jamais de fallback silencieux sur les donnees globales.
-// super_admin / admin_general restent non scopes (vue plateforme complete,
-// comportement inchange).
+// super_admin / admin_general restent non scopes (vue plateforme complete).
+//
+// « TRANSACTIONS » ET « VOLUME » = LES VENTES DE CAISSE des acteurs du
+// perimetre (definition unique : commun/vente-de-caisse.ts). Ce controleur
+// lisait le portefeuille Keiwa, hors pilote. Une erreur de lecture sort en
+// erreur (5xx) : elle rendait des zeros, indiscernables d'une zone sans vente.
 @UseGuards(JwtAuthGuard, RolesGuard, InstitutionScopeGuard)
 @Roles('institution', 'super_admin', 'admin_general')
 @Controller('institution')
 export class InstitutionDashboardController {
-  private readonly logger = new Logger(InstitutionDashboardController.name);
-
   constructor(
     @InjectRepository(User)
     private usersRepo: Repository<User>,
-    @InjectRepository(WalletTransaction)
-    private txRepo: Repository<WalletTransaction>,
+    @InjectRepository(CaisseTransaction)
+    private ventesRepo: Repository<CaisseTransaction>,
   ) {}
+
+  private acteursDuPerimetre(user: User, scope?: InstitutionScope): Promise<User[]> {
+    return this.usersRepo.find({
+      where: user.role === 'institution'
+        ? ({ role: In(ACTEUR_ROLES), zoneId: scope!.zoneId } as any)
+        : undefined,
+      take: 5000,
+      order: { createdAt: 'DESC' } as any,
+    });
+  }
+
+  /** Lignes de caisse des acteurs du perimetre (filtre de vente a ajouter). */
+  private caisseDuPerimetre(user: User, scope?: InstitutionScope): SelectQueryBuilder<CaisseTransaction> {
+    const qb = this.ventesRepo.createQueryBuilder('t')
+      .leftJoin('users', 'u', 'u.id::text = t.user_id');
+    if (user.role === 'institution') {
+      qb.where('u.zone_id = :zoneId AND u.role IN (:...roles)', { zoneId: scope!.zoneId, roles: ACTEUR_ROLES });
+    }
+    return qb;
+  }
 
   @Get('dashboard')
   @RequireInstitutionModule('dashboard')
   async getDashboard(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
-    try {
-      const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
-      const isInstitution = user.role === 'institution';
-      const users = await this.usersRepo.find({
-        where: isInstitution
-          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
-          : undefined,
-        take: 5000,
-        order: { createdAt: 'DESC' } as any,
-      });
-      const acteurIds = users.map((u) => u.id);
-      const transactions = await this.txRepo.find({
-        where: isInstitution
-          ? ({ userId: In(acteurIds) } as any)
-          : undefined,
-        take: 10000,
-        order: { createdAt: 'DESC' },
-      });
+    const acteurs = (await this.acteursDuPerimetre(user, scope))
+      .filter(u => ACTEUR_ROLES.includes(u.role as string));
+    const caisse = this.caisseDuPerimetre(user, scope);
+    const now = new Date();
+    const debutMois = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const debutMoisPrecedent = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const [ventes, ventesDuJour, ventesDuMois, ventesMoisPrecedent] = await Promise.all([
+      bilanVentesDeCaisse(caisse, 't'),
+      bilanVentesDeCaisse(caisse.clone().andWhere("t.created_at >= date_trunc('day', now())"), 't'),
+      bilanVentesDeCaisse(caisse.clone().andWhere('t.created_at >= :debut', { debut: debutMois }), 't'),
+      bilanVentesDeCaisse(caisse.clone().andWhere('t.created_at >= :debutP AND t.created_at < :finP',
+        { debutP: debutMoisPrecedent, finP: debutMois }), 't'),
+    ]);
 
-      const today = new Date().toISOString().slice(0, 10);
-      const now = new Date();
+    const { macroActeurs, resumeActeurs, dataRepartition, byRole } = indicateursActeurs(acteurs, now);
 
-      const acteurs = users.filter(u => acteurRoles.includes(u.role as string));
+    const volumeTransactions = ventes.nombre_ventes;
+    const valeurMonetaire    = ventes.volume_ventes;
+    const valeurMoyenne      = valeurMonetaire === null ? null
+      : (volumeTransactions > 0 ? Math.round(valeurMonetaire / volumeTransactions) : 0);
+    // Croissance du volume des ventes, mois courant contre mois precedent.
+    // Sans base de comparaison (mois precedent vide ou illisible), on ne
+    // l'invente pas : `null`. Elle valait 0 en dur.
+    const croissanceMensuelle =
+      ventesDuMois.volume_ventes !== null && ventesMoisPrecedent.volume_ventes
+        ? Math.round(((ventesDuMois.volume_ventes - ventesMoisPrecedent.volume_ventes)
+            / ventesMoisPrecedent.volume_ventes) * 100)
+        : null;
 
-      const totalActeurs     = acteurs.length;
-      const acteursActifs    = acteurs.filter(u => (u as any).status === 'actif' || (u as any).validated === true).length;
-      const acteursSuspendus = acteurs.filter(u => (u as any).status === 'suspendu').length;
-      const tauxActivite     = totalActeurs > 0 ? Math.round((acteursActifs / totalActeurs) * 100) : 0;
-
-      const nouveauxCeMois = acteurs.filter(u => {
-        const d = new Date(u.createdAt);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }).length;
-
-      const pctInclusionCNPS = totalActeurs > 0
-        ? Math.round((acteurs.filter(u => Boolean((u as any).cnps)).length / totalActeurs) * 100) : 0;
-      const pctInclusionCNAM = totalActeurs > 0
-        ? Math.round((acteurs.filter(u => Boolean((u as any).cnam)).length / totalActeurs) * 100) : 0;
-
-      const volumeTransactions = transactions.length;
-      const valeurMonetaire    = transactions.reduce((s, t) => s + Number(t.montant || 0), 0);
-      const valeurMoyenne      = volumeTransactions > 0 ? Math.round(valeurMonetaire / volumeTransactions) : 0;
-
-      const txDigitales    = transactions.filter(t => t.type !== 'credit').length;
-      const pctDigitalisation = volumeTransactions > 0
-        ? Math.round((txDigitales / volumeTransactions) * 100) : 0;
-
-      // resumeJour
-      const nouveauxInscrits = acteurs.filter(u =>
-        new Date(u.createdAt).toISOString().slice(0, 10) === today
-      ).length;
-      const dossiersValides = acteurs.filter(u =>
-        new Date(u.createdAt).toISOString().slice(0, 10) === today &&
-        ((u as any).status === 'actif' || (u as any).validated === true)
-      ).length;
-      const dossiersRejetes = acteurs.filter(u =>
-        new Date(u.createdAt).toISOString().slice(0, 10) === today &&
-        (u as any).status === 'rejete'
-      ).length;
-      const transactionsDuJour = transactions.filter(t =>
-        new Date(t.createdAt).toISOString().slice(0, 10) === today
-      ).length;
-
-      // dataRepartition
-      const dataRepartition = [
-        { name: 'Marchands',       value: acteurs.filter(u => u.role === 'marchand').length,       color: '#C66A2C' },
-        { name: 'Producteurs',     value: acteurs.filter(u => u.role === 'producteur').length,     color: '#2E8B57' },
-        { name: 'Coopératives',    value: acteurs.filter(u => u.role === 'cooperateur').length,    color: '#2072AF' },
-        { name: 'Identificateurs', value: acteurs.filter(u => u.role === 'identificateur').length, color: '#9F8170' },
-      ];
-
-      // byRole pour Analytics
-      const byRole = acteurRoles.map(role => ({
-        role,
-        count: acteurs.filter(u => u.role === role).length,
-      }));
-
-      return {
-        macroKPIs: {
-          totalActeurs, acteursActifs, acteursSuspendus,
-          volumeTransactions, valeurMonetaire,
-          valeurMonetaireFormatted: Math.round((valeurMonetaire / 1_000_000_000) * 100) / 100,
-          valeurMoyenne, pctDigitalisation,
-          pctInclusionCNPS, pctInclusionCNAM,
-          tauxActivite, nouveauxCeMois,
-          croissanceMensuelle: 0,
-        },
-        resumeJour: {
-          nouveauxInscrits, dossiersValides, dossiersRejetes,
-          transactionsDuJour, alertesCritiquesActives: 0,
-        },
-        dataRepartition,
-        byRole,
-        total_users: totalActeurs,
-        validated_users: acteursActifs,
-        conversion_rate: tauxActivite,
-      };
-    } catch (e: any) {
-      this.logger.error(`[DASHBOARD] Erreur: ${e?.message}`, e?.stack);
-      return {
-        macroKPIs: {
-          totalActeurs: 0, acteursActifs: 0, acteursSuspendus: 0,
-          volumeTransactions: 0, valeurMonetaire: 0, valeurMonetaireFormatted: 0,
-          valeurMoyenne: 0, pctDigitalisation: 0,
-          pctInclusionCNPS: 0, pctInclusionCNAM: 0,
-          tauxActivite: 0, nouveauxCeMois: 0, croissanceMensuelle: 0,
-        },
-        resumeJour: {
-          nouveauxInscrits: 0, dossiersValides: 0, dossiersRejetes: 0,
-          transactionsDuJour: 0, alertesCritiquesActives: 0,
-        },
-        dataRepartition: [],
-        byRole: [],
-        total_users: 0, validated_users: 0, conversion_rate: 0,
-      };
-    }
+    return {
+      macroKPIs: {
+        ...macroActeurs,
+        volumeTransactions, valeurMonetaire,
+        valeurMonetaireFormatted: valeurMonetaire === null ? null
+          : Math.round((valeurMonetaire / 1_000_000_000) * 100) / 100,
+        montantsIllisibles: ventes.montants_illisibles,
+        valeurMoyenne,
+        // La part « digitale » se lisait sur le portefeuille Keiwa (hors
+        // pilote). Le pilote encaisse en especes : rien a mesurer ici.
+        pctDigitalisation: null,
+        croissanceMensuelle,
+      },
+      resumeJour: {
+        ...resumeActeurs,
+        transactionsDuJour: ventesDuJour.nombre_ventes, alertesCritiquesActives: 0,
+      },
+      dataRepartition,
+      byRole,
+      total_users: macroActeurs.totalActeurs,
+      validated_users: macroActeurs.acteursActifs,
+      conversion_rate: macroActeurs.tauxActivite,
+    };
   }
 
   @Get('acteurs')
   @RequireInstitutionModule('acteurs')
   async getActeurs(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
-    try {
-      const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
-      const isInstitution = user.role === 'institution';
-      const users = await this.usersRepo.find({
-        where: isInstitution
-          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
-          : undefined,
-        take: 5000,
-        order: { createdAt: 'DESC' } as any,
-      });
-      const data = users.map((u: any) => ({
-        id: u.id,
-        nom: u.lastName || u.last_name || '',
-        prenoms: u.firstName || u.first_name || '',
-        telephone: u.phone || '',
-        region: u.region || '',
-        commune: u.commune || '',
-        statut: u.status === 'actif' || u.validated === true ? 'actif' : (u.status === 'suspendu' ? 'suspendu' : (u.status || 'actif')),
-        type: u.role,
-        activite: u.activity || '',
-        dateCreation: u.createdAt || '',
-        activiteRecente: u.lastLoginAt || u.last_login_at || u.createdAt || '',
-      }));
-      return { data, total: data.length };
-    } catch (e: any) {
-      this.logger.error('[ACTEURS] Erreur: ' + e?.message, e?.stack);
-      return { data: [], total: 0 };
-    }
+    const users = await this.acteursDuPerimetre(user, scope);
+    const data = users.map((u: any) => ({
+      id: u.id,
+      nom: u.lastName || '',
+      prenoms: u.firstName || '',
+      telephone: u.phone || '',
+      region: u.region || '',
+      commune: u.commune || '',
+      statut: u.status === 'actif' || u.validated === true ? 'actif' : (u.status === 'suspendu' ? 'suspendu' : (u.status || 'actif')),
+      type: u.role,
+      activite: u.activity || '',
+      dateCreation: u.createdAt || '',
+      activiteRecente: u.lastLoginAt || u.createdAt || '',
+    }));
+    return { data, total: data.length };
   }
 
   @Get('transactions')
   @RequireInstitutionModule('transactions')
   async getTransactions(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
-    try {
-      const acteurRoles = ['marchand', 'producteur', 'cooperateur', 'identificateur'];
-      const isInstitution = user.role === 'institution';
-      const users = await this.usersRepo.find({
-        where: isInstitution
-          ? ({ role: In(acteurRoles), zoneId: scope!.zoneId } as any)
-          : undefined,
-        take: 5000,
-      });
-      const userMap = new Map(users.map((u: any) => [u.id, u]));
-      const acteurIds = users.map((u) => u.id);
-      const transactions = await this.txRepo.find({
-        where: isInstitution
-          ? ({ userId: In(acteurIds) } as any)
-          : undefined,
-        take: 10000,
-        order: { createdAt: 'DESC' },
-      });
-      const data = transactions.map((t: any) => {
-        const u: any = userMap.get(t.userId) || {};
-        const statutMap = t.statut === 'completed' ? 'validee' : (t.statut === 'cancelled' ? 'annulee' : (t.statut || 'validee'));
-        const firstName = u.firstName || u.first_name || '';
-        const lastName = u.lastName || u.last_name || '';
-        return {
-          id: t.id,
-          acteurNom: (firstName + ' ' + lastName).trim() || '-',
-          acteurType: u.role || 'marchand',
-          telephone: u.phone || '-',
-          commune: u.commune || '-',
-          region: u.region || '-',
-          montant: Number(t.montant || 0),
-          statut: statutMap,
-          type: t.type || '',
-          produit: t.description || '',
-          date: t.createdAt,
-          created_at: t.createdAt,
-        };
-      });
-      return { data, total: data.length };
-    } catch (e: any) {
-      this.logger.error('[TRANSACTIONS] Erreur: ' + e?.message, e?.stack);
-      return { data: [], total: 0 };
-    }
+    const lignes = await this.caisseDuPerimetre(user, scope)
+      .andWhere(conditionVenteRetenue('t'))
+      .select(['t.id AS id', 't.montant AS montant', 't.statut AS statut', 't.type AS type',
+        't.produit AS produit', 't.description AS description', 't.created_at AS created_at',
+        'u.first_name AS first_name', 'u.last_name AS last_name', 'u.role AS role',
+        'u.phone AS phone', 'u.commune AS commune', 'u.region AS region'])
+      .orderBy('t.created_at', 'DESC')
+      .limit(10000)
+      .getRawMany();
+    const data = lignes.map((t: any) => ({
+      id: t.id,
+      acteurNom: `${t.first_name || ''} ${t.last_name || ''}`.trim() || '-',
+      acteurType: t.role || '-',
+      telephone: t.phone || '-',
+      commune: t.commune || '-',
+      region: t.region || '-',
+      // Illisible => null, jamais 0 (ACC-03).
+      montant: montantLisible(t.montant),
+      statut: t.statut,
+      type: t.type,
+      produit: t.produit || t.description || '',
+      date: t.created_at,
+      created_at: t.created_at,
+    }));
+    return { data, total: data.length };
   }
 }
