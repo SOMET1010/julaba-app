@@ -2,15 +2,16 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { TrendingUp, Users, DollarSign } from 'lucide-react';
 import { Card } from '../ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { GraphiqueIndisponible } from './GraphiqueIndisponible';
+import { RAISON_HISTORIQUE_ABSENT } from '../../services/accueilInstitution';
 
 export function Dashboard() {
-  const { macroKPIs, dataEvolution, dataRepartition } = useInstitutionData();
-  const volumeData = dataEvolution.map(d => ({ month: d.mois, volume: d.valeur }));
+  const { macroKPIs, dataRepartition } = useInstitutionData();
   const roleData = dataRepartition;
 
   return (
@@ -28,7 +29,6 @@ export function Dashboard() {
               icon={Users}
               color="#712864"
               delay={0}
-              explication={`${12}% ce mois`}
             />
             <UniversalKPI
               label="Transactions"
@@ -36,7 +36,6 @@ export function Dashboard() {
               icon={DollarSign}
               color="#2072AF"
               delay={30}
-              explication={`${18}% ce mois`}
             />
             <UniversalKPI
               label="Volume (Mds FCFA)"
@@ -44,7 +43,6 @@ export function Dashboard() {
               icon={TrendingUp}
               color="#2E8B57"
               delay={60}
-              explication={`${24}% ce mois`}
             />
             <UniversalKPI
               label="Taux activité"
@@ -67,21 +65,7 @@ export function Dashboard() {
           {/* Volume Evolution */}
           <Card className="p-6 rounded-2xl">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Évolution du volume (Millions FCFA)</h3>
-            <ResponsiveContainer key="chart-dashboard-volume" width="100%" height={300}>
-              <LineChart data={volumeData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="month" stroke="#6B7280" />
-                <YAxis stroke="#6B7280" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                  }}
-                />
-                <Line type="monotone" dataKey="volume" stroke="#702963" strokeWidth={3} dot={{ fill: '#702963', r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            <GraphiqueIndisponible raison={RAISON_HISTORIQUE_ABSENT} hauteur={300} />
           </Card>
 
           {/* Distribution by Role */}
