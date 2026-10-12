@@ -27,8 +27,6 @@ import * as bcrypt from 'bcryptjs';
 import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User, UserRole, UserStatus } from '../../src/users/entities/user.entity';
-import { Wallet } from '../../src/wallets/entities/wallet.entity';
-import { WalletTransaction, TransactionType } from '../../src/wallets/entities/wallet-transaction.entity';
 
 describe('Invariant — isolement inter-institutions (/institution/...)', () => {
   let app: INestApplication;
@@ -92,23 +90,19 @@ describe('Invariant — isolement inter-institutions (/institution/...)', () => 
     return { responsable, token };
   }
 
+  // La transaction d'un acteur est une VENTE DE CAISSE, ecrite par le seul
+  // chemin de vente (POST /caisse/vente) : c'est ce que l'institution compte
+  // (commun/vente-de-caisse.ts). Le portefeuille Keiwa est hors pilote.
   async function seedActeurAvecTransaction(zoneId: string, phoneSuffix: string, montant: number) {
     const acteur = await seedUser({
       role: UserRole.MARCHAND,
       phone: `+225070091${phoneSuffix}`,
       zoneId,
     } as any);
-    await ds.getRepository(Wallet).save(
-      ds.getRepository(Wallet).create({ userId: acteur.id, solde: 0 } as any),
-    );
-    await ds.getRepository(WalletTransaction).save(
-      ds.getRepository(WalletTransaction).create({
-        userId: acteur.id,
-        type: TransactionType.CREDIT,
-        montant,
-        statut: 'completed',
-      } as any),
-    );
+    const vente = await api().post('/api/v1/caisse/vente')
+      .set('Authorization', `Bearer ${await tokenFor(acteur)}`)
+      .send({ montant: String(montant), produits: [{ nom: 'Igname', quantite: 1 }], idempotency_key: `ISO-${phoneSuffix}` });
+    expect([200, 201]).toContain(vente.status);
     return acteur;
   }
 
