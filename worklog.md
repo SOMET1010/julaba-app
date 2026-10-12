@@ -720,3 +720,23 @@ Stage Summary:
 - dev @ 75c869d : l'étape « Ton numéro de téléphone » est au DESIGN VALIDÉ avec toutes ses fonctionnalités (dictée vocale live, état du micro, pavé à lettres, drapeau CI, positions pointées, écoute Tata, relecture haptique, empreinte en repli honnête) — étapes code et reconnaissance INCHANGÉES
 - Zéro appel de parole modifié (garde voix-trace 15/15), zéro hex nouveau (charte 24/26), gels ci/*.json et chaîne test:ci intacts
 - Le badge « MICRO OUVERT »/« MICRO EN VEILLE » vit sur l'état réel du micro ; la carte dictée et le micro du pavé n'apparaissent que sur moteur vocal prêt (APK) — sur web sans moteur, l'empreinte reste le repli (doctrine AUTH conservée, aucune promesse muette)
+
+---
+Task ID: 28
+Agent: Z.ai Code
+Task: « Ajoute un bouton à la fin qui va permettre de dicter le numéro » (image : la carte numéro 🇨🇮 +225 validée) ; directive permanente : push dev uniquement, jamais main
+
+Work Log:
+- Cartographie des gels AVANT écriture + baseline verte captée (voix-trace : LoginPassword 15/15 + 4 rouges hérités exacts ; 11 gardes EXIT 0 ; tsc EXIT 0)
+- LoginPassword.tsx : bouton micro AJOUTÉ en FIN de la ligne .login-number (après l'œil « Revoir ») — handler dicterNumero RÉUTILISÉ (zéro appel de parole nouveau), mêmes désactivations (isLoading || isFinalizingDictation), aria-pressed=isListening, visible seulement voixEcouteDispo (doctrine « aucun micro trompeur », comme la carte dictée et la touche du pavé)
+- login.css : .login-micro-ligne (pastille ronde 44×44, famille verte --commerce-green, pulsation pulse-micro sur aria-pressed=true) ; marge des paires déplacée du style inline vers la classe .login-paire ; paliers responsive ≤430 px/≤360 px (ligne à trois gestes) ; palier 380 px ramené à son périmètre d'origine (déclarations ombrées par 430 retirées)
+- Vérification navigateur (Vite 3000 + agent-browser via IP conteneur — aperçu :81 = placeholder hôte ; processus d'arrière-plan tués entre commandes Bash → serveur+navigation dans UNE commande) : mode voix simulée par PATCH JETABLE voixEcouteDispo=true (jamais commité, révoqué puis prouvé par assertion de contenu + re-garde) : micro en bout 44×44, œil avant micro, 0 débordement 390/320 px, clic micro = repli honnête sans crash ; mode web réel : micro absent (doctrine), œil dernier, 0 débordement, 0 erreur console
+- Batteries : tsc -b EXIT 0 ; voix-trace = LoginPassword 15/15 ✓ + les 4 rouges hérités EXACTS ; auth-charte/cible-tactile/verrou-connexion/canal-code/entree-unique/enum-check-phone/coffre-web/parole-entree/entree-numero-voix/lien-activation/charte-marchande EXIT 0
+- Registres : CHANGELOG (section Ajouté), COMMIT_LOG (entrée 12/10), worklog 28 ; commit code 7b146b4 puis commit docs, push origin/dev (seule branche poussée, jamais main, jamais force)
+- Observation consignée : .ai/COMMIT_LOG.md porte une ligne collée « ## Commits à venir (planifiés)## 07/10/2026 — … » (deux titres sans saut de ligne, pré-existant depuis ~21646d0 session 23) — HORS PÉRIMÈTRE, non touchée (doctrine zéro réécriture d'existant) ; réparation docs-only à arbitrer
+
+Stage Summary:
+- dev @ 7b146b4 : le micro de dictée est au BOUT de la ligne numéro (demande du 12/10) — même contrat voix que les surfaces existantes ; étape code/reconnaissance, carte dictée et pavé INCHANGÉS
+- Zéro appel de parole modifié (voix-trace 15/15), zéro hex nouveau TSX (charte), gels ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json et chaîne test:ci intacts
+- Le micro (comme la carte et la touche du pavé) n'apparaît que moteur vocal prêt : visible sur l'APK en bout de ligne ; sur web nu, pavé + empreinte restent la référence — le patch jetable n'a servi QUE pour la preuve visuelle, révoqué avec preuve
+
