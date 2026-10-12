@@ -247,3 +247,13 @@ Batteries rejetées sur l'état final : tsc front/back 0 · charte EXIT 0 · tes
 ## Commits rejetés (historique)
 
 *(Aucun commit rejeté pour le moment — système initialisé)*
+
+## 12/10/2026 — Vérification C-01 + resynchronisation (agent Z.ai Code)
+
+```
+docs: registres session — vérification C-01, resync arbre     (tâche 38)
+```
+
+- Session de reprise après coupure de contexte : le résumé périmé annonçait C-01 « à faire » alors que la tâche 37 l'avait déjà poussé. Aucun code produit : attestation de première main du fix (controller/service/cron/webhook conformes à la prescription audit :157), re-jeu des gates sur le contenu poussé (tsc front/back 0 · lint racine 0), resynchronisation de l'arbre principal sur origin/dev (worklog + COMMIT_LOG + LoginPassword.tsx du fix amont f739a66), nettoyage du bruit de modes 644→755 (2049 fichiers, 0 ligne).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).

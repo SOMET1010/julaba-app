@@ -958,3 +958,22 @@ Stage Summary:
 - C-01 fermé sur origin/dev : aucun chemin ne peut plus laisser un retrait échoué débité sans remboursement (contrôleur, webhook, cron — remboursement idempotent prouvé par invariant)
 - origin/dev : 9fb72b5 (fix backend+invariant) + ef419c4 (frontend) + registres ; régression argent verte ; CI rejouera la suite invariants complète sur postgres:16
 - Reste du chantier P1 (audit §8) : C-02 comptabilisation coopérative, I4/I5/I6 avant crédit, route héritée /caisse/transactions, PATCH fond journée fermée, webhooks HMAC + unicité pay_token, re-gel HUMAIN périmètre frontend (INC-001)
+
+---
+Task ID: 38
+Agent: Z.ai Code (sandbox)
+Task: Reprise après coupure de contexte — vérification de l'état réel du chantier C-01 (le résumé de contexte l'annonçait « à faire », en réalité déjà poussé par la Task 37)
+
+Work Log:
+- Constat d'entrée : origin/dev contient déjà le chantier C-01 complet (a0d56f5 fix wallets backend, 35ae18d fix wallet frontend, 0740fbd registres 36-37) — résumé de contexte PÉRIMÉ ; leçon consignée : se fier à git/worklog/COMMIT_LOG, jamais au seul résumé de contexte
+- Resynchronisation de l'arbre principal sur origin/dev : worklog.md + .ai/COMMIT_LOG.md (l'entrée Task 37 n'existait que sur dev) + frontend/src/app/components/auth/LoginPassword.tsx (fix auth amont f739a66) — l'aperçu sandbox montre désormais exactement origin/dev
+- Nettoyage du bruit de modes : 2049 fichiers passés 644→755 par l'environnement (0 ligne de contenu, y compris les .sh e2e) — restaurés 644 (= état index) ; git status redevenu lisible
+- Re-vérification de première main des gates sur le contenu poussé : tsc backend 0 erreur, tsc frontend 0 erreur, eslint racine 0 erreur
+- Attestation du code C-01 dans l'arbre (conforme prescription audit :157) : wallets.controller.ts (pay_token=RET-uuid :119, COMPLETED conditionnel :175-181, remboursement sur échec explicite :138/:190), wallets.service.ts rembourserRetraitBpay :538, bpay.cron.ts PENDING_WITHDRAW :134 + alerte ERROR >24h :195, bpay.controller.ts webhook retraits :62-105
+- Note environnement : branches amont parallèles apparues (origin/claude/correctifs-demo-back, origin/claude/correctifs-demo-front) — non évaluées, hors périmètre de la tâche
+- Artefact local non suivi signalé sans action : mini-services/postgres-service/bun.lock (verrou du service pg embarqué)
+
+Stage Summary:
+- Aucun code produit : session de vérification + resynchronisation ; C-01 confirmé FERMÉ sur origin/dev (invariants 6/6, régression 18/18, vérification vivante cités par la Task 37)
+- L'arbre principal == origin/dev en contenu ; prochain Task ID = 39
+- Prochain chantier P1 en attente d'approbation : C-02 comptabilisation coopérative (ou C-07 webhooks HMAC + unicité pay_token)
