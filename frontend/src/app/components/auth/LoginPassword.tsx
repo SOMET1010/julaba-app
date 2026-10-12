@@ -99,6 +99,9 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
 import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
+// Atelier du testeur — bouton `<>` haut-droite : sauter sur un autre rôle
+// (DEV uniquement, silencieux — voir MenuRolesTest.tsx).
+import { MenuRolesTest } from './MenuRolesTest';
 // AUTH-10 — le geste caché du mode développeur, sorti de l'écran.
 import { useDevMode } from '../../hooks/useDevMode';
 // AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
@@ -1070,6 +1073,16 @@ export function LoginPassword() {
     }}>
       {/* Zone invisible (coin haut-gauche) : 5 tapes = mode développeur (caché à la marchande) */}
       <div onClick={toggleDevMode} aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: 54, height: 54, zIndex: 60 }} />
+      {/* Tester les autres rôles (DEV) : menu `<>` haut-droite — préremplit le
+          numéro du compte de recette du rôle, ou ouvre la porte BackOffice. */}
+      <MenuRolesTest onChoisirNumero={(numero) => {
+        annulerRelecture();
+        if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
+        setStep('phone');
+        setPinInput('');
+        setError('');
+        setPhone(numero);
+      }} />
       {import.meta.env.DEV && showDevButton && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
