@@ -3,6 +3,7 @@ import { eventBus, EVENTS } from '../services/eventBus';
 import { API_URL } from '../utils/api';
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
+import { montantLisible } from '../services/ventesBO';
 import {
   boDashboardStats,
   boGetActeurs,
@@ -447,7 +448,8 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       const res = await boGetTransactions({ page: 1, limit: 50 });
       const normalizedTx = res.data.map((t: any) => ({
         ...t,
-        montant: parseFloat(t.amount || t.montant || '0'),
+        // Illisible → absent, jamais 0 (ACC-03).
+        montant: montantLisible(t.montant ?? t.amount) ?? undefined,
         date: t.created_at || t.date || '',
         region: t.region || t.commune || '',
         acteurNom: t.acteur_nom || `${t.first_name || ''} ${t.last_name || ''}`.trim() || t.phone || '',

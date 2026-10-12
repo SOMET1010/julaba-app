@@ -55,12 +55,7 @@ import { NotificationButton } from '../marchand/NotificationButton';
 import { ReceptionPaiementModal } from '../shared/ReceptionPaiementModal';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
-import {
-  IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO,
-  IMG_PRODUIT_MANIOC, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS, IMG_PRODUIT_RIZ,
-  IMG_PRODUIT_BANANE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_AVOCAT, IMG_PRODUIT_AUTRE,
-  IMG_PRODUIT_MANGUE, IMG_PRODUIT_ANANAS
-} from '../../assets/images';
+import { getImageByNom } from '../../data/catalogue-produits';
 
 
 const COLOR = '#2E8B57';
@@ -72,22 +67,6 @@ const shimmerStyle = `
   }
 `;
 
-const PRODUITS_ICONS: { id: string; img: string }[] = [
-  { id: 'Tomate',          img: IMG_PRODUIT_TOMATE    },
-  { id: 'Aubergine',       img: IMG_PRODUIT_AUBERGINE },
-  { id: 'Piment',          img: IMG_PRODUIT_PIMENT    },
-  { id: 'Gombo',           img: IMG_PRODUIT_GOMBO     },
-  { id: 'Oignon',          img: IMG_PRODUIT_OIGNON    },
-  { id: 'Manioc',          img: IMG_PRODUIT_MANIOC    },
-  { id: 'Igname',          img: IMG_PRODUIT_IGNAME    },
-  { id: 'Maïs',            img: IMG_PRODUIT_MAIS      },
-  { id: 'Riz',             img: IMG_PRODUIT_RIZ       },
-  { id: 'Banane plantain', img: IMG_PRODUIT_BANANE    },
-  { id: 'Avocat',          img: IMG_PRODUIT_AVOCAT    },
-  { id: 'Mangue',          img: IMG_PRODUIT_MANGUE    },
-  { id: 'Ananas',          img: IMG_PRODUIT_ANANAS    },
-  { id: 'Autre',           img: IMG_PRODUIT_AUTRE     },
-];
 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -432,7 +411,7 @@ export function ProducteurCommandes() {
           return {
             id: c.id,
             produit: c.produit,
-            image: PRODUITS_ICONS.find(p => p.id === c.produit)?.img ?? IMG_PRODUIT_AUTRE,
+            image: getImageByNom(c.produit),
             imageUrl: c.imageUrl || undefined,
             acheteur: c.acheteurNom || c.acheteurId,
             telephone: c.acheteurTelephone || '',
@@ -934,7 +913,7 @@ export function ProducteurCommandes() {
                     {/* Image produit */}
                     <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0">
                       <ImageWithFallback
-                        src={cmd.imageUrl || (PRODUITS_ICONS.find(p => p.id === cmd.produit)?.img ?? IMG_PRODUIT_AUTRE)}
+                        src={cmd.imageUrl || getImageByNom(cmd.produit)}
                         alt={cmd.produit}
                         className="w-full h-full object-cover"
                       />

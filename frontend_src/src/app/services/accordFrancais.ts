@@ -25,6 +25,12 @@ export function pluriel(mot: string): string {
 export const UNITES_INVARIABLES: ReadonlySet<string> =
   new Set(['kg', 'g', 'mg', 'l', 'cl', 'ml', 'dl', 'm', 'cm', 'mm', 'km']);
 
+/** « 0 commande », « 1 commande », « 2 commandes » : en français, 0 et 1
+ *  restent au singulier. Le nombre s'écrit tel quel, sans zéro de remplissage. */
+export function compteAccorde(n: number, nom: string): string {
+  return `${n} ${Math.abs(n) >= 2 ? plurielNom(nom) : nom}`;
+}
+
 export function plurielUnite(u: string): string {
   return UNITES_INVARIABLES.has(u.toLowerCase()) ? u : pluriel(u);
 }

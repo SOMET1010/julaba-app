@@ -776,7 +776,9 @@ export function BOActeurs() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0, color: '#111827' }}>Acteurs</h1>
           <p style={{ fontSize: 13, color: 'var(--encre-3)', margin: '4px 0 0' }}>
-            {filtered.length} acteur{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''} sur {acteurs.length}
+            {/* « sur » = le total que le serveur annonce pour cette liste, pas la
+                taille de la page chargée (50 au plus). */}
+            {filtered.length} acteur{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''} sur {acteursTotal}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -977,7 +979,7 @@ export function BOActeurs() {
             </motion.div>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 500, color: '#111827', margin: 0 }}>Liste des acteurs</h2>
-              <p style={{ fontSize: 11, color: 'var(--encre-3)', margin: '2px 0 0' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {acteurs.length}</p>
+              <p style={{ fontSize: 11, color: 'var(--encre-3)', margin: '2px 0 0' }}>{filtered.length} résultat{filtered.length > 1 ? 's' : ''} sur {acteursTotal}</p>
             </div>
           </div>
         </div>

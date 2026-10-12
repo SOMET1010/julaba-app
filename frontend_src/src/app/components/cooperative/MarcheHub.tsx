@@ -33,50 +33,12 @@ import {
   ProduitMarche, CommandeMarche as CmdMarche, StatutCommande,
   Q_LABELS, STATUT_CMD_LABELS,
 } from '../marche/marketplace-data';
-import {
-  IMG_PRODUIT_TOMATE,
-  IMG_PRODUIT_AUBERGINE,
-  IMG_PRODUIT_PIMENT,
-  IMG_PRODUIT_GOMBO,
-  IMG_PRODUIT_MANIOC,
-  IMG_PRODUIT_IGNAME,
-  IMG_PRODUIT_MAIS,
-  IMG_PRODUIT_RIZ,
-  IMG_PRODUIT_BANANE,
-  IMG_PRODUIT_OIGNON,
-  IMG_PRODUIT_AVOCAT,
-  IMG_PRODUIT_AUTRE,
-  IMG_PRODUIT_MANGUE,
-  IMG_PRODUIT_ANANAS,
-} from '../../assets/images';
+import { getImageByNom } from '../../data/catalogue-produits';
 
 // ─── Couleurs ─────────────────────────────────────────────────────────────────
 const C       = '#2072AF';
 const C_LIGHT = '#EBF4FB';
 const C_DARK  = '#1E5A8E';
-
-/** Aligné sur CommandesProducteurPage — pas de module partagé pour l’instant */
-const PRODUITS_ICONS: { id: string; img: string }[] = [
-  { id: 'Tomate', img: IMG_PRODUIT_TOMATE },
-  { id: 'Aubergine', img: IMG_PRODUIT_AUBERGINE },
-  { id: 'Piment', img: IMG_PRODUIT_PIMENT },
-  { id: 'Gombo', img: IMG_PRODUIT_GOMBO },
-  { id: 'Oignon', img: IMG_PRODUIT_OIGNON },
-  { id: 'Manioc', img: IMG_PRODUIT_MANIOC },
-  { id: 'Igname', img: IMG_PRODUIT_IGNAME },
-  { id: 'Maïs', img: IMG_PRODUIT_MAIS },
-  { id: 'Riz', img: IMG_PRODUIT_RIZ },
-  { id: 'Banane plantain', img: IMG_PRODUIT_BANANE },
-  { id: 'Avocat', img: IMG_PRODUIT_AVOCAT },
-  { id: 'Mangue', img: IMG_PRODUIT_MANGUE },
-  { id: 'Ananas', img: IMG_PRODUIT_ANANAS },
-  { id: 'Autre', img: IMG_PRODUIT_AUTRE },
-];
-
-function findProduitIconImg(produit: string | undefined): string | undefined {
-  const n = (produit || '').toLowerCase().trim();
-  return PRODUITS_ICONS.find((p) => p.id.toLowerCase().trim() === n)?.img;
-}
 
 const STATUTS_CMD_VALID: StatutCommande[] = [
   'en_attente', 'acceptee', 'en_negociation', 'refusee', 'livree', 'annulee',
@@ -134,24 +96,6 @@ function mapApiCommandeToCmdMarche(row: unknown, mode: 'acheteur' | 'vendeur'): 
     dateCreation,
     dateLivraison: dateLivraison || '—',
   };
-}
-
-function getProduitFallbackImage(produit: string): string {
-  const n = (produit || '').toLowerCase();
-  if (n.includes('tomate')) return IMG_PRODUIT_TOMATE;
-  if (n.includes('aubergine')) return IMG_PRODUIT_AUBERGINE;
-  if (n.includes('piment')) return IMG_PRODUIT_PIMENT;
-  if (n.includes('gombo')) return IMG_PRODUIT_GOMBO;
-  if (n.includes('manioc')) return IMG_PRODUIT_MANIOC;
-  if (n.includes('igname')) return IMG_PRODUIT_IGNAME;
-  if (n.includes('maïs') || n.includes('mais')) return IMG_PRODUIT_MAIS;
-  if (n.includes('riz')) return IMG_PRODUIT_RIZ;
-  if (n.includes('banane') || n.includes('plantain')) return IMG_PRODUIT_BANANE;
-  if (n.includes('oignon')) return IMG_PRODUIT_OIGNON;
-  if (n.includes('avocat')) return IMG_PRODUIT_AVOCAT;
-  if (n.includes('mangue')) return IMG_PRODUIT_MANGUE;
-  if (n.includes('ananas')) return IMG_PRODUIT_ANANAS;
-  return IMG_PRODUIT_AUTRE;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -232,7 +176,7 @@ function MarcheCommandeAccordeonCard({
   const [isOpen, setIsOpen] = useState(false);
   const sl = STATUT_CMD_LABELS[c.statut] ?? STATUT_CMD_LABELS.en_attente;
   const resume = `${c.quantite} ${c.unite} · ${Math.round(c.montantTotal).toLocaleString('fr-FR')} FCFA`;
-  const produitImg = findProduitIconImg(c.produit);
+  const produitImg = getImageByNom(c.produit);
 
   return (
     <motion.div
@@ -658,7 +602,7 @@ export function MarcheHub() {
             dateRecolte: p.date_recolte || p.created_at,
             description: p.description || '',
             photoUrl: p.photo_url || null,
-            image: p.photo_url || getProduitFallbackImage(p.produit || p.culture || ''),
+            image: p.photo_url || getImageByNom(p.produit || p.culture || ''),
           })));
       } catch {
         // silent
@@ -689,7 +633,7 @@ export function MarcheHub() {
           prixUnitaire: Number(p.prix_unitaire) || 0,
           prixOrigine: Number(p.prix_unitaire) || 0,
           qualite: p.qualite || 'standard',
-          image: p.photo_url || getProduitFallbackImage(p.produit || p.culture || ''),
+          image: p.photo_url || getImageByNom(p.produit || p.culture || ''),
           village: p.localisation || '',
           localisation: p.localisation || '',
           vendeurType: 'cooperative' as const,
@@ -2309,7 +2253,7 @@ function DrawerDetailCmdMarche({ commande, onClose, onAccepter, onRefuser, onNeg
   const sc = STATUT_CMD_LABELS[commande.statut] || STATUT_CMD_LABELS['en_attente'];
   const isPending = commande.statut === 'en_attente';
   const cmdExt = commande as CmdMarche & { dateCommande?: string; total?: number };
-  const produitImgDrawer = findProduitIconImg(commande.produit);
+  const produitImgDrawer = getImageByNom(commande.produit);
   const dateCreeAffichee = (commande.dateCreation || cmdExt.dateCommande)
     ? new Date(commande.dateCreation || cmdExt.dateCommande!).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : '—';

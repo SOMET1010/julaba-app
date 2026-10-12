@@ -23,10 +23,7 @@ import {
   PAYMENT_METHODS as ALL_PAYMENT_METHODS, MOBILE_OPERATORS, getPaymentLabel,
   type PaymentMethodId, type MobileOperatorId,
 } from '../../types/payment';
-import {
-  IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS,
-  IMG_PRODUIT_PLANTAIN, IMG_PRODUIT_PIMENT, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_GOMBO
-} from '../../assets/images';
+import { getImageByNom } from '../../data/catalogue-produits';
 import { Montant } from '../shared/Montant';
 import { EtoilesMoyenne } from '../shared/Etoiles';
 import { getNoteUtilisateur } from '../../services/evaluations.service';
@@ -51,19 +48,6 @@ const categories = [
   { id: 'fruits', label: 'Fruits', icon: Apple },
   { id: 'epices', label: 'Épices', icon: Flame },
 ];
-
-function getProduitFallbackImage(produit: string): string {
-  const n = (produit || '').toLowerCase();
-  if (n.includes('riz')) return IMG_PRODUIT_RIZ;
-  if (n.includes('tomate')) return IMG_PRODUIT_TOMATE;
-  if (n.includes('igname')) return IMG_PRODUIT_IGNAME;
-  if (n.includes('maïs') || n.includes('mais')) return IMG_PRODUIT_MAIS;
-  if (n.includes('banane') || n.includes('plantain')) return IMG_PRODUIT_PLANTAIN;
-  if (n.includes('piment')) return IMG_PRODUIT_PIMENT;
-  if (n.includes('aubergine')) return IMG_PRODUIT_AUBERGINE;
-  if (n.includes('gombo')) return IMG_PRODUIT_GOMBO;
-  return IMG_PRODUIT_RIZ;
-}
 
 const mockProducts: Product[] = [];
 
@@ -203,7 +187,7 @@ export function MarcheVirtuel() {
       const pubs = data.publications || [];
       if (pubs.length > 0) {
         const mapped: Product[] = pubs.map((p: any) => ({
-          id: p.id, name: p.produit, emoji: '', image: p.photo_url || getProduitFallbackImage(p.produit),
+          id: p.id, name: p.produit, emoji: '', image: p.photo_url || getImageByNom(p.produit),
           sellerType: (p.type_marche === 'cooperative' ? 'cooperative' : 'producteur') as 'producteur' | 'cooperative',
           sellerName: `${p.producteur_prenom || ''} ${p.producteur_nom || ''}`.trim() || 'Producteur',
           sellerId: p.user_id,
