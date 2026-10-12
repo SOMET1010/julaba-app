@@ -59,6 +59,20 @@ docs: registres session 12/10 — commits tâches 29-32 + push dev
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
 
+## 12/10/2026 — Stack docker autoportante + audit comptable des acteurs (agent Z.ai Code)
+
+```
+chore(infra): postgres dans la stack docker + env            (tâche 34)
+docs(audit): audit comptable des 10 acteurs                  (tâche 35)
+docs: registres session 12/10 — tâches 34-35                 (tâche 36)
+```
+
+- `chore(infra)` : `docker-compose.yml` gagne le service `postgres` (16-alpine — version de référence CI, healthcheck `pg_isready`, volume `julaba_pgdata`, port hôte 127.0.0.1:5433) et `backend` attend `service_healthy` ; nouveau `backend/.env.production.example` tracké (`DB_HOST=postgres`, 3 secrets fail-fast documentés) ; `docker compose up -d` devient autoportant ; VPS non cassé (`--env-file` du deploy.yml = interpolation seule).
+- `docs(audit)` : `.ai/AUDITS/AUDIT-COMPTA-ACTEURS-2026-10-12.md` — matrice 10 rôles × 9 opérations monétaires, 6 chaînes d'argent scorées, 7 constats critiques (C-01…C-07, dont 5 vérifiés de première main) + 10 majeurs + 9 mineurs, 7 chantiers P1, verdict global **62/100** (conforme pilote espèces marchande ; non prêt mobile money / crédit / coopérative / marketplace).
+- Batteries : YAML compose ×2 parseurs OK ; check-ignore (`.env.production.example` trackable, `backend/.env` ignorée) ; tsc frontend vert sur l'arbre audité (Task 35) ; aucun fichier TS modifié dans les 3 commits.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
 > NB sandbox : travail des Tasks 29-32 balé par le superviseur dans des auto-commits UUID sur `main` locale (dont 1544 binaires pgdata ajoutés puis désindexés) → commits reconstruits depuis l'arbre final, JAMAIS de cherry-pick des UUID, push `origin/dev` uniquement (jamais main, jamais force). Rebase sur `2b23bef` (fix(auth) amont « supprimer les éléments de contexte dev », arrivé en parallèle) — hunks `LoginPassword.tsx` sans chevauchement, badge Tata « Guide » amont conservé ; hash finaux `870701f`, `02153dd`, `a6a9eff` + commit docs. Détail : worklog Tasks 29-33.
 
 ## Statistiques Git (snapshot 2026-09-28)
