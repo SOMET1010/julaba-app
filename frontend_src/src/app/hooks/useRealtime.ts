@@ -4,8 +4,10 @@
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { eventBus, EVENTS } from '../services/eventBus';
-
-const API = '/api/v1';
+// Ce hook n'alimente que `BODashboard` : il lit par le client du back-office,
+// donc par la base d'API configurée (`API_URL`) et avec le jeton BO. Un
+// `/api/v1` relatif viserait le site statique (déploiement à deux domaines).
+import { boLire } from '../services/backoffice-api';
 
 export interface RealtimeStats {
   total_acteurs: number;
@@ -65,31 +67,6 @@ const ACTIVE_INTERVAL = 30000;
 const IDLE_INTERVAL = 30000;
 const ACTIVITY_MAX = 50;
 
-/**
- * API-07 — POURQUOI CES APPELS NE PASSENT PAS PAR `services/api/api-client.ts`
- * (décision du 20/09/2026, à reprendre avec API-09).
- *
- * Ce hook n'alimente que `BODashboard` : c'est le BACK-OFFICE, qui a sa propre
- * session (jeton en sessionStorage `julaba:bo:access-token`, cookie
- * `bo_access_token`, événement `julaba:bo-session-expired`) et son propre
- * client (`backoffice-api.ts`, dette API-09). Brancher ce sondage toutes les
- * 30 s sur le client de la marchande ne serait pas neutre : sur un 401,
- * `apiRequest` appellerait `rafraichirSession` — qui ferait tourner le jeton de
- * rafraîchissement par le cookie — puis lèverait `julaba:session-expired`, que
- * le back-office n'écoute pas. Converger ici, c'est vers le client du
- * back-office, quand API-09 sera traité — pas vers celui de la caisse.
- *
- * Noté au passage, sans le corriger ici : la base est `/api/v1` RELATIVE, pas
- * `API_URL`. Sur le déploiement à deux domaines (julaba-web ↔ julaba-api), ces
- * quatre lectures visent donc le site statique. Changer l'URL est un changement
- * de comportement : il appartient à API-09.
- */
-async function apiFetch<T>(path: string): Promise<T> {
-  const res = await fetch(API + path, { credentials: 'include' });
-  if (!res.ok) throw new Error(String(res.status));
-  return res.json();
-}
-
 export function useRealtime(enabled = true) {
   const [state, setState] = useState<RealtimeState>({
     stats: null, activity: [], health: null,
@@ -102,10 +79,10 @@ export function useRealtime(enabled = true) {
   const fetchAll = useCallback(async () => {
     try {
       const [stats, activity, health, timeline] = await Promise.allSettled([
-        apiFetch<RealtimeStats>('/admin/stats'),
-        apiFetch<ActivityEvent[]>('/admin/activity?limit=50'),
-        apiFetch<SystemHealth>('/admin/health'),
-        apiFetch<TimelinePoint[]>('/admin/timeline'),
+        boLire<RealtimeStats>('/admin/stats'),
+        boLire<ActivityEvent[]>('/admin/activity?limit=50'),
+        boLire<SystemHealth>('/admin/health'),
+        boLire<TimelinePoint[]>('/admin/timeline'),
       ]);
 
       setState(prev => {
@@ -177,7 +154,7 @@ export function useRealtime(enabled = true) {
       [EVENTS.TRANSACTION_CREATED, EVENTS.CAISSE_VENTE, EVENTS.USER_CREATED, EVENTS.STOCK_CREATED],
       async () => {
         try {
-          const stats = await apiFetch<RealtimeStats>('/admin/stats');
+          const stats = await boLire<RealtimeStats>('/admin/stats');
           setState(prev => ({ ...prev, stats, connected: true, lastUpdate: new Date(), error: null }));
         } catch { /* silencieux */ }
       },

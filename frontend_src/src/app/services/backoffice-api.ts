@@ -76,6 +76,15 @@ async function apiGet(path: string): Promise<any> {
   return res.json();
 }
 
+/**
+ * Lecture GET typée pour les hooks du back-office (tableau de bord temps réel) :
+ * même base `API_URL` et même jeton BO que tout ce client. Une base relative
+ * `/api/v1` viserait le site statique sur le déploiement à deux domaines.
+ */
+export function boLire<T>(path: string): Promise<T> {
+  return apiGet(path) as Promise<T>;
+}
+
 async function apiPost(path: string, body?: any) {
   const res = await fetch(API_URL + path, { method: 'POST', headers: authHeaders(), body: body ? JSON.stringify(body) : undefined, credentials: 'include' });
   if (!res.ok) throw new Error(String(res.status));
