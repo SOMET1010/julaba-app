@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { randomUUID } from 'crypto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { WalletsService } from './wallets.service';
 import { BpayService } from '../bpay/bpay.service';
@@ -60,6 +61,44 @@ export class WalletsController {
     return { ...result, merchantTransactionId };
   }
 
+  /**
+   * Statuts opérateur qui signifient un échec DÉFINITIF du cashin. Tout
+   * autre statut (PENDING, PROCESSING, vide, inconnu...) ne donne JAMAIS
+   * lieu à un remboursement : le retrait reste PENDING_WITHDRAW et la
+   * réconciliation (webhook + cron) tranche avec le statut opérateur réel.
+   */
+  private static readonly STATUTS_OPERATEUR_ECHEC = ['FAILED', 'EXPIRED', 'CANCELLED'];
+  private static readonly STATUTS_OPERATEUR_SUCCES = ['SUCCESS', 'SUCCESSFULL', 'COMPLETED'];
+
+  private async trouverRetrait(merchantTransactionId: string, userId: string) {
+    const rows = await this.dataSource.query(
+      `SELECT id, user_id, amount, provider, merchant_tx_id, status FROM bpay_transactions
+        WHERE merchant_tx_id = $1 AND user_id = $2 LIMIT 1`,
+      [merchantTransactionId, userId],
+    );
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Retrait Keiwa → mobile money (cashin B-Pay).
+   *
+   * C-01 (audit comptable 12/10) : le wallet est débité AVANT l'appel
+   * opérateur — c'est le seul ordre sûr (sinon un client sans solde pourrait
+   * recevoir un cashin). La contrepartie est une obligation stricte de
+   * réconciliation :
+   *
+   *  1. La référence `merchantTransactionId` (uuid) sert AUSSI de `pay_token`
+   *     en base — stable et interrogeable par le webhook et le cron
+   *     (l'ancien `RET-TEMP-${Date.now()}` était introuvable côté opérateur).
+   *  2. COMPLETED n'est JAMAIS posé sur la seule HTTP 200 : échec explicite
+   *     de l'opérateur → remboursement immédiat gardé ; succès explicite →
+   *     re-vérification check-status (une tentative) avant confirmation ;
+   *     statut indéterminé → PENDING_WITHDRAW, le webhook/cron tranche.
+   *  3. Tout remboursement passe par `rembourserRetraitBpay` (une seule
+   *     transition PENDING_WITHDRAW → REFUNDED, crédit dans la même
+   *     transaction) : webhook, cron et rollback synchrone peuvent se
+   *     précipiter, le remboursement reste EXACTEMENT unique.
+   */
   @Post('me/retrait-mobile')
   async retraitMobile(
     @CurrentUser() user: User,
@@ -73,10 +112,12 @@ export class WalletsController {
       throw new BadRequestException(`Solde insuffisant: ${soldeDisponible} < ${montantInt}`);
     }
     const notifyUrl = 'https://julaba.online/api/v1/bpay/callback';
-    const merchantTransactionId = `RET-${user.id.slice(0, 8)}-${Date.now()}`;
+    const merchantTransactionId = `RET-${randomUUID()}`;
+    // pay_token = merchantTransactionId : référence stable, cherchable par le
+    // webhook (pay_token OU merchant_tx_id) et interrogeable au check-status.
     await this.dataSource.query(
       `INSERT INTO bpay_transactions (user_id, pay_token, merchant_tx_id, amount, provider, type, status) VALUES ($1, $2, $3, $4, $5, 'RETRAIT', 'PENDING_WITHDRAW')`,
-      [user.id, `RET-TEMP-${Date.now()}`, merchantTransactionId, montantInt, body.provider]
+      [user.id, merchantTransactionId, merchantTransactionId, montantInt, body.provider]
     );
     try {
       await this.walletsService.debitWallet(
@@ -91,6 +132,13 @@ export class WalletsController {
       );
       throw new BadRequestException(`Débit wallet échoué: ${e.message || 'erreur inconnue'}`);
     }
+    const rembourserEtRejeter = async (bpayStatut: string, message: string) => {
+      const row = await this.trouverRetrait(merchantTransactionId, user.id);
+      if (row) {
+        await this.walletsService.rembourserRetraitBpay(row, bpayStatut, 'controller');
+      }
+      throw new BadRequestException(`${message} Le montant reste sur ton solde Keiwa.`);
+    };
     try {
       const result = await this.bpayService.retraitVersMobileMoney({
         provider: body.provider,
@@ -99,23 +147,51 @@ export class WalletsController {
         notifyUrl,
         merchantTransactionId,
       });
-      await this.dataSource.query(
-        `UPDATE bpay_transactions SET status='COMPLETED', updated_at=NOW() WHERE merchant_tx_id=$1`,
-        [merchantTransactionId]
-      );
-      return result;
+      const statutBrut = String(result.status || '').toUpperCase();
+      if (WalletsController.STATUTS_OPERATEUR_ECHEC.includes(statutBrut)) {
+        await rembourserEtRejeter(statutBrut, `Retrait refusé par ${body.provider}.`);
+      }
+      // Succès explicite du cashin : re-vérification opérateur AVANT de
+      // graver COMPLETED (la HTTP 200 seule ne prouve pas le transfert).
+      // check-status indisponible → on s'appuie sur la réponse cashin ; la
+      // réconciliation asynchrone reste le filet de sécurité.
+      let confirme = WalletsController.STATUTS_OPERATEUR_SUCCES.includes(statutBrut);
+      if (confirme) {
+        try {
+          const check = await this.bpayService.verifierStatut(merchantTransactionId);
+          const statutCheck = String(check.statut || '').toUpperCase();
+          if (WalletsController.STATUTS_OPERATEUR_ECHEC.includes(statutCheck)) {
+            await rembourserEtRejeter(statutCheck, `Retrait refusé par ${body.provider} (vérification opérateur).`);
+          }
+        } catch (e: any) {
+          // Le rejet suite à un échec opérateur explicite doit sortir (sinon
+          // on répondrait COMPLETED sur un retrait déjà remboursé) ; seul un
+          // check-status INDISPONIBLE laisse la réponse cashin faire foi.
+          if (e instanceof BadRequestException) throw e;
+        }
+      }
+      if (confirme) {
+        await this.dataSource.query(
+          `UPDATE bpay_transactions SET status='COMPLETED', bpay_status=$1, updated_at=NOW() WHERE merchant_tx_id=$2 AND status='PENDING_WITHDRAW'`,
+          [statutBrut || null, merchantTransactionId]
+        );
+      }
+      // payToken = notre référence stable → le polling frontend
+      // (/wallets/me/statut-paiement) devient fonctionnel pour le retrait.
+      return { ...result, payToken: merchantTransactionId, merchantTransactionId, status: confirme ? 'COMPLETED' : 'PENDING_WITHDRAW' };
     } catch (e: any) {
-      await this.walletsService.creditWallet(
-        user.id,
-        montantInt,
-        `Rollback retrait échoué vers ${body.provider}`,
-        { provider: body.provider, merchantTransactionId, rollback: true },
+      if (e instanceof BadRequestException) throw e;
+      // Appel opérateur impossible (réseau/HTTP) : l'argent débité est
+      // remboursé immédiatement — gardé, donc unique même si un webhook
+      // concurrent découvrait le même échec au même moment.
+      const row = await this.trouverRetrait(merchantTransactionId, user.id);
+      let rembourse = false;
+      if (row) {
+        rembourse = await this.walletsService.rembourserRetraitBpay(row, 'CALL_FAILED', 'controller');
+      }
+      throw new BadRequestException(
+        `Retrait échoué: ${e?.message || 'erreur inconnue'}${rembourse ? ' — montant remboursé sur ton solde Keiwa.' : ''}`,
       );
-      await this.dataSource.query(
-        `UPDATE bpay_transactions SET status='FAILED', error_message=$1, updated_at=NOW() WHERE merchant_tx_id=$2`,
-        [e.message, merchantTransactionId]
-      );
-      throw new BadRequestException(`Retrait échoué: ${e.message}`);
     }
   }
 
