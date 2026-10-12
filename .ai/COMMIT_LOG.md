@@ -73,6 +73,20 @@ docs: registres session 12/10 — tâches 34-35                 (tâche 36)
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
 
+## 12/10/2026 — C-01 : réconciliation des retraits mobile money (agent Z.ai Code)
+
+```
+fix(wallets): C-01 — réconciliation des retraits mobile money   (tâche 37)
+fix(wallet): C-01 — le retrait Keiwa annonce la réconciliation   (tâche 37)
+docs: registres session 12/10 — tâches 36-37                    (tâche 37)
+```
+
+- `fix(wallets)` : chantier P1 n°1 de l'audit comptable (C-01) — référence `RET-<uuid>` servante aussi de `pay_token` (fin du `RET-TEMP-Date.now()` introuvable), `COMPLETED` jamais posé sur la seule HTTP 200 (re-vérification check-status), primitive `rembourserRetraitBpay` (transition unique `PENDING_WITHDRAW → REFUNDED` + crédit dans la même transaction), cron étendu à `PENDING_WITHDRAW` (+ alerte ERROR > 24 h), webhook reconnaît les retraits. Invariant `bpay-retrait-reconciliation.spec.ts` : 6/6 sur vrai postgres (remboursement unique sous course controller/webhook/cron, compte suspendu = remboursement retenu puis effectué).
+- `fix(wallet)` : `WithdrawWalletModal` — FAILED et timeout disent la vérité (remboursement automatique, solde rafraîchi) — fin de l'« échec silencieux » ; parcours masqué en pilote (keiwa hors pilote, garde RootLayout) : écrans prêts pour l'entrée au pilote.
+- Batteries : invariant C-01 6/6 + régression B3/B2/K1/T1/tontines 18/18 (vrai postgres embarqué) ; tsc frontend/backend 0 erreur ; lint racine 0 erreur ; test vivant sandbox (retrait 1000 F → 400 + remboursement gardé + trace REFUNDED + debit/credit liés par `refundOf`). Aucun garde assoupli (renforcement pur).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
 > NB sandbox : travail des Tasks 29-32 balé par le superviseur dans des auto-commits UUID sur `main` locale (dont 1544 binaires pgdata ajoutés puis désindexés) → commits reconstruits depuis l'arbre final, JAMAIS de cherry-pick des UUID, push `origin/dev` uniquement (jamais main, jamais force). Rebase sur `2b23bef` (fix(auth) amont « supprimer les éléments de contexte dev », arrivé en parallèle) — hunks `LoginPassword.tsx` sans chevauchement, badge Tata « Guide » amont conservé ; hash finaux `870701f`, `02153dd`, `a6a9eff` + commit docs. Détail : worklog Tasks 29-33.
 
 ## Statistiques Git (snapshot 2026-09-28)
