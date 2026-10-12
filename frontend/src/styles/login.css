@@ -114,10 +114,22 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 /* Positions PAS ENCORE saisies : un point par chiffre attendu — la forme
    du numéro complet reste visible, la progression se lit d'un coup d'œil. */
 .login-chiffre-vides{color:var(--encre-4);font-weight:600}
+/* Marge entre les paires de chiffres : portée par une classe (et non un
+   style inline) pour pouvoir respirer selon l'écran — la ligne accueille
+   jusqu'à trois gestes (chiffres, œil revoir, micro dicter). */
+.login-paire{margin-right:.4em}
+/* Micro AU BOUT de la ligne numéro (demande du 12/10/2026) : la dictée vit
+   là où le numéro s'écrit. Famille verte de la charte (mêmes jetons que la
+   carte dictée) ; pastille qui pulse = micro ouvert, vue SUR les chiffres. */
+.login-micro-ligne{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;border:0;background:var(--commerce-green);color:#fff;cursor:pointer;flex-shrink:0;font-family:inherit}
+.login-micro-ligne:disabled{opacity:.55;cursor:wait}
+.login-micro-ligne[aria-pressed="true"]{background:#00563B;animation:pulse-micro 1.2s ease-in-out infinite}
 /* Touches du pavé à lettres (2 ABC, 3 DEF…) : le chiffre reste le grand
    signe, la légende est décorative (aria-label = « Chiffre N »). */
 .login-key-lettre{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1}
 .login-key-lettre small{font-size:9px;font-weight:750;letter-spacing:.2em;color:var(--encre-3)}
 @media(max-height:700px){.login-tata-carte{padding:8px 10px}.login-tata-carte>img{width:46px;height:46px}.login-dictee-pill{min-height:48px}}
+@media(max-width:430px){.login-number{gap:8px;padding:12px 10px}.login-number-value{font-size:clamp(17px,5vw,22px)}.login-paire{margin-right:.3em}.login-devise{gap:5px;font-size:14px}.login-devise-drapeau{font-size:17px}}
+@media(max-width:360px){.login-number{gap:6px;padding:12px 6px}.login-number-value{font-size:16px}.login-paire{margin-right:.22em}.login-devise{gap:4px;font-size:13px}.login-devise-drapeau{font-size:15px}}
 @media(max-width:380px){.login-dictee-texte{display:none}.login-tata-ligne{font-size:11.5px}}
 @media(min-width:768px){.login-market-sheet{left:auto;right:6vw;bottom:6vh;width:430px}.login-market-message{left:7vw;top:24%}.login-market-scene img{object-position:center 45%}}

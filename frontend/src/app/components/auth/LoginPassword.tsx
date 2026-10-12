@@ -1260,7 +1260,7 @@ export function LoginPassword() {
                     d'un coup d'œil. L'illumination de relecture (AUTH-04) saute
                     uniquement de chiffre saisi en chiffre saisi. */}
                 {Array.from({ length: 5 }).map((_, gi) => (
-                  <span key={gi} style={{ display: 'inline-block', marginRight: gi < 4 ? '0.4em' : 0 }}>
+                  <span key={gi} className={gi < 4 ? 'login-paire' : undefined} style={{ display: 'inline-block' }}>
                     {[0, 1].map((di) => {
                       const idx = gi * 2 + di;
                       const c = phone[idx];
@@ -1290,6 +1290,27 @@ export function LoginPassword() {
                 disabled={isListening || isLoading} onClick={() => relireNumero(phone)} aria-label="Revoir mon numéro">
                 <Eye aria-hidden="true" size={20} />
               </button>}
+              {/* MICRO AU BOUT DE LA LIGNE (demande du 12/10/2026) — la dictée
+                  vit LÀ où le numéro s'écrit : un geste de moins, et l'état du
+                  micro se voit sur les chiffres eux-mêmes (pastille qui pulse
+                  quand il écoute). MÊME CONTRAT que la carte et la touche du
+                  pavé : le handler dicterNumero est réutilisé (aucun appel de
+                  parole nouveau — la garde voix-trace reste verte), mêmes
+                  désactivations, et la doctrine « aucun micro trompeur »
+                  tient : ce micro ne SE MONTRE que si la voix écoute
+                  réellement, exactement comme les autres surfaces voix. */}
+              {voixEcouteDispo && (
+                <motion.button type="button" className="login-micro-ligne"
+                  aria-label="Dicter mon numéro"
+                  aria-pressed={isListening}
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={dicterNumero}
+                  disabled={isLoading || isFinalizingDictation}
+                  whileTap={{ scale: 0.92 }}
+                >
+                  <Mic aria-hidden="true" size={20} />
+                </motion.button>
+              )}
             </div>
             {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}
             <div style={{ display: 'flex', gap: 9, justifyContent: 'center', minHeight: 16, marginBottom: 2 }}>
