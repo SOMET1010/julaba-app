@@ -27,11 +27,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { useModalRegister } from '../../contexts/ModalContext';
 
-import {
-  IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_IGNAME,
-  IMG_PRODUIT_PLANTAIN, IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO, IMG_PRODUIT_MAIS,
-  IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_MANIOC
-} from '../../assets/images';
+import { getImageByNom } from '../../data/catalogue-produits';
 
 // Stock COMMUN de la coopérative (GET /cooperatives/stock) — pas le stock
 // personnel de l'utilisateur (/stocks). Une ligne = le total courant réel
@@ -58,24 +54,6 @@ const categories = [
   { id: 'tubercules', label: 'Tubercules' },
   { id: 'epices', label: 'Épices' },
 ];
-
-const PRODUIT_IMAGES: Record<string, string> = {
-  riz: IMG_PRODUIT_RIZ,
-  tomate: IMG_PRODUIT_TOMATE,
-  oignon: IMG_PRODUIT_OIGNON,
-  igname: IMG_PRODUIT_IGNAME,
-  plantain: IMG_PRODUIT_PLANTAIN,
-  piment: IMG_PRODUIT_PIMENT,
-  gombo: IMG_PRODUIT_GOMBO,
-  mais: IMG_PRODUIT_MAIS,
-  aubergine: IMG_PRODUIT_AUBERGINE,
-  manioc: IMG_PRODUIT_MANIOC,
-};
-
-function imageForProduit(nom: string): string {
-  const key = nom.trim().toLowerCase();
-  return PRODUIT_IMAGES[key] || IMG_PRODUIT_RIZ;
-}
 
 function mapStockRow(s: CooperativeStockItem): StockLigne {
   return {
@@ -361,7 +339,7 @@ export function Stock() {
               whileTap={{ scale: 0.97 }}
             >
               <div className="relative w-full h-32 overflow-hidden">
-                <img src={imageForProduit(stock.produit)} alt={stock.produit} className="w-full h-full object-cover" />
+                <img src={getImageByNom(stock.produit)} alt={stock.produit} className="w-full h-full object-cover" />
                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-2 left-2 right-2">
                   <h3 className="font-bold text-white text-sm drop-shadow-lg">{stock.produit}</h3>
@@ -504,7 +482,7 @@ export function Stock() {
 
               <div className="p-6 space-y-4">
                 <div className="relative w-full h-56 bg-gray-100 rounded-2xl overflow-hidden">
-                  <img src={imageForProduit(selectedStock.produit)} alt={selectedStock.produit} className="w-full h-full object-cover" />
+                  <img src={getImageByNom(selectedStock.produit)} alt={selectedStock.produit} className="w-full h-full object-cover" />
                 </div>
 
                 <div className="bg-gray-50 rounded-xl p-4 space-y-3">
