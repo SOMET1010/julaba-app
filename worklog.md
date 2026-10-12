@@ -830,3 +830,95 @@ Work Log:
 Stage Summary:
 - origin/dev = 4 commits atomiques conventionnels sur 2b23bef : PostgreSQL embarqué auto au npm run dev, seed BO connectable, bouton <> de test des rôles (DEV), registres — la branche amont intègre en parallèle le fix(auth) Tata Guide de l'équipe
 - Workspace main locale réaligné sur le nouveau dev : le prochain auto-commit du superviseur part d'un arbre propre (pgdata ignoré, backend/.env non suivi)
+
+---
+Task ID: 34
+Agent: Z.ai Code (sandbox)
+Task: « Adapté le env pour la BD docker » — câbler la base de données Docker dans l'environnement du backend
+
+Work Log:
+- Constat : docker-compose.yml (stack locale / DR OVH) n'avait AUCUN service postgres (README §arborescence disait pourtant « backend + postgres ») ; backend = env_file ./backend/.env.production (gitignore, absent du dépôt) + host.docker.internal (BD sur l'hôte) — docker compose up cassé pour quiconque clone (env_file introuvable, BD inexistante)
+- docker-compose.yml : service postgres:16-alpine (version de référence du projet — CI invariants, .env.example) julaba/julaba/julaba_dev, volume nommé julaba_pgdata, healthcheck pg_isready, port hôte 127.0.0.1:5433:5432 (psql/pg_dump depuis l'hôte sans heurter un PG local sur 5432) ; backend.depends_on postgres:service_healthy (deploy.yml lance « up -d backend » → la BD docker démarre avec lui) ; commentaires sans accents (convention docs/archive)
+- backend/.env.production.example (NOUVEAU, tracké via négation .gitignore) : DB_HOST=postgres (nom du service compose — PAS localhost ni host.docker.internal), creds alignées sur le compose, DB_SSL=false (réseau interne), les 3 secrets fail-fast documentés (JWT_SECRET / REFRESH_TOKEN_SALT / PIN_ENCRYPTION_KEY, openssl rand -hex 32 — verifierSecretsProduction arrête le boot sinon), NODE_ENV=production / PORT=3000 / TRUST_PROXY=true / COOKIE_SAMESITE=none, SEED_DEMO=false, PIPER_BIN/PIPER_VOICE pointés sur les volumes compose ; DB_SYNCHRONIZE / DB_MIGRATIONS_RUN laissés à prepareDatabase (auto-gestion base vierge/existante)
+- .gitignore : !backend/.env.production.example (le pattern bare .env.production n'attrape que le fichier exact ; backend/.env.* continue de boucler le vrai fichier à secrets) ; backend/.env.example : note « Sous Docker : DB_HOST=postgres » dans la section BD
+- Non-cassage VPS vérifié : deploy.yml fait « docker compose --env-file /var/www/julaba/backend/.env.production up -d backend » — le --env-file ne sert qu'à l'interpolation (aucun ${} introduit dans le compose) ; le .env.production du serveur (host.docker.internal) continue de s'appliquer tant qu'il n'est pas migré ; le conteneur postgres démarre alors mais reste idle
+- Vérifications sandbox (pas de docker disponible) : YAML valide ×2 (PyYAML + js-yaml) ; check-ignore : backend/.env.production ignorée / .example trackable (?? en status) ; cohérence creds compose ↔ exemple ↔ noms DB_* réellement lus (database.module.ts, data-source.ts, main.ts)
+
+Stage Summary:
+- docker compose up -d ⇒ postgres:16 attendu sain (healthcheck) → backend boot (schéma auto-construit si base vierge) → frontend nginx ; psql hôte sur 127.0.0.1:5433
+- L'env de la BD docker vit dans backend/.env.production.example (tracké) : cp → .env.production + remplir les 3 secrets ; migration VPS vers la BD docker = changer DB_HOST=postgres sur le serveur
+- Sandbox inchangé (backend/.env → PG embarqué :5432) ; 4 fichiers prêts à commit/push sur demande (docker-compose.yml, .gitignore, backend/.env.example, backend/.env.production.example)
+---
+Task ID: 35-c
+Agent: Explore (registres argent)
+Task: extraction des registres/audits existants côté argent pour l'audit comptable des acteurs
+
+Work Log:
+- ci/PERIMETRE-ARGENT.json extrait intégralement : 11 zones (machine-encaissement … calcul-financier), 37 symboles d'argent, noyau dérivé (backend caisse-rest/commandes/migrations + frontend caisse/offline/voix), chaîne test:ci GELÉE (ref f0c965c) — invariants = map zone→commandes, avec `postgres:true` sur enregistrement-vente/api-caisse/stock/idempotence
+- CI garantie reconstituée : garde-argent.yml (détection diff → invariants-backend APPELE → verdict) + invariants.yml (postgres:16, DB_NAME=julaba_test, npm run test:invariants -w backend) + prouver-invariants.mjs (journal JSON horodaté, arbre nommé, --deleguer pour les invariants backend) + anti-assouplissement EMPREINTE-GARDES.json (ajout permis, retrait = rougit sauf GARDE-ASSOUPLIE)
+- 20+ specs d'invariants argent listées et en-têtes lus (i1-i3, i2, argent-1/2/3/4/4b, argent-gele-b2, keiwa K1, cai-02/09, fond de caisse, transfert T1, blocage wallet B3…) — chacune résume ce qu'elle prouve sur vrai Postgres
+- Registres filtrés au filtre argent : BUGS.md (BUG-001..014 + ARG-08/11 + I4/I5/I6 it.failing), SEC_BUGS.md (SEC-022 BPay, SEC-011), INCIDENTS.md (INC-001 périmètre frontend aveugle, OUVERT atténué), REGRESSIONS.md (surveillance idempotence/argent gelé), DEBT_REPORT.md (5 dettes ARGENT + CODE-NEW-8 PIN)
+- Les 10 audits acteur 2026-10-05 filtrés section par section (rg argent|keiwa|caisse|paiement|escrow|idempot|offline|montant|solde|wallet|cotisation|tontine) — constats argent isolés par rôle
+- ADR argent lus : docs/adr/ADR-001-source-unique-argent.md (journal append-only), ADR-0001 (stock, argent gelé), ADR-0002 docs (migrations, incident enum), ADR-0003 (marge négative, devise XOF partiel, unité par ligne) ; .ai/ADR/ADR-002 = auth (hors argent)
+- Règles métier consolidées : PROJECT_CONTEXT §8 (modules sacrés, argent gelé Keiwa/B-Pay), REQUIREMENTS §2/§3 (fond informatif, plafond 10M, outbox caisse_outbox/caisse_dead, I1-I7, argent préservé à la suppression), API_CONTRACTS (routes argent, règle Idempotency-Key), rendu de monnaie = decomposerMonnaie + « montant reçu jamais dicté »
+
+Stage Summary:
+- CI argent : 3 mécanismes garantis — périmètre dérivé des 37 symboles (toute dérive rougit en se nommant), invariants de zone exigés sur diff (backend sur postgres:16 via workflow appelé), chaîne test:ci gelée + empreinte des gardes non assouplie ; preuve = journal prouver-invariants.mjs
+- Invariants backend verts en CI : idempotence vente (I2), atomicité vente/stock + survente tracée (I1/I3), une seule primitive d'encaissement crédit + clôture à deux natures (ARGENT-4/4b), journée fermée n'accepte plus d'argent (CAI-02/09), fond de caisse déclaré, argent gelé B2 + Keiwa K1, transfert T1, blocage wallet B3 — mais I4/I5/I6 (idempotence crédit/acompte) restent `it.failing`
+- Argent encore ouvert : INC-001 (re-gel humain du périmètre frontend en attente), BUG-008/009/010 (producteur : offline sans outbox, revenus non livrés comptés), ARG-04/ARG-11 (crédit désactivé), SEC-022 (webhook BPay secret optionnel), CODE-NEW-8 (4e copie geste PIN porte l'encaissement keiwa), ARG-08 (pas de colonne devise)
+- Par acteur : encaissement/coop/institution concentrent les risques comptables (cotisation auto-validée sans paiement ni idempotence COOPERATEUR-07 ; total client non recalculé PRODUCTEUR-03 ; KPIs sans filtre statut COOPERATEUR-06) ; admin/super_admin verrouillés J5 mais exports CSV et WS non tracés ; OT/identificateur fail-closed sans argent
+- Extraction prête pour l'audit comptable des 10 rôles : périmètre + preuves CI + registres + audits + ADR + contrats API + règles métier cités fichier:ligne dans le rapport final
+
+---
+Task ID: 35-a
+Agent: Explore (backend argent)
+Task: cartographie backend de l'argent pour l'audit comptable des acteurs
+
+Work Log:
+- Périmètre gelé ci/PERIMETRE-ARGENT.json lu + noyau extrait : 94 fichiers, 28 backend (caisse-rest ×7, wallets ×2, transactions-rest, stocks-rest ×2, fidelite ×2, financial-score, odoo-gateway ×2, scores, admin.service, misc-rest, commandes ×2, cooperatives ×2, db-init, seed-demo, voice/openai, zones.service, migrations ×12) ; invariants = suites de tests par zone (test:invariants backend pour api-caisse/enregistrement-vente/stock/idempotence)
+- ~90 endpoints « argent » inventoriés sur 13 contrôleurs (caisse 21, wallets 8+4 publics, bpay 2, admin/wallets 18, transactions 6, commandes 9, credits 6, tontines 4, fidelite 8, protection-sociale 2, cooperatives 7, boutique-sync 2, financial-score/partner 2) ; guard global = ThrottlerGuard (app.module.ts:146), préfixe api/v1 (main.ts:223), RolesGuard fail-closed (roles.guard.ts:17-24)
+- Lecture complète des services d'argent : encaisser-credit.ts (primitive unique 4 écritures atomiques), journee-ouverte.ts (CAI-02/09), stock-restitution.ts (append-only idempotent), wallets.service.ts (verrous pessimistes + 3 index uniques partiels wallet_transactions), bpay.controller/cron, admin-wallets.service (J5), commandes-rest/:id/paiement (Keiwa), protection-sociale, tontines
+- Anomalies top : escrow MORT (blockFunds/releaseFunds/refundFunds wallets.service.ts:395-510, zéro appelant) ; retraits mobile PENDING_WITHDRAW jamais réconciliés (bpay.cron.ts:48-53 ne voit que PENDING) ; rejeu offline de POST /caisse/credits double la dette client (UPSERT clients DO UPDATE, credits.controller.ts:60-71) ; POST /caisse/transactions hérité sans idempotence ni contrôle de journée, type ajustement invisible dans caisseTheorique (caisse-rest.controller.ts:245-287)
+- Autres constats : PATCH /caisse/session/fond modifiable après clôture (écart gravé faux, caisse-rest.controller.ts:405-446) ; rôle fantôme « admin » dans 3 checks morts (bpay.controller.ts:146, financial-score.service.ts:35, events.gateway.ts:62) ; broadcast WS public des transactions avec montant (events.gateway.ts:95-98) ; score financier compte les ventes annulées (financial-score.service.ts:86-115) ; bpay_transactions sans unicité pay_token (BaselineSchema.ts:228-238), le double-crédit n'est bloqué QUE par UPDATE...WHERE status='PENDING'
+- Odoo : lecture seule par défaut, écriture réelle conditionnée à ODOO_REAL_WRITE_ENABLED==='true' (odoo-client.config.ts:45, odoo-real.client.ts:73) + routes odoo-poc 404 sans ODOO_POC_ENABLED (odoo-poc-enabled.guard.ts:13) ; commissions : table droppée (_archive/1779500000000), AUCUN prélèvement dans le code, frais_transaction = config décorative keiwa_config_items
+- Dépôt/retrait espèces marchande : aucun circuit institution/BO — auto-déclaration du fond (session/ouvrir|fond) et retrait mobile direct ; seul super_admin crédite/débite un wallet (motif obligatoire, journal dans la transaction, admin-wallets.service.ts:273-330) ; users.status='suspendu' coupe TOUS les mouvements wallet via assertCompteActif (wallets.service.ts:94-103)
+
+Stage Summary:
+- ~90 endpoints argent audités ; garanties solides là où ça compte : vente caisse (transaction + FOR UPDATE + ledger stock + idempotence), encaissements crédit (primitive unique), wallets (pessimistic_write + 3 index uniques partiels), Keiwa commande, tontines, cotisations sociales — tout en transaction SQL avec audit_logs insérés DANS la transaction
+- Risques les plus lourds : retrait mobile money sans réconciliation ni statut B-PAY vérifié (perte possible silencieuse) ; rejeu offline crédit = dette doublée ; contournement Keiwa via /cooperatives/commandes/:id/cloture (marque payé sans argent) ; escrow inexistant malgré les types wallet_transactions escrow_*
+- Fragilités secondaires : clé d'idempotence caisse OPTIONNELLE (le client décide), plafond de montant absent sur vente/dépense caisse, callback B-PAY publics sans signature (protégés seulement par re-check B-PAY + UPDATE PENDING), rôle fantôme « admin » dans les guards
+- Aucune commission nulle part : 100 % de l'argent circule entre acteurs, la plateforme ne prélève rien (à confirmer comme choix produit)
+---
+Task ID: 35-b
+Agent: Explore (frontend argent par rôle)
+Task: cartographie frontend des workflows d'argent par acteur pour l'audit comptable
+
+Work Log:
+- Lecture ci/PERIMETRE-ARGENT.json (11 zones, noyau gelé) puis cartographie complète : machineEncaissement.ts (EmpreinteFinanciere:34, reduire:202, écriture unique :271-278), offlineCaisse.ts (IndexedDB julaba_offline/caisse_outbox + caisse_dead, id=clé d'idempotence :290, ENDPOINTS_ARGENT porte date_operation :410, ARG-03 argent jamais en lettre morte :534), caisse-api.ts (endpoints /caisse/*, clés crédit ARG-12 :222), CaisseContext (enregistrerVente :596 / enregistrerDepense :660, FAIL CLOSED enfilerOperation), AppContext (openDay :897 / closeDay :945 caisseTheorique+écart / getTodayStats :1038 convention A crédit=vente mais acompte seul en caisse)
+- POSCaisse.tsx (handlePay :430, recu/monnaie :398-401, empreinte :586-594, drapeaux pilote CAISSE_CREDIT_ACTIF=false / CAISSE_MOBILE_MONEY_ACTIF=false :55-62, dupliqués dans VentesPassees.tsx:45), grammaire vocale grammaireEncaissement.ts (liste blanche fermée) + intents.ts (INT_LIGNE_ENCAISSER :109), decomposerMonnaie (utils/fcfa.ts:69)
+- Keiwa : wallets-api.ts (/wallets/me, recharge-mobile, retrait-mobile, statut-paiement, transfert idempotent :133), RechargeWalletModal/WithdrawWalletModal (polling 5s/180s), TransfertPage:186 (PIN /auth/pin/verify puis POST), routes keiwa/* pour marchand+producteur+coopérateur (routes.tsx:89-140), WalletContext escrow bloquerArgent/libererArgent NON implémentés (warns :119-135)
+- Par rôle : producteur = commandes + recupererPaiement POST /commandes/:id/paiement (commandes-api:168) + Revenus lecture seule (addTransaction importé JAMAIS appelé, RecolteForm:187) ; coopérateur = trésorerie POST/PATCH /cooperatives/tresorerie (CooperativeContext:269-320) + cotisation marchand POST /cooperatives/cotisation (MaCooperative:110) ; identificateur = ZÉRO opération monétaire (grep vide) ; institution = lecture seule /institution/transactions (useInstitutionData:54-56)
+- Back-office : BOKeiwa (GET /admin/wallets/stats|transactions|audit/logs, actions credit/debit/bloquer/réinitialiser avec motif J5 :250-275, export CSV ; AUCUNE validation dépôt/retrait ni escrow), BOSupervision PATCH /transactions/:id (gel/annule/litige), BOScoreFinancier super_admin (fetch relatif codé en dur /api/v1/... :273,326), bo-permissions.ts registre non branché (note ETAPE A :34)
+- Outils dev signalés : MenuRolesTest (import.meta.env.DEV, MenuRolesTest.tsx:21), ProfileSwitcher (mockUsers), /dev-mode (routes.tsx:63), devMode.ts DEV_MODE=false no-op — exclus des parcours réels
+- - FAUSSE ALARME réglée : le canal d'E/S du sandbox avale les séquences ANSI de type « crochet ouvrant + m » (réinitialisation couleur) à L'AFFICHAGE ET DANS LES COMMANDES heredoc — une déstructuration `const [montant, setMontant]` se lit à tort `const ontant, setMontant]`. Vérifié octet par octet (char codes 5b 6d présents sur disque) : FinancesCooperative.tsx:66, CooperativeContext.tsx:132, PaiementsPage.tsx:83, PayPage.tsx:39 sont SAINS ; `tsc --noEmit` passe à 0 erreur — aucune syntaxe cassée dans le frontend. PRÉCAUTION audit : ne jamais conclure à un identifiant tronqué sur la seule sortie terminal ; re-vérifier via python/char codes.
+
+Stage Summary:
+- Couverture : marchand (caisse session, encaissement 2-formes à empreinte, dépense, crédit hors pilote, stock offline, file IndexedDB, keiwa complet, marché grossiste, cotisation coop) ; producteur (commandes/paiement keiwa, revenus lecture) ; coopérateur (trésorerie validée, commandes groupées) ; identificateur (aucun argent — confirmé) ; institution (supervision lecture) ; BO (keiwa admin credit/debit/réinit, transactions gel/litige, score financier, audit) ; outils dev isolés
+- Anomalies notables : (1) AppContext.addTransaction :818 = second chemin d'écriture vente/dépense SANS idempotency_key au premier POST (mort aujourd'hui — latent) ; (2) escrow WalletContext fantôme (4 fonctions non implémentées) ; (3) trois calculs de « solde de caisse » divergents (AppContext getTodayStats vs CaisseContext.stats vs ResumeCaisse:222 — acomptes crédit traités différemment) ; (4) PaiementsPage « Payer maintenant » sans handler ni endpoint ; (5) BOScoreFinancier URLs /api/v1 codées en dur hors API_URL ; (6) recharge/retrait keiwa sans clé d'idempotence client (confiance au payToken B-PAY) ; (7) drapeaux pilote dupliqués POSCaisse/VentesPassees ; (8) pas d'UI BO de validation des dépôts/retraits wallet (self-service B-PAY non supervisé front)
+
+---
+Task ID: 35
+Agent: Z.ai Code (sandbox)
+Task: « Fais un audit comptable des workflows de tous les acteurs » — audit comptable transverse des 10 rôles
+
+Work Log:
+- 3 agents d'exploration en parallèle : 35-a (backend argent : 6 modules + 9 annexes, endpoints/rôles/garanties/idempotence), 35-b (frontend par acteur : matrice rôles × workflows × écrans × endpoints), 35-c (registres : invariants CI, bugs/incidents argent ouverts, constats argent des 10 audits 05/10)
+- Vérification de PREMIÈRE MAIN des 5 constats les plus graves avant publication : C-01 retrait mobile money (COMPLETED dès la réponse HTTP, statut opérateur jamais revérifié, Date.now()), C-02 clôture coopérative (statut_paiement='paye' sans mouvement wallet — extrait lu), C-05 route héritée /caisse/transactions (vente refusée depuis 18/09 ; dépense/remboursement/ajustement en repo.save() nu), C-06 PATCH fond sur journée fermée (journalisé mais écart gravé non recalculé), C-07 webhooks B-PAY (public sans secret ; unicité DB absente)
+- Document produit : .ai/AUDITS/AUDIT-COMPTA-ACTEURS-2026-10-12.md — référentiel comptable (10 règles ADR/CONSTITUTION), garde-fous CI, matrice 10 rôles × 9 opérations monétaires, 6 chaînes d'argent, audit par acteur (10), 7 constats CRITIQUES + 10 MAJEURS + 9 mineurs (tous fichier:ligne), ce qui tient, recommandations P1/P2/P3 (7 chantiers P1), verdict par domaine + GLOBAL 62/100
+- Verdict : conforme pour le pilote espèces de la marchande (caisse POS 85/100, prouvée par invariants CI I1/I2/I3/ARGENT-4/CAI-02/09) ; NON PRÊT pour l'argent réel sur mobile money (50), crédit (45), coopérative (40) — le credit est gelé par constante UI seulement, I4/I5/I6 toujours it.failing
+- Aucun fichier source modifié ; arbres frontend/backend intacts (tsc vert cité en source)
+
+Stage Summary:
+- .ai/AUDITS/AUDIT-COMPTA-ACTEURS-2026-10-12.md (l'audit comptable consolidé des 10 acteurs) + 3 rapports d'exploration 35-a/b/c dans worklog
+- 7 chantiers P1 localisés et testables : réconciliation retraits B-PAY, comptabilisation coopérative, verdir I4/I5/I6 avant réactivation crédit, condamner/mettre au niveau la route héritée, fermer le fond sur journée fermée, signer les webhooks + unicité DB, re-gel HUMAIN du périmètre garde-argent frontend (INC-001)
+- Prêt à commit/push sur demande (1 nouveau fichier .ai + worklog)
