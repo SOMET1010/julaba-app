@@ -922,3 +922,39 @@ Stage Summary:
 - .ai/AUDITS/AUDIT-COMPTA-ACTEURS-2026-10-12.md (l'audit comptable consolidé des 10 acteurs) + 3 rapports d'exploration 35-a/b/c dans worklog
 - 7 chantiers P1 localisés et testables : réconciliation retraits B-PAY, comptabilisation coopérative, verdir I4/I5/I6 avant réactivation crédit, condamner/mettre au niveau la route héritée, fermer le fond sur journée fermée, signer les webhooks + unicité DB, re-gel HUMAIN du périmètre garde-argent frontend (INC-001)
 - Prêt à commit/push sur demande (1 nouveau fichier .ai + worklog)
+---
+Task ID: 36
+Agent: Z.ai Code (sandbox)
+Task: « fais le » — commit & push des tâches 34-35 (stack docker autoportante + audit comptable des acteurs)
+
+Work Log:
+- Constat d'entrée : le superviseur avait capturé les Tasks 34 (e3fb340) et 35 (2f344a7) en auto-commits UUID sur main locale ; delta dev..main = 6 fichiers exactement (443 insertions) ; YAML compose revalidé (PyYAML), check-ignore revalidé (.env.production.example trackable, backend/.env ignorée) — Task 35 (audit) déjà achevée avant la coupure de contexte, « fais le » = exécuter le commit/push en attente
+- 3 commits atomiques reconstruits sur branche task36-push (feab1cf + 3), ajout explicite par fichier, contenu tiré de main via git checkout main -- <fichiers> : d1f78f7 chore(infra) postgres dans la stack docker + env · 16595f4 docs(audit) audit comptable des 10 acteurs · 9c84e66 docs registres session 12/10 (worklog + COMMIT_LOG)
+- Interruption superviseur (retour sur main entre deux commandes bash) → bascule sur worktree /home/z/julaba-wt (méthode éprouvée Task 33) pour poser les commits B et C à l'abri
+- Push fast-forward : origin/dev feab1cf..9c84e66 ; dev locale alignée sur 9c84e66 ; origin/main et main locale INTACTS (2f344a7) ; worktree et branche temporaire supprimés, arbre principal rendu au superviseur sur main
+- Delta final vérifié dev..task36-push avant push : 7 fichiers, 457 insertions, 0 suppression — aucune gate TS requise (0 fichier TypeScript modifié)
+
+Stage Summary:
+- origin/dev = 9c84e66 : stack docker autoportante (Task 34 : postgres:16-alpine healthcheck + .env.production.example tracké DB_HOST=postgres) + audit comptable des 10 acteurs (Task 35 : verdict global 62/100, 7 chantiers P1) + registres à jour
+- COMMIT_LOG.md : nouvelle entrée « Stack docker autoportante + audit comptable des acteurs » (3 commits, batteries, atomicité)
+- Session clôturée : rien en attente de commit ; prochain Task ID = 37
+
+---
+Task ID: 37
+Agent: Z.ai Code (sandbox)
+Task: « vas-y » — chantier P1 n°1 de l'audit : C-01 réconciliation des retraits mobile money
+
+Work Log:
+- Lecture de première main : wallets.controller.ts (retrait = débit puis COMPLETED dès la HTTP 200, pay_token factice RET-TEMP-Date.now()), bpay.cron.ts (ne voit que PENDING), bpay.controller.ts (webhook ignore les retraits), wallets.service.ts (creditWallet/debitWallet acceptent un manager → atomicité possible), bpay.service.ts (cashin renvoie partner_transaction_id sans pay_token ; check-status = seule vérité asynchrone)
+- Agent 37-b (frontend) : le polling du retrait était du CODE MORT (réponse sans payToken → modal se ferme) ; 5 conventions de casse de statuts cohabitent ; mappings d'affichage binaires (« Rejeté » pour tout non-completed)
+- Fix backend : merchantTransactionId RET-<uuid> sert aussi de pay_token (stable, cherchable) ; COMPLETED jamais posé sur la seule HTTP 200 (échec explicite → remboursement immédiat ; succès → re-vérification check-status ; indéterminé → PENDING_WITHDRAW) ; primitive rembourserRetraitBpay = transition unique PENDING_WITHDRAW→REFUNDED + crédit dans la MÊME transaction (controller/cron/webhook en course, remboursement EXACTEMENT unique ; compte suspendu → rollback complet → retry) ; cron étendu à PENDING_WITHDRAW (+ notification, alerte ERROR > 24h) ; webhook reconnaît les retraits (lookup pay_token OU merchant_tx_id)
+- Fix frontend : WithdrawWalletModal — FAILED dit « remboursé sur ton solde Keiwa » + refreshKeiwa ; timeout = fin de l'échec silencieux ; note : le parcours est masqué en pilote (keiwa ∈ MODULES_HORS_PILOTE, garde RootLayout — comportement voulu, vérifié au navigateur)
+- Invariant bpay-retrait-reconciliation.spec.ts (6 tests sur vrai postgres, BpayService stubbé zéro réseau) : 6/6 verts ; régression B3/B2/K1/T1/tontines 18/18 verts ; tsc front+back 0 erreur ; lint racine 0 erreur
+- Vérification vivante sandbox : dotation démo 10 000 F (crédit J5 refusé à admin_general — la règle tient ; solde posé en base) → retrait 1000 → 400 « Retrait échoué: BPAY auth failed: 404 — montant remboursé sur ton solde Keiwa » ; solde intact 10 000 ; bpay_transactions REFUNDED (pay_token=RET-uuid, bpay_status CALL_FAILED, source controller) ; wallet_transactions debit+credit liés par metadata.refundOf
+- Pièges rencontrés : catch interne avalait le BadRequest du rejet check-status (corrigé) ; git checkout main -- ne ramène PAS les modifications non commitées du worktree principal (commit A amendé après cp depuis l'arbre principal) ; refs agent-browser périmées après navigation (fausses pistes tuiles « mortes » — en fait l'arborescence avait changé)
+- Découverte utile pour la suite : julaba_dev n'a AUCUN wallet (wallets créés à l'inscription seulement, seed démo sans wallet) — les comptes démo n'ont pas de Keiwa utilisable sans dotation manuelle
+
+Stage Summary:
+- C-01 fermé sur origin/dev : aucun chemin ne peut plus laisser un retrait échoué débité sans remboursement (contrôleur, webhook, cron — remboursement idempotent prouvé par invariant)
+- origin/dev : 9fb72b5 (fix backend+invariant) + ef419c4 (frontend) + registres ; régression argent verte ; CI rejouera la suite invariants complète sur postgres:16
+- Reste du chantier P1 (audit §8) : C-02 comptabilisation coopérative, I4/I5/I6 avant crédit, route héritée /caisse/transactions, PATCH fond journée fermée, webhooks HMAC + unicité pay_token, re-gel HUMAIN périmètre frontend (INC-001)
