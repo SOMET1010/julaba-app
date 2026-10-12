@@ -54,6 +54,10 @@ export interface MacroKpisInstitution {
   readonly pctInclusionCNPS: number | null;
   readonly pctInclusionCNAM: number | null;
   readonly croissanceMensuelle: number | null;
+  readonly valeurMonetaireFormatted?: number | null;
+  readonly valeurMoyenne?: number | null;
+  readonly tauxActivite?: number | null;
+  readonly nouveauxCeMois?: number | null;
 }
 
 export interface ResumeJourInstitution {

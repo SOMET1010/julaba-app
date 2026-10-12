@@ -44,6 +44,8 @@ import { useProducteur } from '../../contexts/ProducteurContext';
 import { useCooperative } from '../../contexts/CooperativeContext';
 import { useIdentificateur } from '../../contexts/IdentificateurContext';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { kpiDepuis, texteDuKpi } from '../../services/etatLectureBO';
+import type { DashboardInstitution } from '../../services/accueilInstitution';
 import { registerWebAuthn, verifyWebAuthnForKeiwa } from '../../hooks/useWebAuthn';
 import { marquerBiometrie } from '../../services/comptesMemorises';
 import { API_URL } from '../../utils/api';
@@ -480,15 +482,17 @@ function ProfilIdentificateurExtras({ color, user }: { color: string; user: User
 }
 
 function ProfilInstitutionExtras({ color }: { color: string }) {
-  const { macroKPIs, resumeJour } = useInstitutionData();
-  const vol = macroKPIs.valeurMonetaireFormatted;
-  const volLabel = typeof vol === 'number' && vol > 0 ? `${vol.toLocaleString('fr-FR')} Md FCFA` : String(vol ?? 0);
+  const { lectureDashboard } = useInstitutionData();
+  // Lecture ratée ou montant illisible (`null`) → « Indisponible », jamais 0.
+  const texte = (mesure: (d: DashboardInstitution) => number | null | undefined) =>
+    texteDuKpi(kpiDepuis(lectureDashboard, mesure));
+  const vol = kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted);
   return (
     <div className="grid grid-cols-2 gap-3 mb-4">
-      <KPICard label="Acteurs total" value={macroKPIs.totalActeurs} color={color} />
-      <KPICard label="Acteurs actifs" value={macroKPIs.acteursActifs} color={color} />
-      <KPICard label="Volume transactions" value={volLabel} color={color} />
-      <KPICard label="Croissance (nouveaux inscrits)" value={resumeJour.nouveauxInscrits} color={color} />
+      <KPICard label="Acteurs total" value={texte(d => d.macroKPIs.totalActeurs)} color={color} />
+      <KPICard label="Acteurs actifs" value={texte(d => d.macroKPIs.acteursActifs)} color={color} />
+      <KPICard label="Volume transactions" value={vol.type === 'nombre' ? `${texteDuKpi(vol)} Md FCFA` : texteDuKpi(vol)} color={color} />
+      <KPICard label="Croissance (nouveaux inscrits)" value={texte(d => d.resumeJour.nouveauxInscrits)} color={color} />
     </div>
   );
 }

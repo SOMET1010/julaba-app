@@ -17,10 +17,11 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { AnimatedChart } from '../ui/AnimatedChart';
 import { SubPageLayout } from '../layout/SubPageLayout';
-import { GraphiqueIndisponible } from './GraphiqueIndisponible';
+import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
 import { RAISON_HISTORIQUE_ABSENT } from '../../services/accueilInstitution';
 import {
   BarChart,
@@ -44,7 +45,7 @@ const PRIMARY_COLOR = '#712864';
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function Analytics() {
-  const { macroKPIs, dataRepartition, dataRegions, loading, byRole } = useInstitutionData();
+  const { lectureDashboard, dataRepartition, dataRegions, loading, byRole } = useInstitutionData();
 
   const [activeView, setActiveView] = useState<'global' | 'regional' | 'secteur'>('global');
   const [selectedPeriod, setSelectedPeriod] = useState('30j');
@@ -299,20 +300,20 @@ export function Analytics() {
             <KPIGrid cols={3}>
               <UniversalKPI
                 label="Total Acteurs"
-                animatedTarget={macroKPIs.totalActeurs}
+                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.totalActeurs))}
                 icon={Users}
                 color="#3B82F6"
                 delay={0}
                 details={[
-                  { label: 'Acteurs actifs', value: (macroKPIs.acteursActifs || 0).toLocaleString(), color: '#10B981' },
-                  { label: 'Taux activité', value: `${macroKPIs.tauxActivite || 0}%`, color: '#3B82F6' },
-                  { label: 'Nouveaux ce mois', value: `+${macroKPIs.nouveauxCeMois || 0}`, color: '#14B8A6' },
+                  { label: 'Acteurs actifs', value: texteDuKpi(kpiDepuis(lectureDashboard, d => d.macroKPIs.acteursActifs)), color: '#10B981' },
+                  { label: 'Taux activité', value: `${texteDuKpi(kpiDepuis(lectureDashboard, d => d.macroKPIs.tauxActivite))} %`, color: '#3B82F6' },
+                  { label: 'Nouveaux ce mois', value: texteDuKpi(kpiDepuis(lectureDashboard, d => d.macroKPIs.nouveauxCeMois)), color: '#14B8A6' },
                 ]}
               />
 
               <UniversalKPI
                 label="Transactions mois"
-                animatedTarget={macroKPIs.volumeTransactions || 0}
+                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.volumeTransactions))}
                 icon={ShoppingCart}
                 color="#10B981"
                 delay={30}
@@ -320,12 +321,12 @@ export function Analytics() {
 
               <UniversalKPI
                 label="Volume (Mds FCFA)"
-                animatedTarget={macroKPIs.valeurMonetaireFormatted || 0}
+                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted))}
                 icon={Wallet}
                 color="#059669"
                 delay={60}
                 details={[
-                  { label: 'Valeur moyenne transaction', value: `${(macroKPIs.valeurMoyenne || 0).toLocaleString()} FCFA`, color: '#3B82F6' },
+                  { label: 'Valeur moyenne transaction', value: `${texteDuKpi(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMoyenne))} FCFA`, color: '#3B82F6' },
                 ]}
               />
 
@@ -347,12 +348,10 @@ export function Analytics() {
 
               <UniversalKPI
                 label="Croissance"
-                animatedTarget={macroKPIs.croissanceMensuelle || 0}
+                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.croissanceMensuelle), undefined, { suffix: '%' })}
                 icon={TrendingUp}
                 color="#14B8A6"
                 delay={150}
-                prefix="+"
-                suffix="%"
               />
             </KPIGrid>
 

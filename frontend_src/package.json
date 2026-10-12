@@ -42,6 +42,7 @@
     "test:fiche-membre": "tsx src/app/services/ficheMembre.test.mts",
     "test:compteurs-acteurs-bo": "node scripts/test-compteurs-acteurs-bo.mjs",
     "test:accueil-institution": "tsx src/app/services/accueilInstitution.test.mts",
+    "test:ventes-bo": "tsx src/app/services/ventesBO.test.mts",
     "test:api-url": "tsx src/app/utils/api.test.mts",
     "test:jargon": "tsx src/app/services/antiJargon.test.mts",
     "test:confort": "tsx src/app/utils/confortVisuel.test.mts",
