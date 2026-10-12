@@ -48,6 +48,19 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 
 > NB rebase (16-bis) : ces commits ont été rebasés sur `060c333` (agent UX producteur, arrivé en parallèle) — hash finaux `2e12cf6`, `0c026aa`, `7699927`, `65c1783`, `5d27f63`. Le commit « voix » rebasé ne porte plus que le commentaire doctrinal + la note `disabledRoles` : la substance du gate vit dans `060c333`. Détail : worklog Task 16-bis.
 
+## 12/10/2026 — Sandbox : PG embarqué auto, seed BO connectable, testeur de rôles (agent Z.ai Code)
+
+```
+chore(infra): démarrage auto du PostgreSQL embarqué au npm run dev
+fix(seed): mot de passe back-office lu à l'exécution
+feat(auth): bouton de test des rôles <> sur la connexion (DEV)
+docs: registres session 12/10 — commits tâches 29-32 + push dev
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+> NB sandbox : travail des Tasks 29-32 balé par le superviseur dans des auto-commits UUID sur `main` locale (dont 1544 binaires pgdata ajoutés puis désindexés) → commits reconstruits depuis l'arbre final, JAMAIS de cherry-pick des UUID, push `origin/dev` uniquement (jamais main, jamais force). Rebase sur `2b23bef` (fix(auth) amont « supprimer les éléments de contexte dev », arrivé en parallèle) — hunks `LoginPassword.tsx` sans chevauchement, badge Tata « Guide » amont conservé ; hash finaux `870701f`, `02153dd`, `a6a9eff` + commit docs. Détail : worklog Tasks 29-33.
+
 ## Statistiques Git (snapshot 2026-09-28)
 
 - **Total commits** : 780
