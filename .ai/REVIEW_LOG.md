@@ -401,3 +401,42 @@ Le projet a un historique de revues très riche :
 - Re-gel humain Patrick (périmètre + gardes) inchangé — inchangé par ce commit.
 - Typage `VITE_CLOUDINARY_*` dans vite-env.d.ts (proposition, non fait).
 - `npm run check` racine complet (knip/jscpd) à rejouer après install racine (inchangé de REVIEW-006).
+## REVIEW-008 — Vérification « pas morts » : variables d'environnement et composants (2026-10-12, agent Z.ai Code)
+
+### Demande
+« verifie si il ne sont pas mort ainsi que ses composants » — passe de vérification après REVIEW-007/122aedb : (a) prouver que les variables libérées sont bien mortes, (b) re-vérifier que toutes les variables restantes déclarées sont vivantes, (c) auditer leurs composants hôtes (modules, workflows, infra) et libérer ce qui serait mort.
+
+### (a) Preuve de mort des 7 noms libérés (122aedb) — CONFIRMÉE
+Chaque nom passé au peigne fin (`rg -w -F`, tous canaux : process.env direct, process.env['X'], get('X'), get<type>('X'), import.meta.env, secrets workflows, compose/render/.env.example/Dockerfiles/Caddyfile, littéraux et commentaires du code) :
+- BPAY_RECONCILIATION, TTS_DISABLE_CLOUD, VITE_SENTRY_DSN : **0 mention** dans tout le code — mortes certaines.
+- FEEDBAK_SMS_TEMPLATES, VOICE_PROVIDERS, VOICE_METRIC_LABELS, ODOO_CLIENT : uniquement leurs homonymes de CODE, tous bien vivants (constante feedbak-sms.constants.ts consommée par feedbak-sms.service ; VOICE_PROVIDERS du DTO consommé par voice-config.service ; VOICE_METRIC_LABELS auto-consommé par voice-metrics.service ; ODOO_CLIENT = Symbol d'injection fourni par odoo-gateway.module et @Inject dans odoo-gateway.service). L'ENV homonyme n'est jamais lue — libération justifiée.
+- Note de comptage honnête : le message 122aedb dit « 8 variables » = 8 DÉCLARATIONS supprimées sur **7 noms uniques** (TTS_DISABLE_CLOUD était posée dans 2 fichiers).
+
+### (b) Toutes les déclarations restantes sont VIVANTES
+- backend/.env.example (61 clés) : lues via process.env direct (main.ts, database, auth, instrument…), config.get (y compris formes `config.get<type>('X', défaut)` — DB_LOGGING, BPAY_*, ANSUT_*, OTP_*, ONECI_*, ELEVENLABS_* via openai.service, LLM_*, PIPER_*, VOICE_LOCAL_TTS), et le helper `env.X` (fonctions recevant `NodeJS.ProcessEnv` avec défaut `process.env` : motDePasseBackOffice → SEED_DEMO_BO_PASSWORD, buildThrottlers → THROTTLE_DISABLED appelé avec process.env dans app.module, lireModeClientOdoo/odoo-client.config → ODOO_CLIENT_MODE/BASE_URL/API_KEY/DB/REAL_WRITE_ENABLED/REAL_TIMEOUT_MS). JWT_SECRET/REFRESH_TOKEN_SALT/PIN_ENCRYPTION_KEY : liste fail-fast dynamique de main.ts.
+- render.yaml (24 clés) : toutes consommées côté backend ; VITE_API_URL lue par le frontend.
+- infra/odoo-poc/.env.example (17 clés) : toutes consommées (compose, scripts init/smoke-test/test_create_api_key.py, README d'exploitation).
+- Frontend : VITE_API_URL ✓, VITE_WS_URL ✓ (WebSocketTransport.ts:36 — constructeur avec repli ""), VITE_JULABA_MODULES_HORS_PILOTE ✓ (modulesPilote.ts:120), VITE_CLOUDINARY_URL/PRESET ✓ (CommandesProducteurPage:589-590, replis en dur).
+
+### (c) Composants hôtes — TOUS VIVANTS, 0 mort trouvé
+- Modules backend reliés aux env (Bpay, Sms, FeedbakSms, Oneci, Voice, OdooGateway, Notifications, CaisseRest, CatalogueMaitre…) tous importés dans app.module.ts.
+- frontend/src/sentry.ts ← main.tsx ; backend/src/instrument.ts ← main.ts:1.
+- WebSocketTransport ← eventBus, NotificationsContext, BODashboard.
+- 12 workflows : tous les scripts référencés existent — piège levé : `./scripts/installer-voix.sh` s'exécute avec `working-directory: android` donc pointe vers android/scripts/installer-voix.sh (PRÉSENT) ; scripts racine schema-pilote.mjs (workflow schema-pilote.yml + garde-argent) et check-nest-versions.mjs (package.json) référencés ; backend/scripts/setup-piper.sh référencé (render.yaml + .env.example). 8 secrets tous référencés par au moins un workflow.
+- render.yaml = blueprint Render (référencé README/docs) ; deploy.yml = workflow_dispatch MANUEL documenté (cible prod non tranchée, ci/README.md) — coexistence délibérée, rien à libérer.
+- infra/odoo-poc : sous-système vivant (17 clés consommées, garde ODOO_POC_ENABLED dans odoo-poc-enabled.guard.ts).
+
+### Pièges méthodologiques écartés (leçons consignées)
+1. Motif unique insuffisant : un premier scan a faussement « tué » 29 noms — `get('X'` ne capte ni `get<type>('X'` ni le helper `env.X`. Corrigé par vérification mot-exact + lecture des mécanismes : les 29 sont vivants. Verdict posé uniquement après multi-canaux.
+2. Sortie tronquée : VITE_WS_URL a faussement semblé morte (lecture `| head` qui coupait le hit WebSocketTransport). Re-scan sans troncature → vivante. **Règle : jamais de verdict sur sortie tronquée.**
+3. working-directory non pris en compte par un check naïf d'existence de scripts workflows (fausse alerte installer-voix.sh).
+
+### Clôture du point ouvert REVIEW-007 (c912d8a)
+`VITE_CLOUDINARY_URL`/`VITE_CLOUDINARY_PRESET` (utilisées mais non typées) sont désormais déclarées dans ImportMetaEnv (vite-env.d.ts, +4 lignes, type seul). Batterie : `tsc -b` frontend **EXIT 0**.
+
+### Gels / garde-argent
+`git diff bb9052a` sur ci/PERIMETRE-ARGENT.json, ci/EMPREINTE-GARDES.json, backend/package.json, frontend/package.json = VIDE ; vite-env.d.ts hors empreintes et hors périmètre ; chaîne test:ci gelée non touchée (aucun fichier de la chaîne n'est modifié).
+
+### Restent ouverts (inchangés)
+- backend/.env.production (serveur, hors dépôt) : clés mortes éventuelles inertes — nettoyage facultatif (Patrick).
+- Re-gel humain Patrick (périmètre + gardes) inchangé ; `npm run check` racine complet (knip/jscpd) toujours à rejouer après install racine.
