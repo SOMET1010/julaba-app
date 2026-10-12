@@ -1105,8 +1105,7 @@ export function LoginPassword() {
           <div className="login-tata-carte">
             <img src={tataNantiLou} alt="Tantie Nanti Lou" />
             <span className="login-tata-id">
-              <span className="login-tata-nom">Tantie Nanti Lou <span className="login-tata-badge">Guilde</span></span>
-              <span className="login-tata-ligne">Aide-toi ici en boutique. Dioula & FR</span>
+              <span className="login-tata-nom">Tantie Nanti Lou <span className="login-tata-badge">Guide</span></span>
             </span>
             <button type="button" onClick={ecouterTata} className="login-tata-ecouter"
               aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
@@ -1124,9 +1123,6 @@ export function LoginPassword() {
           </div>
         )}
         {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
-        {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
-        )}
       </motion.div>
 
 
