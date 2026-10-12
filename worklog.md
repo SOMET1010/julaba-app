@@ -699,3 +699,24 @@ Stage Summary:
 - dev @ c912d8a + registres : AUCUNE variable ni composant mort restant — l'audit REVIEW-007 est confirmé et l'environnement déclaré décrit exactement ce que le code lit ; unique changement de code = typage des 2 VITE_CLOUDINARY_* (point ouvert 007 clos)
 - Leçons consignées dans REVIEW-008 : jamais de verdict sur motif unique ni sur sortie tronquée ; toujours tenir compte de working-directory
 - Gels ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json intacts (diff bb9052a vide) ; chaîne test:ci non touchée ; re-gel humain Patrick inchangé
+
+---
+Task ID: 27
+Agent: Z.ai Code
+Task: « POUR LA PAGE DE CONNEXION, JE VEUX CE DESIGN, AJOUTE TOUTE LES FONCTIONNALITÉS PRÉSENTES SUR CE DESIGN » (maquette 12/10) — refonte de l'étape « Ton numéro de téléphone » de l'écran de connexion ; directive permanente : push dev uniquement, jamais main
+
+Work Log:
+- Lecture de la maquette : logo+signature « L'allié des commerçants », titre complet + promesse carnet de caisse, carte Tata nommée (Tantie Nanti Lou · Guilde · « Aide-toi ici en boutique. Dioula & FR » · Écouter), carte « Dicter mon numéro » + badge « MICRO OUVERT », numéro 🇨🇮 +225 en paires avec positions vides pointées + 10 points, pavé à lettres (2 ABC… 9 WXYZ, 0 +), micro bas-gauche, effacement orange
+- Cartographie des GELS avant toute écriture : l'écran est surveillé par 7 bancs source (voix-trace-source avec fixture parole-3917bb7, verrou-connexion, canal-code, entree-unique, enum-check-phone, coffre-web, cible-tactile) + charte auth (budgets hex : LoginPassword 26, PaveSaisie 0) — baseline captée verte (voix-trace : 4 rouges hérités exacts) AVANT modification
+- Contrainte clé : voix-trace inventorie les APPELS de parole (ordre + arguments) — refactor JSX libre, appels intouchables ; PaveSaisie extensibles par props OPTIONNELLES (sousLegendePour, toucheGauche) : comportement par défaut (empreinte, chiffres nus, images opt-in de l'étape code) INCHANGÉ
+- login.css : toutes les nouvelles couleurs en feuille, familles charte réutilisées (#E8F5E9/#2F8F63 verts progression/succès, jetons commerce) — ZÉRO hex nouveau dans les TSX (24/26 maintenu) ; badge micro pulsant, responsive (badge texte masqué <380px)
+- LoginPassword : 6 remplacements chirurgicaux (constante LETTRES_DU_PAVE, slogan, titre+sous-titre, carte Tata phone-only — ancien guide conservé pour étapes code/reconnaissance, numéro 5 paires toujours rendues avec illumination AUTH-04, carte dictée « Dicter mon numéro/J'écoute… » + badge état, pavé avec lettres + micro quand moteur prêt / empreinte sinon) — doctrine « aucun micro trompeur » respectée (le micro n'apparaît que si voixEcouteDispo)
+- Gardes en continu : inventaire parole 15/15 IDENTIQUES avant/après (script), hex 24/26, apostrophe typographique corrigée (J'écoute)
+- Vérification navigateur (Vite 5173 + agent-browser) : rendu conforme à la maquette, saisie 2540 → « 25 40 •• •• •• » + 4 points verts + œil revoir, parcours 0501604040 → étape code intacte (guide historique, chiffres nus, empreinte, images opt-in), 0 erreur console ; repli web sans moteur = empreinte (pas de faux micro)
+- Batteries : tsc -b EXIT 0 ; auth-charte EXIT 0 (24/26) ; voix-trace = LoginPassword 15/15 ✓ + les 4 rouges hérités EXACTS (useVoiceCore, AppLayout, ObjectifContext ×2) ; verrou/canal/entree-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande/entree-numero-voix EXIT 0
+- Registres : CHANGELOG (section Modifié), COMMIT_LOG (cette entrée), worklog 27 ; commit 75c869d puis push origin/dev (seule branche poussée, jamais main, jamais force)
+
+Stage Summary:
+- dev @ 75c869d : l'étape « Ton numéro de téléphone » est au DESIGN VALIDÉ avec toutes ses fonctionnalités (dictée vocale live, état du micro, pavé à lettres, drapeau CI, positions pointées, écoute Tata, relecture haptique, empreinte en repli honnête) — étapes code et reconnaissance INCHANGÉES
+- Zéro appel de parole modifié (garde voix-trace 15/15), zéro hex nouveau (charte 24/26), gels ci/*.json et chaîne test:ci intacts
+- Le badge « MICRO OUVERT »/« MICRO EN VEILLE » vit sur l'état réel du micro ; la carte dictée et le micro du pavé n'apparaissent que sur moteur vocal prêt (APK) — sur web sans moteur, l'empreinte reste le repli (doctrine AUTH conservée, aucune promesse muette)

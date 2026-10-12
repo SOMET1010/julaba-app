@@ -159,6 +159,12 @@ Passe de vérification REVIEW-008 sur dev (worktree isolé, main jamais poussé)
 
 Batteries : `tsc -b` frontend EXIT 0 ; gels ci/*.json intacts (diff bb9052a vide) ; vite-env.d.ts hors empreintes garde-argent.
 
+## 12/10/2026 — Refonte de l'étape numéro de la connexion au design validé (agent Z.ai Code)
+
+Maquette 12/10 appliquée à l'écran de connexion (75c869d, dev en worktree isolé, main jamais poussé) : signature de marque, titre complet + promesse, carte Tata nommée avec Écouter, numéro 🇨🇮 +225 en paires à positions pointées, pavé à lettres avec micro de dictée (empreinte en repli), carte « Dicter mon numéro » + badge MICRO OUVERT/EN VEILLE. Étapes code/reconnaissance intactes.
+
+Gardes : voix-trace LoginPassword 15/15 appels identiques (ordre + arguments) ; auth-charte 24/26 hex, zéro nouveau ; verrou/canal/entrée-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande EXIT 0 ; tsc -b EXIT 0. Vérifié au navigateur (Vite + agent-browser) : rendu, saisie, progression, étape code, 0 erreur console.
+
 ## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
 
 | Commit | Type | Contenu (1 préoccupation = 1 commit) |

@@ -5,6 +5,16 @@
 
 
 
+### Modifié — Écran de connexion : « Ton numéro de téléphone » au design validé (2026-10-12, 6ᵉ session)
+
+Sur demande utilisateur (maquette 12/10, « ajoute toutes les fonctionnalités présentes sur ce design ») — refonte VISUELLE de l'étape numéro (75c869d), fonctionnalités 100 % conservées :
+
+- Signature de marque (« L'allié des commerçants »), titre complet + promesse « carnet de caisse »
+- Carte Tata nommée : Tantie Nanti Lou · badge Guilde · « Aide-toi ici en boutique. Dioula & FR » · bouton Écouter (mêmes handlers)
+- Numéro 🇨🇮 +225 en CINQ paires toujours rendues (positions vides pointées) + 10 points de progression + relecture haptique AUTH-04
+- Pavé téléphone à LETTRES (2 ABC… 0 +) et micro de dictée en bas-gauche QUAND le moteur vocal est prêt — empreinte sinon (aucun micro trompeur) ; carte « Dicter mon numéro » avec badge d'état « MICRO OUVERT / EN VEILLE »
+- Étapes code et reconnaissance intactes ; zéro appel de parole modifié (voix-trace 15/15), zéro hex nouveau (charte 24/26), tsc + 10 bancs de garde verts, vérifié au navigateur
+
 ### Vérifié — Variables d'environnement et composants : rien de mort restant (2026-10-12, 5ᵉ session)
 
 Sur demande utilisateur (« verifie si il ne sont pas mort ainsi que ses composants ») — passe de vérification REVIEW-008 :
