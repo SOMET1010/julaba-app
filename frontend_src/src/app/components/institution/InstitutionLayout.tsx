@@ -250,7 +250,9 @@ function DesktopSidebar({ navItems }: { navItems: typeof ALL_NAV_ITEMS }) {
           </div>
           <div>
             <p className="font-black text-gray-900">Jùlaba</p>
-            <p className="text-xs text-gray-400 truncate max-w-[140px]">{institutionProfil.nom.split(' — ')[0]}</p>
+            {institutionProfil.nom && (
+              <p className="text-xs text-gray-400 truncate max-w-[140px]">{institutionProfil.nom}</p>
+            )}
           </div>
         </div>
       </div>

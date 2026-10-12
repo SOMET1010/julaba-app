@@ -20,9 +20,9 @@ import { useInstitutionData } from '../../hooks/useInstitutionData';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { AnimatedChart } from '../ui/AnimatedChart';
 import { SubPageLayout } from '../layout/SubPageLayout';
+import { GraphiqueIndisponible } from './GraphiqueIndisponible';
+import { RAISON_HISTORIQUE_ABSENT } from '../../services/accueilInstitution';
 import {
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   PieChart,
@@ -44,9 +44,8 @@ const PRIMARY_COLOR = '#712864';
 
 // ── Component ────────────────────────────────────────────────────────────────
 export function Analytics() {
-  const { macroKPIs, dataEvolution, dataRepartition, dataRegions, loading, byRole } = useInstitutionData();
+  const { macroKPIs, dataRepartition, dataRegions, loading, byRole } = useInstitutionData();
 
-  const [filteredEvolution, setFilteredEvolution] = useState(dataEvolution);
   const [activeView, setActiveView] = useState<'global' | 'regional' | 'secteur'>('global');
   const [selectedPeriod, setSelectedPeriod] = useState('30j');
   const [selectedRegion, setSelectedRegion] = useState('tous');
@@ -269,12 +268,7 @@ export function Analytics() {
                   Réinitialiser
                 </motion.button>
                 <motion.button
-                  onClick={() => {
-                    // Filtrer dataEvolution selon selectedPeriod
-                    const nbMois = selectedPeriod === '7j' ? 1 : selectedPeriod === '30j' ? 1 : selectedPeriod === '3m' ? 3 : selectedPeriod === '6m' ? 6 : 12;
-                    setFilteredEvolution(dataEvolution.slice(-nbMois));
-                    setShowFilters(false);
-                  }}
+                  onClick={() => setShowFilters(false)}
                   className="flex-1 px-4 py-3 rounded-2xl text-white font-bold shadow-lg"
                   style={{ backgroundColor: PRIMARY_COLOR }}
                   whileHover={{ scale: 1.02 }}
@@ -309,7 +303,6 @@ export function Analytics() {
                 icon={Users}
                 color="#3B82F6"
                 delay={0}
-                explication={`${8.7}% vs mois dernier`}
                 details={[
                   { label: 'Acteurs actifs', value: (macroKPIs.acteursActifs || 0).toLocaleString(), color: '#10B981' },
                   { label: 'Taux activité', value: `${macroKPIs.tauxActivite || 0}%`, color: '#3B82F6' },
@@ -323,12 +316,6 @@ export function Analytics() {
                 icon={ShoppingCart}
                 color="#10B981"
                 delay={30}
-                explication={`${18.4}% vs mois dernier`}
-                details={[
-                  { label: 'Transactions validées', value: '8,942', color: '#10B981' },
-                  { label: 'En cours', value: '287', color: '#F59E0B' },
-                  { label: 'Moyenne par jour', value: '310', color: '#3B82F6' },
-                ]}
               />
 
               <UniversalKPI
@@ -337,10 +324,8 @@ export function Analytics() {
                 icon={Wallet}
                 color="#059669"
                 delay={60}
-                explication={`${22.1}% vs mois dernier`}
                 details={[
                   { label: 'Valeur moyenne transaction', value: `${(macroKPIs.valeurMoyenne || 0).toLocaleString()} FCFA`, color: '#3B82F6' },
-                  { label: 'Croissance valeur', value: '+22.1%', color: '#10B981' },
                 ]}
               />
 
@@ -350,10 +335,6 @@ export function Analytics() {
                 icon={Building2}
                 color="#B74725"
                 delay={90}
-                details={[
-                  { label: 'Part du total', value: '46.9%', color: '#B74725' },
-                  { label: 'Actifs', value: '8,234', color: '#10B981' },
-                ]}
               />
 
               <UniversalKPI
@@ -362,10 +343,6 @@ export function Analytics() {
                 icon={Users}
                 color="#2E8B57"
                 delay={120}
-                details={[
-                  { label: 'Part du total', value: '26.7%', color: '#2E8B57' },
-                  { label: 'Actifs', value: '3,891', color: '#10B981' },
-                ]}
               />
 
               <UniversalKPI
@@ -376,7 +353,6 @@ export function Analytics() {
                 delay={150}
                 prefix="+"
                 suffix="%"
-                explication={`${1.2}% accélération`}
               />
             </KPIGrid>
 
@@ -386,32 +362,7 @@ export function Analytics() {
               subtitle="Nombre de transactions et valeur totale"
               delay={200}
             >
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={filteredEvolution}>
-                  <defs>
-                    <linearGradient id="gradAnalyticsTx" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={PRIMARY_COLOR} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={PRIMARY_COLOR} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '16px', border: `2px solid ${PRIMARY_COLOR}40` }}
-                    formatter={(v: any) => [(v || 0).toLocaleString(), '']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="transactions"
-                    stroke={PRIMARY_COLOR}
-                    strokeWidth={2}
-                    fill="url(#gradAnalyticsTx)"
-                    animationDuration={2000}
-                    animationBegin={300}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <GraphiqueIndisponible raison={RAISON_HISTORIQUE_ABSENT} hauteur={200} />
             </AnimatedChart>
 
             <AnimatedChart

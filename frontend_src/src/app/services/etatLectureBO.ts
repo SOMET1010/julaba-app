@@ -87,11 +87,12 @@ export type AffichageKpi =
  * autre chose qu'un nombre fini (NaN sur une donnée abîmée) ne fabrique pas
  * un zéro non plus — il rend « indisponible », ce qui est la vérité.
  */
-export function kpiDepuis<T>(etat: EtatLecture<T>, mesure: (valeur: T) => number): AffichageKpi {
+export function kpiDepuis<T>(etat: EtatLecture<T>, mesure: (valeur: T) => number | null | undefined): AffichageKpi {
   if (etat.type === 'attente') return { type: 'chargement' };
   if (etat.type === 'indisponible') return { type: 'indisponible', raison: etat.raison };
   const n = mesure(etat.valeur);
-  if (!Number.isFinite(n)) return { type: 'indisponible', raison: 'Donnée illisible' };
+  // `null` = non mesuré par le serveur : ce n'est pas un zéro non plus.
+  if (typeof n !== 'number' || !Number.isFinite(n)) return { type: 'indisponible', raison: 'Donnée illisible' };
   return { type: 'nombre', valeur: n };
 }
 
@@ -254,6 +255,11 @@ export function nombreDuKpi(kpi: AffichageKpi): number | undefined {
   return kpi.type === 'nombre' ? kpi.valeur : undefined;
 }
 
+/** Le texte d'un compteur sans animation : le nombre lu, ou le mot d'état. */
+export function texteDuKpi(kpi: AffichageKpi): string {
+  return kpi.type === 'nombre' ? kpi.valeur.toLocaleString('fr-FR') : (motDuKpi(kpi) ?? MOT_INDISPONIBLE);
+}
+
 /** L'explication proposée à l'agent — c'est là que la RAISON devient utile. */
 export function explicationDuKpi(kpi: AffichageKpi): string | undefined {
   if (kpi.type === 'indisponible') {
@@ -261,6 +267,33 @@ export function explicationDuKpi(kpi: AffichageKpi): string | undefined {
   }
   if (kpi.type === 'chargement') return 'Lecture en cours. Le chiffre s’affichera dès que le serveur aura répondu.';
   return undefined;
+}
+
+/**
+ * CE QU'UNE TUILE REÇOIT — BO-01 (partagé : BODashboard, accueil institution).
+ *
+ * Un compteur rend l'un de TROIS états, et la tuile les sert différemment :
+ *
+ *   nombre        → `animatedTarget`, le compteur animé d'avant. ZÉRO COMPRIS :
+ *                   un zéro lu est une réponse, et il s'affiche comme telle.
+ *   chargement    → le mot « Lecture… », et AUCUN nombre. Pas de zéro qui
+ *                   clignote en attendant la réponse.
+ *   indisponible  → le mot « Indisponible », et la RAISON dans l'explication
+ *                   (la tuile s'ouvre au clic) : l'agent doit pouvoir décider
+ *                   quoi faire, pas seulement constater qu'il manque un chiffre.
+ *
+ * `animatedTarget` est laissé à `undefined` hors du cas « nombre » : c'est lui
+ * qui, dans `UniversalKPI`, décide d'afficher un compteur plutôt qu'un texte.
+ * Le laisser à `0` remettrait exactement le faux zéro qu'on ferme ici.
+ */
+export function kpiTuile(kpi: AffichageKpi, format?: (n: number) => string) {
+  const n = nombreDuKpi(kpi);
+  const mot = motDuKpi(kpi);
+  return {
+    animatedTarget: format ? undefined : n,
+    value: format && n !== undefined ? format(n) : (mot ?? undefined),
+    explication: explicationDuKpi(kpi),
+  };
 }
 
 /** Le sous-titre « sur N zones » — qui ne doit pas non plus inventer un N. */
