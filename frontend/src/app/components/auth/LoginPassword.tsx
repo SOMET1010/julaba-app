@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
-import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye, Keyboard, Check, Play } from 'lucide-react';
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check, Play } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -1135,7 +1135,6 @@ export function LoginPassword() {
             </button>
           </div>
         )}
-        {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
       </motion.div>
 
 
