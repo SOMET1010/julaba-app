@@ -4,6 +4,18 @@
 > Adjonction du système multi-agents le 2026-09-28.
 
 
+
+### Fusionné — retours terrain PIE 07/10 + cadre CI racine (main → dev, 2026-10-07, 3ᵉ session)
+
+Sur demande utilisateur (« regarde les derniers push de main, fais un audit et fais un merge des dernières améliorations ») — audit REVIEW-006 puis fusion sur dev en worktree isolé (main jamais poussé) :
+
+- **Retours terrain PIE 07/10** : A1 stock sans doublon (ComplementEtal — un produit déjà sur l'étal se complète ; ClavierQuantite ; premierProduit), A2 file hors ligne rejouable sans relancer l'appli (offlineCaisse + banc rejeuDeclencheurs, manifest Android), A3 « encaisser » coupé par l'ASR fait parler la caisse (encaisserFormesDites)
+- **Profil & activation** : photo par caméra/galerie (ChoixPhotoCarte + banc), commune et marché issus du back-office (lieuxMarchands, marches-api), bouton « J'ai un code de mon agent » vers /activation (UX-02)
+- **Correctifs RC backend** : Modération (jointures CAST varchar↔uuid), BO-Zones (varchar = uuid), Institutions (statut↔actif traduit aux bords), BO-Missions (types/statuts inconnus), Enrôlement (statut canonique), coopérative (adhésion retrouvée), producteur (commandes/plantation avec id), SEC-07 (gigue randomInt), « mes ventes » dit ouvre Ventes passées
+- **Cadre CI racine de main** : `ci/check.mjs` (tout exécuter puis conclure, outil absent ≠ succès), scripts racine check/lint/mort/duplication, devDeps eslint/knip/jscpd, `.githooks/pre-push`, agents `.claude/agents/*`, STATUS.md, CLAUDE.md — chemins traduits vers `frontend/` (arbre renommé dev)
+- **Chaîne verify étendue** (+6 maillons verts : modules-pilote, lieux-marchands, photo-carte, lien-activation, rejeu-declencheurs, encaisser-formes-dites) + assertion verrou restaurée ; `test:i18n-source` mis au vert (4 phrases dites héritées de dev enregistrées au catalogue `a_migrer`, INVENTAIRE régénéré 425 sites)
+- **Intégrité** : gels `ci/PERIMETRE-ARGENT.json`/`ci/EMPREINTE-GARDES.json` intacts, chaîne `test:ci` gelée intouchée, swagger 11.4.7 inchangé, zéro résidu `frontend_src/`, batteries complètes vertes ou aux baselines exactes (détail REVIEW-006)
+
 ### Ajouté — Audit UX marchand/producteur/vente vocale + lots UX-7 « La voix dit vrai » et UX-8 « Argent marchand sous la garde » (2026-10-07, 2ᵉ session)
 Sur demande utilisateur (« améliorer l'UX marchand et producteur, meilleur UX pour la vente vocale ») — audit re-état puis exécution :
 - **Audit** : `docs/audit/AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` — 3 explorations parallèles (marchand, producteur, vente vocale), re-état des constats du 06/10 (la majorité corrigée, preuves `dev@5e773ae`), carte du pipeline voix, frictions F-V1..F-V7, plan UX-7..UX-10, 5 décisions à trancher (Patrick). Faux positif documenté : « erreur de syntaxe TantieSagesseModal:73 » = artefact de transport `[m` avalé à l'affichage (vérifié grep-pattern + tsc vert).

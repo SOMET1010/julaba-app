@@ -131,6 +131,16 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 - **Fichiers migrés** : TransfertPage (562→499), MaCooperative (440→382) — comportement métier inchangé (mêmes endpoints, verrous, textes)
 - **Détail** : worklog Task 22 (REVIEW_LOG, « Suivi des corrections — 2e session ») ; batteries vertes, garde-argent aux 3 refus attendus
 
+## 07/10/2026 — Merge des dernières améliorations de main dans dev (agent Z.ai Code)
+
+Audit REVIEW-006 (PR #261→#272 : cadre CI racine, correctifs RC, retours terrain PIE A1/A2/A3, profil/activation) puis fusion sur dev en worktree isolé. `main` jamais poussé. Gels et chaîne `test:ci` intacts.
+
+1. `265062e` — `Merge main dans dev — retours terrain PIE 07/10 et cadre CI racine` : 63 commits fusionnés ; rename-follow git (frontend_src→frontend suivi : 32 modifiés auto-fusionnés, 14 ajouts relocalisés) ; conflits résolus (.gitignore union, anti-enumeration même-fix SEC-07 → version dev, package.json workspaces `frontend` + scripts main, package-lock régénéré) ; 6 occurrences frontend_src traduites dans l'outillage main
+2. `1b32929` — `fix(i18n): intégration de la chaîne verify de main sur l'arbre renommé dev` : banc rejeuDeclencheurs (chemin frontend), 4 phrases dites héritées enregistrées au catalogue (MARCH_COTISATION_PAYEE/ECHEC, PROD_COMMANDE_ACCEPTEE, PROD_DEMANDE_DETAIL — a_migrer, motif PIE), INVENTAIRE-VOIX régénéré (425/242) ; test:i18n-source/-argent/-locales/-empreintes verts
+3. Registres : REVIEW_LOG (REVIEW-006), CHANGELOG (Fusionné 07/10), COMMIT_LOG (cette entrée), worklog 24
+
+Batteries finales : tsc ×2 = 0 ; charte 0 ; test:ci 0 ; parole-entree 0 ; voix-trace = 4 hérités ; garde-argent = 3 refus attendus ; jest 251/251 ; nest build 0 ; 6 bancs main + verrou + i18n verts.
+
 ## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
 
 | Commit | Type | Contenu (1 préoccupation = 1 commit) |

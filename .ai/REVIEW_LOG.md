@@ -330,3 +330,40 @@ Le projet a un historique de revues très riche :
 
 ### Restent ouverts
 - Migration du modal PIN de MarcheVirtuel sur `PinArgent` (lot à part) ; R2-3 (option cosmétique) ; maillon backend dans `test:ci` (chaîne gelée — au re-gel de Patrick) ; **re-gel humain Patrick** (INC-001/2 — le seul re-gel valide).
+
+## REVIEW-006 — Audit et fusion des derniers pushs de main dans dev (2026-10-07, agent Z.ai Code)
+
+### Demande
+« regarde les derniers push de main, fais un audit et fais un merge des dernières améliorations » — rappel de bordée ensuite : « push sur dev, jamais sur main ». Fusion exécutée sur dev en worktree isolé ; `main` jamais poussé, jamais rebasé, jamais touché.
+
+### Ce que main portait (9fb4655..24b40b3 — 63 commits, PR #261→#272)
+- Cadre de travail racine (PR #261) : `ci/check.mjs` (+137 l., NOUVEAU), scripts racine `check`/`check:rapide`/`hooks:install`/`lint`/`lint:fix`/`mort`/`duplication`, devDeps eslint 9 / typescript-eslint / knip / jscpd, `.githooks/pre-push`, `.github/workflows/check.yml`, agents `.claude/agents/*`, STATUS.md, CLAUDE.md. Philosophie conforme au produit : tout exécuter puis conclure (pas de `&&` court-circuit), outil ABSENT ≠ succès, seuils = état réel du dépôt (knip plafond 400), garde-argent joué en informatif.
+- Correctifs RC (PR #262/#265) : Modération `/user-flags` (CAST varchar↔uuid), BO-Zones (varchar = uuid), Institutions (statut↔actif traduit aux bords), BO-Missions (type/statut inconnus), Enrôlement (statut canonique), producteur (commandes + plantation avec id), coopérative (adhésion retrouvée), SEC-07 (gigue `crypto.randomInt`), assertion verrou restaurée, « mes ventes » dit ouvre Ventes passées.
+- Périmètre argent (PR #266) + masque hors-pilote (PR #268) + INVENTAIRE-VOIX régénéré (test:i18n-source).
+- Retours terrain PIE 07/10 (PR #271) : A1 stock sans doublon (ComplementEtal/ClavierQuantite/premierProduit), A2 file hors ligne rejouable (offlineCaisse + rejeuDeclencheurs, manifest Android), A3 « encaisser » coupé par l'ASR (formes dites) ; docs décisions ARG-03.
+- Profil/activation (PR #272) : photo par caméra (ChoixPhotoCarte), commune/marché back-office (lieuxMarchands, marches-api), bouton « J'ai un code de mon agent » (BoutonCodeAgent → /activation, UX-02), bancs + catalogue.
+
+### Audit (lecture seule, avant tout merge)
+- **Gels intacts** : `git diff 9fb4655 origin/main -- ci/` = `ci/check.mjs` seul ; `ci/PERIMETRE-ARGENT.json` et `ci/EMPREINTE-GARDES.json` jamais touchés côté main ; `backend/package.json` et `frontend/package.json` intacts côté main.
+- **Chaîne `test:ci` gelée intouchée** : la ligne `test:ci` n'apparaît dans aucun diff ; main étend la chaîne **verify** (+6 maillons : `test:modules-pilote`, `test:lieux-marchands`, `test:photo-carte`, `test:lien-activation`, `test:rejeu-declencheurs`, `test:encaisser-formes-dites`) et restaure l'assertion « ce qui est affiché est aussi DIT » du verrou connexion (doctrine T8) — additif, légitime.
+- **SEC-07 en double création** : le même fix `Math.random` → `randomInt(node:crypto)` a été fait des DEUX côtés (commentaires différents, import placé différemment) — version dev gardée (commentaire plus complet), zéro divergence sémantique.
+- **Refactor dev `audit/` → `audit-log/`** : main reste sur `audit/` ; ses fichiers backend modifiés (institutions, user-flags.service) n'importent pas audit.service → auto-fusion propres : imports `audit-log` de dev PRÉSERVÉS + logique main PRÉSENTE (`versColonnes`, `CAST(user.id AS text)` vérifiés au stage).
+- **Renommage dev `frontend_src` → `frontend` (628ef4e)** vs main resté sur `frontend_src/` : 46 fichiers frontend main (14 ajoutés, 32 modifiés). Le rename-follow de git a fonctionné : les 32 modifiés auto-fusionnés DANS `frontend/`, les 14 ajoutés posés en « CONFLICT (file location) » aux chemins `frontend/` (suggestion git acceptée) — **zéro résidu `frontend_src/` dans l'index**.
+
+### Fusion (265062e) puis correctif d'intégration (1b32929)
+- Conflits réels : `.gitignore` (union : bloc sandbox dev superset + commentaire de décision main), `backend/src/auth/anti-enumeration.ts` (même fix → version dev), `package.json` racine (workspaces `frontend` de dev + scripts/devDeps main, swagger `11.4.7` intact, workspaces JSON assertés), `package-lock.json` (régénéré `npm install --package-lock-only`, workspace `frontend` présent).
+- Traduction de chemins sur l'outillage main : `ci/check.mjs`, `eslint.config.mjs`, `knip.jsonc`, `.jscpd.json` — 6 occurrences `frontend_src` → `frontend` (assertées une à une).
+- Banc `rejeuDeclencheurs` (A2) : chemin en dur `frontend_src/…` traduit → banc vert (« La file repart d'elle-même, et ne perd rien »).
+- `test:i18n-source` rouge : 4 phrases dites absentes du catalogue — **rouge HÉRITÉ de dev tip, preuve par diff** : phrases présentes à `21646d0` (MaCooperative:116, CommandesProducteurPage:330/810), diff `catalog.ts` de main purement additif (+13/−0), `MaCooperative.tsx` identique entre `21646d0` et le merge. Enregistrées au catalogue selon le motif PIE de main (`a_migrer`, note de traçabilité, `critiqueArgent` true pour les phrases d'argent) : MARCH_COTISATION_PAYEE, MARCH_COTISATION_ECHEC, PROD_COMMANDE_ACCEPTEE, PROD_DEMANDE_DETAIL (variables `['produit']`, audioMode dynamic). INVENTAIRE-VOIX régénéré (425 sites, 242 phrases, 56 critiques).
+
+### Batteries (état final 1b32929, worktree isolé)
+`tsc --noEmit` frontend 0 / backend 0 ; `test:charte-marchande` EXIT 0 ; `test:ci` EXIT 0 (« Tous les tests sont verts ») ; `test:parole-entree` EXIT 0 ; `test-voix-trace-source` = EXACTEMENT les 4 rouges hérités (useVoiceCore, AppLayout, ObjectifContext ×2), 0 nouveau ; garde-argent = EXACTEMENT les 3 refus attendus (périmètre 55 sortis, test:ci gelé, 131 assertions débranchées) ; jest backend 33 suites / **251/251** ; `nest build` 0 ; les 6 bancs verify de main verts ; verrou connexion vert ; i18n `source`/`argent`/`locales`/`empreintes-argent` verts.
+
+### Incidents sandbox (écartés sans dégât)
+- Bascule HEAD `dev`→`main` par une session concurrente pendant le ff local (le `main` local s'est retrouvé à `21646d0`) — écartée par **worktree isolé** `/home/z/wt-merge` portant `dev` ; le merge vit sur dev, `main` jamais écrit, jamais poussé.
+- Lectures transitoires incohérentes (grep/python voient un contenu périmé sur fichiers fraîchement écrits) — contournées en vérifiant via l'index git (`git show :0:`) et en rejouant les assertions sur lectures stabilisées ; aucune écriture partielle.
+
+### Restent ouverts
+- `npm run check` (cadre racine de main) : outils eslint/knip/jscpd absents du node_modules racine du worktree d'audit — à jouer après un `npm install` racine (déps déjà au lock) ; les 6 maillons verify individuels sont verts.
+- Re-gel humain Patrick (périmètre + gardes) inchangé ; maillon backend dans `test:ci` toujours gelé ; CODE-NEW-8 (MarcheVirtuel PIN 4ᵉ copie) inchangé.
+- Les bancs A1/A2/A3/profil vivent maintenant dans `frontend/` côté dev — toute retouche future de ces écrans doit se faire là (plus jamais dans `frontend_src/`).
