@@ -8,7 +8,9 @@
     "backend"
   ],
   "scripts": {
-    "dev": "concurrently -n frontend,backend -c cyan,green \"npm run dev --workspace frontend\" \"npm run start:dev --workspace backend\"",
+    "dev": "(bun mini-services/postgres-service/up.ts || echo '[pg] service embarqué non démarré — le backend tentera localhost:5432') && concurrently -n frontend,backend -c cyan,green \"cd frontend && npm run dev\" \"cd backend && npm run start:dev\"",
+    "pg:up": "bun mini-services/postgres-service/up.ts",
+    "pg:stop": "mini-services/postgres-service/node_modules/@embedded-postgres/linux-x64/native/bin/pg_ctl -D mini-services/postgres-service/pgdata stop -m fast",
     "build": "npm run build --workspace frontend && npm run build --workspace backend",
     "install:all": "npm install",
     "check:nest-versions": "node scripts/check-nest-versions.mjs",

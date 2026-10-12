@@ -71,3 +71,7 @@ skills/
 .zscripts/
 download/
 upload/
+
+# Données du PostgreSQL embarqué du sandbox (mini-services/postgres-service) —
+# binaires initdb/pgdata volatils, jamais versionnés (retirés du suivi le 12/10/2026)
+mini-services/postgres-service/pgdata/
