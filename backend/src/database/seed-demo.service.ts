@@ -84,6 +84,11 @@ const BO_PASSWORD = motDePasseBackOffice() ?? '';
 
 // Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
 // Acteurs (connexion sur /login, code à 4 chiffres = ACTEUR_PASSWORD) :
+// La coopérative de démonstration est VIVRIÈRE, comme le pilote (elle
+// portait un nom de coopérative de cacao). Un seul nom, pour la fiche, le compte,
+// le dossier d'identification et les commandes.
+const NOM_COOPERATIVE_DEMO = 'Coopérative vivrière de Daloa';
+
 const COMPTES: CompteDemo[] = [
   // ── Marchand (caisse) ──
   { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, avecDonnees: true },
@@ -109,7 +114,7 @@ const COMPTES: CompteDemo[] = [
   { phone: '+2250725252525', firstName: 'Adjoua', lastName: 'Kouamé', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, sousProfilMarchand: 'demi_grossiste', avecDonnees: true },
   { phone: '+2250790909090', firstName: 'Aya', lastName: 'Koffi', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, sousProfilMarchand: 'detaillant', avecDonnees: true },
   { phone: '+2250960606060', firstName: 'Bénito', lastName: 'Bomisso', genre: 'homme', role: UserRole.PRODUCTEUR, password: ACTEUR_PASSWORD },
-  { phone: '+2250970707070', firstName: 'Coopérative', lastName: 'Daloa', genre: 'femme', role: UserRole.COOPERATEUR, password: ACTEUR_PASSWORD, cooperativeName: 'COOP-CACAO Daloa' },
+  { phone: '+2250970707070', firstName: 'Coopérative', lastName: 'Daloa', genre: 'femme', role: UserRole.COOPERATEUR, password: ACTEUR_PASSWORD, cooperativeName: NOM_COOPERATIVE_DEMO },
   { phone: '+2250710101010', firstName: 'Hervé', lastName: 'Koffi', genre: 'homme', role: UserRole.IDENTIFICATEUR, password: ACTEUR_PASSWORD },
   // Administration (connexion back-office par EMAIL) :
   { phone: '+2250700000017', email: 'dge-test@julaba.ci', firstName: 'Direction', lastName: 'Générale', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: BO_PASSWORD },
@@ -237,7 +242,7 @@ export class SeedDemoService {
     const herve = await idByPhone('+2250710101010');   // identificateur
     const benito = await idByPhone('+2250960606060');   // producteur (Korhogo)
     const michelle = await idByPhone('+2250726262626'); // marchand grossiste
-    const coop = await idByPhone('+2250970707070');     // coopérative (COOP-CACAO)
+    const coop = await idByPhone('+2250970707070');     // coopérative vivrière de Daloa
     const adjoua = await idByPhone('+2250725252525');   // demi-grossiste
     const aya = await idByPhone('+2250790909090');      // détaillant
 
@@ -284,7 +289,7 @@ export class SeedDemoService {
         // id fixe, acteur_id, type_acteur, statut, nom
         ['dede0000-0000-4000-8000-000000000001', benito, 'producteur', 'valide', 'Bénito Bomisso'],
         ['dede0000-0000-4000-8000-000000000002', michelle, 'marchand', 'valide', 'Michelle Walebo'],
-        ['dede0000-0000-4000-8000-000000000003', coop, 'cooperateur', 'valide', 'COOP-CACAO Daloa'],
+        ['dede0000-0000-4000-8000-000000000003', coop, 'cooperateur', 'valide', NOM_COOPERATIVE_DEMO],
         ['dede0000-0000-4000-8000-000000000004', awa, 'marchand', 'en_attente', 'Awa Nénè'],
       ];
       for (const [id, acteurId, typeActeur, statut, nom] of dossiers) {
@@ -332,7 +337,7 @@ export class SeedDemoService {
       });
     }
 
-    // 4) La COOP-CACAO achète les tomates de Bénito : 2 commandes (120 kg + 80 kg)
+    // 4) La coopérative vivrière achète les tomates de Bénito : 2 commandes (120 kg + 80 kg)
     //    = 200 kg cumulés · 100 000 FCFA. Alimente "Achats groupés" (cumul par
     //    produit) et les cartes "Mes commandes / En attente / Livrées".
     if (coop && benito) {
@@ -347,9 +352,9 @@ export class SeedDemoService {
             `INSERT INTO commandes
                (id, acheteur_id, acheteur_nom, vendeur_id, publication_id, type, produit,
                 quantite, prix_unitaire, total, statut, date_commande, created_at, updated_at)
-             VALUES ($1,$2,'COOP-CACAO Daloa',$3,$4,'achat','Tomate',$5,500,$6,$7, now(), now(), now())
+             VALUES ($1,$2,$8,$3,$4,'achat','Tomate',$5,500,$6,$7, now(), now(), now())
              ON CONFLICT DO NOTHING`,
-            [id, coop, benito, pubId, quantite, total, statut],
+            [id, coop, benito, pubId, quantite, total, statut, NOM_COOPERATIVE_DEMO],
           );
         });
       }
@@ -362,9 +367,9 @@ export class SeedDemoService {
       await run('fiche coopérative', async () => {
         await this.dataSource.query(
           `INSERT INTO cooperatives (id, nom, responsable_id, actif, created_at, updated_at)
-           VALUES ($1,'COOP-CACAO Daloa',$2,true, now(), now())
+           VALUES ($1,$3,$2,true, now(), now())
            ON CONFLICT DO NOTHING`,
-          [coopId, coop],
+          [coopId, coop, NOM_COOPERATIVE_DEMO],
         );
       });
       const membres: Array<[string, string | null]> = [
