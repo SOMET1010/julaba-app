@@ -35,20 +35,40 @@ export type PaveSaisieProps = {
   ariaLabelPour?: (d: string) => string;
   /** Contenu d'une touche chiffre ; par défaut le chiffre lui-même. */
   contenuPour?: (d: string) => ReactNode;
+  /** Légende décorative SOUS le chiffre (pavé téléphone : 2 ABC, 3 DEF…).
+   *  Retour undefined = pas de légende (touche « 1 », pavé du code). Le
+   *  aria-label reste « Chiffre N » : la légende ne se dit pas. */
+  sousLegendePour?: (d: string) => string | undefined;
+  /** Touche BAS-GAUCHE personnalisée (le micro de la dictée, étape numéro).
+   *  Absente = l'empreinte, comportement historique (étape code). */
+  toucheGauche?: { contenu: ReactNode; ariaLabel: string; onClick: () => void; disabled?: boolean };
 };
 
-export function PaveSaisie({ disabled, empreinteDisabled, onChiffre, surEffacer, surEmpreinte, empreinteLabel, ariaLabelPour, contenuPour }: PaveSaisieProps) {
+export function PaveSaisie({ disabled, empreinteDisabled, onChiffre, surEffacer, surEmpreinte, empreinteLabel, ariaLabelPour, contenuPour, sousLegendePour, toucheGauche }: PaveSaisieProps) {
   return (
     <div className="login-keypad">
       {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(d => (
         <motion.button type="button" key={d} disabled={disabled}
-          aria-label={ariaLabelPour?.(d)}
+          aria-label={ariaLabelPour?.(d) ?? (sousLegendePour?.(d) ? `Chiffre ${d}` : undefined)}
           onPointerDown={(e) => e.preventDefault()}
           onClick={() => onChiffre(d)}
           className="login-key"
           whileTap={{ scale: 0.9 }}
-        >{contenuPour ? contenuPour(d) : d}</motion.button>
+        >{contenuPour ? contenuPour(d) : sousLegendePour?.(d)
+          ? <span className="login-key-lettre">{d}<small aria-hidden="true">{sousLegendePour(d)}</small></span>
+          : d}</motion.button>
       ))}
+      {toucheGauche ? (
+        <motion.button type="button" disabled={toucheGauche.disabled ?? false}
+          aria-label={toucheGauche.ariaLabel}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={toucheGauche.onClick}
+          className="login-key"
+          whileTap={{ scale: 0.9, opacity: 1 }}
+        >
+          {toucheGauche.contenu}
+        </motion.button>
+      ) : (
       <motion.button type="button" disabled={empreinteDisabled}
         aria-label={empreinteLabel}
         onPointerDown={(e) => e.preventDefault()}
@@ -58,13 +78,16 @@ export function PaveSaisie({ disabled, empreinteDisabled, onChiffre, surEffacer,
       >
         <Fingerprint style={{ width: 22, height: 22, color: 'var(--commerce-action)' }} />
       </motion.button>
+      )}
       <motion.button type="button" disabled={disabled}
-        aria-label={ariaLabelPour?.('0')}
+        aria-label={ariaLabelPour?.('0') ?? (sousLegendePour?.('0') ? 'Chiffre 0' : undefined)}
         onPointerDown={(e) => e.preventDefault()}
         onClick={() => onChiffre('0')}
         className="login-key"
         whileTap={{ scale: 0.9 }}
-      >{contenuPour ? contenuPour('0') : '0'}</motion.button>
+      >{contenuPour ? contenuPour('0') : sousLegendePour?.('0')
+        ? <span className="login-key-lettre">{'0'}<small aria-hidden="true">{sousLegendePour('0')}</small></span>
+        : '0'}</motion.button>
       <motion.button type="button" aria-label="Effacer le dernier chiffre"
         onPointerDown={(e) => e.preventDefault()}
         onClick={surEffacer}

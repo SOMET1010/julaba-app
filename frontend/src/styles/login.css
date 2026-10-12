@@ -76,4 +76,48 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-account img{width:96px;height:96px;border-radius:50%;object-fit:cover}
 .login-account-placeholder{width:96px;height:96px;display:grid;place-items:center;border-radius:50%;background:var(--commerce-apricot);color:var(--encre)}
 @media(max-height:700px){.login-welcome-body{padding:20px 0}.login-tata-welcome>img{width:150px}.login-page h1{margin:12px 0 8px;font-size:25px}.login-guide>img{width:56px;height:56px}.login-market-message{top:14%}.login-market-message h1{font-size:36px}.login-market-sheet{padding:10px}.login-tata-inline{min-height:70px}.login-tata-inline>img{height:64px}.login-market-primary{min-height:60px}.login-market-partners{display:none}}
+/* ── Refonte « Ton numéro de téléphone » (maquette 12/10/2026) ─────────────
+   L'étape NUMÉRO reprend la maquette validée : signature de marque sous le
+   logo, titre complet + promesse, carte Tata nommée avec écoute, carte de
+   dictée avec état du micro, numéro à paires avec drapeau CI et positions
+   vides pointées, pavé à lettres avec micro en bas à gauche. Les couleurs
+   vivent ICI (feuille) et réutilisent les familles de la charte auth —
+   les TSX ne portent AUCUN hex nouveau (budgets AUTH-08 inchangés). */
+.login-slogan{margin:4px 0 0;font-size:11px;font-weight:800;letter-spacing:.26em;text-transform:uppercase;color:var(--encre-3);text-align:center}
+.login-sous-titre{margin:-6px 0 4px;font-size:14px;font-weight:600;color:var(--encre-3);text-align:center}
+/* Carte Tata : elle SE NOMME (« Tantie Nanti Lou · Guilde ») et son bouton
+   écoute dit ce qu'il fait. Le bouton garde les handlers existants de
+   l'écran — seule l'habillage change. */
+.login-tata-carte{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;background:var(--commerce-surface);border:1px solid var(--commerce-line);border-radius:18px;box-shadow:0 2px 10px rgba(120,60,20,.06)}
+.login-tata-carte>img{width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid var(--commerce-apricot);flex-shrink:0}
+.login-tata-id{flex:1;min-width:0;text-align:left}
+.login-tata-nom{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--encre);line-height:1.25;flex-wrap:wrap}
+.login-tata-badge{padding:2px 8px;border-radius:999px;background:#E8F5E9;color:#2F8F63;font-size:9.5px;font-weight:850;letter-spacing:.07em;text-transform:uppercase;flex-shrink:0}
+.login-tata-ligne{display:block;margin:3px 0 0;font-size:12.5px;font-weight:600;color:var(--encre-3);line-height:1.3}
+.login-tata-ecouter{display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 12px;border:0;border-radius:999px;background:var(--commerce-green);color:#fff;font-weight:800;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit}
+.login-tata-ecouter:active{transform:scale(.96)}
+/* Carte dictée : le geste principal À GAUCHE, l'état du micro À DROITE —
+   la marchande voit QUE le micro est ouvert, sans savoir lire (« point »). */
+.login-dictee-carte{display:flex;align-items:center;gap:10px;width:100%;padding:10px;background:var(--commerce-surface);border:1px solid var(--commerce-line);border-radius:18px;box-shadow:0 2px 10px rgba(120,60,20,.06)}
+.login-dictee-pill{display:flex;flex:1;align-items:center;justify-content:center;gap:9px;min-height:52px;border:0;border-radius:999px;background:var(--commerce-green);color:#fff;font-weight:850;font-size:15.5px;cursor:pointer;font-family:inherit;padding:8px 12px}
+.login-dictee-pill:disabled{opacity:.55;cursor:wait}
+.login-dictee-badge{display:flex;align-items:center;gap:7px;min-height:44px;padding:8px 12px;border-radius:999px;flex-shrink:0}
+.login-dictee-badge[data-ouvert="true"]{background:#E8F5E9;color:#2F8F63}
+.login-dictee-badge[data-ouvert="false"]{background:transparent;color:var(--encre-3)}
+.login-dictee-point{width:9px;height:9px;border-radius:50%;background:currentColor;flex-shrink:0}
+.login-dictee-badge[data-ouvert="true"] .login-dictee-point{animation:pulse-micro 1.2s ease-in-out infinite}
+@keyframes pulse-micro{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+.login-dictee-texte{font-size:10.5px;font-weight:850;letter-spacing:.09em;text-transform:uppercase;white-space:nowrap}
+/* Devise (drapeau CI + indicatif) posée à gauche du numéro. */
+.login-devise{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:750;color:var(--encre-2);flex-shrink:0}
+.login-devise-drapeau{font-size:20px;line-height:1}
+/* Positions PAS ENCORE saisies : un point par chiffre attendu — la forme
+   du numéro complet reste visible, la progression se lit d'un coup d'œil. */
+.login-chiffre-vides{color:var(--encre-4);font-weight:600}
+/* Touches du pavé à lettres (2 ABC, 3 DEF…) : le chiffre reste le grand
+   signe, la légende est décorative (aria-label = « Chiffre N »). */
+.login-key-lettre{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1}
+.login-key-lettre small{font-size:9px;font-weight:750;letter-spacing:.2em;color:var(--encre-3)}
+@media(max-height:700px){.login-tata-carte{padding:8px 10px}.login-tata-carte>img{width:46px;height:46px}.login-dictee-pill{min-height:48px}}
+@media(max-width:380px){.login-dictee-texte{display:none}.login-tata-ligne{font-size:11.5px}}
 @media(min-width:768px){.login-market-sheet{left:auto;right:6vw;bottom:6vh;width:430px}.login-market-message{left:7vw;top:24%}.login-market-scene img{object-position:center 45%}}
