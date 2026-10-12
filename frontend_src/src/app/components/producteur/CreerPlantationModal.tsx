@@ -9,7 +9,7 @@ import {
   IMG_PRODUIT_PIMENT as imgPiment, IMG_PRODUIT_GOMBO as imgGombo,
   IMG_PRODUIT_MANIOC as imgManioc, IMG_PRODUIT_IGNAME as imgIgname,
   IMG_PRODUIT_MAIS as imgMais, IMG_PRODUIT_RIZ as imgRiz,
-  IMG_PRODUIT_BANANE as imgBanane, IMG_PRODUIT_OIGNON as imgOignon,
+  IMG_PRODUIT_PLANTAIN as imgPlantain, IMG_PRODUIT_OIGNON as imgOignon,
   IMG_PRODUIT_AVOCAT as imgAvocat, IMG_PRODUIT_AUTRE as imgAutre
 } from '../../assets/images';
 
@@ -29,7 +29,7 @@ const CULTURES = [
   { id: 'Igname',          img: imgIgname    },
   { id: 'Maïs',            img: imgMais      },
   { id: 'Riz',             img: imgRiz       },
-  { id: 'Banane plantain', img: imgBanane    },
+  { id: 'Banane plantain', img: imgPlantain    },
   { id: 'Oignon',          img: imgOignon    },
   { id: 'Avocat',          img: imgAvocat    },
   { id: 'autre',           img: imgAutre     },

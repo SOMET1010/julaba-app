@@ -8,7 +8,7 @@ import { useApp } from '../../contexts/AppContext';
 import {
   IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE, IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO,
   IMG_PRODUIT_MANIOC, IMG_PRODUIT_IGNAME, IMG_PRODUIT_MAIS, IMG_PRODUIT_RIZ,
-  IMG_PRODUIT_BANANE, IMG_PRODUIT_OIGNON, IMG_PRODUIT_AVOCAT, IMG_PRODUIT_AUTRE
+  IMG_PRODUIT_PLANTAIN, IMG_PRODUIT_OIGNON, IMG_PRODUIT_AVOCAT, IMG_PRODUIT_AUTRE
 } from '../../assets/images';
 const imgTomate    = IMG_PRODUIT_TOMATE;
 const imgAubergine = IMG_PRODUIT_AUBERGINE;
@@ -18,7 +18,7 @@ const imgManioc    = IMG_PRODUIT_MANIOC;
 const imgIgname    = IMG_PRODUIT_IGNAME;
 const imgMais      = IMG_PRODUIT_MAIS;
 const imgRiz       = IMG_PRODUIT_RIZ;
-const imgBanane    = IMG_PRODUIT_BANANE;
+const imgPlantain    = IMG_PRODUIT_PLANTAIN;
 const imgOignon    = IMG_PRODUIT_OIGNON;
 const imgAvocat    = IMG_PRODUIT_AVOCAT;
 const imgAutre     = IMG_PRODUIT_AUTRE;
@@ -155,7 +155,7 @@ const CULTURES = [
   { id: 'igname',    name: 'Igname',          img: imgIgname    },
   { id: 'mais',      name: 'Maïs',            img: imgMais      },
   { id: 'riz',       name: 'Riz',             img: imgRiz       },
-  { id: 'banane',    name: 'Banane plantain', img: imgBanane    },
+  { id: 'banane',    name: 'Banane plantain', img: imgPlantain    },
   { id: 'oignon',    name: 'Oignon',          img: imgOignon    },
   { id: 'avocat',    name: 'Avocat',          img: imgAvocat    },
   { id: 'autre',     name: 'Autre',           img: imgAutre     },

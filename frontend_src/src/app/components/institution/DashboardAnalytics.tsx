@@ -37,6 +37,7 @@ import { Card } from '../ui/card';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
 
 const INSTITUTION_COLOR = '#712864';
 const COLORS = ['#712864', '#2072AF', '#2E8B57', '#B74725', '#9F8170'];
@@ -44,7 +45,7 @@ const COLORS = ['#712864', '#2072AF', '#2E8B57', '#B74725', '#9F8170'];
 type PeriodeGraphique = '7jours' | '30jours' | '90jours' | '1an';
 
 export function DashboardAnalytics() {
-  const { macroKPIs } = useInstitutionData();
+  const { lectureDashboard } = useInstitutionData();
   const {
     getKPINationaux,
     getStatistiquesParRole,
@@ -170,25 +171,25 @@ export function DashboardAnalytics() {
       <KPIGrid cols={3} className="mb-6">
         <UniversalKPI
           label="Volume Total (FCFA)"
-          animatedTarget={macroKPIs.valeurMonetaire}
+          {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire))}
           icon={DollarSign}
           color="#712864"
           delay={0}
         />
         <UniversalKPI
           label="Transactions"
-          animatedTarget={macroKPIs.volumeTransactions}
+          {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.volumeTransactions))}
           icon={ShoppingCart}
           color="#2072AF"
           delay={30}
         />
         <UniversalKPI
           label="Acteurs Actifs"
-          animatedTarget={macroKPIs.acteursActifs}
+          {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.acteursActifs), undefined,
+            { suffix: `  (${texteDuKpi(kpiDepuis(lectureDashboard, d => d.macroKPIs.tauxActivite))} % actif)` })}
           icon={Users}
           color="#2E8B57"
           delay={60}
-          suffix={`  (${macroKPIs.tauxActivite}% actif)`}
         />
       </KPIGrid>
 

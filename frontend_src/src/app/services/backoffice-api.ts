@@ -1,6 +1,7 @@
 // backoffice-api.ts — NestJS
 import { API_URL } from '../utils/api';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
+import { lireResumeVentes, type ResumeVentes } from './ventesBO';
 
 // julaba-web et julaba-api sont sur des DOMAINES différents (Render V2) : le
 // cookie de session cross-domaine (SameSite=None) est bloqué par défaut par
@@ -74,6 +75,15 @@ async function apiGet(path: string): Promise<any> {
   const res = await fetch(API_URL + path, { headers: authHeaders(), credentials: 'include' });
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
+}
+
+/**
+ * Lecture GET typée pour les hooks du back-office (tableau de bord temps réel) :
+ * même base `API_URL` et même jeton BO que tout ce client. Une base relative
+ * `/api/v1` viserait le site statique sur le déploiement à deux domaines.
+ */
+export function boLire<T>(path: string): Promise<T> {
+  return apiGet(path) as Promise<T>;
 }
 
 async function apiPost(path: string, body?: any) {
@@ -289,7 +299,6 @@ export interface Transaction {
   produit?: string;
   quantite?: number;
   modePaiement?: string;
-  commission?: number;
   [key: string]: unknown;
 }
 
@@ -302,11 +311,12 @@ export interface Cooperative {
 }
 
 export interface DashboardStats {
-  total_acteurs: number;
-  total_transactions: number;
-  total_cooperatives: number;
-  montant_total: number;
-  nouveaux_acteurs_semaine: number;
+  total_acteurs?: number;
+  total_transactions?: number;
+  total_cooperatives?: number;
+  /** `null` = un montant de vente illisible côté serveur : ni 0, ni repli. */
+  montant_total?: number | null;
+  nouveaux_acteurs_semaine?: number;
   /** Alias backend `/admin/stats` */
   utilisateurs_actifs?: number;
   actifs?: number;
@@ -399,24 +409,27 @@ export interface BOInstitution {
 }
 
 
+/**
+ * GET /admin/stats, sans rien compléter : un champ absent reste absent (le
+ * compteur bascule sur sa source de secours ou dit « Indisponible »), un
+ * `montant_total: null` reste null, et une erreur SORT en erreur — elle
+ * rendait des zéros indiscernables d'une plateforme sans activité.
+ */
 export async function boDashboardStats(): Promise<DashboardStats> {
-  try {
-    const data = await apiGet('/admin/stats');
-    return {
-      total_acteurs: data.total_acteurs || data.utilisateurs || 0,
-      total_transactions: data.total_transactions || data.transactions || 0,
-      total_cooperatives: data.total_cooperatives || 0,
-      montant_total: data.montant_total || data.revenus || 0,
-      nouveaux_acteurs_semaine: data.nouveaux_acteurs_semaine || data.nouveauxSemaine || 0,
-      utilisateurs_actifs: data.utilisateurs_actifs ?? data.actifs ?? 0,
-      actifs: data.utilisateurs_actifs ?? data.actifs ?? 0,
-      en_attente: data.en_attente || 0,
-      suspendus: data.suspendus || 0,
-      rejetes: data.rejetes || 0,
-    };
-  } catch {
-    return { total_acteurs: 0, total_transactions: 0, total_cooperatives: 0, montant_total: 0, nouveaux_acteurs_semaine: 0 };
-  }
+  const data = await apiGet('/admin/stats');
+  const nombre = (...v: unknown[]) => v.find((x): x is number => typeof x === 'number' && Number.isFinite(x));
+  return {
+    total_acteurs: nombre(data.total_acteurs, data.utilisateurs),
+    total_transactions: nombre(data.total_transactions, data.transactions),
+    total_cooperatives: nombre(data.total_cooperatives),
+    montant_total: data.montant_total === null ? null : nombre(data.montant_total, data.revenus),
+    nouveaux_acteurs_semaine: nombre(data.nouveaux_acteurs_semaine, data.nouveauxSemaine),
+    utilisateurs_actifs: nombre(data.utilisateurs_actifs, data.actifs),
+    actifs: nombre(data.utilisateurs_actifs, data.actifs),
+    en_attente: nombre(data.en_attente),
+    suspendus: nombre(data.suspendus),
+    rejetes: nombre(data.rejetes),
+  };
 }
 
 export async function boGetActeurs(params?: {
@@ -632,25 +645,24 @@ export async function boGetTransactions(params?: {
   date_to?: string;
   statut?: string;
   region?: string;
-}): Promise<{ data: Transaction[]; total: number }> {
-  try {
-    const q = new URLSearchParams();
-    if (params?.page) q.set('page', String(params.page));
-    if (params?.limit) q.set('limit', String(params.limit));
-    if (params?.user_id) q.set('user_id', params.user_id);
-    if (params?.type) q.set('type', params.type);
-    if (params?.date_from) q.set('date_from', params.date_from);
-    if (params?.date_to) q.set('date_to', params.date_to);
-    if (params?.statut) q.set('statut', params.statut);
-    if (params?.region) q.set('region', params.region);
-    const res = await fetch(`${API_URL}/transactions/all?${q}`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { data: [], total: 0 };
-    const raw = await res.json();
-    const data = Array.isArray(raw) ? raw : (raw.data || []);
-    return { data, total: raw.meta?.total || raw.total || data.length };
-  } catch {
-    return { data: [], total: 0 };
-  }
+}): Promise<{ data: Transaction[]; total: number; resume: ResumeVentes | null }> {
+  const q = new URLSearchParams();
+  if (params?.page) q.set('page', String(params.page));
+  if (params?.limit) q.set('limit', String(params.limit));
+  if (params?.user_id) q.set('user_id', params.user_id);
+  if (params?.type) q.set('type', params.type);
+  if (params?.date_from) q.set('date_from', params.date_from);
+  if (params?.date_to) q.set('date_to', params.date_to);
+  if (params?.statut) q.set('statut', params.statut);
+  if (params?.region) q.set('region', params.region);
+  const res = await fetch(`${API_URL}/transactions/all?${q}`, { headers: authHeaders(), credentials: 'include' });
+  // Une erreur sort en erreur : une liste vide la faisait passer pour
+  // « aucune transaction » (et un volume de 0 F).
+  if (!res.ok) throw new Error(`transactions HTTP ${res.status}`);
+  const raw = await res.json();
+  const data = Array.isArray(raw) ? raw : (raw.data || []);
+  // `resume` : bilan des ventes calculé par le serveur sur TOUT le filtre.
+  return { data, total: raw.meta?.total ?? raw.total ?? data.length, resume: lireResumeVentes(raw.resume) };
 }
 
 export type TransactionStatusValue = 'validee' | 'en_cours' | 'gelee' | 'annulee' | 'litige';

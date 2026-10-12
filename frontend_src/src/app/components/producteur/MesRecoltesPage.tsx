@@ -170,7 +170,8 @@ export function MesRecoltesPage() {
             <KPIGrid cols={3}>
               <UniversalKPI
                 label="Total"
-                value={`${totalKg.toLocaleString('fr-FR')} kg`}
+                value={totalKg.toLocaleString('fr-FR')}
+                suffix="kg"
                 icon={Package}
                 color={COLOR}
                 iconAnimation="none"
@@ -184,7 +185,8 @@ export function MesRecoltesPage() {
               />
               <UniversalKPI
                 label="Valeur stock"
-                value={`${formatMontant(Math.round(valeurStock))} FCFA`}
+                value={formatMontant(Math.round(valeurStock))}
+                suffix="FCFA"
                 icon={TrendingUp}
                 color="#D97706"
                 iconAnimation="none"
