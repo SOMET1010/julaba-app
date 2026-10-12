@@ -12,7 +12,6 @@ declare const __JULABA_DYU_ARGENT__: boolean
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_WS_URL?: string;
-  readonly VITE_SENTRY_DSN?: string;
   // Modules hors pilote qui portent de l'argent : `true` = visibles (build de
   // démonstration), tout le reste = masqués. Voir src/app/config/modulesPilote.ts.
   readonly VITE_JULABA_MODULES_HORS_PILOTE?: string;
