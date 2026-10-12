@@ -12,6 +12,10 @@ declare const __JULABA_DYU_ARGENT__: boolean
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_WS_URL?: string;
+  // Cloudinary — photo d'une commande producteur (CommandesProducteurPage) :
+  // lues avec replis en dur, posées ad hoc selon l'environnement ; jamais requises en dev.
+  readonly VITE_CLOUDINARY_URL?: string;
+  readonly VITE_CLOUDINARY_PRESET?: string;
   // Modules hors pilote qui portent de l'argent : `true` = visibles (build de
   // démonstration), tout le reste = masqués. Voir src/app/config/modulesPilote.ts.
   readonly VITE_JULABA_MODULES_HORS_PILOTE?: string;
