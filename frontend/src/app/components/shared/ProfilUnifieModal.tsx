@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   User, Phone, Mail, MapPin, Shield, Edit3, Save,
@@ -7,6 +7,10 @@ import {
 import { API_URL } from '../../utils/api';
 import { getRoleColor } from '../../styles/design-tokens';
 import type { UserData } from '../../contexts/UserContext';
+import { ChoixPhotoCarte } from './ChoixPhotoCarte';
+import { ListeDite } from './ListeDite';
+import { useMarchesByCommune } from '../../hooks/useMarchesByCommune';
+import { listesDuProfil } from '../../services/lieuxMarchands';
 
 /* ─── Config rôle ─────────────────────────── */
 function getRoleConfig(role: string): { color: string; gradient: string; label: string } {
@@ -94,7 +98,7 @@ export function ProfilUnifieModal({
   const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [completionPct, setCompletionPct] = useState(0);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [choixPhotoOuvert, setChoixPhotoOuvert] = useState(false);
 
   const role = user.role ?? 'marchand';
   const cfg = getRoleConfig(role);
@@ -133,6 +137,13 @@ export function ProfilUnifieModal({
     commune: user.commune || '',
     produitCommercial: (user.activity as string) || '',
   });
+
+  // B2/B3 — commune et marché se CHOISISSENT dans le référentiel du back-office.
+  const { allMarches } = useMarchesByCommune();
+  const listes = useMemo(
+    () => listesDuProfil(allMarches, identite.commune, identite.marche),
+    [allMarches, identite.commune, identite.marche],
+  );
 
   const [details, setDetails] = useState<DetailsForm>({
     numCNPS: (user.numCNPS as string) || '',
@@ -298,23 +309,15 @@ export function ProfilUnifieModal({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      speak('Format de fichier invalide. Utilise une image.');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      speak('Image trop lourde. Maximum 2 mégaoctets.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      onSave({ photo: reader.result as string });
-      speak('Photo modifiée');
-    };
-    reader.readAsDataURL(file);
+  const ouvrirChoixPhoto = () => {
+    if (!choixPhotoOuvert) speak('Prends une photo, ou choisis une photo dans le téléphone.');
+    setChoixPhotoOuvert(v => !v);
+  };
+
+  const recevoirPhoto = (photo: string) => {
+    onSave({ photo });
+    setChoixPhotoOuvert(false);
+    speak('Photo modifiée');
   };
 
   /* Shimmer animation */
@@ -527,19 +530,21 @@ export function ProfilUnifieModal({
                               }
                             </div>
                             <motion.button
-                              onClick={() => fileInputRef.current?.click()}
+                              type="button"
+                              onClick={ouvrirChoixPhoto}
                               whileTap={{ scale: 0.9 }}
+                              aria-label="Changer la photo"
+                              aria-expanded={choixPhotoOuvert}
                               style={{
-                                position: 'absolute', bottom: -7, right: -7,
-                                width: 26, height: 26, borderRadius: '50%',
+                                position: 'absolute', bottom: -12, right: -12,
+                                width: 44, height: 44, borderRadius: '50%',
                                 background: cfg.color, border: '2.5px solid white',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer',
                               }}
                             >
-                              <Camera size={12} color="white" />
+                              <Camera size={20} color="white" />
                             </motion.button>
-                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
                           </div>
 
                           {/* INFOS */}
@@ -565,6 +570,8 @@ export function ProfilUnifieModal({
                             </div>
                           </div>
                         </div>
+
+                        {choixPhotoOuvert && <ChoixPhotoCarte color={cfg.color} speak={speak} onPhoto={recevoirPhoto} />}
 
                         {/* FOOTER CARTE */}
                         <div style={{ borderTop: `0.5px solid ${cfg.color}1A`, paddingTop: 12, marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -669,12 +676,16 @@ export function ProfilUnifieModal({
                   <SectionCard title="Activité" score={`${activiteScore} / 3`} warn={activiteScore < 3} color={cfg.color}>
                     <FieldRow label="Marché" last={false}>
                       {isEditingIdentite
-                        ? <input type="text" className="julaba-field-input" placeholder="Marché" value={identite.marche} onChange={e => setIdentite(p => ({ ...p, marche: e.target.value }))} />
+                        ? <ListeDite valeur={identite.marche} options={listes.marches} placeholder="Marché"
+                            surOuverture={() => speak('Choisis ton marché dans la liste.')}
+                            onChange={v => { setIdentite(p => ({ ...p, marche: v })); if (listes.marches.length) speak(v); }} />
                         : <FVal value={getStr('market')} />}
                     </FieldRow>
                     <FieldRow label="Commune" last={false}>
                       {isEditingIdentite
-                        ? <input type="text" className="julaba-field-input" placeholder="Commune" value={identite.commune} onChange={e => setIdentite(p => ({ ...p, commune: e.target.value }))} />
+                        ? <ListeDite valeur={identite.commune} options={listes.communes} placeholder="Commune"
+                            surOuverture={() => speak('Choisis ta commune dans la liste.')}
+                            onChange={v => { setIdentite(p => ({ ...p, commune: v })); if (listes.communes.length) speak(v); }} />
                         : <FVal value={getStr('commune')} />}
                     </FieldRow>
                     <FieldRow label="Produits" last>

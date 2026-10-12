@@ -81,8 +81,11 @@ export class UserFlagsService {
   async findAll(filters: { resolved?: boolean; zoneId?: string }): Promise<{ count: number; items: any[] }> {
     const qb = this.flagsRepo
       .createQueryBuilder('flag')
-      .leftJoin(User, 'user', 'user.id = flag.userId')
-      .leftJoin(User, 'creator', 'creator.id = flag.createdBy')
+      // `user_flags.user_id` / `created_by` sont en varchar (entité sans type,
+      // baseline idem), `users.id` en uuid : sans cast des deux côtés, PostgreSQL
+      // refuse `uuid = character varying` → 500 sur l'écran Modération.
+      .leftJoin(User, 'user', 'CAST(user.id AS text) = CAST(flag.userId AS text)')
+      .leftJoin(User, 'creator', 'CAST(creator.id AS text) = CAST(flag.createdBy AS text)')
       .select([
         'flag.id AS id',
         'flag.flagType AS "flagType"',

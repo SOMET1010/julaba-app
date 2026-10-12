@@ -29,6 +29,7 @@ import { useStock } from '../../contexts/StockContext';
 import { useApp } from '../../contexts/AppContext';
 import { construireReappro, coutTotalReappro, partagerReappro, telechargerReapproPDF } from '../../utils/reappro.utils';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
+import { cheminMasque } from '../../config/modulesPilote';
 
 const COLOR = 'var(--herite-orange)'; // couleur marchand orange
 
@@ -302,8 +303,13 @@ export function MarchandAlertes() {
       title: `${produitsSansVente.length} produit(s) en surstock`,
       subtitle: 'Certains stocks sont 3x au-dessus du seuil normal',
       detail: 'Envisagez des promotions pour écouler ces stocks',
-      actionLabel: 'Voir le marché',
-      onAction: () => navigate('/marchand/marche'),
+      // Le marché virtuel paie (keiwa, mobile money) : hors pilote, il est
+      // masqué hors drapeau. L'alerte reste — elle dit vrai — mais sans
+      // bouton qui rebondirait sur l'accueil (config/modulesPilote.ts).
+      ...(cheminMasque('/marchand/marche') ? {} : {
+        actionLabel: 'Voir le marché',
+        onAction: () => navigate('/marchand/marche'),
+      }),
     });
   }
 

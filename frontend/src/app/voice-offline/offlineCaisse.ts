@@ -8,12 +8,13 @@ import type { LigneDeVente } from '../types/vente';
 // unique) : rejouée deux fois, elle ne compte qu'une fois (dédup backend).
 //
 // REJEU (lot « file hors-ligne 4xx ») — on classe l'échec par son STATUT :
-//   • 4xx (rejet métier PERMANENT) → lettre morte + on CONTINUE (ne bloque plus
-//     la file) ; l'échec est surfacé à l'UI ;
-//   • transitoire (hors-ligne, réseau, 5xx, sans statut) → on incrémente
-//     `attempts` (UNIQUEMENT ici) et on ARRÊTE le tour (ordre préservé, on
-//     retentera) ; au-delà de CAP essais → lettre morte (pas de rétention
-//     infinie) ;
+//   • 4xx (rejet métier PERMANENT, sauf 401/408/429) → lettre morte + on
+//     CONTINUE (ne bloque plus la file) ; l'échec est surfacé à l'UI ;
+//   • transitoire (hors-ligne, réseau, sans statut, 401, 408, 429, 5xx) → on
+//     incrémente `attempts` (UNIQUEMENT ici) et on ARRÊTE le tour (ordre
+//     préservé, on retentera) ; au-delà de CAP essais → lettre morte, SAUF
+//     pour une vente ou une dépense (ARG-03 : l'argent n'est jamais abandonné
+//     pour une coupure ; la relance espacée vit dans le contexte de caisse) ;
 //   • succès (2xx) → retiré.
 // Invariant d'atomicité : passer une op en lettre morte = UNE seule transaction
 // IndexedDB (put dead + delete active) → un crash ne peut ni la perdre ni la
@@ -92,10 +93,14 @@ export interface LettreMorte extends OperationCaisse {
   echec: { status: number | null; message: string; failedAt: number };
 }
 
-/** Classe une erreur de rejeu. PERMANENT = statut HTTP 4xx (rejet métier). */
+/** 4xx qui ne jugent PAS l'opération : session expirée (401), délai (408),
+ *  trop de requêtes (429). Elles passent ; l'opération reste valable. */
+const STATUTS_PASSAGERS = new Set([401, 408, 429]);
+
+/** Classe une erreur de rejeu. PERMANENT = 4xx de rejet métier. */
 export function estPermanent(error: unknown): boolean {
   const s = (error as { status?: unknown } | null)?.status;
-  return typeof s === 'number' && s >= 400 && s < 500;
+  return typeof s === 'number' && s >= 400 && s < 500 && !STATUTS_PASSAGERS.has(s);
 }
 
 function statutDe(error: unknown): number | null {
@@ -284,7 +289,18 @@ export async function enfilerOperation(
   const cle = (payload as PayloadOperation | null)?.idempotency_key;
   const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload: payload as PayloadOperation, ts: Date.now(), userId };
   await store.enqueue(op);
+  // A2 — une mise en file ARME la relance : sans ça, l'opération attendait le
+  // prochain montage ou un `online` qui ne vient pas dans la WebView.
+  for (const ecouteur of ecouteursMiseEnFile) ecouteur();
   return op.id;
+}
+
+const ecouteursMiseEnFile = new Set<() => void>();
+
+/** S'abonne aux mises en file (le rejeu du contexte de caisse). Rend le désabonnement. */
+export function surMiseEnFile(ecouteur: () => void): () => void {
+  ecouteursMiseEnFile.add(ecouteur);
+  return () => { ecouteursMiseEnFile.delete(ecouteur); };
 }
 
 /** Vue filtrée par propriétaire (P0-1) : n'expose QUE les opérations dont le
@@ -389,7 +405,9 @@ export async function nbSansProprietaire(store: OutboxStore = defaultStore()): P
 // `/stocks/` reste HORS de cette liste, et c'est délibéré : une mise à jour de
 // stock n'a pas de jour comptable, et lui en joindre un avait cassé
 // `test:offline-stock` la première fois.
-const ENDPOINTS_DATES = ['/caisse/vente', '/caisse/depense'];
+/** Les opérations D'ARGENT : elles portent leur date (journée comptable) et ne
+ *  sont jamais abandonnées pour une erreur passagère (ARG-03). */
+const ENDPOINTS_ARGENT = ['/caisse/vente', '/caisse/depense'];
 
 // ── OFF-02 : de quoi savoir CE QUI vient de passer, pas seulement COMBIEN ────
 //
@@ -491,7 +509,7 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
       // stock n'a pas de journée comptable : lui coller une date n'apporte
       // rien et change le contrat d'une route qui ne l'attend pas (défaut
       // attrapé par test:offline-stock avant qu'il ne sorte).
-      const portefaireDate = ENDPOINTS_DATES.some((e) => op.endpoint.startsWith(e));
+      const portefaireDate = ENDPOINTS_ARGENT.some((e) => op.endpoint.startsWith(e));
       await poster(
         op.endpoint as E,
         {
@@ -512,7 +530,8 @@ export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
       }
       // Transitoire UNIQUEMENT : on incrémente les essais.
       const n = await store.incrementAttempts(op.id);
-      if (n >= REPLAY_CAP) {
+      const argent = ENDPOINTS_ARGENT.some((e) => op.endpoint.startsWith(e));
+      if (n >= REPLAY_CAP && !argent) {
         await store.moveToDead(op.id, { status: statutDe(e), message: String((e as Error)?.message ?? ''), failedAt: Date.now() });
         continue;
       }

@@ -446,11 +446,12 @@ export function BOInstitutions() {
     }
   };
 
-  const handleToggleStatut = async (id: string, statut: InstitutionBO['statut']) => {
-    const nextStatut = statut === 'actif' ? 'suspendu' : 'actif';
+  // Le bouton passe DÉJÀ le statut cible (« Suspendre » → 'suspendu') : le
+  // ré-inverser ici renvoyait l'état courant, et rien ne changeait.
+  const handleToggleStatut = async (id: string, nextStatut: InstitutionBO['statut']) => {
     const inst = institutions.find(i => i.id === id);
     try {
-      await updateInstitutionStatut(id, nextStatut);
+      await updateInstitutionStatut(id, nextStatut ?? 'actif');
       toast.info(`Institution "${inst?.nom}" ${nextStatut === 'suspendu' ? 'suspendue' : 'réactivée'}`);
     } catch (err) {
       console.warn('[BOInstitutions] handleToggleStatut failed:', err instanceof Error ? err.message : err);

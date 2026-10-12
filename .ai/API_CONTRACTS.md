@@ -53,7 +53,7 @@ GET  /wallets/public/solde/:identifier
 | Préfixe | # | Auth typique | Notes |
 |---|---|---|---|
 | `/auth/*` | 30 | mixte | 30 routes, 5 voies auth |
-| `/users/*` + `/users/flags/*` | 26 | JWT + `@Roles` | Sanitization `stripSensitiveUserFields` |
+| `/users/*` + `/user-flags/*` | 26 | JWT + `@Roles` | Sanitization `stripSensitiveUserFields` |
 | `/wallets/*` | 12 | JWT (sauf 4 publiques) | Verrous pessimistes, plafond 10M XOF |
 | `/caisse/*` | 14 | JWT | Vente, dépense, session, crédits, raccourcis, objectifs |
 | `/catalogue/*` | 2 | JWT | ATTENTION 2e classe dans `caisse-rest.controller.ts` |

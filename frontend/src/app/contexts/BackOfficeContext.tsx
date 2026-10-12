@@ -732,19 +732,19 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
     },
     addInstitution: async (i: any) => {
       await boCreateInstitution(i);
-      await refreshInstitutions();
+      await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
     updateInstitutionModules: async (id: string, m: any) => {
       await boUpdateInstitution(id, { modules: m });
-      await refreshInstitutions();
+      await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
     updateInstitutionStatut: async (id: string, s: string) => {
       await boUpdateInstitution(id, { statut: s });
-      await refreshInstitutions();
+      await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
     deleteInstitution: async (id: string) => {
       await boDeleteInstitutionApi(id);
-      await refreshInstitutions();
+      await refreshInstitutions(true); // sans `force`, la liste déjà chargée ne bougeait pas
     },
     boUser: user ? {
       ...user,

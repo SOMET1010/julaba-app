@@ -150,7 +150,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // défaut est ce même `speak`.
   const speakMessage = useSpeakMessage();
   // `cart` en LECTURE SEULE (lot F) : sert au seul rappel « Dis "encaisser"
-  // pour terminer », affiché quand il y a quelque chose à encaisser. Ce
+  // quand elle paie », affiché quand il y a quelque chose à encaisser. Ce
   // composant continue de REMPLIR le panier ; il ne le lit que pour le dire.
   const {
     enregistrerDepense, refreshTransactions, stats: caisseStats,
@@ -407,7 +407,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         }
         await enregistrerDepense(montant, action.description || 'Dépense vocale');
       } else if (action?.type === 'consulter_ventes' || data.intent === 'consulter_ventes') {
-        navigate('/marchand/ventes');
+        navigate('/marchand/ventes-passees'); // `/marchand/ventes` n'existe pas (404)
       } else if (action?.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
         navigate('/marchand/stock');
       }
@@ -905,7 +905,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         </div>
       )}
 
-      {/* « Dis "encaisser" pour terminer » — le rappel de la maquette, dès
+      {/* « Dis "encaisser" quand elle paie » — le rappel de la maquette
+          (A3, terrain PIE 07/10 : « pour terminer » ne disait pas QUAND), dès
           qu'il y a quelque chose à encaisser. Lecture seule du panier : ce
           composant ne décide rien de l'argent, il rappelle le mot qui le fait
           relire par la caisse (lot C). */}
@@ -913,7 +914,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--caisse-esp-1)' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--caisse-esp-2)', background: 'var(--caisse-ivoire)', border: '1px solid var(--commerce-line)', borderRadius: 'var(--caisse-rayon-3)', padding: 'var(--caisse-esp-1) var(--caisse-esp-3)', font: 'var(--caisse-font-texte)', color: 'var(--encre)' }}>
             <AudioLines size={ICONE} color="var(--caisse-vert)" aria-hidden="true" style={{ flexShrink: 0 }} />
-            <span>Dis <strong>« encaisser »</strong> pour terminer</span>
+            <span>Dis <strong>« encaisser »</strong> quand elle paie</span>
           </div>
         </div>
       )}

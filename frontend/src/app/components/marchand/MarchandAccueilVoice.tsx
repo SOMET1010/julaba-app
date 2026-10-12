@@ -53,13 +53,16 @@ function MarchandAccueilVoiceInner() {
   // faire — et c'est pendant ces quelques secondes que la voix annonçait
   // « zéro franc » (terrain 03/10, pour 100 F réels).
   const etatLectureSession = useLectureSessionCaisse();
+  const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart, ventesSynchronisees } = useCaisse();
   const [ventesEnFile, setVentesEnFile] = useState(0);
+  // A2 — `ventesSynchronisees` change à chaque salve partie : sans elle, « des
+  // ventes attendent » restait affiché après la synchro, jusqu'à la relance.
   useEffect(() => {
     let vivant = true;
     ventesEnAttenteEnvoi(String(user?.id ?? '')).then(n => { if (vivant) setVentesEnFile(n); })
       .catch(() => { /* la file illisible ne doit pas casser l'accueil */ });
     return () => { vivant = false; };
-  }, [user?.id, etatLecture]);
+  }, [user?.id, etatLecture, ventesSynchronisees]);
 
   // « A-t-on lu quelque chose ? » : une transaction reçue, ou la session du
   // jour connue. Faux = les termes valaient zéro parce qu'ils étaient VIDES.
@@ -101,7 +104,7 @@ function MarchandAccueilVoiceInner() {
 
   // Panier en cours : bannière de reprise. « Vendre » et « Reprendre » mènent
   // désormais au MÊME endroit — la caisse, seule surface de vente.
-  const { venteEnCours, cart, getTotalCart, staleCart, resumeStaleCart, discardStaleCart } = useCaisse();
+  // (`useCaisse()` est lu plus haut : le compteur de la file en dépend aussi.)
   const nbItems = cart.reduce((s, i) => s + i.quantite, 0);
   const totalPanier = getTotalCart();
   const allerCaisse = () => navigate('/marchand/caisse');

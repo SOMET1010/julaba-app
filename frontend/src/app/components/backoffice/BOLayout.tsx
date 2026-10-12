@@ -24,6 +24,7 @@ import { ScrollToTop } from '../layout/ScrollToTop';
 import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { IMG_LOGO_JULABA } from '../../assets/images';
 import { BrandSignature } from '../shared/BrandSignature';
+import { moduleVisible } from '../../config/modulesPilote';
 import imgLogoOrange from "@/assets/images/logo-orange-bo.png";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -116,7 +117,11 @@ const SIDEBAR_MENU: (MenuItem | MenuGroup)[] = [
     ],
   },
 
-  {
+  // Keiwa : le tableau de bord CRÉDITE et DÉBITE des wallets à la main. Hors
+  // pilote → le groupe entier disparaît du menu tant que
+  // VITE_JULABA_MODULES_HORS_PILOTE n'est pas à `true` ; la route, elle, est
+  // renvoyée au tableau de bord par la garde de RootLayout (07/10/2026).
+  ...(moduleVisible('keiwa') ? [{
     id: 'keiwa',
     label: 'Keiwa Wallet',
     icon: Wallet,
@@ -124,7 +129,7 @@ const SIDEBAR_MENU: (MenuItem | MenuGroup)[] = [
     items: [
       { id: 'keiwa', label: 'Tableau de bord', icon: Wallet, path: '/backoffice/keiwa', permission: null },
     ],
-  },
+  }] : []),
   
   // Groupe: Administration
   {

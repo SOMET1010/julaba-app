@@ -68,7 +68,20 @@ export const INTENTS_FR_CI: Readonly<Record<IntentId, IntentLocalise>> = {
     // « encaisse » sous ses formes réellement dites, plus deux tournures
     // naturelles sans ambiguïté. Pas « fini », « c'est tout » ni « voilà »
     // seuls : mots de conversation ordinaire.
-    variantes: { mode: 'motif', mots: fige(['encaisse', 'encaisser', 'encaissement', 'encaissons']), motifs: ['\\b(termine|terminer|finis|finir) (la )?vente\\b'] },
+    //
+    // A3 (terrain PIE 07/10) — LES FORMES COUPÉES PAR LA RECONNAISSANCE.
+    // « Dis encaisser » restait sans effet : l'ASR rend « en caisser »,
+    // « en caissé », « on caisse », « in caisser », « encaissez ». BORNÉES :
+    // « en caisse » est aussi le LIEU de l'argent (« combien il me reste en
+    // caisse », « j'ai mis en caisse ») — il ne vaut commande que SEUL, ou
+    // juste après « on » / « je ».
+    variantes: { mode: 'motif', mots: fige(['encaisse', 'encaisser', 'encaissement', 'encaissons', 'encaissez']), motifs: [
+      '\\b(termine|terminer|finis|finir) (la )?vente\\b',
+      '\\b(en|on|in) caisse[rz]\\b',
+      '\\bon caisse\\b',
+      '^ en caisse $',
+      '\\b(on|je) en caisse\\b',
+    ] },
     validation: PILOTE,
   },
   INT_COMBIEN_DOIT: {

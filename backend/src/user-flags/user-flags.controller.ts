@@ -6,7 +6,11 @@ import { UserFlagsService } from './user-flags.service';
 import { CreateUserFlagDto } from './dto/create-user-flag.dto';
 import { ResolveUserFlagDto } from './dto/resolve-user-flag.dto';
 
-@Controller('users/flags')
+// Préfixe `user-flags`, plus `users/flags` : sous `users/`, `GET /users/flags`
+// était capturé par `GET /users/:id` (UsersController enregistré avant, via
+// AuthModule) → « invalid input syntax for type uuid: "flags" » → 500, écran
+// Modération du BO inutilisable (audit écosystème 10/2026, sonde S4).
+@Controller('user-flags')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UserFlagsController {
   constructor(private readonly service: UserFlagsService) {}

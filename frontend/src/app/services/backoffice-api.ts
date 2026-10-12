@@ -1310,7 +1310,7 @@ export async function boGetUserFlags(
   signal?: AbortSignal,
 ): Promise<{ count: number; items: UserFlagItem[] }> {
   const resolved = typeof resolvedOrFilters === 'boolean' ? resolvedOrFilters : resolvedOrFilters?.resolved;
-  const url = new URL(`${API_URL}/users/flags`);
+  const url = new URL(`${API_URL}/user-flags`);
   if (resolved !== undefined) url.searchParams.set('resolved', String(resolved));
   const res = await fetch(url.toString(), {
     method: 'GET',
@@ -1330,7 +1330,7 @@ export async function boCreateUserFlag(
   },
   signal?: AbortSignal,
 ): Promise<{ id: string; flagType: string; raison: string; createdAt: string }> {
-  const res = await fetch(`${API_URL}/users/flags`, {
+  const res = await fetch(`${API_URL}/user-flags`, {
     method: 'POST',
     headers: authHeaders(),
     credentials: 'include',
@@ -1345,7 +1345,7 @@ export async function boResolveUserFlag(
   action: FlagResolutionAction,
   resolutionNote?: string,
 ): Promise<{ id: string; resolved: true; action: string }> {
-  const res = await fetch(`${API_URL}/users/flags/${flagId}/resolve`, {
+  const res = await fetch(`${API_URL}/user-flags/${flagId}/resolve`, {
     method: 'PATCH',
     headers: { ...authHeaders(), 'Content-Type': 'application/json' },
     credentials: 'include',
