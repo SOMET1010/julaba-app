@@ -54,6 +54,7 @@ import { NotificationButton } from '../marchand/NotificationButton';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
+import { compteAccorde } from '../../services/accordFrancais';
 // ─── Couleurs coopérative ────────────────────────────────────────────────────
 const C = '#2072AF';
 const C_LIGHT = '#EBF4FB';
@@ -663,14 +664,16 @@ export function Membres() {
 
           <div className="flex-1 min-w-0">
             <p className="text-[17px] font-extrabold text-[#111] mb-2 truncate">{m.prenom} {m.nom}</p>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: '#dbeafe', color: '#1e40af' }}>
-                {m.activite || 'Spécialité'}
-              </span>
-            </div>
+            {m.activite?.trim() && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: '#dbeafe', color: '#1e40af' }}>
+                  {m.activite.trim()}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: '#f3f4f6', color: '#374151' }}>
-                {commandesMois.toString().padStart(2, '0')} commandes
+                {compteAccorde(commandesMois, 'commande')}
               </span>
               <span className="px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: '#fef3c7', color: '#92400E' }}>
                 {besoinKg} kg besoin
@@ -798,7 +801,7 @@ export function Membres() {
               </div>
               <div className="flex-1 min-w-0">
                 <h2 className="font-bold text-gray-900 text-lg">{m.prenom} {m.nom}</h2>
-                <p className="text-sm text-gray-500 truncate">{m.activite} - {m.commune}</p>
+                <p className="text-sm text-gray-500 truncate">{[m.activite, m.commune].map(v => v?.trim()).filter(Boolean).join(' - ')}</p>
                 <div className="flex items-center gap-1.5 mt-1">
                   <BadgeStatut statut={m.statut} />
                   {m.chefDeGroupe && (
@@ -947,7 +950,7 @@ export function Membres() {
                     { Icon: Package, label: 'Activité', value: m.activite },
                     { Icon: Calendar, label: 'Adhésion coopérative', value: new Date(m.dateAdhesionCooperative).toLocaleDateString('fr-FR') },
                     { Icon: Star, label: 'Mes Points Jùlaba', value: `${m.scoreJulaba}/100` },
-                  ].map(({ Icon, label, value }) => (
+                  ].filter(({ value }) => value.trim() !== '').map(({ Icon, label, value }) => (
                     <div key={label} className="flex items-center gap-3 bg-gray-50 rounded-2xl border border-gray-100 p-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ backgroundColor: C_LIGHT }}>
                         <Icon className="w-4 h-4" style={{ color: C }} />
