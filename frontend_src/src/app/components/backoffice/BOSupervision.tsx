@@ -41,7 +41,8 @@ import {
   type Transaction,
   type TransactionStatusValue,
 } from '../../services/backoffice-api';
-import { enAttente, indisponible, kpiTuile, lue, type EtatLecture } from '../../services/etatLectureBO';
+import { enAttente, indisponible, lue, type EtatLecture } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 import { kpiVolumeDepuisLecture, texteMontant, type ResumeVentes } from '../../services/ventesBO';
 
 const BOSupervisionMap = lazy(() => import('./BOSupervisionMap'));

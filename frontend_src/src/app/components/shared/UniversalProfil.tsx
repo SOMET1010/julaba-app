@@ -486,12 +486,13 @@ function ProfilInstitutionExtras({ color }: { color: string }) {
   // Lecture ratée ou montant illisible (`null`) → « Indisponible », jamais 0.
   const texte = (mesure: (d: DashboardInstitution) => number | null | undefined) =>
     texteDuKpi(kpiDepuis(lectureDashboard, mesure));
-  const vol = kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted);
+  // En FCFA entiers, jamais arrondi en milliards (2 500 000 F → « 0 Md »).
+  const vol = kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire);
   return (
     <div className="grid grid-cols-2 gap-3 mb-4">
       <KPICard label="Acteurs total" value={texte(d => d.macroKPIs.totalActeurs)} color={color} />
       <KPICard label="Acteurs actifs" value={texte(d => d.macroKPIs.acteursActifs)} color={color} />
-      <KPICard label="Volume transactions" value={vol.type === 'nombre' ? `${texteDuKpi(vol)} Md FCFA` : texteDuKpi(vol)} color={color} />
+      <KPICard label="Volume transactions" value={vol.type === 'nombre' ? `${texteDuKpi(vol)} FCFA` : texteDuKpi(vol)} color={color} />
       <KPICard label="Croissance (nouveaux inscrits)" value={texte(d => d.resumeJour.nouveauxInscrits)} color={color} />
     </div>
   );

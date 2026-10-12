@@ -7,7 +7,8 @@ import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
-import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiDepuis, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
 import { RAISON_HISTORIQUE_ABSENT } from '../../services/accueilInstitution';
 
@@ -39,8 +40,8 @@ export function Dashboard() {
               delay={30}
             />
             <UniversalKPI
-              label="Volume (Mds FCFA)"
-              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted))}
+              label="Volume"
+              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire), undefined, { suffix: 'FCFA' })}
               icon={TrendingUp}
               color="#2E8B57"
               delay={60}

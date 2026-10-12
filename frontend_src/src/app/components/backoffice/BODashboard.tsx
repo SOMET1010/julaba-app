@@ -8,9 +8,8 @@ import {
   ChevronRight, ChevronDown, RefreshCw, Eye, HeartPulse,
 } from 'lucide-react';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
-import {
-  kpisTableauDeBord, kpiTuile, sousTitreZones, lue,
-} from '../../services/etatLectureBO';
+import { kpisTableauDeBord, sousTitreZones, lue } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 import {
   sectionDe, motDeSection, explicationDeSection, alertesBO, urgentes,
   objectifsBO, pourcentageBarre, type AffichageSection,
@@ -23,6 +22,8 @@ import {
   LineChart, Line,
 } from 'recharts';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
+import { performanceRegions, seriesMensuelles, texteMesure, totalSerie } from '../../services/seriesRapportsBO';
+import { montantLisible, texteMontant } from '../../services/ventesBO';
 import { useRealtime } from '../../hooks/useRealtime';
 import { useWebSocket } from '../../services/WebSocketTransport';
 import { LiveActivityFeed } from './LiveActivityFeed';
@@ -170,56 +171,21 @@ export function BODashboard() {
   // Deux sources, et il les faut TOUTES LES DEUX : un graphique « acteurs et
   // transactions par mois » tracé sur une seule des deux est faux. `sectionDe`
   // n'appelle le calcul que si les deux ont été lues.
-  const sectionCroissance = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.transactions], () => {
-    const moisLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-    const now = new Date();
-    const months: { mois: string; acteurs: number; transactions: number; volume: number }[] = [];
-    for (let i = monthsRange - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const nbActeurs = acteurs.filter(a => {
-        const m = a.dateInscription?.slice(0, 7);
-        return m === key;
-      }).length;
-      const nbTx = transactions.filter(t => t.date?.slice(0, 7) === key).length;
-      const vol = transactions
-        .filter(t => t.date?.slice(0, 7) === key)
-        .reduce((s, t) => s + (t.montant || 0), 0);
-      months.push({
-        mois: moisLabels[d.getMonth()],
-        acteurs: nbActeurs,
-        transactions: nbTx,
-        volume: Math.round(vol / 1000000),
-      });
-    }
-    return months;
-  }), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions, monthsRange]);
+  // Une seule définition du volume (services/seriesRapportsBO.ts, comme
+  // BORapports) : ventes non annulées seulement, et « non mesuré » si la page
+  // chargée ne contient pas toutes les transactions.
+  const transactionsCompletes = transactions.length >= _bo.transactionsTotal;
+  const sectionCroissance = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.transactions], () =>
+    seriesMensuelles(acteurs, transactions, transactionsCompletes, new Date(), monthsRange),
+  ), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions, transactionsCompletes, monthsRange]);
 
   // ─── Répartition par région ───────────────────────────────────────────────
   const sectionRegions = useMemo(() => sectionDe([_bo.lectures.acteurs, _bo.lectures.transactions], () => {
     const REGION_COLORS = [BO_PRIMARY, '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
-    const map: Record<string, { name: string; count: number; volume: number }> = {};
-    acteurs.forEach(a => {
-      const region = normalizeRegion(a.region);
-      if (!map[region]) map[region] = { name: region, count: 0, volume: 0 };
-      map[region].count += 1;
-    });
-    transactions.forEach(t => {
-      const region = normalizeRegion(t.region);
-      if (region === 'Non défini') return;
-      if (!map[region]) map[region] = { name: region, count: 0, volume: 0 };
-      map[region].volume += Number(t.montant || 0);
-    });
-    return Object.values(map)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map((d, i) => ({
-        region: d.name,
-        acteurs: d.count,
-        volume: Math.round(d.volume / 1000000),
-        color: REGION_COLORS[i % REGION_COLORS.length],
-      }));
-  }), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions]);
+    return performanceRegions(acteurs, transactions, transactionsCompletes,
+      { nomRegion: normalizeRegion, regionSansVentes: 'Non défini', limite: 5 })
+      .map((r, i) => ({ ...r, color: REGION_COLORS[i % REGION_COLORS.length] }));
+  }), [_bo.lectures.acteurs, _bo.lectures.transactions, acteurs, transactions, transactionsCompletes]);
 
   // ─── Répartition par type d'acteur ───────────────────────────────────────
   const sectionRepartition = useMemo(() => sectionDe([_bo.lectures.acteurs], () => {
@@ -262,13 +228,14 @@ export function BODashboard() {
   // ─── Ticker : dernières transactions réelles ──────────────────────────────
   const tickerItems = useMemo(() => {
     const sorted = [...transactions].sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime()).slice(0, 10);
-    if (sorted.length === 0) return [{ nom: 'Aucune transaction', type: '', montant: '0', region: '', positif: true }];
+    if (sorted.length === 0) return [{ nom: 'Aucune transaction', type: '', montant: '', region: '', positif: false }];
+    // Montant illisible → « illisible », jamais « 0 FCFA » (ACC-03).
     return sorted.map(t => ({
       nom: t.acteurNom || 'Acteur',
       type: t.acteurType || '',
-      montant: (t.montant || 0).toLocaleString('fr-FR'),
+      montant: texteMontant(t.montant),
       region: t.region || '',
-      positif: (t.montant || 0) >= 0,
+      positif: (montantLisible(t.montant) ?? -1) >= 0,
     }));
   }, [transactions]);
 
@@ -415,7 +382,7 @@ export function BODashboard() {
                     <span className="font-bold text-white truncate">{currentTicker.nom}</span>
                     {currentTicker.type && <span className="text-white/40 truncate hidden md:inline">({currentTicker.type}{currentTicker.region ? ` - ${currentTicker.region}` : ''})</span>}
                     <span className={`font-black flex-shrink-0 ${currentTicker.positif ? 'text-green-400' : 'text-red-400'}`}>
-                      {currentTicker.positif ? '+' : ''}{currentTicker.montant} FCFA
+                      {currentTicker.positif ? '+' : ''}{currentTicker.montant}
                     </span>
                   </>
                 ) : (
@@ -586,7 +553,7 @@ export function BODashboard() {
           >
             <p className="text-xs text-gray-700 mb-4">Nouveaux acteurs et transactions par mois</p>
             <BlocSection etat={sectionCroissance} hauteur="h-[210px]">{(monthlyData) => (
-            monthlyData.every(m => m.acteurs === 0 && m.transactions === 0) ? (
+            monthlyData.every(m => m.acteurs === 0 && !m.transactions) ? (
               <div className="h-[210px] flex items-center justify-center text-gray-400 text-sm font-semibold">
                 Aucune donnée disponible
               </div>
@@ -636,7 +603,7 @@ export function BODashboard() {
                     <span className="text-xs text-gray-700">
                       Total transactions :
                       <strong className="ml-1 text-gray-900">
-                        {monthlyData.reduce((s, m) => s + m.transactions, 0).toLocaleString('fr-FR')}
+                        {texteMesure(totalSerie(monthlyData.map(m => m.transactions)))}
                       </strong>
                     </span>
                   </div>
@@ -875,7 +842,7 @@ export function BODashboard() {
                     </div>
                     <div className="flex items-center gap-3 text-xs font-semibold text-gray-500">
                       <span>{(r.acteurs || 0).toLocaleString()} acteurs</span>
-                      <span className="font-black" style={{ color: r.color }}>{r.volume} M FCFA</span>
+                      <span className="font-black" style={{ color: r.color }}>{texteMesure(r.volume, ' M FCFA')}</span>
                     </div>
                   </div>
                   <BOProgressBar

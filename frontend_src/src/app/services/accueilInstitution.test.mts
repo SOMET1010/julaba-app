@@ -14,6 +14,7 @@ import {
   nomAffiche, dateDuJour, messageAccueil, lectureDashboardInstitution,
 } from './accueilInstitution.js';
 import { enAttente, indisponible, kpiDepuis } from './etatLectureBO.js';
+import { kpiTuile, prefixeDeSigne } from './tuileKpi.js';
 
 let echecs = 0;
 const ok = (c: boolean, quoi: string) => { console.log(`  ${c ? '✓' : '✗'} ${quoi}`); if (!c) echecs++; };
@@ -51,6 +52,24 @@ ok(kpiDepuis(lu, x => x.macroKPIs.valeurMonetaire).type === 'indisponible', 'val
 ok(kpiDepuis(lu, x => x.macroKPIs.croissanceMensuelle).type === 'indisponible', 'croissanceMensuelle null → indisponible');
 ok(kpiDepuis(lu, x => x.resumeJour.transactionsDuJour).type === 'nombre', 'un zéro LU reste un nombre');
 ok(lu.type === 'lue' && lu.valeur.dataRepartition.length === 1, 'une part sans valeur est écartée, pas mise à 0');
+
+console.log('\n— la valeur en FCFA entiers, le signe seulement si positif');
+const petite = lectureDashboardInstitution({ macroKPIs: { valeurMonetaire: 2_500_000, croissanceMensuelle: -12 }, resumeJour: {} });
+const tuileValeur = kpiTuile(kpiDepuis(petite, d => d.macroKPIs.valeurMonetaire), undefined, { suffix: 'FCFA' });
+ok(tuileValeur.animatedTarget === 2_500_000 && tuileValeur.suffix === 'FCFA',
+  '2 500 000 F → 2 500 000 FCFA (en milliards arrondis, la tuile affichait 0)');
+const baisse = kpiDepuis(petite, d => d.macroKPIs.croissanceMensuelle);
+ok(prefixeDeSigne(baisse) === undefined, '-12 % → pas de « + » (jamais « +-12 % »)');
+ok(prefixeDeSigne({ type: 'nombre', valeur: 12 }) === '+', '+12 % → « + »');
+ok(prefixeDeSigne({ type: 'nombre', valeur: 0 }) === undefined, '0 % → pas de « + »');
+for (const f of ['components/institution/AccueilInstitutionChiffres.tsx', 'components/institution/Dashboard.tsx',
+  'components/institution/Analytics.tsx', 'components/shared/UniversalProfil.tsx']) {
+  const c = lire(f);
+  ok(!/1_000_000_000|valeurMonetaireFormatted|Mds FCFA/.test(c), `${f} : ni milliards arrondis, ni valeurMonetaireFormatted`);
+}
+ok(!/valeurMonetaireFormatted/.test(readFileSync(new URL('../../../../backend/src/institutions/institution-dashboard.controller.ts', import.meta.url), 'utf8')),
+  'backend : valeurMonetaireFormatted (milliards arrondis) n\'est plus servi');
+ok(/prefixeDeSigne\(kpi\)/.test(lire('components/institution/AccueilInstitutionChiffres.tsx')), 'accueil : le signe passe par prefixeDeSigne');
 
 console.log('\n— les sources');
 const hook = lire('hooks/useInstitutionData.ts');

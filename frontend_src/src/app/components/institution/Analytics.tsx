@@ -17,7 +17,8 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
-import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiDepuis, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { AnimatedChart } from '../ui/AnimatedChart';
 import { SubPageLayout } from '../layout/SubPageLayout';
@@ -320,8 +321,8 @@ export function Analytics() {
               />
 
               <UniversalKPI
-                label="Volume (Mds FCFA)"
-                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted))}
+                label="Volume"
+                {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire), undefined, { suffix: 'FCFA' })}
                 icon={Wallet}
                 color="#059669"
                 delay={60}
