@@ -27,7 +27,7 @@ const ok = (c: boolean, quoi: string) => { console.log(`  ${c ? '✓' : '✗'} $
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const RACINE = join(ICI, '..', '..', '..', '..');
-const SRC_CONTEXTE = readFileSync(join(RACINE, 'frontend_src/src/app/contexts/CaisseContext.tsx'), 'utf8');
+const SRC_CONTEXTE = readFileSync(join(RACINE, 'frontend/src/app/contexts/CaisseContext.tsx'), 'utf8');
 const MANIFESTE = readFileSync(join(RACINE, 'android/app/src/main/AndroidManifest.xml'), 'utf8');
 const UID = 'marchande-awa';
 
