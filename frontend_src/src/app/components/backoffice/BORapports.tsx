@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { API_URL } from '../../utils/api';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BarChart3, Download, FileText, TrendingUp, Users, Wallet,
@@ -9,16 +8,19 @@ import {
 import {
   AreaChart, Area, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-  LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, Radar,
+  LineChart, Line,
 } from 'recharts';
 import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { toast } from 'sonner';
 import { BO_PRIMARY, BO_DARK } from './bo-theme';
-import { BOProgressBar } from './BOProgressBar';
 import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
-import type { Acteur } from '../../services/backoffice-api';
+import { boLire, type Acteur } from '../../services/backoffice-api';
+import { kpiTuile, kpiDepuis, lue, indisponible, enAttente, type EtatLecture } from '../../services/etatLectureBO';
+import { montantLisible } from '../../services/ventesBO';
+import { MOIS_LABELS, performanceRegions, seriesMensuelles, texteMesure } from '../../services/seriesRapportsBO';
+import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
 import { buildReportPdf, hexToRgb } from '../../utils/pdfReport';
 
 const PERIODES = ['7 derniers jours', '30 derniers jours', '3 derniers mois', '6 derniers mois', 'Cette année', 'Personnalisé'];
@@ -26,29 +28,6 @@ const REGIONS_LIST = ['Toutes les régions', ...CIV_REGIONS_LIST.filter(r => r !
 
 // ── Dérivation données réelles ────────────────────────────────
 const REGION_COLORS = [BO_PRIMARY, '#3B82F6', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4'];
-const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-
-function deriveMonthlyData(analytics: any, acteurs: any[], transactions: any[]) {
-  if (analytics?.monthly) return analytics.monthly;
-  const now = new Date();
-  return MOIS_LABELS.map((mois, i) => {
-    const monthActeurs = acteurs.filter(a => {
-      const d = new Date(a.dateInscription || a.createdAt || '');
-      return d.getMonth() === i;
-    }).length;
-    const monthTx = transactions.filter(t => {
-      const d = new Date(t.date || t.created_at || '');
-      return d.getMonth() === i;
-    });
-    return {
-      mois,
-      acteurs: monthActeurs || 0,
-      transactions: monthTx.length || 0,
-      volume: Math.round(monthTx.reduce((s: number, t: any) => s + (t.montant || t.amount || 0), 0) / 1_000_000),
-      commissions: Math.round(monthTx.reduce((s: number, t: any) => s + (t.montant || t.amount || 0), 0) / 1_000_000 * 0.03 * 10) / 10,
-    };
-  }).filter(m => m.acteurs > 0 || m.transactions > 0);
-}
 
 function deriveTypeData(analytics: any, acteurs: any[]) {
   if (analytics?.by_role?.length) {
@@ -64,46 +43,6 @@ function deriveTypeData(analytics: any, acteurs: any[]) {
   const counts: Record<string, number> = {};
   acteurs.forEach(a => { const r = a.type || a.role || ''; if (r) counts[r] = (counts[r] || 0) + 1; });
   return Object.entries(counts).map(([role, value]) => ({ name: roleMap[role]?.name || role, value, color: roleMap[role]?.color || 'var(--encre-4)' }));
-}
-
-function deriveRegionPerf(acteurs: any[], transactions: any[]) {
-  const map: Record<string, { acteurs: number; volume: number; tx: number }> = {};
-  acteurs.forEach(a => {
-    const r = a.region || 'Autre';
-    if (!map[r]) map[r] = { acteurs: 0, volume: 0, tx: 0 };
-    map[r].acteurs++;
-  });
-  transactions.forEach(t => {
-    const r = t.region || 'Autre';
-    if (!map[r]) map[r] = { acteurs: 0, volume: 0, tx: 0 };
-    map[r].volume += (t.montant || t.amount || 0);
-    map[r].tx++;
-  });
-  return Object.entries(map)
-    .sort((a, b) => b[1].acteurs - a[1].acteurs)
-    .slice(0, 6)
-    .map(([region, d], i) => ({
-      region,
-      acteurs: d.acteurs,
-      volume: Math.round(d.volume / 1_000_000),
-      commissions: Math.round(d.volume / 1_000_000 * 0.03 * 100) / 100,
-      taux: Math.min(99, Math.round(60 + (d.acteurs / Math.max(...Object.values(map).map(x => x.acteurs))) * 39)),
-      color: REGION_COLORS[i] || 'var(--encre-4)',
-    }));
-}
-
-function deriveRadarData(acteurs: any[], transactions: any[]) {
-  const regionPerf = deriveRegionPerf(acteurs, transactions);
-  const top3 = regionPerf.slice(0, 3);
-  if (top3.length < 2) return [];
-  const subjects = ['Activité', 'Croissance', 'Volume', 'Enrôlement'];
-  return subjects.map(subject => {
-    const entry: Record<string, any> = { subject };
-    top3.forEach((r, i) => {
-      entry[r.region] = Math.round(40 + (top3.length - i) / top3.length * 55);
-    });
-    return entry;
-  });
 }
 
 // Types d'acteur traces dans la courbe par profil (couleurs alignees sur la
@@ -166,7 +105,7 @@ function countRenseigne(acteurs: ReadonlyArray<Acteur>, read: (a: Acteur) => str
 
 const REPORTS_TYPES = [
   { id: 'acteurs', label: 'Rapport Acteurs', desc: 'Liste complète avec statuts et KPIs', icon: Users, color: '#B74725', pages: 12 },
-  { id: 'financier', label: 'Rapport Financier', desc: 'Volumes, commissions, flux de trésorerie', icon: Wallet, color: '#10B981', pages: 8 },
+  { id: 'financier', label: 'Rapport Financier', desc: 'Volumes, flux de trésorerie', icon: Wallet, color: '#10B981', pages: 8 },
   { id: 'enrolement', label: 'Rapport Enrôlement', desc: 'Dossiers soumis, approuvés, rejetés', icon: FileText, color: '#3B82F6', pages: 6 },
   { id: 'performance', label: 'Performance Régionale', desc: 'KPIs par zone, comparaison régions', icon: Globe, color: '#8B5CF6', pages: 10 },
   { id: 'audit', label: 'Rapport Audit', desc: 'Traçabilité complète des actions BO', icon: Activity, color: BO_PRIMARY, pages: 15 },
@@ -174,18 +113,14 @@ const REPORTS_TYPES = [
 ];
 
 
+/** Statistiques et analytics du serveur, par le client BO (API_URL + jeton). */
+type StatsRapports = { total_acteurs?: number | null; nouveaux_acteurs_semaine?: number | null; montant_total?: number | null; total_transactions?: number | null };
 function useLiveStats() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<EtatLecture<StatsRapports>>(enAttente());
   const [analytics, setAnalytics] = useState<any>(null);
   useEffect(() => {
-    fetch(`${API_URL}/admin/stats`, { credentials: 'include' })
-      .then(r => { if (!r.ok) throw new Error(`stats ${r.status}`); return r.json(); })
-      .then(setStats)
-      .catch(e => console.error('[BORapports stats]', e));
-    fetch(`${API_URL}/admin/analytics`, { credentials: 'include' })
-      .then(r => { if (!r.ok) throw new Error(`analytics ${r.status}`); return r.json(); })
-      .then(setAnalytics)
-      .catch(e => console.error('[BORapports analytics]', e));
+    boLire<StatsRapports>('/admin/stats').then(v => setStats(lue(v))).catch(e => setStats(indisponible(e)));
+    boLire<any>('/admin/analytics').then(setAnalytics).catch(e => console.error('[BORapports analytics]', e));
   }, []);
   return { stats, analytics };
 }
@@ -207,6 +142,8 @@ export function BORapports() {
     hasPermission,
     acteurs,
     transactions,
+    transactionsTotal,
+    lectures,
     refreshStats,
     refreshTransactions,
   } = useBackOffice();
@@ -218,11 +155,15 @@ export function BORapports() {
   }, []);
 
   // Données réelles dérivées
-  const MONTHLY_DATA = deriveMonthlyData(analytics, acteurs, transactions);
+  // Les séries de transactions ne sont mesurées que si la page chargée contient
+  // TOUTES les lignes (sinon « non mesuré ») — voir services/seriesRapportsBO.ts.
+  const complet = lectures.transactions.type === 'lue' && transactions.length >= transactionsTotal;
+  const MONTHLY_DATA = seriesMensuelles(acteurs, transactions, complet);
   const TYPE_DATA = deriveTypeData(analytics, acteurs);
-  const REGION_PERF = deriveRegionPerf(acteurs, transactions);
-  const RADAR_DATA = deriveRadarData(acteurs, transactions);
-  const top3Regions = REGION_PERF.slice(0, 3);
+  const REGION_PERF = performanceRegions(acteurs, transactions, complet)
+    .map((r, i) => ({ ...r, color: REGION_COLORS[i] || 'var(--encre-4)' }));
+  const kpiStat = (champ: keyof StatsRapports) => kpiDepuis(stats, v => v[champ]);
+  const volumeTotalStats = stats.type === 'lue' ? stats.valeur.montant_total : null;
 
   // Courbes par profil (7 derniers mois par defaut).
   const PROFIL_MONTHS = 7;
@@ -238,7 +179,7 @@ export function BORapports() {
   const [periode, setPeriode] = useState('30 derniers jours');
   const [region, setRegion] = useState('Toutes les régions');
   const [activeChart, setActiveChart] = useState<'area' | 'bar' | 'line'>('area');
-  const [activeMetric, setActiveMetric] = useState<'acteurs' | 'transactions' | 'volume' | 'commissions'>('acteurs');
+  const [activeMetric, setActiveMetric] = useState<'acteurs' | 'transactions' | 'volume'>('acteurs');
   const [generating, setGenerating] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -260,8 +201,8 @@ export function BORapports() {
       const dateLabel = now.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
       const totalActeursRegion = REGION_PERF.reduce((s, r) => s + (r.acteurs || 0), 0);
-      const totalVolume = REGION_PERF.reduce((s, r) => s + (r.volume || 0), 0);
-      const totalCommissions = Math.round(REGION_PERF.reduce((s, r) => s + (r.commissions || 0), 0) * 100) / 100;
+      const totalVolume = REGION_PERF.some(r => r.volume === null)
+        ? null : REGION_PERF.reduce((s, r) => s + (r.volume ?? 0), 0);
       const totalTypeData = TYPE_DATA.reduce((s: number, t: typeof TYPE_DATA[number]) => s + (t.value || 0), 0);
 
       const doc = buildReportPdf({
@@ -270,10 +211,9 @@ export function BORapports() {
         brandColor,
         meta: `Période : ${periode}  ·  Région : ${region}  ·  Généré le ${dateLabel}`,
         kpis: [
-          { label: 'Total acteurs', value: (stats?.total_acteurs ?? totalActeurs).toLocaleString('fr-FR') },
-          { label: 'Transactions', value: (stats?.total_transactions ?? transactions.length).toLocaleString('fr-FR') },
-          { label: 'Volume (M FCFA)', value: totalVolume.toLocaleString('fr-FR') },
-          { label: 'Commissions (M FCFA)', value: totalCommissions.toLocaleString('fr-FR') },
+          { label: 'Total acteurs', value: texteMesure(stats.type === 'lue' ? stats.valeur.total_acteurs ?? null : null) },
+          { label: 'Transactions', value: texteMesure(stats.type === 'lue' ? stats.valeur.total_transactions ?? null : null) },
+          { label: 'Volume (FCFA)', value: texteMesure(volumeTotalStats ?? null) },
         ],
         tables: [
           {
@@ -282,11 +222,9 @@ export function BORapports() {
               { header: 'Région', width: 45 },
               { header: 'Acteurs', width: 25, align: 'right' },
               { header: 'Volume (M)', width: 30, align: 'right' },
-              { header: 'Commissions (M)', width: 35, align: 'right' },
-              { header: 'Taux', width: 20, align: 'right' },
             ],
-            rows: REGION_PERF.map(r => [r.region, r.acteurs.toLocaleString('fr-FR'), r.volume, r.commissions, `${r.taux}%`]),
-            totalRow: ['TOTAL', totalActeursRegion.toLocaleString('fr-FR'), totalVolume, totalCommissions, ''],
+            rows: REGION_PERF.map(r => [r.region, r.acteurs.toLocaleString('fr-FR'), texteMesure(r.volume)]),
+            totalRow: ['TOTAL', totalActeursRegion.toLocaleString('fr-FR'), texteMesure(totalVolume)],
           },
           {
             title: "Répartition par type d'acteur",
@@ -347,7 +285,7 @@ export function BORapports() {
       transactions.forEach((t: any) => {
         lines.push([
           (t.date || t.created_at || '').split('T')[0],
-          t.montant || t.amount || 0,
+          montantLisible(t.montant ?? t.amount) ?? 'illisible',
           t.region || '',
           t.statut || t.status || '',
           t.acteurNom || '',
@@ -356,21 +294,22 @@ export function BORapports() {
       lines.push('');
     }
 
-    if (exportSections.kpis && stats) {
+    if (exportSections.kpis && stats.type === 'lue') {
+      const v = stats.valeur;
       lines.push('## SECTION: KPIS GLOBAUX');
       lines.push('indicateur,valeur');
-      lines.push(`total_acteurs,${stats.total_acteurs || 0}`);
-      lines.push(`nouveaux_semaine,${stats.nouveaux_acteurs_semaine || 0}`);
-      lines.push(`montant_total,${stats.montant_total || 0}`);
-      lines.push(`total_transactions,${stats.total_transactions || 0}`);
+      lines.push(`total_acteurs,${texteMesure(v.total_acteurs ?? null)}`);
+      lines.push(`nouveaux_semaine,${texteMesure(v.nouveaux_acteurs_semaine ?? null)}`);
+      lines.push(`montant_total,${texteMesure(v.montant_total ?? null)}`);
+      lines.push(`total_transactions,${texteMesure(v.total_transactions ?? null)}`);
       lines.push('');
     }
 
     if (exportSections.evolution && MONTHLY_DATA?.length) {
       lines.push('## SECTION: EVOLUTION MENSUELLE');
-      lines.push('mois,acteurs,transactions,volume_MFCFA,commissions_MFCFA');
-      MONTHLY_DATA.forEach((m: any) => {
-        lines.push([m.mois, m.acteurs, m.transactions, m.volume, m.commissions].map(escapeCSV).join(','));
+      lines.push('mois,acteurs,transactions,volume_MFCFA');
+      MONTHLY_DATA.forEach((m) => {
+        lines.push([m.mois, m.acteurs, texteMesure(m.transactions), texteMesure(m.volume)].map(escapeCSV).join(','));
       });
       lines.push('');
     }
@@ -384,9 +323,9 @@ export function BORapports() {
 
     if (exportSections.regions && REGION_PERF?.length) {
       lines.push('## SECTION: PERFORMANCE REGIONALE');
-      lines.push('region,acteurs,volume_MFCFA,commissions_MFCFA,taux');
-      REGION_PERF.forEach((r: any) => {
-        lines.push([r.region, r.acteurs, r.volume, r.commissions, r.taux].map(escapeCSV).join(','));
+      lines.push('region,acteurs,volume_MFCFA');
+      REGION_PERF.forEach((r) => {
+        lines.push([r.region, r.acteurs, texteMesure(r.volume)].map(escapeCSV).join(','));
       });
       lines.push('');
     }
@@ -406,14 +345,14 @@ export function BORapports() {
     acteurs: BO_PRIMARY,
     transactions: '#3B82F6',
     volume: '#10B981',
-    commissions: '#8B5CF6',
   };
   const METRIC_LABELS: Record<string, string> = {
     acteurs: 'Acteurs enrôlés',
     transactions: 'Transactions',
     volume: 'Volume (M FCFA)',
-    commissions: 'Commissions (M FCFA)',
   };
+  // Transactions et volume ne sont tracés que s'ils ont été mesurés.
+  const serieNonMesuree = activeMetric !== 'acteurs' && !complet;
 
   return (
     <div className="px-4 lg:px-8 py-6 max-w-7xl mx-auto space-y-6 overflow-hidden">
@@ -478,34 +417,11 @@ export function BORapports() {
 
       {/* KPI Cards */}
       <KPIGrid cols={3}>
-        <UniversalKPI
-          label="Total Acteurs"
-          animatedTarget={stats?.total_acteurs ?? 12670}
-          icon={Users}
-          color={BO_PRIMARY}
-          explication={`+${stats?.nouveaux_acteurs_semaine ?? 0} cette semaine`}
-        />
-        <UniversalKPI
-          label="Volume échangé"
-          value={stats?.montant_total ? stats.montant_total >= 1_000_000 ? (stats.montant_total / 1_000_000).toFixed(1) + " M" : stats.montant_total >= 1_000 ? (stats.montant_total / 1_000).toFixed(0) + " K" : stats.montant_total.toLocaleString("fr-FR") : "-"}
-          icon={Wallet}
-          color="#10B981"
-          explication="FCFA ce mois"
-        />
-        <UniversalKPI
-          label="Transactions"
-          animatedTarget={stats?.total_transactions ?? 0}
-          icon={BarChart3}
-          color="#3B82F6"
-          explication="+12%"
-        />
-        <UniversalKPI
-          label="Commissions"
-          value={stats?.montant_total ? (() => { const comm = stats.montant_total * 0.03; return comm >= 1_000_000 ? (comm / 1_000_000).toFixed(2) + " M" : comm >= 1_000 ? (comm / 1_000).toFixed(0) + " K" : comm.toFixed(0); })() : "-"}
-          icon={TrendingUp}
-          color="#8B5CF6"
-          explication="FCFA générées"
-        />
+        <UniversalKPI label="Total Acteurs" icon={Users} color={BO_PRIMARY} {...kpiTuile(kpiStat('total_acteurs'))} />
+        <UniversalKPI label="Volume échangé" icon={Wallet} color="#10B981"
+          {...kpiTuile(kpiStat('montant_total'), n => n.toLocaleString('fr-FR'))}
+          suffix={kpiStat('montant_total').type === 'nombre' ? 'FCFA' : undefined} />
+        <UniversalKPI label="Transactions" icon={BarChart3} color="#3B82F6" {...kpiTuile(kpiStat('total_transactions'))} />
       </KPIGrid>
 
       {/* Graphique principal */}
@@ -519,7 +435,7 @@ export function BORapports() {
           <div className="flex items-center gap-2 flex-wrap">
             {/* Metric switcher */}
             {(Object.keys(METRIC_LABELS) as (keyof typeof METRIC_LABELS)[]).map(m => (
-              <button key={m} onClick={() => setActiveMetric(m as 'transactions' | 'acteurs' | 'volume' | 'commissions')}
+              <button key={m} onClick={() => setActiveMetric(m as 'transactions' | 'acteurs' | 'volume')}
                 className="px-3 py-1.5 rounded-xl border-2 text-xs font-bold transition-all"
                 style={{ borderColor: activeMetric === m ? METRIC_COLORS[m] : '#e5e7eb', backgroundColor: activeMetric === m ? `${METRIC_COLORS[m]}15` : 'transparent', color: activeMetric === m ? METRIC_COLORS[m] : '#9ca3af' }}>
                 {METRIC_LABELS[m]}
@@ -537,7 +453,11 @@ export function BORapports() {
             </div>
           </div>
         </div>
-        {activeChart === 'bar' && (
+        {serieNonMesuree && (
+          <GraphiqueIndisponible hauteur={260}
+            raison="la page chargée ne contient pas toutes les transactions : série non mesurée" />
+        )}
+        {!serieNonMesuree && activeChart === 'bar' && (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={Array.isArray(MONTHLY_DATA) ? MONTHLY_DATA : []} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -548,7 +468,7 @@ export function BORapports() {
             </BarChart>
           </ResponsiveContainer>
         )}
-        {activeChart === 'line' && (
+        {!serieNonMesuree && activeChart === 'line' && (
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={Array.isArray(MONTHLY_DATA) ? MONTHLY_DATA : []}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -559,7 +479,7 @@ export function BORapports() {
             </LineChart>
           </ResponsiveContainer>
         )}
-        {activeChart === 'area' && (
+        {!serieNonMesuree && activeChart === 'area' && (
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={Array.isArray(MONTHLY_DATA) ? MONTHLY_DATA : []}>
               <defs>
@@ -618,19 +538,7 @@ export function BORapports() {
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
           className="bg-white rounded-3xl p-6 border-2 border-gray-100 shadow-sm">
           <h3 className="font-black text-gray-900 mb-4">Comparaison régionale (Top 3)</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <RadarChart data={Array.isArray(RADAR_DATA) ? RADAR_DATA : []}>
-              <PolarGrid
-                stroke="#f0f0f0"
-                {...(RADAR_DATA.length === 0 ? { polarAngles: [] as number[], polarRadius: [] as number[] } : {})}
-              />
-              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700 }} />
-              {top3Regions.map((r, i) => (
-                <Radar key={r.region} name={r.region} dataKey={r.region} stroke={r.color} fill={r.color} fillOpacity={0.2 - i * 0.05} strokeWidth={2} />
-              ))}
-              <Legend iconType="circle" iconSize={8} />
-            </RadarChart>
-          </ResponsiveContainer>
+          <GraphiqueIndisponible hauteur={180} raison="aucune source ne mesure l'activité, la croissance ni l'enrôlement par région" />
         </motion.div>
       </div>
 
@@ -648,7 +556,7 @@ export function BORapports() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-gray-100">
-                {['Région', 'Acteurs', 'Volume (M FCFA)', 'Commissions (M)', 'Taux activité', 'Mes Points'].map(h => (
+                {['Région', 'Acteurs', 'Volume (M FCFA)'].map(h => (
                   <th key={h} className="text-left py-3 px-3 text-xs font-black text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -665,29 +573,7 @@ export function BORapports() {
                     </div>
                   </td>
                   <td className="py-3 px-3 font-semibold text-gray-700">{(r.acteurs || 0).toLocaleString()}</td>
-                  <td className="py-3 px-3 font-bold text-gray-900">{r.volume} M</td>
-                  <td className="py-3 px-3 font-bold" style={{ color: '#10B981' }}>{r.commissions} M</td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-2">
-                      <BOProgressBar
-                        value={r.taux}
-                        color={r.color}
-                        height="sm"
-                        delay={index * 0.05}
-                        maxWidth="80px"
-                        className="flex-1"
-                      />
-                      <span className="text-xs font-bold text-gray-700">{r.taux}%</span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, si) => (
-                        <div key={si} className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: si < Math.round(r.taux / 20) ? r.color : '#e5e7eb' }} />
-                      ))}
-                    </div>
-                  </td>
+                  <td className="py-3 px-3 font-bold text-gray-900">{texteMesure(r.volume, ' M')}</td>
                 </motion.tr>
               ))}
             </tbody>

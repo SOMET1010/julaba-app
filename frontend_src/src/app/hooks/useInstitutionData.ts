@@ -8,18 +8,6 @@ import { apiRequest } from '../services/api/api-client';
 import { enAttente, indisponible, type EtatLecture } from '../services/etatLectureBO';
 import { lectureDashboardInstitution, type DashboardInstitution } from '../services/accueilInstitution';
 
-export const DEFAULT_MACRO_KPIs = {
-  acteursActifs: 0, totalActeurs: 0, acteursSuspendus: 0,
-  volumeTransactions: 0, valeurMonetaire: 0, valeurMonetaireFormatted: 0,
-  pctDigitalisation: 0, pctInclusionCNPS: 0, pctInclusionCNAM: 0,
-  croissanceMensuelle: 0, tauxActivite: 0, nouveauxCeMois: 0, valeurMoyenne: 0,
-};
-
-export const DEFAULT_RESUME_JOUR = {
-  nouveauxInscrits: 0, dossiersValides: 0, dossiersRejetes: 0,
-  transactionsDuJour: 0, alertesCritiquesActives: 0,
-};
-
 export const DATA_REPARTITION_DEFAULT = [
   { name: 'Marchands',       value: 0, color: '#C66A2C' },
   { name: 'Producteurs',     value: 0, color: '#2E8B57' },
@@ -28,8 +16,6 @@ export const DATA_REPARTITION_DEFAULT = [
 ];
 
 export function useInstitutionData() {
-  const [macroKPIs, setMacroKPIs]             = useState(DEFAULT_MACRO_KPIs);
-  const [resumeJour, setResumeJour]           = useState(DEFAULT_RESUME_JOUR);
   const [dataRepartition, setDataRepartition] = useState(DATA_REPARTITION_DEFAULT);
   const [byRole, setByRole]                   = useState<any[]>([]);
   const [acteurs, setActeurs]                 = useState<any[]>([]);
@@ -51,8 +37,6 @@ export function useInstitutionData() {
         ]);
 
         setLectureDashboard(lectureDashboardInstitution(dashboard));
-        if (dashboard.macroKPIs) setMacroKPIs(dashboard.macroKPIs);
-        if (dashboard.resumeJour) setResumeJour(dashboard.resumeJour);
         if (dashboard.dataRepartition?.length) setDataRepartition(dashboard.dataRepartition);
         if (dashboard.byRole?.length) setByRole(dashboard.byRole);
         if (Array.isArray(acteursRes?.data)) setActeurs(acteursRes.data);
@@ -68,7 +52,7 @@ export function useInstitutionData() {
   }, []);
 
   return {
-    macroKPIs, resumeJour, loading, error, lectureDashboard,
+    loading, error, lectureDashboard,
     dataRepartition,
     byRole,
     acteurs, transactions,

@@ -7,11 +7,12 @@ import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
-import { GraphiqueIndisponible } from './GraphiqueIndisponible';
+import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
+import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
 import { RAISON_HISTORIQUE_ABSENT } from '../../services/accueilInstitution';
 
 export function Dashboard() {
-  const { macroKPIs, dataRepartition } = useInstitutionData();
+  const { lectureDashboard, dataRepartition } = useInstitutionData();
   const roleData = dataRepartition;
 
   return (
@@ -25,32 +26,31 @@ export function Dashboard() {
           <KPIGrid cols={4}>
             <UniversalKPI
               label="Utilisateurs actifs"
-              animatedTarget={macroKPIs.acteursActifs}
+              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.acteursActifs))}
               icon={Users}
               color="#712864"
               delay={0}
             />
             <UniversalKPI
               label="Transactions"
-              animatedTarget={macroKPIs.volumeTransactions}
+              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.volumeTransactions))}
               icon={DollarSign}
               color="#2072AF"
               delay={30}
             />
             <UniversalKPI
               label="Volume (Mds FCFA)"
-              animatedTarget={macroKPIs.valeurMonetaireFormatted}
+              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaireFormatted))}
               icon={TrendingUp}
               color="#2E8B57"
               delay={60}
             />
             <UniversalKPI
               label="Taux activité"
-              animatedTarget={macroKPIs.tauxActivite}
+              {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.tauxActivite), undefined, { suffix: '%' })}
               icon={Users}
               color="#F97316"
               delay={90}
-              suffix="%"
             />
           </KPIGrid>
         </motion.div>

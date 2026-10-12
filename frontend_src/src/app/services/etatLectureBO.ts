@@ -146,7 +146,8 @@ export interface TransactionCompte { readonly montant?: number }
 export interface StatsBO {
   readonly total_acteurs?: number;
   readonly utilisateurs_actifs?: number;
-  readonly montant_total?: number;
+  /** `null` = le serveur a lu un montant de vente illisible. */
+  readonly montant_total?: number | null;
 }
 
 /** Ce que la liste des acteurs rapporte : les lignes ET le total serveur. */
@@ -215,7 +216,11 @@ export function kpisTableauDeBord(l: LecturesTableauDeBord): KpisTableauDeBord {
       { etat: l.acteurs, mesure: (a: LectureActeurs) => a.liste.filter(x => x.statut === 'actif').length } as SourceKpi<LectureActeurs>,
     ),
 
-    volumeTotal: kpiParmi(
+    // `montant_total: null` n'est pas un champ absent : le serveur DIT que le
+    // volume est illisible. Aucun repli (la page de transactions n'y suffit pas).
+    volumeTotal: l.stats.type === 'lue' && l.stats.valeur?.montant_total === null
+      ? { type: 'indisponible', raison: 'montant de vente illisible côté serveur' }
+      : kpiParmi(
       champDesStats(l.stats, 'montant_total'),
       {
         etat: l.transactions,
@@ -286,13 +291,19 @@ export function explicationDuKpi(kpi: AffichageKpi): string | undefined {
  * qui, dans `UniversalKPI`, décide d'afficher un compteur plutôt qu'un texte.
  * Le laisser à `0` remettrait exactement le faux zéro qu'on ferme ici.
  */
-export function kpiTuile(kpi: AffichageKpi, format?: (n: number) => string) {
+export function kpiTuile(
+  kpi: AffichageKpi,
+  format?: (n: number) => string,
+  unites?: { readonly prefix?: string; readonly suffix?: string },
+) {
   const n = nombreDuKpi(kpi);
   const mot = motDuKpi(kpi);
   return {
     animatedTarget: format ? undefined : n,
     value: format && n !== undefined ? format(n) : (mot ?? undefined),
     explication: explicationDuKpi(kpi),
+    // L'unité ne s'écrit qu'à côté d'un nombre : jamais « Indisponible % ».
+    ...(kpi.type === 'nombre' ? unites : {}),
   };
 }
 

@@ -7,7 +7,7 @@ import {
 import { ROLE_COLORS } from '../../config/roleConfig';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import {
-  kpiDepuis, kpiTuile, texteDuKpi, type AffichageKpi, type EtatLecture,
+  kpiDepuis, kpiTuile, texteDuKpi, type EtatLecture,
 } from '../../services/etatLectureBO';
 import { dateDuJour, type DashboardInstitution } from '../../services/accueilInstitution';
 
@@ -52,11 +52,6 @@ const TUILES_JOUR: ReadonlyArray<{
     anim: { animate: { scale: [1, 1.2, 1] }, transition: { duration: 1.5, ...BOUCLE } } },
 ];
 
-/** L'unité ne s'écrit qu'à côté d'un nombre : jamais « Indisponible % ». */
-function unites(kpi: AffichageKpi, prefix?: string, suffix?: string) {
-  return kpi.type === 'nombre' ? { prefix, suffix } : {};
-}
-
 function Titre({ icon: Icon, anim, children, droite }: {
   icon: React.ElementType; anim: Anim; children: React.ReactNode; droite?: string;
 }) {
@@ -83,7 +78,7 @@ export function AccueilInstitutionChiffres({ lecture }: { lecture: EtatLecture<D
             const kpi = kpiDepuis(lecture, t.mesure);
             return (
               <UniversalKPI key={t.label} label={t.label} icon={t.icon} color={t.color} delay={i * 30}
-                {...kpiTuile(kpi)} {...unites(kpi, t.prefix, t.suffix)} />
+                {...kpiTuile(kpi, undefined, { prefix: t.prefix, suffix: t.suffix })} />
             );
           })}
         </KPIGrid>

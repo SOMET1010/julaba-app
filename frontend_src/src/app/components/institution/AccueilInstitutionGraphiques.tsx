@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AnimatedChart } from '../ui/AnimatedChart';
-import { GraphiqueIndisponible } from './GraphiqueIndisponible';
+import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
 import { type EtatLecture } from '../../services/etatLectureBO';
 import {
   RAISON_HISTORIQUE_ABSENT, RAISON_REGIONS_ABSENTES, type DashboardInstitution, type PartRole,
