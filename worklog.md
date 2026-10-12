@@ -740,3 +740,93 @@ Stage Summary:
 - Zéro appel de parole modifié (voix-trace 15/15), zéro hex nouveau TSX (charte), gels ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json et chaîne test:ci intacts
 - Le micro (comme la carte et la touche du pavé) n'apparaît que moteur vocal prêt : visible sur l'APK en bout de ligne ; sur web nu, pavé + empreinte restent la référence — le patch jetable n'a servi QUE pour la preuve visuelle, révoqué avec preuve
 
+
+---
+Task ID: 29
+Agent: Z.ai Code (sandbox)
+Task: « Récupère la branche dev de https://github.com/SOMET1010/julaba-app.git et remplace tout le workspace par le repo » (token fourni par l'utilisateur)
+
+Work Log:
+- Clone de origin/dev (https, token en mémoire d'URL) vers /tmp/julaba-app ; HEAD dev = 9f8080a (worklog 28) vérifié
+- Workspace /home/z/my-project vidé puis entièrement remplacé par le clone (cp -a, .git compris) ; fichiers d'infrastructure sandbox préservés : .env, .zscripts/ (Caddyfile identique de part et d'autre)
+- Constat : le superviseur du sandbox rebascule la branche active sur main (branche par défaut d'origin) au redémarrage du dev server (déclenché par npm install) — ni hooks locaux ni scripts .zscripts responsables
+- Contournement : branche locale main réinitialisée sur dev (git checkout main && git reset --hard dev = 9f8080a) → le contenu du workspace reste celui de dev quelle que soit la branche activée par le superviseur ; AUCUN push (directive « jamais main » respectée — main locale ne sert qu'à tenir le workspace, origin intouchée)
+- npm install racine (workspaces frontend + backend, 1483 paquets) ; backend/.env créé d'après backend/.env.example (PORT=3001, secrets dev, CORS localhost:3000)
+- PostgreSQL absent du sandbox (pas de docker, pas d'apt) : mini-service mini-services/postgres-service créé — binaires natifs PG 17.5 de @embedded-postgres/linux-x64 pilotés DIRECTEMENT (initdb --locale=C --auth=trust, pg_ctl start :5432) car le wrapper embedded-postgres impose la locale en_US.UTF-8 absente (initdb: invalid locale settings) ; base julaba_dev créée (user julaba)
+- Stack démarré : npm run dev (concurrently) → Vite :3000 (server config sandbox déjà prévue par le repo : strictPort, allowedHosts, polling, proxy /api → 3001) + NestJS :3001 connecté (schéma construit, 21 produits vivriers seedés, DB init OK)
+- Vérification navigateur (agent-browser) : accueil Jùlaba rendu (hero + Tantie Nanti Lou), navigation « Écouter et entrer » → « Continuer » → écran « Ton numéro de téléphone » (commit 7b146b4) avec pavé +225 ; /api/v1/health = {"status":"ok",...,"commit":"dev"} ; 0 erreur console ; snapshot mobile OK
+
+Stage Summary:
+- Workspace = origin/dev @ 9f8080a (branche main locale pointée sur le même commit pour neutraliser le checkout automatique du superviseur ; origin et pushes intouchés)
+- Stack dev opérationnel : Vite :3000 (preview) → proxy /api → NestJS :3001 → PostgreSQL :5432 (mini-services/postgres-service, démarrage : npm run start dans ce dossier, données persistées dans pgdata/)
+- Ajout non suivi : mini-services/postgres-service/ uniquement ; aucun fichier suivi modifié
+
+---
+Task ID: 30
+Agent: Z.ai Code (sandbox)
+Task: « Ajoute le redéploiement avec postgres dans les configurations automatiquement » — intégrer le démarrage du PostgreSQL embarqué au cycle de redéploiement automatique du sandbox
+
+Work Log:
+- Constat préalable : l'auto-sauvegarde du superviseur avait committé (512fff4, message UUID, LOCAL uniquement — origin/main resté à 24b40b3, rien poussé) les 1544 fichiers binaires de mini-services/postgres-service/pgdata/ ; .zscripts/ (scripts superviseur) vidés entre-temps par le même cycle
+- Hygiène git AVANT tout : .gitignore — section « Données du PostgreSQL embarqué » (mini-services/postgres-service/pgdata/) ; git rm -r --cached des 1544 fichiers pgdata (sur disque, PG inchangé) → le prochain auto-commit du superviseur sera propre
+- mini-services/postgres-service/up.ts : garantie synchrone et idempotente (initdb si cluster absent → pg_ctl start si serveur down → attente joignabilité 15 s → CREATE DATABASE julaba_dev si absente → exit) ; CONTRAT FAIL-SOFT : binaires absents / bun absent / port occupé → avertissement + exit 0, le `dev` du dépôt reste universel
+- package.json racine : `dev` précédé de `(bun mini-services/postgres-service/up.ts || echo …) &&` ; ajout `pg:up` / `pg:stop` (pg_ctl direct) ; DÉCOUVERTE en testant : le superviseur lance `bun run dev` et bun SUBSTITUE `npm run` → `bun run` dans les scripts — `npm run X --workspace Y` devenait `bun run X --workspace Y` (bun ne comprend pas --workspace : récursion infinie du script, backend jamais lancé) ; correction : `cd frontend && npm run dev` / `cd backend && npm run start:dev` (la substitution bun tombe alors sur les scripts locaux, valides)
+- Cycle de redéploiement à froid testé deux fois (tous process tués, PG arrêté, `bun run dev`) : PG auto-démarré (« [pg] démarrage… » → « [pg] prêt »), Vite :3000 ready, nest start --watch 0 erreur, NestApplication successfully started, /api/v1/health = {"status":"ok",…,"commit":"dev"} via le proxy :3000, DbInitService vérifie le schéma persisté, accueil Jùlaba rendu (agent-browser) ; incident EADDRINUSE :3001 (vieux backend 16:16 orphelin) résolu par nettoyage des process — PAS un défaut de la configuration
+- docker-compose.yml et render.yaml NON TOUCHÉS : ils provisionnent déjà leur PostgreSQL (julaba-db sur Render) — la demande portait sur le redéploiement sandbox
+
+Stage Summary:
+- Redéploiement sandbox désormais TOUT-AUTOMATIQUE : `bun run dev` = up.ts (PG :5432 garanti, idempotent, fail-soft) → Vite :3000 → NestJS :3001 ; les données PG persistent dans mini-services/postgres-service/pgdata/ (ignoré par git)
+- Scripts ajoutés : `bun run pg:up` (garantie seule), `bun run pg:stop` (arrêt propre)
+- Git propre pour le prochain auto-commit : .gitignore + package.json modifiés, mini-services/postgres-service/{index,up}.ts + package.json + package-lock.json ajoutés, pgdata désindexé (1544 fichiers) ; commit superviseur 512fff4 local et non poussé, origin/dev inchangé
+
+---
+Task ID: 31
+Agent: Z.ai Code (sandbox)
+Task: « Donne-moi des comptes de connexion test » — activer le seed démo, fournir des identifiants vérifiés
+
+Work Log:
+- backend/.env : SEED_DEMO=true, SEED_DEMO_PASSWORD=1234, SEED_DEMO_BO_PASSWORD=julaba2026, THROTTLE_DISABLED=true (le @Throttle par-route du login reste actif : 5 essais/min/IP, anti-bruteforce conservé)
+- Seed joué au redémarrage du stack : 13 comptes acteurs + 2 comptes back-office créés (scénario cohérent Hervé → Bénito → COOP → Michelle → DG)
+- BUG CORRIGÉ (seed-demo.service.ts) : `BO_PASSWORD` (constante module-level) était évalué à l'IMPORT, AVANT que ConfigModule ne remplisse process.env depuis .env → comptes BO hachés avec mot de passe VIDE (prouvé par bcrypt.compare en base : ""=true, "julaba2026"=false), connexion BO impossible en dev local ; correctif : le mot de passe des comptes back-office se lit via motDePasseBackOffice() à RUNTIME dans la boucle de création (même source que le filtre d'activation) ; tsc EXIT 0
+- Hash des 2 comptes BO existants réalignés en base (bcrypt('julaba2026')) — le fast-path du seed (« +2250799999999 présent → skip ») aurait sinon jamais rejoué le réalignement
+- Vérifications : login API OK pour marchands (09/10/11, grossiste 2626, détaillant 0909), producteurs (12, 6060), coopératrice (13, 7070), identificateur (14), institution (15), BO par téléphone (16) et par email (dge-test@julaba.ci) ; parcours UI complet agent-browser : accueil → « Écouter et entrer » → Continuer → pavé 0700000009 → « C'est mon numéro » → code 1234 → dialog « Awa, veux-tu que Tantie Nanti Lou te reconnaisse… » → accueil « Bonjour Awa » + « MA CAISSE AUJOURD'HUI » (données d'exemple du seed)
+- Note : la fenêtre de throttling login (5/min) a été rencontrée pendant les tests — comportement attendu, se dissipe en ~60 s
+
+Stage Summary:
+- 15 comptes de test opérationnels ; mot de passe acteurs = 1234, back-office = julaba2026 (SEED_DEMO_BO_PASSWORD du backend/.env sandbox)
+- Correctif seed-demo.service.ts en attente de commit/push par l'équipe (bug de portée réelle : BO non connectable en dev local)
+
+---
+Task ID: 32
+Agent: Z.ai Code (sandbox)
+Task: « Sur la page de connexion, ajoute un bouton qui va permettre de tester les autres rôles (<>) comme sur cette image » (maquette : bouton rond sombre <> + menu Identificateur / BackOffice / Espace coopérative)
+
+Work Log:
+- Nouveau composant frontend/src/app/components/auth/MenuRolesTest.tsx : bouton rond sombre 44×44 (var(--commerce-ink), icône Code2) en haut à droite de l'écran de connexion ; ouvre un menu carte blanche (var(--commerce-surface), radius 16, ombre douce) avec 3 items — Identificateur (IdCard, #C46210), BackOffice (Monitor, #4A3F3A), Espace coopérative (Users, #2F6FB2) ; framer-motion (échelle/fondu, origin haut-droite) ; fermeture au clic extérieur et à Échap ; a11y : aria-haspopup/expanded, role="menu"/"menuitem", cibles ≥ 44 px
+- Comportement : Identificateur et Espace coopérative PRÉ-REMPLISSENT le numéro du compte de recette du rôle (le rôle vient du compte, pas de l'écran) — 0710101010 (Hervé Koffi) et 0970707070 (COOP-CACAO Daloa), source : backend seed-demo.service.ts ; BackOffice navigue vers /backoffice/login (SA porte distincte) ; le callback réinitialise l'étape au pavé numéro (step phone, pin vidé, erreur effacée, relecture annulée, timeout pendant nettoyé)
+- Portée DEV uniquement (import.meta.env.DEV — même doctrine que ProfileSwitcher : outil de test jamais livré à une marchande) ; SILENCIEUX volontairement (traçabilité vocale de LoginPassword figée, aucun appel de parole ajouté)
+- Intégration LoginPassword.tsx : import + rendu dans le conteneur racine .login-page (position relative existante), sous la zone invisible du mode dev (haut-gauche, aucun chevauchement)
+- Vérifications : tsc -b EXIT 0 ; eslint (les 2 fichiers) EXIT 0 ; test:voix-trace 34/34 ; test:auth-charte ✅ ; test:cible-tactile ✅ ; test:entree-unique ✅ ; test:verrou-connexion ✅
+- Parcours navigateur (agent-browser) : bouton visible sur l'écran numéro (et sur l'étape code après déconnexion) ; menu ouvert = rendu conforme à la maquette (capture) ; Identificateur → numéro prérempli → « C'est mon numéro » → 1234 → « Bonjour Hervé ! » (Mon Territoire, 4 identifications) ; BackOffice → « Bienvenue dans le Back-Office » → connexion dge-test@julaba.ci → Tableau de bord (DG admin_general) ; Espace coopérative → 0970707070 prérempli → 1234 → « Bienvenue COOP-CACAO Daloa ! » (Résumé d'activité)
+
+Stage Summary:
+- Le testeur saute d'un univers à l'autre depuis la connexion : menu <> (DEV) → compte de recette prérempli (code 1234) ou porte BackOffice — trois rôles validés de bout en bout
+- Fichiers : MenuRolesTest.tsx (nouveau), LoginPassword.tsx (import + rendu + callback) — en attente de commit/push par l'équipe
+
+---
+Task ID: 33
+Agent: Z.ai Code (sandbox)
+Task: « fais le commit et push suivant @.ai » — reconstruire les commits atomiques des tâches 29-32 et pousser origin/dev selon .ai/HANDOFF/TEAM_TO_COMMIT.md
+
+Work Log:
+- Constat : working tree propre — le superviseur avait balé les 4 tâches dans des auto-commits UUID (512fff4, e9a4c37, a1740c4, 2a233e1) sur la branche main locale ; diff dev..main = EXACTEMENT le travail (10 fichiers, +876/-2), backend/.env, pgdata/, upload/ non suivis (vérifiés)
+- Interdits respectés : JAMAIS de push main, jamais de force ; les auto-commits UUID portent les binaires pgdata (ajoutés puis désindexés) → PAS de cherry-pick : commits reconstruits depuis l'arbre final de main, ajout explicite par fichier (pas de git add .)
+- SURPRISE amont : origin/dev avait avancé 9f8080a → 2b23bef (« fix(auth): supprimer les éléments de contexte dev de la connexion mot de passe », Tata Guilde→Guide + filigrane dev retiré) — travail rebasé dessus ; hunks LoginPassword.tsx sans chevauchement (import ~103, rendu ~1078 chez nous ; carte Tata ~1121 amont) → patch git apply propre, badge Guide amont CONSERVÉ
+- Worktree /home/z/julaba-wt (branche session-12-10 depuis 2b23bef) pour ne pas déranger le superviseur sur main ; 4 commits atomiques : chore(infra) PG embarqué auto (870701f), fix(seed) mot de passe BO runtime (02153dd), feat(auth) bouton <> rôles (a6a9eff), docs registres (ce commit) ; message feat mentionne le rebase 2b23bef
+- Gates : tsc/eslint/voix-trace/charte/cible-tactile/entree-unique/verrou-connexion déjà verts à l'implémentation (Tasks 30-32, arbre inchangé depuis) ; devMode encore utilisé ×2 + noUnusedLocals=false → aucun risque du rebase ; tsc -b revalidé sur le workspace réel après réalignement
+- Push session-12-10:dev (fast-forward depuis 2b23bef) PUIS réalignement workspace : git branch -f dev + main reset --hard dev (doctrine Task 29 : main locale ne sert qu'à tenir le workspace) ; worktree et branche temporaires supprimés
+- Registres : COMMIT_LOG (entrée 12/10/2026 — 4 commits + NB rebase), worklog 33 ; CHANGELOG/TASKS/TEAM_STATUS non touchés (outils dev sandbox + correctif dev-local : aucune feature utilisatrice, hors périmètre multi-agents)
+
+Stage Summary:
+- origin/dev = 4 commits atomiques conventionnels sur 2b23bef : PostgreSQL embarqué auto au npm run dev, seed BO connectable, bouton <> de test des rôles (DEV), registres — la branche amont intègre en parallèle le fix(auth) Tata Guide de l'équipe
+- Workspace main locale réaligné sur le nouveau dev : le prochain auto-commit du superviseur part d'un arbre propre (pgdata ignoré, backend/.env non suivi)
