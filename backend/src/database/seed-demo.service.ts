@@ -171,7 +171,17 @@ export class SeedDemoService {
     for (const c of comptesAcreer) {
       try {
         let user = await users.findOne({ where: { phone: c.phone } });
-        const passwordHash = await bcrypt.hash(c.password, 10);
+        // BUG #correctif — le mot de passe des comptes back-office se lit à
+        // RUNTIME, pas via la constante module-level `BO_PASSWORD` : celle-ci
+        // est évaluée à l'IMPORT du module, AVANT que ConfigModule ne remplisse
+        // `process.env` depuis .env (production Render : env injectée au
+        // process, la constante tombait juste ; dev local : hash vide, connexion
+        // BO impossible). Le filtre d'activation (`motDePasseBO`) ci-dessus,
+        // lui, lit déjà l'env au runtime — on s'aligne sur lui.
+        const motDePasseCompte = estCompteBackOffice(String(c.role))
+          ? (motDePasseBackOffice() ?? '')
+          : c.password;
+        const passwordHash = await bcrypt.hash(motDePasseCompte, 10);
         if (!user) {
           const nouveau = users.create({
             phone: c.phone,
