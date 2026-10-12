@@ -6,32 +6,27 @@ import {
 } from 'lucide-react';
 import { ROLE_COLORS } from '../../config/roleConfig';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
-import {
-  kpiDepuis, kpiTuile, texteDuKpi, type EtatLecture,
-} from '../../services/etatLectureBO';
+import { kpiDepuis, texteDuKpi, type EtatLecture } from '../../services/etatLectureBO';
+import { kpiTuile, prefixeDeSigne } from '../../services/tuileKpi';
 import { dateDuJour, type DashboardInstitution } from '../../services/accueilInstitution';
 
 type Mesure = (d: DashboardInstitution) => number | null;
 
-/** `null / 1e9` vaut 0 en JavaScript : un montant illisible deviendrait un zéro. */
-function enMilliards(v: number | null): number {
-  return typeof v === 'number' ? v / 1_000_000_000 : Number.NaN;
-}
-
 /** Les neuf indicateurs macro. Chaque chiffre vient de la réponse du serveur,
  *  par `kpiDepuis` : sans lecture, la tuile dit « Lecture… » ou « Indisponible ». */
 const TUILES_MACRO: ReadonlyArray<{
-  label: string; icon: React.ElementType; color: string; mesure: Mesure; prefix?: string; suffix?: string;
+  label: string; icon: React.ElementType; color: string; mesure: Mesure; signe?: boolean; suffix?: string;
 }> = [
   { label: 'Acteurs actifs', icon: Users, color: '#3B82F6', mesure: d => d.macroKPIs.acteursActifs },
   { label: 'Total acteurs', icon: Users, color: '#A855F7', mesure: d => d.macroKPIs.totalActeurs },
   { label: 'Suspendus', icon: XCircle, color: '#EF4444', mesure: d => d.macroKPIs.acteursSuspendus },
   { label: 'Transactions', icon: Activity, color: '#10B981', mesure: d => d.macroKPIs.volumeTransactions },
-  { label: 'Valeur (Mds FCFA)', icon: TrendingUp, color: '#059669', mesure: d => enMilliards(d.macroKPIs.valeurMonetaire) },
+  // En FCFA entiers : en milliards, 2 500 000 F s'arrondissaient à « 0 ».
+  { label: 'Valeur', icon: TrendingUp, color: '#059669', mesure: d => d.macroKPIs.valeurMonetaire, suffix: 'FCFA' },
   { label: 'Digitalisation', icon: Wifi, color: '#06B6D4', mesure: d => d.macroKPIs.pctDigitalisation, suffix: '%' },
   { label: 'Inclusion CNPS', icon: Shield, color: '#F97316', mesure: d => d.macroKPIs.pctInclusionCNPS, suffix: '%' },
   { label: 'Inclusion CNAM', icon: Heart, color: '#EC4899', mesure: d => d.macroKPIs.pctInclusionCNAM, suffix: '%' },
-  { label: 'Croissance mois', icon: TrendingUp, color: '#14B8A6', mesure: d => d.macroKPIs.croissanceMensuelle, prefix: '+', suffix: '%' },
+  { label: 'Croissance mois', icon: TrendingUp, color: '#14B8A6', mesure: d => d.macroKPIs.croissanceMensuelle, signe: true, suffix: '%' },
 ];
 
 type Anim = { animate: Record<string, number[]>; transition: Record<string, unknown> };
@@ -78,7 +73,7 @@ export function AccueilInstitutionChiffres({ lecture }: { lecture: EtatLecture<D
             const kpi = kpiDepuis(lecture, t.mesure);
             return (
               <UniversalKPI key={t.label} label={t.label} icon={t.icon} color={t.color} delay={i * 30}
-                {...kpiTuile(kpi, undefined, { prefix: t.prefix, suffix: t.suffix })} />
+                {...kpiTuile(kpi, undefined, { prefix: t.signe ? prefixeDeSigne(kpi) : undefined, suffix: t.suffix })} />
             );
           })}
         </KPIGrid>

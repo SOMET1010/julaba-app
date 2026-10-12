@@ -17,7 +17,8 @@ import { CIV_REGIONS_LIST } from '../../data/civ-geography';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { UniversalSectionCardBO } from './universal/UniversalSectionCardBO';
 import { boLire, type Acteur } from '../../services/backoffice-api';
-import { kpiTuile, kpiDepuis, lue, indisponible, enAttente, type EtatLecture } from '../../services/etatLectureBO';
+import { kpiDepuis, lue, indisponible, enAttente, type EtatLecture } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 import { montantLisible } from '../../services/ventesBO';
 import { MOIS_LABELS, performanceRegions, seriesMensuelles, texteMesure } from '../../services/seriesRapportsBO';
 import { GraphiqueIndisponible } from '../shared/GraphiqueIndisponible';
@@ -158,7 +159,7 @@ export function BORapports() {
   // Les séries de transactions ne sont mesurées que si la page chargée contient
   // TOUTES les lignes (sinon « non mesuré ») — voir services/seriesRapportsBO.ts.
   const complet = lectures.transactions.type === 'lue' && transactions.length >= transactionsTotal;
-  const MONTHLY_DATA = seriesMensuelles(acteurs, transactions, complet);
+  const MONTHLY_DATA = seriesMensuelles(acteurs, transactions, complet, new Date(), 12);
   const TYPE_DATA = deriveTypeData(analytics, acteurs);
   const REGION_PERF = performanceRegions(acteurs, transactions, complet)
     .map((r, i) => ({ ...r, color: REGION_COLORS[i] || 'var(--encre-4)' }));

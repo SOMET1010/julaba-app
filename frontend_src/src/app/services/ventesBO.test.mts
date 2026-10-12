@@ -20,8 +20,9 @@ import {
   montantLisible, estVenteRetenue, volumeDesVentes, lireResumeVentes, kpiVolumeVentes,
   kpiVolumeDepuisLecture, texteMontant,
 } from './ventesBO.js';
-import { seriesMensuelles, performanceRegions, texteMesure } from './seriesRapportsBO.js';
-import { kpisTableauDeBord, kpiTuile, lue, enAttente, indisponible } from './etatLectureBO.js';
+import { seriesMensuelles, performanceRegions, texteMesure, totalSerie } from './seriesRapportsBO.js';
+import { kpisTableauDeBord, lue, enAttente, indisponible } from './etatLectureBO.js';
+import { kpiTuile } from './tuileKpi.js';
 
 let echecs = 0;
 const ok = (c: boolean, quoi: string) => { console.log(`  ${c ? '✓' : '✗'} ${quoi}`); if (!c) echecs++; };
@@ -64,16 +65,22 @@ const tx = [
   { type: 'vente', statut: 'validee', montant: '2000000', date: '2026-03-05', region: 'Abidjan' },
   { type: 'depense', statut: 'validee', montant: '9000000', date: '2026-03-06', region: 'Abidjan' },
 ];
-const incomplet = seriesMensuelles(acteurs, tx, false);
-ok(incomplet.length === 1 && incomplet[0].transactions === null && incomplet[0].volume === null,
+const AVRIL = new Date(2026, 3, 15);
+const incomplet = seriesMensuelles(acteurs, tx, false, AVRIL, 2);
+ok(incomplet.length === 2 && incomplet[0].mois === 'Mar' && incomplet[0].transactions === null && incomplet[0].volume === null,
   'page incomplète → transactions et volume « non mesuré » (null)');
-const complet = seriesMensuelles(acteurs, tx, true);
+const complet = seriesMensuelles(acteurs, tx, true, AVRIL, 2);
 ok(complet[0].transactions === 1 && complet[0].volume === 2, 'page complète → 1 vente, 2 M (la dépense ne compte pas)');
 ok(!('commissions' in complet[0]), 'aucune commission dans la série');
 const regions = performanceRegions(acteurs, tx, false);
 ok(regions[0].volume === null && !('commissions' in regions[0]) && !('taux' in regions[0]),
   'régions : volume non mesuré, ni commission ni taux inventé');
 ok(texteMesure(null) === 'non mesuré', 'texteMesure(null) → « non mesuré »');
+ok(seriesMensuelles(acteurs, tx, true, new Date(2027, 3, 15), 2)[0].transactions === 0,
+  'mars 2027 ne reprend pas les ventes de mars 2026 (l\'année compte)');
+ok(totalSerie([1, null]) === null && totalSerie([1, 2]) === 3, 'totalSerie : null si un mois n\'est pas mesuré');
+const ignorees = performanceRegions(acteurs, [{ ...tx[0], region: '' }], true, { nomRegion: () => 'Non défini', regionSansVentes: 'Non défini' });
+ok(ignorees.length === 1 && ignorees[0].volume === 0, 'BODashboard : ventes sans région non rattachées');
 
 console.log('\n— le tableau de bord BO');
 const k = kpisTableauDeBord({
@@ -103,6 +110,14 @@ ok(/\[computeDateRange, currentPage/.test(supervision), 'BOSupervision : changer
 ok(!/commission/i.test(code('components/backoffice/BOActeurDetail.tsx')), 'BOActeurDetail : plus de « Commission: 0 FCFA »');
 ok(/montantLisible\(t\.montant \?\? t\.amount\)/.test(code('contexts/BackOfficeContext.tsx')),
   'BackOfficeContext : montant illisible → absent, pas parseFloat(… || \'0\')');
+const dash = code('components/backoffice/BODashboard.tsx');
+ok(/seriesMensuelles\(acteurs, transactions, transactionsCompletes/.test(dash) && /performanceRegions\(acteurs, transactions, transactionsCompletes/.test(dash),
+  'BODashboard : même définition du volume que Rapports (seriesRapportsBO)');
+ok(!/t\.montant \|\| 0|Number\(t\.montant \|\| 0\)/.test(dash), 'BODashboard : plus de `t.montant || 0`');
+const sup = code('components/institution/InstitutionSupervision.tsx');
+ok(!/amount \?\? 0|\?\? 0\), 0\)|volumeMois|\|\| 0\)\.toLocaleString\(\)\} FCFA/.test(sup),
+  'InstitutionSupervision : ni `?? 0` sur un montant, ni volumeMois');
+ok(/montantLisible\(/.test(sup) && /texteMontant\(/.test(sup), 'InstitutionSupervision : montantLisible / texteMontant');
 const dossier = APP + 'components/institution/';
 for (const f of readdirSync(dossier).filter(n => n.endsWith('.tsx'))) {
   ok(!/\bmacroKPIs\.\w+/.test(code('components/institution/' + f).replace(/d\.macroKPIs/g, '')),

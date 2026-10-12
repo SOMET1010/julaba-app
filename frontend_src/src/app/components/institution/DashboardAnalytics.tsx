@@ -37,7 +37,8 @@ import { Card } from '../ui/card';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
-import { kpiDepuis, kpiTuile, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiDepuis, texteDuKpi } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
 
 const INSTITUTION_COLOR = '#712864';
 const COLORS = ['#712864', '#2072AF', '#2E8B57', '#B74725', '#9F8170'];
@@ -170,8 +171,8 @@ export function DashboardAnalytics() {
 
       <KPIGrid cols={3} className="mb-6">
         <UniversalKPI
-          label="Volume Total (FCFA)"
-          {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire))}
+          label="Volume total"
+          {...kpiTuile(kpiDepuis(lectureDashboard, d => d.macroKPIs.valeurMonetaire), undefined, { suffix: 'FCFA' })}
           icon={DollarSign}
           color="#712864"
           delay={0}

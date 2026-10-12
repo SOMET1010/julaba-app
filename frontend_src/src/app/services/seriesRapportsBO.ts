@@ -33,24 +33,40 @@ export interface PointMensuel {
   readonly volume: number | null;
 }
 
-const moisDe = (v: unknown): number => new Date(String(v ?? '')).getMonth();
 const enMillions = (v: number | null): number | null => (v === null ? null : Math.round(v / 1_000_000));
+/** « 2026-03 » depuis une date lue, ou null si elle est illisible. */
+function cleMois(v: unknown): string | null {
+  const d = new Date(String(v ?? ''));
+  return Number.isNaN(d.getTime()) ? null : `${d.getFullYear()}-${d.getMonth()}`;
+}
 
+/** Les `nbMois` derniers mois (année comprise : mars 2025 ≠ mars 2026). */
 export function seriesMensuelles(
   acteurs: readonly ActeurDate[],
   transactions: readonly TransactionDatee[],
   complet: boolean,
+  maintenant: Date,
+  nbMois: number,
 ): PointMensuel[] {
   const ventes = transactions.filter(estVenteRetenue);
-  return MOIS_LABELS.map((mois, i) => {
-    const duMois = ventes.filter(t => moisDe(t.date ?? t.created_at) === i);
-    return {
-      mois,
-      acteurs: acteurs.filter(a => moisDe(a.dateInscription ?? a.createdAt) === i).length,
+  const points: PointMensuel[] = [];
+  for (let i = nbMois - 1; i >= 0; i--) {
+    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - i, 1);
+    const cle = `${d.getFullYear()}-${d.getMonth()}`;
+    const duMois = ventes.filter(t => cleMois(t.date ?? t.created_at) === cle);
+    points.push({
+      mois: MOIS_LABELS[d.getMonth()],
+      acteurs: acteurs.filter(a => cleMois(a.dateInscription ?? a.createdAt) === cle).length,
       transactions: complet ? duMois.length : null,
       volume: complet ? enMillions(volumeDesVentes(duMois)) : null,
-    };
-  }).filter(m => m.acteurs > 0 || (m.transactions ?? 0) > 0);
+    });
+  }
+  return points;
+}
+
+/** Somme d'une série ; `null` si un seul point n'est pas mesuré. */
+export function totalSerie(valeurs: ReadonlyArray<number | null>): number | null {
+  return valeurs.some(v => v === null) ? null : valeurs.reduce<number>((s, v) => s + (v ?? 0), 0);
 }
 
 export interface PerformanceRegion {
@@ -60,12 +76,21 @@ export interface PerformanceRegion {
   readonly volume: number | null;
 }
 
+export interface OptionsRegions {
+  /** Nom affiché d'une région brute (défaut : tel quel, « Autre » si vide). */
+  readonly nomRegion?: (brut: unknown) => string;
+  /** Région dont les ventes ne sont pas rattachées (ex. « Non défini »). */
+  readonly regionSansVentes?: string;
+  readonly limite?: number;
+}
+
 export function performanceRegions(
   acteurs: readonly ActeurDate[],
   transactions: readonly TransactionDatee[],
   complet: boolean,
+  options: OptionsRegions = {},
 ): PerformanceRegion[] {
-  const nom = (r: unknown) => (typeof r === 'string' && r.trim() ? r : 'Autre');
+  const nom = options.nomRegion ?? ((r: unknown) => (typeof r === 'string' && r.trim() ? r : 'Autre'));
   const parRegion = new Map<string, { acteurs: number; ventes: TransactionDatee[] }>();
   const de = (r: string) => {
     let entree = parRegion.get(r);
@@ -73,10 +98,13 @@ export function performanceRegions(
     return entree;
   };
   acteurs.forEach(a => { de(nom(a.region)).acteurs++; });
-  transactions.filter(estVenteRetenue).forEach(t => { de(nom(t.region)).ventes.push(t); });
+  transactions.filter(estVenteRetenue).forEach(t => {
+    const r = nom(t.region);
+    if (r !== options.regionSansVentes) de(r).ventes.push(t);
+  });
   return [...parRegion.entries()]
     .sort((a, b) => b[1].acteurs - a[1].acteurs)
-    .slice(0, 6)
+    .slice(0, options.limite ?? 6)
     .map(([region, d]) => ({
       region,
       acteurs: d.acteurs,

@@ -128,8 +128,8 @@ export class InstitutionDashboardController {
       macroKPIs: {
         ...macroActeurs,
         volumeTransactions, valeurMonetaire,
-        valeurMonetaireFormatted: valeurMonetaire === null ? null
-          : Math.round((valeurMonetaire / 1_000_000_000) * 100) / 100,
+        // Plus de valeur « formatée » en milliards arrondis à 0,01 :
+        // 2 500 000 F y valaient 0. Le front affiche valeurMonetaire en FCFA.
         montantsIllisibles: ventes.montants_illisibles,
         valeurMoyenne,
         // La part « digitale » se lisait sur le portefeuille Keiwa (hors
