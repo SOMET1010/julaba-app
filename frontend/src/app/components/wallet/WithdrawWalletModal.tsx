@@ -200,7 +200,11 @@ export function WithdrawWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
           handleClose();
         } else if (statut === 'FAILED') {
           clearInterval(interval);
-          setError('Paiement échoué. Réessaie.');
+          // C-01 : un retrait refusé par l'opérateur est remboursé sur Keiwa
+          // (réconciliation) — on rafraîchit le solde et on le dit.
+          await refreshKeiwa();
+          setError('Retrait refusé par l\'opérateur. Le montant est revenu sur ton solde Keiwa.');
+          speak('Retrait refusé. Le montant est revenu sur ton solde Keiwa.');
           setEtapeAttente(false);
         }
       } catch (e: any) {
@@ -210,7 +214,10 @@ export function WithdrawWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
     const timeout = setTimeout(() => {
       clearInterval(interval);
       setEtapeAttente(false);
-      setError('Délai dépassé. Si prélevé, ton solde sera mis à jour automatiquement.');
+      // C-01 : plus d'échec silencieux — le retrait reste réconcilié côté
+      // serveur (webhook/cron), le solde reflètera le verdict opérateur.
+      refreshKeiwa();
+      setError('L\'opérateur ne répond pas encore. Ton solde est débité : si le retrait échoue, le montant sera automatiquement remboursé sur Keiwa.');
     }, 180000);
     return () => { clearInterval(interval); clearTimeout(timeout); };
   }, [etapeAttente, payTokenEnCours]);
