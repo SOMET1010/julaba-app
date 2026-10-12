@@ -791,38 +791,6 @@ export async function boUpdateCooperative(id: string, data: Partial<Cooperative>
   return handleResponse(res);
 }
 
-export async function boGetDashboard(): Promise<DashboardStats> {
-  try {
-    const res = await fetch(`${API_URL}/users`, { headers: authHeaders(), credentials: 'include' });
-    if (!res.ok) return { total_acteurs: 0, total_transactions: 0, total_cooperatives: 0, montant_total: 0, nouveaux_acteurs_semaine: 0 };
-    const data = await res.json();
-    const users = Array.isArray(data) ? data : (data.data || data.users || []);
-    const total = typeof data.total === 'number' ? data.total : users.length;
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
-    const now = Date.now();
-    const nouveaux_acteurs_semaine = users.filter((u: Record<string, unknown>) => {
-      const d = u.created_at ?? u.createdAt;
-      if (!d || typeof d !== 'string') return false;
-      const t = new Date(d).getTime();
-      return !Number.isNaN(t) && now - t <= weekMs;
-    }).length;
-    const coopIds = new Set(
-      users
-        .map((u: Record<string, unknown>) => u.cooperative_id ?? u.cooperativeId)
-        .filter((id: unknown): id is string => typeof id === 'string' && id.length > 0),
-    );
-    return {
-      total_acteurs: total,
-      total_transactions: 0,
-      total_cooperatives: coopIds.size,
-      montant_total: 0,
-      nouveaux_acteurs_semaine,
-    };
-  } catch {
-    return { total_acteurs: 0, total_transactions: 0, total_cooperatives: 0, montant_total: 0, nouveaux_acteurs_semaine: 0 };
-  }
-}
-
 export async function boGetRapports() {
   try {
     const res = await fetch(`${API_URL}/rapport/rapports`, { headers: authHeaders(), credentials: 'include' });

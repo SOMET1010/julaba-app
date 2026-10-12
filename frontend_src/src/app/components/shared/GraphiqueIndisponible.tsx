@@ -3,12 +3,20 @@ import { MOT_INDISPONIBLE } from '../../services/etatLectureBO';
 /**
  * À la place d'un graphique dont les données n'existent pas : le mot
  * « Indisponible » et la raison. Jamais une courbe inventée, jamais des zéros.
+ * Couleurs, typographie et espacements : jetons de styles/commerce.css.
  */
 export function GraphiqueIndisponible({ raison, hauteur }: { raison: string; hauteur: number }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center gap-1" style={{ minHeight: hauteur }}>
-      <p className="font-bold text-gray-700">{MOT_INDISPONIBLE}</p>
-      <p className="text-sm text-gray-500">{raison.charAt(0).toUpperCase() + raison.slice(1)}.</p>
+    <div
+      style={{
+        minHeight: hauteur, display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', textAlign: 'center', gap: 'var(--caisse-esp-1)',
+      }}
+    >
+      <p style={{ font: 'var(--caisse-font-texte)', fontWeight: 700, color: 'var(--commerce-ink)' }}>{MOT_INDISPONIBLE}</p>
+      <p style={{ font: 'var(--caisse-font-legende)', color: 'var(--caisse-gris-texte)' }}>
+        {raison.charAt(0).toUpperCase() + raison.slice(1)}.
+      </p>
     </div>
   );
 }

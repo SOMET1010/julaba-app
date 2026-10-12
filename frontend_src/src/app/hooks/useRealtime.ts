@@ -14,7 +14,8 @@ export interface RealtimeStats {
   total_transactions: number;
   transactions_heure: number;
   total_cooperatives: number;
-  montant_total: number;
+  /** `null` = un montant de vente illisible côté serveur, jamais 0. */
+  montant_total: number | null;
   nouveaux_acteurs_semaine: number;
   utilisateurs_actifs: number;
   timestamp: string;
@@ -49,7 +50,7 @@ export interface SystemHealth {
 export interface TimelinePoint {
   time: string;
   transactions: number;
-  volume: number;
+  volume: number | null;
 }
 
 export interface RealtimeState {
