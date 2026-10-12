@@ -8,6 +8,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Wallet } from '../wallets/entities/wallet.entity';
 import { WalletTransaction, TransactionType } from '../wallets/entities/wallet-transaction.entity';
 import { WalletsService } from '../wallets/wallets.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Controller('bpay')
 export class BpayController {
@@ -18,6 +19,7 @@ export class BpayController {
     private readonly configService: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly walletsService: WalletsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Post('callback')
@@ -31,21 +33,34 @@ export class BpayController {
       return { received: true };
     }
     try {
-      const payToken = body?.pay_token || body?.payToken || body?.token;
-      if (!payToken) {
+      // B-Pay peut désigner la transaction par son pay_token OU par la
+      // référence marchande (cashin = retrait : le pay_token réel n'existe
+      // pas côté opérateur, notre merchantTransactionId fait foi).
+      const candidats = [
+        body?.pay_token, body?.payToken, body?.token,
+        body?.merchant_transaction_id, body?.merchantTransactionId,
+      ].filter((v: unknown): v is string => typeof v === 'string' && v.length > 0);
+      if (candidats.length === 0) {
         this.logger.warn('[BPAY CALLBACK] payToken manquant — ignoré');
         return { received: true };
       }
+      const payToken = candidats[0];
       this.logger.log(`[BPAY CALLBACK] Reçu pour payToken=${payToken}`);
       const tx = await this.dataSource.query(
-        `SELECT * FROM bpay_transactions WHERE pay_token = $1`, [payToken]
+        `SELECT * FROM bpay_transactions WHERE pay_token = ANY($1) OR merchant_tx_id = ANY($1) LIMIT 1`, [candidats]
       );
       if (!tx || tx.length === 0) {
         this.logger.warn(`[BPAY CALLBACK] Transaction inconnue payToken=${payToken}`);
         return { received: true };
       }
       const transaction = tx[0];
-      if (transaction.status !== 'PENDING') {
+      const estRetrait = transaction.type === 'RETRAIT';
+      // Recharge : uniquement PENDING. Retrait : PENDING_WITHDRAW (argent
+      // déjà débité, verdict opérateur en attente) — c'était le trou C-01 :
+      // le webhook ignorait les retraits (status !== 'PENDING') et un cashin
+      // qui échouait ASYNCHRONEMENT n'était jamais remboursé.
+      const statutsAcceptes = estRetrait ? ['PENDING_WITHDRAW'] : ['PENDING'];
+      if (!statutsAcceptes.includes(transaction.status)) {
         this.logger.warn(`[BPAY CALLBACK] Déjà traité payToken=${payToken} status=${transaction.status}`);
         return { received: true };
       }
@@ -61,6 +76,43 @@ export class BpayController {
       const newStatus = statusMap[bpayStatut] || 'FAILED';
       if (newStatus === 'PENDING') {
         this.logger.log(`[BPAY CALLBACK] Toujours PENDING — attente cron`);
+        return { received: true };
+      }
+      if (estRetrait) {
+        if (newStatus === 'COMPLETED') {
+          const updated = await this.dataSource.query(
+            `UPDATE bpay_transactions SET status='COMPLETED', bpay_status=$1, source='webhook', updated_at=NOW() WHERE id=$2 AND status='PENDING_WITHDRAW' RETURNING id`,
+            [bpayStatut, transaction.id],
+          );
+          if (updated && updated.length > 0) {
+            await this.notificationsService.create({
+              userId: transaction.user_id,
+              type: 'retrait_effectue',
+              titre: 'Retrait effectué',
+              message: `Ton retrait de ${Number(transaction.amount).toLocaleString('fr-FR')} FCFA vers ${transaction.provider} a été envoyé.`,
+              priority: 'high',
+              role: 'marchand',
+              category: 'paiement',
+              icon: '💸',
+            });
+            this.logger.log(`[BPAY CALLBACK] Retrait COMPLETED payToken=${payToken}`);
+          }
+        } else {
+          const rembourse = await this.walletsService.rembourserRetraitBpay(transaction, bpayStatut, 'webhook');
+          if (rembourse) {
+            await this.notificationsService.create({
+              userId: transaction.user_id,
+              type: 'retrait_rembourse',
+              titre: 'Retrait remboursé',
+              message: `Le retrait de ${Number(transaction.amount).toLocaleString('fr-FR')} FCFA vers ${transaction.provider} a été refusé par l'opérateur. Le montant est revenu sur ton solde Keiwa.`,
+              priority: 'high',
+              role: 'marchand',
+              category: 'paiement',
+              icon: '↩️',
+            });
+            this.logger.log(`[BPAY CALLBACK] Retrait REFUNDED payToken=${payToken}`);
+          }
+        }
         return { received: true };
       }
       if (newStatus === 'FAILED') {
