@@ -182,6 +182,12 @@ const TEST_PHONES = new Set<string>([
   '2200000000', // Compte institutionnel DGE
 ]);
 
+/** Légendes téléphone du pavé (maquette 12/10/2026) : 2 ABC, 3 DEF… Décoratives —
+ *  l'aria-label reste « Chiffre N », les lettres ne se disent jamais. */
+const LETTRES_DU_PAVE: Readonly<Record<string, string>> = {
+  '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO', '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+',
+};
+
 export function LoginPassword() {
   const navigate = useNavigate();
   const { setUser: setAppUser, setAccessToken, refreshUserData } = useApp();
@@ -1092,14 +1098,31 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
-        <div className="login-guide">
-          <img src={tataNantiLou} alt="Tantie Nanti Lou" />
-          <button type="button" onClick={ecouterTata} className="login-replay"
-            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
-            <Volume2 aria-hidden="true" size={26} />
-          </button>
-        </div>
+        <p className="login-slogan">L'allié des commerçants</p>
+        <h1>{step === 'phone' ? 'Ton numéro de téléphone' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
+        {step === 'phone' && <p className="login-sous-titre">Pour accéder immédiatement à ton carnet de caisse</p>}
+        {step === 'phone' ? (
+          <div className="login-tata-carte">
+            <img src={tataNantiLou} alt="Tantie Nanti Lou" />
+            <span className="login-tata-id">
+              <span className="login-tata-nom">Tantie Nanti Lou <span className="login-tata-badge">Guilde</span></span>
+              <span className="login-tata-ligne">Aide-toi ici en boutique. Dioula & FR</span>
+            </span>
+            <button type="button" onClick={ecouterTata} className="login-tata-ecouter"
+              aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
+              <Volume2 aria-hidden="true" size={18} />
+              <span>{tataSpeaking ? '…' : 'Écouter'}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="login-guide">
+            <img src={tataNantiLou} alt="Tantie Nanti Lou" />
+            <button type="button" onClick={ecouterTata} className="login-replay"
+              aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
+              <Volume2 aria-hidden="true" size={26} />
+            </button>
+          </div>
+        )}
         {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
         {devMode && (
           <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
@@ -1229,12 +1252,19 @@ export function LoginPassword() {
                 « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre.
                 AUTH-04 : chaque chiffre peut S'ILLUMINER à tour de rôle (relecture). */}
             <div className="login-number">
-              <span style={{ color: 'var(--encre-3)' }}>+225</span>
+              <span className="login-devise"><span className="login-devise-drapeau" aria-hidden="true">🇨🇮</span>+225</span>
               <span className="login-number-value" aria-label={phone.length ? 'Numéro saisi' : 'Numéro à saisir'}>
-                {phone.length ? (phone.match(/.{1,2}/g) || []).map((paire, gi, groupes) => (
-                  <span key={gi} style={{ display: 'inline-block', marginRight: gi < groupes.length - 1 ? '0.4em' : 0 }}>
-                    {paire.split('').map((c, di) => {
+                {/* CINQ paires TOUJOURS rendues (maquette 12/10/2026) : les chiffres
+                    saisis se montrent, les positions attendues restent des points —
+                    la forme du numéro complet est visible, la progression se lit
+                    d'un coup d'œil. L'illumination de relecture (AUTH-04) saute
+                    uniquement de chiffre saisi en chiffre saisi. */}
+                {Array.from({ length: 5 }).map((_, gi) => (
+                  <span key={gi} style={{ display: 'inline-block', marginRight: gi < 4 ? '0.4em' : 0 }}>
+                    {[0, 1].map((di) => {
                       const idx = gi * 2 + di;
+                      const c = phone[idx];
+                      if (c === undefined) return <span key={di} className="login-chiffre-vides">•</span>;
                       const illumine = idx === relecturePos;
                       return (
                         <span key={di} style={illumine ? {
@@ -1245,7 +1275,7 @@ export function LoginPassword() {
                       );
                     })}
                   </span>
-                )) : '— — — — —'}
+                ))}
               </span>
               {/* CORRECTIF : ce bouton n'apparaissait qu'à 10 chiffres pile —
                   donc jamais dans le cas qui en a le plus besoin, celui où la
@@ -1283,24 +1313,30 @@ export function LoginPassword() {
                 mot dès que le numéro est là. La confirmation reste seule en
                 action principale. */}
             {voixEcouteDispo && (
-            <motion.button
-              type="button"
-              aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
-              onPointerDown={(e) => e.preventDefault()}
-              onClick={dicterNumero}
-              className="login-dictate"
-              aria-pressed={isListening}
-              disabled={isLoading || isFinalizingDictation}
-              whileTap={{ scale: 0.96 }}
-              style={numeroSaisi && !isListening
-                ? { opacity: 0.75, transform: 'scale(0.94)' }
-                : undefined}
-            >
-              <Mic aria-hidden="true" size={numeroSaisi && !isListening ? 26 : 36} />
-              <span>{isListening
-                ? 'Écoute en cours…'
-                : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
-            </motion.button>
+            <div className="login-dictee-carte">
+              <motion.button
+                type="button"
+                aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={dicterNumero}
+                className="login-dictee-pill"
+                aria-pressed={isListening}
+                disabled={isLoading || isFinalizingDictation}
+                whileTap={{ scale: 0.96 }}
+                style={numeroSaisi && !isListening ? { opacity: 0.75 } : undefined}
+              >
+                <Mic aria-hidden="true" size={22} />
+                <span>{isListening
+                  ? 'J’écoute…'
+                  : numeroSaisi ? 'Redire mon numéro' : 'Dicter mon numéro'}</span>
+              </motion.button>
+              {/* L'état du micro SE VOIT (point qui pulse) et SE LIT — il n'est
+                  pas dit : la dictée annonce déjà elle-même son écoute. */}
+              <span className="login-dictee-badge" data-ouvert={isListening ? 'true' : 'false'} role="status" aria-live="polite">
+                <span className="login-dictee-point" aria-hidden="true" />
+                <span className="login-dictee-texte">{isListening ? 'Micro ouvert' : 'Micro en veille'}</span>
+              </span>
+            </div>
             )}
             <BanniereErreur cle="phone-error-banner" message={error} margeBas={8} />
             {isLoading && step === 'phone' && (
@@ -1362,6 +1398,13 @@ export function LoginPassword() {
                 surEffacer={handleKeyDelete}
                 surEmpreinte={handleBiometric}
                 empreinteLabel="Connexion par empreinte"
+                sousLegendePour={(d) => LETTRES_DU_PAVE[d]}
+                toucheGauche={voixEcouteDispo ? {
+                  contenu: <Mic aria-hidden="true" size={24} color="var(--commerce-green)" />,
+                  ariaLabel: numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro',
+                  onClick: dicterNumero,
+                  disabled: isLoading || isFinalizingDictation,
+                } : undefined}
               />
             </div>
             </>
