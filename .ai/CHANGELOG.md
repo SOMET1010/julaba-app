@@ -5,6 +5,16 @@
 
 
 
+### Nettoyé — Libération des variables d'environnement mortes (2026-10-12, 4ᵉ session)
+
+Sur demande utilisateur (« regarde dans le projet complet, les variables d'environnements qui ne sont plus utilisées, libère tout ») — audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis libération :
+
+- **backend/.env.example** −5 clés jamais lues : BPAY_RECONCILIATION (le cron passe par le registre CRON_JOB_BPAY_RECONCILIATION), FEEDBAK_SMS_TEMPLATES / VOICE_PROVIDERS / VOICE_METRIC_LABELS (constantes de code homonymes, env jamais lue), ODOO_CLIENT (symbole d'injection NestJS ; la bascule = ODOO_CLIENT_MODE)
+- **render.yaml + infra/odoo-poc/backend-poc/docker-compose.yml** : TTS_DISABLE_CLOUD retirée (jamais lue ; le flag réel = VOICE_LOCAL_TTS)
+- **frontend/src/vite-env.d.ts** : type VITE_SENTRY_DSN retiré (jamais lu, jamais posé ; DSN en dur dans sentry.ts)
+- 10 lignes supprimées, 4 fichiers, zéro code touché ; inventaire utilisé-mais-non-déclaré documenté dans REVIEW-007 (VITE_CLOUDINARY_*, AUTH_TELEPHONES_TEST, outillage BANC_*/RECETTE_* — délibéré)
+- Vérifications : typecheck EXIT 0, test:ci EXIT 0 (chaîne gelée intacte), enum-check-phone EXIT 0, garde-argent = baseline héritée exacte (3 refus connus, aucun fichier touché impliqué)
+
 ### Fusionné — retours terrain PIE 07/10 + cadre CI racine (main → dev, 2026-10-07, 3ᵉ session)
 
 Sur demande utilisateur (« regarde les derniers push de main, fais un audit et fais un merge des dernières améliorations ») — audit REVIEW-006 puis fusion sur dev en worktree isolé (main jamais poussé) :
