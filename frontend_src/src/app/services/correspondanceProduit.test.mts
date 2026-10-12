@@ -59,6 +59,8 @@ for (const rel of [
   ok(!/PRODUIT_IMAGES|PRODUITS_ICONS|function (imageForProduit|getProduitFallbackImage|findProduitIconImg)/.test(code)
     && code.includes('getImageByNom('), `${rel} : getImageByNom, pas de table locale`);
 }
+ok(/const produitImage = produit \? getImageByNom\(produit\) : ''/.test(lire('components/marchand/SaisieGuidee.tsx')),
+  'SaisieGuidee : getImageByNom seul (la recherche floue donnait la banane douce au plantain)');
 const fichiers = (d: string): string[] => readdirSync(d).flatMap(e => {
   const p = `${d}/${e}`;
   return statSync(p).isDirectory() ? fichiers(p) : /\.tsx?$/.test(p) ? [p] : [];
