@@ -257,3 +257,15 @@ docs: registres session — vérification C-01, resync arbre     (tâche 38)
 - Session de reprise après coupure de contexte : le résumé périmé annonçait C-01 « à faire » alors que la tâche 37 l'avait déjà poussé. Aucun code produit : attestation de première main du fix (controller/service/cron/webhook conformes à la prescription audit :157), re-jeu des gates sur le contenu poussé (tsc front/back 0 · lint racine 0), resynchronisation de l'arbre principal sur origin/dev (worklog + COMMIT_LOG + LoginPassword.tsx du fix amont f739a66), nettoyage du bruit de modes 644→755 (2049 fichiers, 0 ligne).
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 12/10/2026 — Déploiement PM2 (agent Z.ai Code)
+
+```
+chore(deploy): PM2 hôte — julaba-dev.ansut.ci (backend :3004, statique :8080)   (tâche 39)
+docs: registres session — déploiement PM2 (tâche 39)                            (tâche 39)
+```
+
+- `chore(deploy)` : ecosystem.config.cjs (backend PM2 en fork strict, .env.production chargé via dotenv — précédence identique à env_file du compose) + docs/DEPLOIEMENT-PM2.md (guide 11 sections calé sur l'infra réelle : nginx 443 julaba-dev.ansut.ci → /api + socket.io sur 127.0.0.1:3004, statique sur 8080 ; BD compose postgres 5433 ou système ; migrations typeorm hoisté ; redéploiement zéro downtime ; 6 pièges repo — fork non cluster, secrets fail-fast, .env.production jamais commité, non-cumul Docker/PM2).
+- Batteries : eslint sur ecosystem.config.cjs exit 0 ; 0 fichier TypeScript modifié (aucune gate tsc requise) ; doc vérifiée de première main (dotenv + typeorm hoistés, PORT lu à main.ts:270/:277, health /api/v1/health du compose).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).

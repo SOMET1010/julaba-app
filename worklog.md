@@ -977,3 +977,21 @@ Stage Summary:
 - Aucun code produit : session de vérification + resynchronisation ; C-01 confirmé FERMÉ sur origin/dev (invariants 6/6, régression 18/18, vérification vivante cités par la Task 37)
 - L'arbre principal == origin/dev en contenu ; prochain Task ID = 39
 - Prochain chantier P1 en attente d'approbation : C-02 comptabilisation coopérative (ou C-07 webhooks HMAC + unicité pay_token)
+
+---
+Task ID: 39
+Agent: Z.ai Code (sandbox)
+Task: « donnes moi l'instruction pour deployer avec pm2 » + « Voici le port adapté et le nom de domaine [...] et fais le push » — artefacts de déploiement PM2 calés sur l'infra réelle (julaba-dev.ansut.ci), puis push
+
+Work Log:
+- Lecture de première main : backend/package.json (start:prod = node dist/main), .env.production.example (DB_HOST=postgres docker, 3 secrets fail-fast, WEBAUTHN), docker-compose.yml (postgres:16-alpine exposé 127.0.0.1:5433, backend 3001:3000), main.ts (PORT env :270/:277, listen 0.0.0.0, verifierSecretsProduction), app.module.ts (ConfigModule lit .env — les vraies variables d'env priment), nginx/frontend.conf (proxy /api + /socket.io), deploy.yml (prod actuelle = docker sur /var/www/julaba, port 3001)
+- Infra utilisateur (nginx hôte julaba-dev.ansut.ci) : /api/ et /socket.io/ → 127.0.0.1:3004 ; / et assets → 127.0.0.1:8080 ; 443 ssl ; root /var/www/html (ACME)
+- ecosystem.config.cjs (racine, commité) : charge backend/.env.production via dotenv (précédence = même comportement que env_file du compose), app julaba-backend FORK instances:1 (cron B-PAY de réconciliation C-01, webhooks, socket.io = 1 seul process — jamais cluster), max_memory_restart 600M, time:true
+- docs/DEPLOIEMENT-PM2.md (11 sections) : architecture 443 → 3004/8080, prérequis, BD (option A compose postgres 5433 / option B système), .env.production adapté PM2 (PORT=3004, DB_HOST=127.0.0.1, CORS_ORIGIN/WEBAUTHN julaba-dev.ansut.ci, SEED_DEMO=false), build, pm2 start ecosystem + pm2 serve dist 8080 --spa + save/startup, conf nginx attendue, migrations (typeorm hoisté racine — ../node_modules depuis backend/), redéploiement zéro downtime, exploitation, 6 pièges repo
+- Vérifications : dotenv hoisté à la racine (require OK depuis ecosystem), eslint sur ecosystem.config.cjs exit 0, typeorm/cli.js confirmé hoisté racine, health /api/v1/health (même check que le healthcheck compose)
+- PIÈGE CANAL (2 timeouts à cause de ça) : DEUX heredocs dans une même commande bash = bash parse le compound AVANT d'exécuter — le premier heredoc avale tout jusqu'au dernier terminateur, le second n'a plus d'entrée → le shell bloque indéfiniment et RIEN ne s'exécute (même pas les commandes d'avant le heredoc). Règle : UN SEUL heredoc par commande bash, ou messages de commit écrits dans des fichiers (git commit -F).
+
+Stage Summary:
+- ecosystem.config.cjs + docs/DEPLOIEMENT-PM2.md poussés sur origin/dev (2 commits atomiques : artefacts + registres) — variante hôte PM2 : julaba-dev.ansut.ci, backend :3004, statique :8080
+- La prod docker existante (deploy.yml, port 3001) reste le mode de référence ; PM2 = variante documentée sans Docker pour le backend
+- Prochain Task ID = 40 ; chantiers P1 toujours en file : C-02 comptabilisation coopérative, C-07 webhooks HMAC + unicité pay_token
