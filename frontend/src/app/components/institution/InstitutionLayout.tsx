@@ -6,7 +6,6 @@ import {
   Lock, ShieldOff,
 } from 'lucide-react';
 import { useInstitutionAccess } from '../../contexts/InstitutionAccessContext';
-import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
 import { useUser } from '../../contexts/UserContext';
 import { ModuleAcces } from '../../contexts/BackOfficeContext';
@@ -352,7 +351,6 @@ export function InstitutionLayout() {
             Retour à l'accueil
           </motion.button>
         </motion.div>
-        {import.meta.env.DEV && <ProfileSwitcher />}
       </div>
     );
   }
@@ -365,7 +363,6 @@ export function InstitutionLayout() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full animate-pulse" style={{ backgroundColor: `${PRIMARY_COLOR}20` }} />
           <p className="text-gray-500">Chargement du profil institution...</p>
         </div>
-        {import.meta.env.DEV && <ProfileSwitcher />}
       </div>
     );
   }
@@ -381,7 +378,6 @@ export function InstitutionLayout() {
     return (
       <div className="min-h-screen bg-gray-50">
         <InstitutionSuspended />
-        {import.meta.env.DEV && <ProfileSwitcher />}
       </div>
     );
   }
@@ -435,9 +431,6 @@ export function InstitutionLayout() {
 
       {/* Navigation mobile — filtrée */}
       <BottomNav navItems={navItems} institutionProfil={institutionProfil} />
-
-      {/* Dev only */}
-      {import.meta.env.DEV && <ProfileSwitcher />}
     </div>
   );
 }
