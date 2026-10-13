@@ -21,7 +21,6 @@ import { ZoneProvider } from '../../contexts/ZoneContext';
 import { useIdleTimer } from '../../hooks/useIdleTimer';
 import { BOShortcutsModal } from './BOShortcutsModal';
 import { ScrollToTop } from '../layout/ScrollToTop';
-import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { IMG_LOGO_JULABA } from '../../assets/images';
 import { BrandSignature } from '../shared/BrandSignature';
 import { moduleVisible } from '../../config/modulesPilote';
@@ -1445,8 +1444,6 @@ export function BOLayout() {
         </div>
       </div>
 
-      {/* ProfileSwitcher en mode DEV */}
-      {import.meta.env.DEV && <ProfileSwitcher />}
     </div>
     </ZoneProvider>
   );

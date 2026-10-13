@@ -8,7 +8,6 @@ import { ProducteurProvider } from '../../contexts/ProducteurContext';
 import { CooperativeProvider } from '../../contexts/CooperativeContext';
 import { Sidebar } from '../layout/Sidebar';
 import { BottomBar } from '../layout/BottomBar';
-import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { ScrollToTop } from '../layout/ScrollToTop';
 import { useApp } from '../../contexts/AppContext';
 import { AnimatePresence, motion } from 'motion/react';
@@ -78,8 +77,6 @@ export function IdentificateurLayout() {
                   role={user.role}
                 />
 
-                {/* Dev only */}
-                {import.meta.env.DEV && <ProfileSwitcher />}
               </div>
             </CooperativeProvider>
           </ProducteurProvider>

@@ -9,7 +9,6 @@ import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
-import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import logoJulaba from '../../../assets/images/logo-julaba.svg';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { BrandSignature } from '../shared/BrandSignature';
@@ -1083,16 +1082,6 @@ export function LoginPassword() {
         setError('');
         setPhone(numero);
       }} />
-      {import.meta.env.DEV && showDevButton && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 999 }}
-        >
-          <ProfileSwitcher forceShow={true} />
-        </motion.div>
-      )}
 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
