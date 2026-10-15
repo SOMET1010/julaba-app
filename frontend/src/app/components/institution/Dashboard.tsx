@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { TrendingUp, Users, DollarSign } from 'lucide-react';
 import { Card } from '../ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
@@ -164,6 +165,8 @@ export function Dashboard() {
             </div>
           </Card>
         </motion.div>
+        {/* Dev Profile Switcher - Only in development */}
+        {import.meta.env.DEV && <ProfileSwitcher />}
       </div>
     </SubPageLayout>
   );

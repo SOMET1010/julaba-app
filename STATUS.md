@@ -53,9 +53,22 @@ l'aperçu local**, pas sur une URL de preview.
 
 ## Livrable en cours
 
-**Aucun.** La session précédente a livré le Lot A (authentification d'agent) et
-l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
-« Proposition » plus bas.
+**Vue de connexion ramenée à celle de `main` + Rapport et Dev Mode
+réinstallés** (session 15/10, demande expresse du propriétaire).
+- `LoginPassword.tsx` = version de `main` (`24b40b3`) : le redesign maquette
+  12/10 (slogan, carte Tata, micro au bout de la ligne, pavé avec lettres) et
+  le menu `<>` des rôles sont **retirés** — retour volontaire à l'écran de main.
+- Revert de `e04fa73` : bouton 🐞 **Rapport** fixe dans `AppLayout` (tous les
+  écrans connectés, demande Patrick 28/09) + bouton « Rapport de test » au bas
+  de la connexion, et **ProfileSwitcher** (Dev Mode) rémonté sur les 6 écrans.
+- Preuve : `tsc` 0, `build` OK, `test:ci` vert, `verify` **identique au
+  départ** (7 rouges, tous préexistants — comparaison avant/après).
+- Écart à connaître : la 5e assertion de `test:voix-trace-source` —
+  « l'écran de connexion n'embarque plus le doublon (arbitré REVIEW-004) » —
+  tombe désormais ; le maillon est déjà 🟠 connu (VOICE-01), donc aucun rouge
+  nouveau. L'arbitrage REVIEW-004 est **contrarié** par cette demande.
+
+La session précédente a livré le Lot A (authentification d'agent) et l'a poussé.
 
 ---
 
