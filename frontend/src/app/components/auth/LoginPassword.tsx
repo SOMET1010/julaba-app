@@ -5,10 +5,11 @@ import { motion, AnimatePresence } from 'motion/react';
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
-import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check, Play } from 'lucide-react';
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye, Keyboard, Check, Play } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
+import { ProfileSwitcher } from '../dev/ProfileSwitcher';
 import logoJulaba from '../../../assets/images/logo-julaba.svg';
 import tataNantiLou from '../../../assets/images/tata-nanti-lou.png';
 import { BrandSignature } from '../shared/BrandSignature';
@@ -98,9 +99,6 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
 import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
-// Atelier du testeur — bouton `<>` haut-droite : sauter sur un autre rôle
-// (DEV uniquement, silencieux — voir MenuRolesTest.tsx).
-import { MenuRolesTest } from './MenuRolesTest';
 // AUTH-10 — le geste caché du mode développeur, sorti de l'écran.
 import { useDevMode } from '../../hooks/useDevMode';
 // AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
@@ -120,7 +118,7 @@ import { PaveSaisie } from './PaveSaisie';
  *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
-import { vlog, vlogStart } from '../../utils/voiceDebug';
+import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 // AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
@@ -183,12 +181,6 @@ const TEST_PHONES = new Set<string>([
   '2100000000', // Compte institutionnel ANSUT
   '2200000000', // Compte institutionnel DGE
 ]);
-
-/** Légendes téléphone du pavé (maquette 12/10/2026) : 2 ABC, 3 DEF… Décoratives —
- *  l'aria-label reste « Chiffre N », les lettres ne se disent jamais. */
-const LETTRES_DU_PAVE: Readonly<Record<string, string>> = {
-  '2': 'ABC', '3': 'DEF', '4': 'GHI', '5': 'JKL', '6': 'MNO', '7': 'PQRS', '8': 'TUV', '9': 'WXYZ', '0': '+',
-};
 
 export function LoginPassword() {
   const navigate = useNavigate();
@@ -366,8 +358,10 @@ export function LoginPassword() {
   // L'erreur se SENT (vibration longue) quel que soit le profil — et se dit
   // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
   // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
-  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas).
-  // vlogStart enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
+  // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
+  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
+  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
+  // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
   // Doit rester le PREMIER effet du composant : les suivants y écrivent.
   useEffect(() => {
     vlogStart('login');
@@ -751,8 +745,9 @@ export function LoginPassword() {
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
     if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
     setIsLoading(true); setError('');
-    // Espion de connexion : trace l'URL réellement appelée et le résultat pour
-    // le diagnostic technique interne.
+    // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
+    // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
+    // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
     vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
     try {
       const controller = new AbortController();
@@ -1072,16 +1067,16 @@ export function LoginPassword() {
     }}>
       {/* Zone invisible (coin haut-gauche) : 5 tapes = mode développeur (caché à la marchande) */}
       <div onClick={toggleDevMode} aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: 54, height: 54, zIndex: 60 }} />
-      {/* Tester les autres rôles (DEV) : menu `<>` haut-droite — préremplit le
-          numéro du compte de recette du rôle, ou ouvre la porte BackOffice. */}
-      <MenuRolesTest onChoisirNumero={(numero) => {
-        annulerRelecture();
-        if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
-        setStep('phone');
-        setPinInput('');
-        setError('');
-        setPhone(numero);
-      }} />
+      {import.meta.env.DEV && showDevButton && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 999 }}
+        >
+          <ProfileSwitcher forceShow={true} />
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -1100,29 +1095,17 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <p className="login-slogan">L'allié des commerçants</p>
-        <h1>{step === 'phone' ? 'Ton numéro de téléphone' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
-        {step === 'phone' && <p className="login-sous-titre">Pour accéder immédiatement à ton carnet de caisse</p>}
-        {step === 'phone' ? (
-          <div className="login-tata-carte">
-            <img src={tataNantiLou} alt="Tantie Nanti Lou" />
-            <span className="login-tata-id">
-              <span className="login-tata-nom">Tantie Nanti Lou <span className="login-tata-badge">Guide</span></span>
-            </span>
-            <button type="button" onClick={ecouterTata} className="login-tata-ecouter"
-              aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
-              <Volume2 aria-hidden="true" size={18} />
-              <span>{tataSpeaking ? '…' : 'Écouter'}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="login-guide">
-            <img src={tataNantiLou} alt="Tantie Nanti Lou" />
-            <button type="button" onClick={ecouterTata} className="login-replay"
-              aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
-              <Volume2 aria-hidden="true" size={26} />
-            </button>
-          </div>
+        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
+        <div className="login-guide">
+          <img src={tataNantiLou} alt="Tantie Nanti Lou" />
+          <button type="button" onClick={ecouterTata} className="login-replay"
+            aria-label={tataSpeaking ? 'Réécouter la consigne de Tata' : 'Écouter Tantie Nanti Lou'}>
+            <Volume2 aria-hidden="true" size={26} />
+          </button>
+        </div>
+        {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
+        {devMode && (
+          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
         )}
       </motion.div>
 
@@ -1249,19 +1232,12 @@ export function LoginPassword() {
                 « elle m'entend ». « J'écoute… » quand le micro est ouvert sans chiffre.
                 AUTH-04 : chaque chiffre peut S'ILLUMINER à tour de rôle (relecture). */}
             <div className="login-number">
-              <span className="login-devise"><span className="login-devise-drapeau" aria-hidden="true">🇨🇮</span>+225</span>
+              <span style={{ color: 'var(--encre-3)' }}>+225</span>
               <span className="login-number-value" aria-label={phone.length ? 'Numéro saisi' : 'Numéro à saisir'}>
-                {/* CINQ paires TOUJOURS rendues (maquette 12/10/2026) : les chiffres
-                    saisis se montrent, les positions attendues restent des points —
-                    la forme du numéro complet est visible, la progression se lit
-                    d'un coup d'œil. L'illumination de relecture (AUTH-04) saute
-                    uniquement de chiffre saisi en chiffre saisi. */}
-                {Array.from({ length: 5 }).map((_, gi) => (
-                  <span key={gi} className={gi < 4 ? 'login-paire' : undefined} style={{ display: 'inline-block' }}>
-                    {[0, 1].map((di) => {
+                {phone.length ? (phone.match(/.{1,2}/g) || []).map((paire, gi, groupes) => (
+                  <span key={gi} style={{ display: 'inline-block', marginRight: gi < groupes.length - 1 ? '0.4em' : 0 }}>
+                    {paire.split('').map((c, di) => {
                       const idx = gi * 2 + di;
-                      const c = phone[idx];
-                      if (c === undefined) return <span key={di} className="login-chiffre-vides">•</span>;
                       const illumine = idx === relecturePos;
                       return (
                         <span key={di} style={illumine ? {
@@ -1272,7 +1248,7 @@ export function LoginPassword() {
                       );
                     })}
                   </span>
-                ))}
+                )) : '— — — — —'}
               </span>
               {/* CORRECTIF : ce bouton n'apparaissait qu'à 10 chiffres pile —
                   donc jamais dans le cas qui en a le plus besoin, celui où la
@@ -1287,27 +1263,6 @@ export function LoginPassword() {
                 disabled={isListening || isLoading} onClick={() => relireNumero(phone)} aria-label="Revoir mon numéro">
                 <Eye aria-hidden="true" size={20} />
               </button>}
-              {/* MICRO AU BOUT DE LA LIGNE (demande du 12/10/2026) — la dictée
-                  vit LÀ où le numéro s'écrit : un geste de moins, et l'état du
-                  micro se voit sur les chiffres eux-mêmes (pastille qui pulse
-                  quand il écoute). MÊME CONTRAT que la carte et la touche du
-                  pavé : le handler dicterNumero est réutilisé (aucun appel de
-                  parole nouveau — la garde voix-trace reste verte), mêmes
-                  désactivations, et la doctrine « aucun micro trompeur »
-                  tient : ce micro ne SE MONTRE que si la voix écoute
-                  réellement, exactement comme les autres surfaces voix. */}
-              {voixEcouteDispo && (
-                <motion.button type="button" className="login-micro-ligne"
-                  aria-label="Dicter mon numéro"
-                  aria-pressed={isListening}
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={dicterNumero}
-                  disabled={isLoading || isFinalizingDictation}
-                  whileTap={{ scale: 0.92 }}
-                >
-                  <Mic aria-hidden="true" size={20} />
-                </motion.button>
-              )}
             </div>
             {/* Un point vert par chiffre entendu — on voit que ça avance, sans lire */}
             <div style={{ display: 'flex', gap: 9, justifyContent: 'center', minHeight: 16, marginBottom: 2 }}>
@@ -1331,30 +1286,24 @@ export function LoginPassword() {
                 mot dès que le numéro est là. La confirmation reste seule en
                 action principale. */}
             {voixEcouteDispo && (
-            <div className="login-dictee-carte">
-              <motion.button
-                type="button"
-                aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
-                onPointerDown={(e) => e.preventDefault()}
-                onClick={dicterNumero}
-                className="login-dictee-pill"
-                aria-pressed={isListening}
-                disabled={isLoading || isFinalizingDictation}
-                whileTap={{ scale: 0.96 }}
-                style={numeroSaisi && !isListening ? { opacity: 0.75 } : undefined}
-              >
-                <Mic aria-hidden="true" size={22} />
-                <span>{isListening
-                  ? 'J’écoute…'
-                  : numeroSaisi ? 'Redire mon numéro' : 'Dicter mon numéro'}</span>
-              </motion.button>
-              {/* L'état du micro SE VOIT (point qui pulse) et SE LIT — il n'est
-                  pas dit : la dictée annonce déjà elle-même son écoute. */}
-              <span className="login-dictee-badge" data-ouvert={isListening ? 'true' : 'false'} role="status" aria-live="polite">
-                <span className="login-dictee-point" aria-hidden="true" />
-                <span className="login-dictee-texte">{isListening ? 'Micro ouvert' : 'Micro en veille'}</span>
-              </span>
-            </div>
+            <motion.button
+              type="button"
+              aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
+              onPointerDown={(e) => e.preventDefault()}
+              onClick={dicterNumero}
+              className="login-dictate"
+              aria-pressed={isListening}
+              disabled={isLoading || isFinalizingDictation}
+              whileTap={{ scale: 0.96 }}
+              style={numeroSaisi && !isListening
+                ? { opacity: 0.75, transform: 'scale(0.94)' }
+                : undefined}
+            >
+              <Mic aria-hidden="true" size={numeroSaisi && !isListening ? 26 : 36} />
+              <span>{isListening
+                ? 'Écoute en cours…'
+                : numeroSaisi ? 'Redire mon numéro' : 'Dire mon numéro'}</span>
+            </motion.button>
             )}
             <BanniereErreur cle="phone-error-banner" message={error} margeBas={8} />
             {isLoading && step === 'phone' && (
@@ -1416,13 +1365,6 @@ export function LoginPassword() {
                 surEffacer={handleKeyDelete}
                 surEmpreinte={handleBiometric}
                 empreinteLabel="Connexion par empreinte"
-                sousLegendePour={(d) => LETTRES_DU_PAVE[d]}
-                toucheGauche={voixEcouteDispo ? {
-                  contenu: <Mic aria-hidden="true" size={24} color="var(--commerce-green)" />,
-                  ariaLabel: numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro',
-                  onClick: dicterNumero,
-                  disabled: isLoading || isFinalizingDictation,
-                } : undefined}
               />
             </div>
             </>
@@ -1585,6 +1527,20 @@ export function LoginPassword() {
         >
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>
+        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
+            à Claude et déboguer précisément (phase de test). */}
+        <button
+          type="button"
+          onClick={async () => {
+            const r = await vlogPartager();
+            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
+            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+          }}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+          Rapport de test
+        </button>
       </motion.div>
       )}
     </div>
