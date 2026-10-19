@@ -83,14 +83,14 @@ describe('Invariant C-01 — réconciliation des retraits mobile money', () => {
 
     const repo = ds.getRepository(User);
     const u1: any = await repo.save(repo.create({
-      phone: '+2250700059001', firstName: 'Awa', lastName: 'Retrait', genre: 'femme',
+      phone: '+2250700059101', firstName: 'Awa', lastName: 'Retrait', genre: 'femme',
       role: UserRole.MARCHAND, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     userId = u1.id;
     token = await jwt.signAsync({ sub: u1.id, phone: u1.phone, role: u1.role }, { secret: process.env.JWT_SECRET });
 
     const u2: any = await repo.save(repo.create({
-      phone: '+2250700059002', firstName: 'Fatou', lastName: 'Suspendue', genre: 'femme',
+      phone: '+2250700059102', firstName: 'Fatou', lastName: 'Suspendue', genre: 'femme',
       role: UserRole.MARCHAND, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     userId2 = u2.id;
