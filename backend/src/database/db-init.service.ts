@@ -713,6 +713,35 @@ export class DbInitService {
       this.logger.warn('Erreur table bpay_transactions: ' + message);
     }
 
+    // bpay_transactions — C-07 (audit comptable 12/10 §6) : unicité
+    // d'intégrité des webhooks B-Pay AU NIVEAU BASE. Le double-crédit ne
+    // devait sa protection qu'au `UPDATE ... WHERE status='PENDING'`
+    // applicatif ; ce sont maintenant la base (et la migration miroir
+    // 1782200000000-BpayTransactionsIntegrite) qui refusent un second
+    // `pay_token` / `merchant_tx_id`. Index uniques PARTIELS : les colonnes
+    // restent nullables, les lignes sans token ne participent pas (même
+    // motif que ux_wallet_tx_idempotency_key). Sur une base VIERGE la chaîne
+    // de migrations ne tourne PAS — DbInit est le seul chemin garanti
+    // (schema-ledger-sans-migration.spec.ts) ; sur une base existante
+    // polluée par des doublons, la création échoue et le WARN ci-dessous la
+    // nomme (le dédoublonnage non destructif vit dans la migration).
+    try {
+      for (const [index, colonne] of [
+        ['ux_bpay_transactions_pay_token', 'pay_token'],
+        ['ux_bpay_transactions_merchant_tx_id', 'merchant_tx_id'],
+      ] as const) {
+        await this.dataSource.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS ${index}
+          ON bpay_transactions (${colonne})
+          WHERE ${colonne} IS NOT NULL;
+        `);
+      }
+      this.logger.log('Index unicité bpay_transactions (pay_token, merchant_tx_id) vérifiés');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur index unicité bpay_transactions (C-07, doublons préexistants ?): ' + message);
+    }
+
     // ── Carnet de CRÉDIT (vendre à crédit) ────────────────────────────────
     // Ces tables/vue étaient absentes du pipeline → tout /caisse/credits* plantait
     // en 500. On les crée ici, idempotent (IF NOT EXISTS / OR REPLACE).

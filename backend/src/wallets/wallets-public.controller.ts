@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Param, Body, BadRequestException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, BadRequestException, Logger, Headers, Request } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BpayService } from '../bpay/bpay.service';
+import { accesWebhookAutoriseBpay } from '../bpay/bpay-webhook.securite';
 import { WalletsService } from './wallets.service';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -42,6 +44,7 @@ export class WalletsPublicController {
     private readonly bpayService: BpayService,
     private readonly walletsService: WalletsService,
     private readonly notificationsService: NotificationsService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('public/pay')
@@ -78,7 +81,22 @@ export class WalletsPublicController {
   }
 
   @Post('public/pay-callback')
-  async payCallback(@Body() body: BpayCallbackBody): Promise<{ received: true }> {
+  async payCallback(
+    @Body() body: BpayCallbackBody,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Request() req: any,
+  ): Promise<{ received: true }> {
+    // C-07/SEC-022 — cette route était précédemment SANS AUCUN secret (cité
+    // telle quelle par l'audit). Même porte que /bpay/callback : allowlist IP,
+    // HMAC-SHA256 du corps BRUT (capture rawBody dans main.ts), voie legacy si
+    // BPAY_WEBHOOK_LEGACY=true. COMPAT : tant que BPAY_WEBHOOK_SECRET n'est
+    // pas configuré, la route traite les callbacks SANS vérification — c'est
+    // le comportement d'aujourd'hui et la recette QR julaba.online en dépend
+    // ; le WARN journalisé invite à configurer le secret. Dès que le secret
+    // existe, la vérification devient obligatoire.
+    if (!accesWebhookAutoriseBpay(this.configService, this.logger, 'wallets/public/pay-callback', req, headers, 'ACCEPTER')) {
+      return { received: true };
+    }
     const payToken = body?.pay_token || body?.payToken || body?.token;
     if (!payToken) return { received: true };
 
