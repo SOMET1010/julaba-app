@@ -3,8 +3,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { Cooperative } from './cooperative.entity';
 import { CooperativeMembre } from './cooperative-membre.entity';
+import { CooperativeTransaction } from './cooperative-transaction.entity';
 import { CooperativeStock } from './cooperative-stock.entity';
 import { CooperativeStockMouvement } from './cooperative-stock-mouvement.entity';
+import { Commande, CommandeStatut } from '../commandes/entities/commande.entity';
+import {
+  COTISATION_PLAFOND_MONTANT,
+  MODES_PAIEMENT_TRESORERIE,
+  TRESORERIE_PLAFOND_MOUVEMENT,
+  exigerMontantArgentValide,
+} from './tresorerie-coop.service';
 import { CreateCooperativeDto } from './dto/create-cooperative.dto';
 import { UpdateCooperativeDto } from './dto/update-cooperative.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -221,14 +229,36 @@ export class CooperativesRestController {
     }
     const type = String(body?.type || '').trim();
     if (type !== 'entree' && type !== 'sortie') throw new NotFoundException('Type invalide (entree ou sortie)');
-    const montant = Number(body?.montant || 0);
-    if (!(montant > 0)) throw new NotFoundException('Montant invalide');
-    const rows = await this.repo.query(
-      `INSERT INTO cooperative_transactions (cooperative_id, user_id, type, categorie, montant, membre_id, description, statut)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'en_attente')
-       RETURNING id, type, categorie, montant, description, membre_id, statut, created_at`,
-      [coop.id, userId, type, String(body?.categorie || 'autre'), montant, body?.membre_id || null, body?.description ?? null],
-    );
+    // C-02 : validation serveur stricte du montant — nombre fini (rejette NaN
+    // et Infinity), > 0, plafond TRESORERIE_PLAFOND_MOUVEMENT documenté dans
+    // tresorerie-coop.service.ts (renvoi à l'audit C-02). Lève un 400 avant
+    // toute écriture.
+    const montant = exigerMontantArgentValide(body?.montant, TRESORERIE_PLAFOND_MOUVEMENT);
+
+    // C-02 : UNE SEULE transaction SQL. Le solde de trésorerie est DÉRIVÉ du
+    // ledger (GET /tresorerie ci-dessus ne somme que les `validee`) — la table
+    // `cooperatives` n'a AUCUNE colonne solde (colonnes réelles : id, nom,
+    // zone_id, responsable_id, actif, created_at, updated_at, commune_id —
+    // cf. invariant test/unit/cooperatives-colonnes-reelles.spec.ts). La
+    // cohérence « écriture ledger + solde » est donc tenue en écrivant le
+    // ledger SOUS le verrou pessimiste de la ligne coopérative (SELECT ...
+    // FOR UPDATE, motif recopié de wallets.service.debitWallet/creditWallet
+    // et de distribution()/apporterStock() de ce contrôleur) : toutes les
+    // écritures d'argent d'une même coopérative sont sérialisées — le solde
+    // dérivé ne peut jamais être calculé sur un état à moitié écrit, et deux
+    // saisies concurrentes ne s'entrecroisent pas.
+    const rows = await this.dataSource.transaction(async (entityManager) => {
+      await entityManager.findOne(Cooperative, {
+        where: { id: coop.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      return entityManager.query(
+        `INSERT INTO cooperative_transactions (cooperative_id, user_id, type, categorie, montant, membre_id, description, statut)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'en_attente')
+         RETURNING id, type, categorie, montant, description, membre_id, statut, created_at`,
+        [coop.id, userId, type, String(body?.categorie || 'autre'), montant, body?.membre_id || null, body?.description ?? null],
+      );
+    });
     return { success: true, transaction: rows[0] };
   }
 
@@ -246,12 +276,60 @@ export class CooperativesRestController {
     if (!coop || role !== 'president') {
       throw new ForbiddenException('Action réservée au responsable de la coopérative');
     }
-    const rows = await this.repo.query(
-      `UPDATE cooperative_transactions SET statut = $1
-       WHERE id = $2 AND cooperative_id = $3
-       RETURNING id, type, categorie, montant, description, membre_id, statut, created_at`,
-      [statut, id, coop.id],
-    );
+
+    // C-02 : la transition de statut EST la mutation du solde dérivé (le solde
+    // ne somme que les `validee`). Elle se fait dans UNE transaction sous
+    // verrou pessimiste de la ligne concernée (motif wallets/distribution),
+    // avec une machine à états À SENS UNIQUE : `en_attente -> validee |
+    // annulee`, une écriture terminée ne bouge plus — pas de double
+    // validation, pas de résurrection d'une `annulee` — l'historique demandé
+    // par l'audit, sans colonne supplémentaire ni migration.
+    const rows = await this.dataSource.transaction(async (entityManager) => {
+      const ligne = await entityManager.findOne(CooperativeTransaction, {
+        where: { id, cooperativeId: coop.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!ligne) return [];
+      if (ligne.statut === statut) {
+        // Idempotent : déjà dans l'état demandé — retour de l'existant,
+        // jamais une seconde écriture.
+        return entityManager.query(
+          `SELECT id, type, categorie, montant, description, membre_id, statut, created_at
+             FROM cooperative_transactions WHERE id = $1`,
+          [id],
+        );
+      }
+      if (ligne.statut !== 'en_attente') {
+        throw new ConflictException(`Transaction déjà ${ligne.statut} : transition vers "${statut}" impossible`);
+      }
+      const updated = await entityManager.query(
+        `UPDATE cooperative_transactions SET statut = $1
+         WHERE id = $2 AND cooperative_id = $3 AND statut = 'en_attente'
+         RETURNING id, type, categorie, montant, description, membre_id, statut, created_at`,
+        [statut, id, coop.id],
+      );
+      // Cohérence du flag déclaratif : `cotisation_payee` ne peut être vrai que
+      // si UNE cotisation existe AUSSI en `validee` pour ce membre — recalculé
+      // DANS LA MÊME transaction. L'auto-attribution à la saisie (ancien
+      // comportement de POST /cotisation, C-02/COOPERATEUR-07) est supprimée.
+      // Casts ::text : cooperative_transactions porte des uuid,
+      // cooperative_membres des varchar (BaselineSchema:345-354).
+      if (ligne.categorie === 'cotisation' && ligne.membreId) {
+        await entityManager.query(
+          `UPDATE cooperative_membres m
+             SET cotisation_payee = EXISTS (
+                   SELECT 1 FROM cooperative_transactions t
+                    WHERE t.cooperative_id::text = m.cooperative_id
+                      AND t.membre_id::text = m.membre_id
+                      AND t.type = 'entree'
+                      AND t.categorie = 'cotisation'
+                      AND t.statut = 'validee')
+           WHERE m.cooperative_id = $1 AND m.membre_id = $2`,
+          [coop.id, ligne.membreId],
+        );
+      }
+      return updated;
+    });
     if (!rows.length) throw new NotFoundException('Transaction introuvable');
     return { success: true, transaction: rows[0] };
   }
@@ -804,55 +882,245 @@ export class CooperativesRestController {
     };
   }
 
+  /**
+   * C-02 — Clôture d'une commande groupée livrée.
+   *
+   * AVANT : `UPDATE commandes SET statut_paiement='paye'` sans AUCUN mouvement
+   * d'argent ni contrôle du mode (preuve audit : cooperatives-rest.controller
+   * :807-819 du 19/10) — un « payé » gratuit, faux.
+   *
+   * MAINTENANT, dans UNE transaction SQL (verrou pessimiste sur la commande,
+   * motif wallets/distribution) :
+   *  - mode de paiement = trésorerie coopérative (MODES_PAIEMENT_TRESORERIE)
+   *    ET appelant président d'une coopérative ET solde `validee` suffisant
+   *    ET total ≤ TRESORERIE_PLAFOND_MOUVEMENT → un mouvement RÉEL de sortie
+   *    (categorie='achat_groupe') est écrit dans cooperative_transactions
+   *    DANS LA MÊME transaction, et seulement là `statut_paiement = 'paye'`.
+   *  - tout autre cas (mode absent — c'est le flux actuel, Keiwa, mobile…) →
+   *    `statut_paiement = 'declare_paye'` : déclaré payé, SANS mouvement
+   *    d'argent (paye_at reste NULL). `statut_paiement` est un varchar(20)
+   *    (BaselineSchema:310, PAS un enum PG natif) : 'declare_paye' y entre
+   *    sans migration.
+   *
+   * Garde : jamais `paye` sans mouvement d'argent réel enregistré dans la
+   * même transaction. La trésorerie demandée et indisponible (solde
+   * insuffisant, total invalide, non-président) est un refus explicite
+   * (success:false + message, contrat HTTP inchangé) — jamais un basculement
+   * silencieux en `declare_paye`.
+   */
   @Post('commandes/:id/cloture')
   async cloturerCommandeCoop(@Param('id') id: string, @CurrentUser() currentUser: User) {
     const userId = currentUser?.id;
     if (!userId) return { success: false, message: 'Non authentifié' };
     try {
-      const result = await this.repo.query(
-        `UPDATE commandes
-         SET statut_paiement = 'paye', paye_at = now()
-         WHERE id = $1 AND acheteur_id = $2 AND statut = 'livree' AND statut_paiement <> 'paye'
-         RETURNING id`,
-        [id, userId],
-      );
-      if (result?.length) return { success: true };
+      // Ordre de verrouillage : commande d'abord, coopérative ensuite dans la
+      // branche trésorerie. Aucun autre endpoint argent de ce contrôleur ne
+      // verrouille une commande (il ne verrouille que la coopérative) : pas
+      // d'ordre inverse nulle part, donc pas d'interblocage possible.
+      const { coop, role } = await this.resolveUserCooperative(userId);
 
-      const rows = await this.repo.query(
-        `SELECT acheteur_id, statut, statut_paiement FROM commandes WHERE id = $1 LIMIT 1`,
-        [id],
-      );
-      const cmd = rows?.[0];
-      if (!cmd) return { success: false, message: 'Commande introuvable' };
-      if (cmd.acheteur_id !== userId) return { success: false, message: 'Accès refusé' };
-      if (cmd.statut_paiement === 'paye') return { success: true, message: 'Commande déjà payée' };
-      if (cmd.statut !== 'livree') return { success: false, message: 'Commande non livrée' };
-      return { success: false, message: 'Clôture impossible' };
+      const resultat = await this.dataSource.transaction(async (entityManager) => {
+        const cmd = await entityManager.findOne(Commande, {
+          where: { id },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!cmd) return { success: false, message: 'Commande introuvable' };
+        if (cmd.acheteurId !== userId) return { success: false, message: 'Accès refusé' };
+        if (cmd.statutPaiement === 'paye') {
+          return { success: true, message: 'Commande déjà payée', statut_paiement: 'paye' };
+        }
+        if (cmd.statutPaiement === 'declare_paye') {
+          return {
+            success: true,
+            message: 'Commande déjà déclarée payée (sans mouvement d\'argent)',
+            statut_paiement: 'declare_paye',
+          };
+        }
+        if (cmd.statut !== CommandeStatut.LIVREE) {
+          return { success: false, message: 'Commande non livrée' };
+        }
+
+        const mode = String(cmd.modePaiement || '').trim().toLowerCase();
+
+        if (MODES_PAIEMENT_TRESORERIE.includes(mode)) {
+          // Paiement RÉEL depuis la caisse de la coopérative : réservé au
+          // responsable (seul gestionnaire de la trésorerie, cf. POST
+          // /tresorerie).
+          if (!coop || role !== 'president') {
+            return {
+              success: false,
+              message: 'Paiement par la trésorerie réservé au responsable de la coopérative',
+            };
+          }
+          const total = exigerMontantArgentValide(cmd.total, TRESORERIE_PLAFOND_MOUVEMENT);
+
+          // Verrou de la ligne coopérative : sérialise avec POST /tresorerie,
+          // POST /cotisation et PATCH /tresorerie/:id (les écritures d'argent
+          // d'une coopérative passent toutes par ce verrou).
+          await entityManager.findOne(Cooperative, {
+            where: { id: coop.id },
+            lock: { mode: 'pessimistic_write' },
+          });
+
+          // Solde DÉRIVÉ du ledger, calculé SOUS le verrou, même règle que
+          // GET /tresorerie (ne compte que les `validee`).
+          const agg = await entityManager.query(
+            `SELECT
+               COALESCE(SUM(CASE WHEN type = 'entree' THEN montant ELSE 0 END), 0) AS entrees,
+               COALESCE(SUM(CASE WHEN type = 'sortie' THEN montant ELSE 0 END), 0) AS sorties
+             FROM cooperative_transactions
+             WHERE cooperative_id = $1 AND statut = 'validee'`,
+            [coop.id],
+          );
+          const solde = Number(agg?.[0]?.entrees ?? 0) - Number(agg?.[0]?.sorties ?? 0);
+          if (solde < total) {
+            return {
+              success: false,
+              message: `Trésorerie insuffisante : solde ${solde} FCFA, nécessaire ${total} FCFA`,
+            };
+          }
+
+          // Mouvement d'argent RÉEL + statut payé : la MÊME transaction.
+          // Si l'un échoue, l'autre est annulé — jamais de « payé » gratuit.
+          await entityManager.query(
+            `INSERT INTO cooperative_transactions
+               (cooperative_id, user_id, type, categorie, montant, membre_id, description, statut)
+             VALUES ($1, $2, 'sortie', 'achat_groupe', $3, $4, $5, 'validee')`,
+            [
+              coop.id,
+              userId,
+              total,
+              userId,
+              `Paiement commande groupée ${cmd.id} (${cmd.produit})`,
+            ],
+          );
+          await entityManager.update(Commande, { id: cmd.id }, {
+            statutPaiement: 'paye',
+            payeAt: new Date(),
+          });
+          return {
+            success: true,
+            statut_paiement: 'paye',
+            message: 'Commande payée par la trésorerie de la coopérative',
+          };
+        }
+
+        // Pas de mode trésorerie → AUCUN mouvement d'argent : la clôture
+        // déclare seulement le paiement (statut honnête, distinct de `paye`).
+        await entityManager.update(Commande, { id: cmd.id }, { statutPaiement: 'declare_paye' });
+        return {
+          success: true,
+          statut_paiement: 'declare_paye',
+          message: 'Commande clôturée : déclarée payée, sans mouvement d\'argent enregistré',
+        };
+      });
+      return resultat;
     } catch (e: any) {
       return { success: false, message: e.message };
     }
   }
 
+  /**
+   * C-02 — Cotisation d'un membre à SA coopérative.
+   *
+   * AVANT : INSERT direct en statut `validee` + auto-attribution
+   * `cotisation_payee = true`, sans paiement réel, sans contrôle de montant,
+   * sans idempotence — un double clic = deux écritures « validées »
+   * (preuve audit : cooperatives-rest.controller:836-855 du 19/10,
+   * C-02/COOPERATEUR-07).
+   *
+   * MAINTENANT, dans UNE transaction SQL (verrou pessimiste sur la ligne
+   * coopérative, motif wallets/distribution) :
+   *  - montant validé strictement (fini, > 0, plafond
+   *    COTISATION_PLAFOND_MONTANT — tresorerie-coop.service.ts) ;
+   *  - statut `en_attente` : l'écriture n'entre dans le solde que lorsque le
+   *    responsable la valide (PATCH /tresorerie/:id) — plus d'auto-validation
+   *    (reco §6.1 de l'audit acteur, matrice de recette §7) ;
+   *  - IDEMPOTENCE sans migration, par clé métier :
+   *    (cooperative_id, membre_id, type='entree', categorie='cotisation',
+   *    MOIS calendaire de created_at), restreinte aux lignes non annulées.
+   *    Une cotisation déjà enregistrée ce mois pour ce membre → retour de
+   *    l'existante (jamais de doublon, jamais de 2e écriture). Aucune colonne
+   *    `periode` n'existe sur cooperative_transactions (migration
+   *    1781300000000) : le mois est dérivé de created_at — voir rapport
+   *    chantier pour la migration proposée (periode + index unique partiel) ;
+   *  - `cotisation_payee` n'est PLUS auto-attribué : il est recalculé dans la
+   *    même transaction = « il existe une cotisation validee pour ce membre ».
+   *  - `validated_by` : AUCUNE colonne de ce nom n'existe sur
+   *    cooperative_transactions (colonnes réelles : migration 1781300000000) ;
+   *    `user_id` porte l'auteur de la saisie, la validation est tracée par la
+   *    transition de statut president-only. Noté au rapport (pas de migration
+   *    dans ce chantier).
+   */
   @Post('cotisation')
   async cotisation(@Body() body: any, @CurrentUser() currentUser: User) {
     const userId = currentUser?.id;
-    if (!userId) return { success: false };
+    if (!userId) throw new ForbiddenException('Non authentifié');
+    const { coop } = await this.resolveUserCooperative(userId);
+    if (!coop) throw new NotFoundException('Coopérative introuvable');
+    const montant = exigerMontantArgentValide(body?.montant, COTISATION_PLAFOND_MONTANT);
+
     try {
-      const { coop } = await this.resolveUserCooperative(userId);
-      if (!coop) return { success: false, message: 'Coopérative introuvable' };
-      const montant = Number(body.montant || 0);
-      if (!montant) return { success: false, message: 'Montant invalide' };
-      await this.repo.query(
-        `INSERT INTO cooperative_transactions (cooperative_id, user_id, type, categorie, montant, membre_id, description, statut)
-         VALUES ($1, $2, 'entree', 'cotisation', $3, $4, $5, 'validee')`,
-        [coop.id, userId, montant, userId, body.description ?? null],
-      );
-      await this.repo.query(
-        `UPDATE cooperative_membres SET cotisation_payee = true
-         WHERE cooperative_id = $1 AND membre_id = $2`,
-        [coop.id, userId],
-      );
-      return { success: true };
+      const resultat = await this.dataSource.transaction(async (entityManager) => {
+        // Sérialise toutes les écritures d'argent de la coopérative.
+        await entityManager.findOne(Cooperative, {
+          where: { id: coop.id },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        // Dédoublonnage par la clé métier documentée ci-dessus.
+        const existantes = await entityManager.query(
+          `SELECT id, montant, statut, created_at
+             FROM cooperative_transactions
+            WHERE cooperative_id = $1
+              AND type = 'entree'
+              AND categorie = 'cotisation'
+              AND membre_id = $2
+              AND statut <> 'annulee'
+              AND date_trunc('month', created_at) = date_trunc('month', now())
+            ORDER BY created_at DESC
+            LIMIT 1`,
+          [coop.id, userId],
+        );
+        if (existantes?.length) {
+          return { deja_enregistree: true as const, existante: existantes[0] };
+        }
+
+        const ecrites = await entityManager.query(
+          `INSERT INTO cooperative_transactions (cooperative_id, user_id, type, categorie, montant, membre_id, description, statut)
+           VALUES ($1, $2, 'entree', 'cotisation', $3, $4, $5, 'en_attente')
+           RETURNING id, type, categorie, montant, description, membre_id, statut, created_at`,
+          [coop.id, userId, montant, userId, body?.description ?? null],
+        );
+
+        // Flag déclaratif recalculé depuis le ledger (jamais posé à la main) —
+        // casts ::text : cooperative_transactions = uuid,
+        // cooperative_membres = varchar (BaselineSchema:345-354).
+        await entityManager.query(
+          `UPDATE cooperative_membres m
+             SET cotisation_payee = EXISTS (
+                   SELECT 1 FROM cooperative_transactions t
+                    WHERE t.cooperative_id::text = m.cooperative_id
+                      AND t.membre_id::text = m.membre_id
+                      AND t.type = 'entree'
+                      AND t.categorie = 'cotisation'
+                      AND t.statut = 'validee')
+           WHERE m.cooperative_id = $1 AND m.membre_id = $2`,
+          [coop.id, userId],
+        );
+
+        return { deja_enregistree: false as const, ecriture: ecrites[0] };
+      });
+
+      if (resultat.deja_enregistree) {
+        return {
+          success: true,
+          deja_enregistree: true,
+          transaction: resultat.existante,
+          message: 'Cotisation déjà enregistrée pour ce mois',
+        };
+      }
+      return { success: true, deja_enregistree: false, transaction: resultat.ecriture };
     } catch (e: any) {
       return { success: false, message: e.message };
     }
