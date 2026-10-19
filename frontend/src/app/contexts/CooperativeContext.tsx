@@ -228,16 +228,29 @@ export function CooperativeProvider({ children }: { children: ReactNode }) {
   const getRecentTransactions = (n: number) =>
     [...tresorerie].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, n);
 
+  // C-10 / COOPERATEUR-06 (audit comptable 2026-10-12 §6, audit acteur
+  // coopérateur 2026-10-19 §3) : les KPI d'argent ne comptent que les
+  // écritures VALIDÉES — statut 'validee', la seule valeur qui entre dans le
+  // solde serveur (GET /cooperatives/tresorerie : `statut !== 'validee'`
+  // ignoré). Statuts réels du backend : 'en_attente' | 'validee' | 'annulee'
+  // (CHECK migration 1781300000000). Avant ce filtre, cotisations et ventes
+  // annulées (et en attente) gonflaient les totaux affichés.
   const getTotalCotisations = () =>
-    tresorerie.filter(t => t.categorie === 'cotisation').reduce((sum, t) => sum + t.montant, 0);
+    tresorerie
+      .filter(t => t.categorie === 'cotisation' && t.statut === 'validee')
+      .reduce((sum, t) => sum + t.montant, 0);
 
   const getTotalVentesGroupees = () =>
-    tresorerie.filter(t => t.categorie === 'vente').reduce((sum, t) => sum + t.montant, 0);
+    tresorerie
+      .filter(t => t.categorie === 'vente' && t.statut === 'validee')
+      .reduce((sum, t) => sum + t.montant, 0);
 
   const soldeActuel = soldeApi;
 
   const stats: CooperativeStats = {
-    volumeGroupe: tresorerie.filter(t => t.categorie === 'vente').reduce((s, t) => s + t.montant, 0),
+    volumeGroupe: tresorerie
+      .filter(t => t.categorie === 'vente' && t.statut === 'validee')
+      .reduce((s, t) => s + t.montant, 0),
     tresorerieActuelle: soldeActuel,
     totalMembres: membres.length,
     membresActifs: membres.filter(m => m.actif).length,

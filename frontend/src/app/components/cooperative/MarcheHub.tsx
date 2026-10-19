@@ -986,7 +986,7 @@ export function MarcheHub() {
 
   const handleCloturerCmd = async (id: string) => {
     try {
-      const res = await apiRequest<{ success?: boolean; message?: string } | null>(
+      const res = await apiRequest<{ success?: boolean; message?: string; statut_paiement?: string } | null>(
         API_URL,
         `/cooperatives/commandes/${id}/cloture`,
         { method: 'POST' },
@@ -995,11 +995,19 @@ export function MarcheHub() {
         toast.error(res?.message || 'Clôture impossible');
         return;
       }
+      // C-02 : le serveur renvoie le statut RÉELLEMENT posé — 'paye'
+      // seulement si un mouvement de trésorerie a été écrit dans la MÊME
+      // transaction, sinon 'declare_paye' (déclaré payé, SANS mouvement
+      // d'argent). Le front ne les confond plus : ni le state local, ni le
+      // message affiché ne prétendent un paiement qui n'a pas eu lieu.
+      const statutPaiement = res.statut_paiement === 'paye' ? 'paye' : 'declare_paye';
       setCommandesMarche(prev =>
         prev.map(c => c.id === id
-          ? ({ ...c, statutPaiement: 'paye' } as CmdMarche & { statutPaiement?: string })
+          ? ({ ...c, statutPaiement } as CmdMarche & { statutPaiement?: string })
           : c));
-      toast.success('Commande clôturée et payée');
+      toast.success(statutPaiement === 'paye'
+        ? 'Commande clôturée et payée via la trésorerie'
+        : 'Commande clôturée — déclarée payée, sans mouvement d\'argent');
     } catch {
       toast.error('Clôture impossible');
     }
@@ -2309,6 +2317,11 @@ function DrawerDetailCmdMarche({ commande, onClose, onAccepter, onRefuser, onNeg
   const sc = STATUT_CMD_LABELS[commande.statut] || STATUT_CMD_LABELS['en_attente'];
   const isPending = commande.statut === 'en_attente';
   const cmdExt = commande as CmdMarche & { dateCommande?: string; total?: number };
+  // C-02 : statut de paiement réel renvoyé par l'API ('non_paye' | 'paye' |
+  // 'declare_paye'). 'declare_paye' = déclaré payé SANS mouvement d'argent —
+  // affiché honnêtement, jamais confondu avec 'paye'.
+  const statutPaiementCmd = (commande as CmdMarche & { statutPaiement?: string }).statutPaiement;
+  const declarePayee = commande.statut === 'livree' && statutPaiementCmd === 'declare_paye';
   const produitImgDrawer = findProduitIconImg(commande.produit);
   const dateCreeAffichee = (commande.dateCreation || cmdExt.dateCommande)
     ? new Date(commande.dateCreation || cmdExt.dateCommande!).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -2468,7 +2481,18 @@ function DrawerDetailCmdMarche({ commande, onClose, onAccepter, onRefuser, onNeg
                 Négocier
               </motion.button>
             </div>
-          ) : commande.statut === 'livree' && (commande as CmdMarche & { statutPaiement?: string }).statutPaiement !== 'paye' && onCloturer ? (
+          ) : declarePayee ? (
+            <div className="w-full space-y-2">
+              <div role="status"
+                className="w-full py-3 rounded-2xl border-2 border-amber-200 bg-amber-50 text-amber-800 text-sm font-bold text-center">
+                Déclarée payée — sans mouvement d’argent enregistré
+              </div>
+              <motion.button onClick={onClose} whileTap={{ scale: 0.97 }}
+                className="w-full py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 text-sm font-bold">
+                Fermer
+              </motion.button>
+            </div>
+          ) : commande.statut === 'livree' && statutPaiementCmd !== 'paye' && onCloturer ? (
             <div className="w-full grid grid-cols-2 gap-3">
               <motion.button onClick={onClose} whileTap={{ scale: 0.97 }}
                 className="w-full py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 text-sm font-bold">
