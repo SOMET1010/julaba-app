@@ -66,7 +66,11 @@ export class UsersService {
     return stripSensitiveUserFields(user as any);
   }
 
-  async findAll(query: UsersBoListQueryDto, requesterRole?: string): Promise<{ users: any[]; total: number; page: number; pages: number }> {
+  async findAll(
+    query: UsersBoListQueryDto,
+    requesterRole?: string,
+    requesterZoneId?: string | null,
+  ): Promise<{ users: any[]; total: number; page: number; pages: number }> {
     const page = query.page ?? 1;
     const limit = Math.min(query.limit ?? 50, 100);
     const skip = (page - 1) * limit;
@@ -77,7 +81,7 @@ export class UsersService {
       normalizedRole = 'cooperateur';
     }
 
-    const { whereSql, whereParams } = this.buildActeursListWhereClause(query, normalizedRole, requesterRole);
+    const { whereSql, whereParams } = this.buildActeursListWhereClause(query, normalizedRole, requesterRole, requesterZoneId);
 
     const countQuery = `SELECT COUNT(*)::int as total FROM users u ${whereSql}`;
     const countRows = await this.dataSource.query(countQuery, whereParams);
@@ -196,6 +200,7 @@ export class UsersService {
     query: UsersBoListQueryDto,
     normalizedRole?: string,
     requesterRole?: string,
+    requesterZoneId?: string | null,
   ): { whereSql: string; whereParams: any[] } {
     const whereParts: string[] = [
       "u.status != 'supprime'",
@@ -213,6 +218,21 @@ export class UsersService {
 
     if (requesterRole !== 'super_admin') {
       whereParts.push("u.role != 'super_admin'");
+    }
+
+    // GESTZONE-01 / C-11 (audit comptable 12/10 §5.8) : isolation territoriale
+    // de la liste d'acteurs. Un gestionnaire_zone ne reçoit que les acteurs de
+    // SA zone (users.zone_id, le lien posé à la création des comptes BO — cf.
+    // backoffice-users.service.ts). Fail-closed : sans zone attribuée, aucune
+    // ligne (le controller renvoie déjà 403 — ce prédicat est la défense en
+    // profondeur si le service est appelé ailleurs).
+    if (requesterRole === 'gestionnaire_zone') {
+      if (requesterZoneId) {
+        whereParams.push(requesterZoneId);
+        whereParts.push(`u.zone_id = $${whereParams.length}`);
+      } else {
+        whereParts.push('1 = 0');
+      }
     }
 
     if (normalizedRole === 'admin') {

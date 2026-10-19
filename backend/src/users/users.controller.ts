@@ -44,7 +44,24 @@ export class UsersController {
   @UseGuards(RolesGuard)
   @Get()
   async findAll(@Query() query: UsersBoListQueryDto, @Request() req: any) {
-    const result = await this.usersService.findAll(query, req.user?.role);
+    // GESTZONE-05 (fail-closed) : un gestionnaire_zone sans zone attribuée ne
+    // doit JAMAIS recevoir une vue nationale silencieuse — on refuse net.
+    if (req.user?.role === 'gestionnaire_zone' && !req.user?.zoneId) {
+      throw new ForbiddenException("Votre compte n'est associé à aucune zone : accès refusé");
+    }
+    // ADMINNAT-02 (P1, audit 19/10) : l'annuaire des comptes back-office
+    // (scope=bo : prénoms, noms, téléphones, rôles, statuts de tous les comptes
+    // BO) n'est pas un liste d'acteurs comme les autres. La route ne portait
+    // aucune garde au-delà du jeton 'ADMIN' générique : on exige ici la
+    // permission 'utilisateurs.read' (registre bo-autorisation, résolution
+    // identique au front) — super_admin OK par hiérarchie, admin_general et
+    // admin_national OK par défaut de rôle, gestionnaire_zone et
+    // operateur_terrain refusés, et tout compte portant boPermissions={}
+    // explicite est refusé (fail-closed, pas de repli sur le défaut).
+    if (query.scope === 'bo') {
+      exigerPermissionBO(req.user, 'utilisateurs.read');
+    }
+    const result = await this.usersService.findAll(query, req.user?.role, req.user?.zoneId);
     return {
       data: result.users,
       meta: buildMeta(result.page, query.limit ?? 50, result.total),
@@ -58,6 +75,14 @@ export class UsersController {
       throw new ForbiddenException('Accès refusé');
     }
     const user = await this.usersService.findByPhone(phone);
+    // GESTZONE-02 (IDOR) : /users/by-phone/:phone était un annuaire national
+    // énumérable pour le gestionnaire_zone. Fail-closed : il ne peut résoudre
+    // que les téléphones rattachés à SA zone (comparaison users.zone_id).
+    if (req.user.role === 'gestionnaire_zone') {
+      if (!req.user.zoneId || !user?.zoneId || user.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     if (req.user.role === 'identificateur') {
       const memeZone = user.zoneId && req.user.zoneId && user.zoneId === req.user.zoneId;
       return {
@@ -233,6 +258,15 @@ export class UsersController {
         };
       }
     }
+    // GESTZONE-02 (IDOR) : l'historique d'un compte tiers contient ses traces
+    // d'audit ; le gestionnaire_zone ne peut lire que celui des acteurs de SA
+    // zone (fail-closed : sans zone attribuée ou sans zone cible, refus).
+    if (req.user.role === 'gestionnaire_zone') {
+      const cible = await this.usersService.findOne(id);
+      if (!req.user.zoneId || !cible?.zoneId || cible.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     const historique = await this.usersService.getHistorique(id);
     return { historique, total: historique.length };
   }
@@ -247,6 +281,14 @@ export class UsersController {
       throw new ForbiddenException('Accès refusé');
     }
     const target = await this.usersService.findOne(id);
+    // GESTZONE-02 (IDOR) : le détail d'un acteur (PII complète) est réservé au
+    // territoire du gestionnaire_zone — fail-closed : sans zone attribuée, ou
+    // cible sans zone / hors zone, refus sans fuite.
+    if (req.user.role === 'gestionnaire_zone') {
+      if (!req.user.zoneId || !target?.zoneId || target.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     if (isIdentificateur) {
       const memeZone = target.zoneId && req.user.zoneId && target.zoneId === req.user.zoneId;
       return {

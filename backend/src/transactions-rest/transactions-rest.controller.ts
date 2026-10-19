@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   InternalServerErrorException,
   Param,
@@ -253,8 +254,15 @@ export class TransactionsRestController {
   }
 
   private applyZoneRestriction(qb: SelectQueryBuilder<CaisseTransaction>, user: User): void {
-    if (user.role === 'gestionnaire_zone' && (user as any).zoneId) {
-      qb.andWhere('u.zone_id = :zoneId', { zoneId: (user as any).zoneId });
+    // GESTZONE-05 (fail-closed) : un gestionnaire_zone sans zone attribuée ne
+    // doit jamais basculer en vue NATIONALE silencieuse (avant : `&& zoneId`
+    // laissait passer tout le pays). On refuse la requête au lieu de filtrer.
+    if (user.role === 'gestionnaire_zone') {
+      const zoneId = (user as any).zoneId;
+      if (!zoneId) {
+        throw new ForbiddenException("Votre compte n'est associé à aucune zone : accès refusé");
+      }
+      qb.andWhere('u.zone_id = :zoneId', { zoneId });
     }
   }
 
