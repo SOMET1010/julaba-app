@@ -123,7 +123,15 @@ export function Revenus() {
     mode: commande.statut === 'livree' ? 'Commande livrée' : 'Commande en cours',
     montant: Number(commande.total || 0),
   }));
-  const donneesGraphique = commandesValides
+  // BUG-010 (C-10) : le mini-graphique vit dans la carte « Revenu total »
+  // (« source des revenus ») — il ne trace donc que les commandes
+  // RÉELLEMENT PAYÉES (statut_paiement = 'paye', valeur posée par
+  // POST /commandes/:id/paiement). Une commande en attente de paiement n'est
+  // pas un revenu ; elle reste visible dans « En attente » et l'historique.
+  const commandesPayees = commandesValides.filter(
+    (commande) => (commande.statutPaiement ?? commande.statut_paiement) === 'paye',
+  );
+  const donneesGraphique = commandesPayees
     .slice(-7)
     .map((commande, index) => ({ jour: index + 1, montant: Number(commande.total || 0) }));
 
