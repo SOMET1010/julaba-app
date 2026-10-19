@@ -97,6 +97,48 @@ export class CronJobsConfigService {
     return { id: String(row.id), actif: Boolean(row.actif) };
   }
 
+  /**
+   * C-15 / SUPERADMIN-04 (19/10/2026) : bascule d'un job + entrée d'audit
+   * écrite DANS LA MÊME TRANSACTION (motif repris d'admin-wallets.service.ts —
+   * journaliserMouvement) : impossible de basculer un job sans sa trace, et
+   * une panne du journal annule la bascule — le journal ne peut plus diverger
+   * de l'état réel. Détails écrits : actif_avant / actif_apres. Un job sans
+   * ligne en base est considéré « actif » avant bascule (défaut historique).
+   */
+  async toggleAvecAudit(
+    id: string,
+    auteurId: string | null,
+  ): Promise<{ id: string; actif: boolean; actif_avant: boolean }> {
+    await this.ensureTable();
+    return this.dataSource.transaction(async (em) => {
+      const avantRows = await em.query(`SELECT actif FROM cron_jobs_config WHERE id = $1`, [id]);
+      const actifAvant = avantRows?.length ? Boolean(avantRows[0].actif) : true;
+      let rows = CronJobsConfigService.extraireLignesRetournees(
+        await em.query(
+          `UPDATE cron_jobs_config SET actif = NOT COALESCE(actif, true), updated_at = NOW() WHERE id = $1 RETURNING id, actif`,
+          [id],
+        ),
+      );
+      if (!rows.length) {
+        // Pas de ligne : l'état implicite était "actif" → premier toggle = désactivation.
+        await em.query(`INSERT INTO cron_jobs_config (id, actif) VALUES ($1, false)`, [id]);
+        rows = await em.query(`SELECT id, actif FROM cron_jobs_config WHERE id = $1`, [id]);
+      }
+      const row = rows[0];
+      const actifApres = Boolean(row.actif);
+      await em.query(
+        `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,'cron_job',$3,$4)`,
+        [
+          auteurId ?? null,
+          'CRON_TOGGLE',
+          String(row.id),
+          JSON.stringify({ actif_avant: actifAvant, actif_apres: actifApres }),
+        ],
+      );
+      return { id: String(row.id), actif: actifApres, actif_avant: actifAvant };
+    });
+  }
+
   /** Appelé par chaque job réel à CHAQUE exécution effective (pas quand il est skip car désactivé). */
   async recordExecution(
     id: string,
