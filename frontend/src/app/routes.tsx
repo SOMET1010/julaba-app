@@ -9,6 +9,7 @@ import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
 import { BORoot } from './components/backoffice/BORoot';
 import { BOLogin } from './components/backoffice/BOLogin';
+import { useBackOfficeOptional } from './contexts/BackOfficeContext';
 import { IdentificateurLayout } from './components/identificateur/IdentificateurLayout';
 import { InstitutionLayout } from './components/institution/InstitutionLayout';
 import { ErrorFallback } from './components/layout/ErrorFallback';
@@ -23,6 +24,40 @@ const PageLoader = () => (
 function L(fn: () => Promise<{ default: React.ComponentType<unknown> }>) {
   const C = lazy(fn);
   return <Suspense fallback={<PageLoader />}><C /></Suspense>;
+}
+
+// ── Garde de rôle BO (pattern recopié de BORoot.tsx) ─────────────────────────
+// ADMINGEN-01 (audit admin général 19/10/2026) : les routes /backoffice/* ne
+// portaient qu'une garde de LAYOUT (BORoot) — aucune vérification au niveau de
+// la route elle-même. On recopie ici le pattern de garde du fichier (liste
+// blanche de rôles BO + redirection vers /backoffice/login + attente du
+// chargement d'auth) et on l'applique à chaque page BO : tout utilisateur non
+// BO est renvoyé au login BO, même si le layout venait à changer. Les pages
+// à usage superOnly restent fermées côté menu ET côté serveur — cette garde
+// exige le RÔLE (liste blanche), pas une permission fine.
+const ROLES_BO: readonly string[] = [
+  'admin_general',
+  'admin_national',
+  'gestionnaire_zone',
+  'operateur_terrain',
+  'super_admin',
+];
+
+function ExigerRoleBO({ children }: { children: React.ReactNode }) {
+  const boCtx = useBackOfficeOptional();
+  // Attendre que loadUser soit terminé avant de statuer (évite un renvoi au
+  // login pendant le chargement de session).
+  if (boCtx?.isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
+  }
+  if (!boCtx?.boUser || !ROLES_BO.includes(boCtx.boUser.role)) {
+    return <Navigate to="/backoffice/login" replace />;
+  }
+  return <>{children}</>;
 }
 
 const isDev = import.meta.env.DEV;
@@ -184,51 +219,57 @@ export const router = createBrowserRouter([
         { path: "dashboard", element: <Navigate to="/identificateur/rapports" replace /> },
         { path: "fiche-identification", element: L(() => import("./components/identificateur/FicheIdentificationDynamique").then(m => ({ default: m.FicheIdentificationDynamique }))), errorElement: <ErrorFallback /> },
         { path: "academy", element: L(() => import("./components/academy/UniversalAcademy").then(m => ({ default: m.UniversalAcademy }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa", element: L(() => import("./components/wallet/WalletPage").then(m => ({ default: m.WalletPage }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa/transfert", element: L(() => import("./components/wallet/TransfertPage").then(m => ({ default: m.TransfertPage }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa/paiements", element: L(() => import("./components/wallet/PaiementsPage").then(m => ({ default: m.PaiementsPage }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa/banque", element: L(() => import("./components/wallet/BanquePage").then(m => ({ default: m.BanquePage }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa/carte", element: L(() => import("./components/wallet/CartePage").then(m => ({ default: m.CartePage }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa/historique", element: L(() => import("./components/wallet/HistoriquePage").then(m => ({ default: m.HistoriquePage }))), errorElement: <ErrorFallback /> },
+        // IDENTIFICATEUR-16 (audit 19/10/2026) : les 6 routes Keiwa (wallets)
+        // montées sous /identificateur sont RETIRÉES — l'identificateur est un
+        // acteur MONÉTIQUEMENT NEUTRE (aucun wallet métier) et le serveur ne
+        // garantit pas encore la neutralité (wallets.controller sans garde de
+        // rôle). Même par URL directe, ce sous-espace ne monte plus de page
+        // d'argent. Le masquage nav (modulesPilote) et les liens résiduels
+        // (UniversalProfil/UniversalParametres — fichiers hors périmètre 46-h)
+        // atterriront sur NotFound au lieu d'un wallet.
         { path: "parametres", element: L(() => import("./components/identificateur/IdentificateurParametres").then(m => ({ default: m.IdentificateurParametres }))), errorElement: <ErrorFallback /> },
         { path: "support", element: L(() => import("./components/shared/SupportPage").then(m => ({ default: m.SupportPage }))), errorElement: <ErrorFallback /> },
       ]},
 
       { path: "/backoffice/login", element: <BOLogin /> },
+      // ADMINGEN-01 : chaque page BO est enveloppée par <ExigerRoleBO> (pattern
+      // BORoot recopié en tête de fichier) — la garde de rôle ne dépend plus du
+      // seul layout. L'index reste une redirection pure vers la page (déjà
+      // gardée) /backoffice/dashboard.
       { path: "/backoffice", element: <BORoot />, children: [
         { index: true, element: <Navigate to="/backoffice/dashboard" replace /> },
-        { path: "dashboard", element: L(() => import("./components/backoffice/BODashboard").then(m => ({ default: m.BODashboard }))), errorElement: <ErrorFallback /> },
-        { path: "acteurs", element: L(() => import("./components/backoffice/BOActeurs").then(m => ({ default: m.BOActeurs }))), errorElement: <ErrorFallback /> },
-        { path: "acteurs/nouveau", element: L(() => import("./components/backoffice/NouvelActeurPage").then(m => ({ default: m.NouvelActeurPage }))), errorElement: <ErrorFallback /> },
-        { path: "acteurs/:id", element: L(() => import("./components/backoffice/BOActeurDetail").then(m => ({ default: m.BOActeurDetail }))), errorElement: <ErrorFallback /> },
-        { path: "enrolement", element: L(() => import("./components/backoffice/BOEnrolement").then(m => ({ default: m.BOEnrolement }))), errorElement: <ErrorFallback /> },
-        { path: "supervision", element: L(() => import("./components/backoffice/BOSupervision").then(m => ({ default: m.BOSupervision }))), errorElement: <ErrorFallback /> },
-        { path: "zones", element: L(() => import("./components/backoffice/BOZones").then(m => ({ default: m.BOZones }))), errorElement: <ErrorFallback /> },
-        { path: "carte", element: L(() => import("./components/backoffice/BOCarteActeurs").then(m => ({ default: m.BOCarteActeurs }))), errorElement: <ErrorFallback /> },
-        { path: "academy", element: L(() => import("./components/backoffice/BOAcademy").then(m => ({ default: m.BOAcademy }))), errorElement: <ErrorFallback /> },
-        { path: "missions", element: L(() => import("./components/backoffice/BOMissions").then(m => ({ default: m.BOMissions }))), errorElement: <ErrorFallback /> },
-        { path: "parametres", element: L(() => import("./components/backoffice/BOParametres").then(m => ({ default: m.BOParametres }))), errorElement: <ErrorFallback /> },
-        { path: "audit", element: L(() => import("./components/backoffice/BOAudit").then(m => ({ default: m.BOAudit }))), errorElement: <ErrorFallback /> },
-        { path: "utilisateurs", element: L(() => import("./components/backoffice/BOUtilisateurs").then(m => ({ default: m.BOUtilisateurs }))), errorElement: <ErrorFallback /> },
-        { path: "institutions", element: L(() => import("./components/backoffice/BOInstitutions").then(m => ({ default: m.BOInstitutions }))), errorElement: <ErrorFallback /> },
-        { path: "profil", element: L(() => import("./components/backoffice/BOProfil").then(m => ({ default: m.BOProfil }))), errorElement: <ErrorFallback /> },
-        { path: "rapports", element: L(() => import("./components/backoffice/BORapports").then(m => ({ default: m.BORapports }))), errorElement: <ErrorFallback /> },
-        { path: "notifications", element: L(() => import("./components/backoffice/BONotifications").then(m => ({ default: m.BONotifications }))), errorElement: <ErrorFallback /> },
-        { path: "support", element: L(() => import("./components/backoffice/BOSupport").then(m => ({ default: m.BOSupport }))), errorElement: <ErrorFallback /> },
-        { path: "moderation", element: L(() => import("./components/backoffice/BOModeration").then(m => ({ default: m.BOModeration }))), errorElement: <ErrorFallback /> },
-        { path: "mutations", element: L(() => import("./components/backoffice/BOMutations").then(m => ({ default: m.BOMutations }))), errorElement: <ErrorFallback /> },
-        { path: "contenus", element: L(() => import("./components/backoffice/BOContenus").then(m => ({ default: m.BOContenus }))), errorElement: <ErrorFallback /> },
-        { path: "monitoring-ia", element: L(() => import("./components/backoffice/BOMonitoringIA").then(m => ({ default: m.BOMonitoringIA }))), errorElement: <ErrorFallback /> },
-        { path: "event-monitor", element: L(() => import("./components/backoffice/EventMonitor").then(m => ({ default: m.EventMonitor }))), errorElement: <ErrorFallback /> },
-        { path: "analytics", element: L(() => import("./components/backoffice/BOAnalyticsProduit").then(m => ({ default: m.BOAnalyticsProduit }))), errorElement: <ErrorFallback /> },
-        { path: "score-financier", element: L(() => import("./components/backoffice/BOScoreFinancier").then(m => ({ default: m.BOScoreFinancier }))), errorElement: <ErrorFallback /> },
-        { path: "api-keys", element: L(() => import("./components/backoffice/BOApiKeys").then(m => ({ default: m.BOApiKeys }))), errorElement: <ErrorFallback /> },
-        { path: "marketplace", element: L(() => import("./components/backoffice/BOMarketplace").then(m => ({ default: m.BOMarketplace }))), errorElement: <ErrorFallback /> },
-        { path: "livraison", element: L(() => import("./components/backoffice/BOLivraison").then(m => ({ default: m.BOLivraison }))), errorElement: <ErrorFallback /> },
-        { path: "communication", element: L(() => import("./components/backoffice/BOCommunication").then(m => ({ default: m.BOCommunication }))), errorElement: <ErrorFallback /> },
-        { path: "cron", element: L(() => import("./components/backoffice/BOCronDashboard").then(m => ({ default: m.BOCronDashboard }))), errorElement: <ErrorFallback /> },
-        { path: "config-institution", element: L(() => import("./components/backoffice/BOConfigInstitution").then(m => ({ default: m.BOConfigInstitution }))), errorElement: <ErrorFallback /> },
-        { path: "keiwa", element: L(() => import("./components/backoffice/BOKeiwa").then(m => ({ default: m.BOKeiwa }))), errorElement: <ErrorFallback /> },
+        { path: "dashboard", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BODashboard").then(m => ({ default: m.BODashboard })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "acteurs", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOActeurs").then(m => ({ default: m.BOActeurs })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "acteurs/nouveau", element: <ExigerRoleBO>{L(() => import("./components/backoffice/NouvelActeurPage").then(m => ({ default: m.NouvelActeurPage })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "acteurs/:id", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOActeurDetail").then(m => ({ default: m.BOActeurDetail })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "enrolement", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOEnrolement").then(m => ({ default: m.BOEnrolement })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "supervision", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOSupervision").then(m => ({ default: m.BOSupervision })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "zones", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOZones").then(m => ({ default: m.BOZones })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "carte", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOCarteActeurs").then(m => ({ default: m.BOCarteActeurs })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "academy", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOAcademy").then(m => ({ default: m.BOAcademy })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "missions", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOMissions").then(m => ({ default: m.BOMissions })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "parametres", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOParametres").then(m => ({ default: m.BOParametres })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "audit", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOAudit").then(m => ({ default: m.BOAudit })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "utilisateurs", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOUtilisateurs").then(m => ({ default: m.BOUtilisateurs })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "institutions", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOInstitutions").then(m => ({ default: m.BOInstitutions })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "profil", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOProfil").then(m => ({ default: m.BOProfil })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "rapports", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BORapports").then(m => ({ default: m.BORapports })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "notifications", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BONotifications").then(m => ({ default: m.BONotifications })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "support", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOSupport").then(m => ({ default: m.BOSupport })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "moderation", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOModeration").then(m => ({ default: m.BOModeration })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "mutations", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOMutations").then(m => ({ default: m.BOMutations })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "contenus", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOContenus").then(m => ({ default: m.BOContenus })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "monitoring-ia", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOMonitoringIA").then(m => ({ default: m.BOMonitoringIA })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "event-monitor", element: <ExigerRoleBO>{L(() => import("./components/backoffice/EventMonitor").then(m => ({ default: m.EventMonitor })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "analytics", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOAnalyticsProduit").then(m => ({ default: m.BOAnalyticsProduit })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "score-financier", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOScoreFinancier").then(m => ({ default: m.BOScoreFinancier })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "api-keys", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOApiKeys").then(m => ({ default: m.BOApiKeys })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "marketplace", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOMarketplace").then(m => ({ default: m.BOMarketplace })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "livraison", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOLivraison").then(m => ({ default: m.BOLivraison })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "communication", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOCommunication").then(m => ({ default: m.BOCommunication })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "cron", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOCronDashboard").then(m => ({ default: m.BOCronDashboard })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "config-institution", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOConfigInstitution").then(m => ({ default: m.BOConfigInstitution })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
+        { path: "keiwa", element: <ExigerRoleBO>{L(() => import("./components/backoffice/BOKeiwa").then(m => ({ default: m.BOKeiwa })))}</ExigerRoleBO>, errorElement: <ErrorFallback /> },
       ]},
 
       { path: "/pay/success", element: L(() => import("./components/wallet/PaySuccessPage").then(m => ({ default: m.default }))), errorElement: <ErrorFallback /> },
