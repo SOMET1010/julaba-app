@@ -121,11 +121,17 @@ export interface CommandeProducteur {
   prixUnitaire: number;
   total: number;
   statut: 'en_attente' | 'confirmee' | 'en_cours' | 'livree' | 'annulee';
+  // Statut de PAIEMENT réel du backend (commande.entity.ts:94 : colonne
+  // statut_paiement, défaut 'non_paye' ; POST /commandes/:id/paiement pose
+  // 'paye'). C'est LA source de vérité « argent encaissé » — le statut de
+  // workflow (livree/confirmee…) ne dit RIEN de l'argent reçu (BUG-010).
+  statutPaiement?: 'paye' | 'non_paye';
   dateCommande: string;
   recolteId?: string;
   recolte_id?: string;
   // Variantes héritées de l'API encore lues par certains écrans.
   status?: string;
+  statut_paiement?: string;
   acheteur?: { nom?: string };
   montant?: number;
 }
@@ -607,13 +613,17 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     } catch {
       // Repli hors-ligne : calcul client CORRIGÉ à partir des données chargées.
       // kg = SOMME des quantités (jamais un compte) ; revenus = somme des
-      // commandes du vendeur (hors annulée/litige), source de vérité de l'app.
-      const nonAnnulee = (s: string) => s !== 'annulee' && s !== 'litige';
+      // commandes du vendeur RÉELLEMENT PAYÉES (statut_paiement = 'paye', la
+      // valeur posée par POST /commandes/:id/paiement) — BUG-010/C-10 : une
+      // commande en_attente/confirmee/livree NON payée n'est PAS un revenu,
+      // elle vit dans « en attente » (Revenus.tsx), pas dans le total encaissé.
+      const payee = (c: CommandeProducteur) =>
+        ((c.statutPaiement ?? c.statut_paiement) === 'paye');
       const revenusTotal = commandes
-        .filter(c => nonAnnulee(c.statut as string))
+        .filter(payee)
         .reduce((s, c) => s + (Number(c.total) || 0), 0);
       const revenusJour = commandes
-        .filter(c => nonAnnulee(c.statut as string) && dateOf(c.dateCommande) === todayStr)
+        .filter(c => payee(c) && dateOf(c.dateCommande) === todayStr)
         .reduce((s, c) => s + (Number(c.total) || 0), 0);
       const fallback: ProducteurStats = {
         recoltesTotales: recoltes.length,
@@ -662,6 +672,11 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
           prixUnitaire: Number(c.prix_unitaire || c.prixUnitaire || 0),
           total: Number(c.total || c.montant || 0),
           statut: (c.statut || c.status || 'en_attente') as CommandeProducteur['statut'],
+          // Statut de paiement RÉEL du backend ('paye' | 'non_paye') — sans lui,
+          // le repli hors-ligne de getStats ne peut pas distinguer revenu
+          // encaissé et commande en attente (BUG-010).
+          statutPaiement: (c.statut_paiement || c.statutPaiement || 'non_paye') as CommandeProducteur['statutPaiement'],
+          statut_paiement: c.statut_paiement || c.statutPaiement,
           dateCommande: c.created_at || c.dateCommande || new Date().toISOString(),
           recolteId: c.recolte_id || c.recolteId || undefined,
           recolte_id: c.recolte_id || undefined,
