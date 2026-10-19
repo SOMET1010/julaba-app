@@ -1,6 +1,6 @@
 import { SkipThrottle } from '@nestjs/throttler';
 import { buildMeta, parsePagination } from '../common/paginate';
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, ForbiddenException, NotFoundException, BadRequestException, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, ForbiddenException, NotFoundException, BadRequestException, ConflictException, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,6 +16,8 @@ import * as crypto from 'crypto';
 import { CreateActeurDto } from '../auth/dto/create-acteur.dto';
 import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { aPermissionBO } from '../auth/bo-autorisation';
+import { exigerTransitionStatut } from './statuts-identification';
 
 @UseGuards(JwtAuthGuard)
 @SkipThrottle()
@@ -488,14 +490,40 @@ export class IdentificationsController {
     const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
     const existing = await this.repo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Identification introuvable');
-    if (!isAdmin && String(existing.identificateur_id) !== String(user?.id)) {
+    const estProprietaire = String(existing.identificateur_id) === String(user?.id);
+    if (!isAdmin && !estProprietaire) {
       throw new ForbiddenException('Accès refusé');
     }
+
+    // C-12 (19/10/2026) — autorisation de VALIDATION d'enrôlement.
+    // Qui peut muter `statut` ? Uniquement un compte BO portant la permission
+    // serveur `enrolement.validate`, résolue comme le front (auth/
+    // bo-autorisation.ts : super_admin toujours, sinon boPermissions du compte,
+    // sinon défaut du rôle). Le propriétaire terrain du dossier (identificateur)
+    // et l'operateur_terrain NE valident PAS : la self-approbation d'un dossier
+    // (commissions/statistiques faussées, circuit 24-48 h contourné) est le
+    // constat C-12, corrigé ici.
+    const peutValider = aPermissionBO(user, 'enrolement.validate');
+
+    // Toute tentative de poser un statut par un compte non habilité est refusée
+    // AVANT même le filtrage des champs — 403 métier explicite : un
+    // identificateur ne peut plus approuver/rejeter son propre dossier par
+    // appel API direct.
+    if (body?.statut !== undefined && body?.statut !== null && !peutValider) {
+      throw new ForbiddenException(
+        "Le statut d'un dossier d'identification ne peut être modifié que par un agent habilité (permission enrolement.validate). Le propriétaire du dossier ne peut pas s'auto-approuver (C-12).",
+      );
+    }
+
+    // Allow-list de champs (garde existante préservée). `statut` n'y figure
+    // que pour un agent habilité ; le propriétaire conserve l'édition de ses
+    // autres champs (correction de formulaire, complément, géolocalisation…).
     const allowedFields = [
-      'statut', 'acteur_nom', 'commune', 'notes',
+      'acteur_nom', 'commune', 'notes',
       'etape_validation', 'motif_rejet', 'date_validation',
       'current_step', 'form_data',
       'latitude', 'longitude', 'region', 'documents',
+      ...(peutValider ? ['statut'] : []),
     ];
     const normalized = {
       ...body,
@@ -506,6 +534,38 @@ export class IdentificationsController {
     const safeBody = Object.fromEntries(
       Object.entries(normalized).filter(([k]) => allowedFields.includes(k))
     );
+
+    // ── Machine à états serveur (C-12) ─────────────────────────────────────
+    // Statut actuel du dossier (source : la ligne lue plus haut).
+    const ancienStatut = String(existing.statut ?? '');
+    // Statut cible demandé par un agent habilité (chaîne vide/null ⇒ pas de
+    // changement demandé).
+    let statutCible: string | undefined =
+      typeof safeBody.statut === 'string' && safeBody.statut.trim() !== ''
+        ? safeBody.statut.trim()
+        : undefined;
+    // Resoumission du complément : le PROPRIÉTAIRE (non habilité) ne poste
+    // jamais de statut — quand il re-soumet un dossier en 'complement'
+    // (formulaire complété, sans clé statut dans le body), le SERVEUR repasse
+    // seul le dossier en revue ('en_attente') et journalise le changement :
+    // le circuit annoncé à l'écran (revue BO sous 24-48 h) reste vrai.
+    let sourceStatut: 'agent_habilite' | 'resoumission_proprietaire' = 'agent_habilite';
+    if (!statutCible && estProprietaire && !peutValider && ancienStatut === 'complement') {
+      statutCible = 'en_attente';
+      sourceStatut = 'resoumission_proprietaire';
+    }
+    if (statutCible) {
+      // Transition hors mappe (ou depuis un statut inconnu) → 409. Réécrire la
+      // MÊME valeur est un no-op autorisé (idempotence des clients).
+      if (statutCible !== ancienStatut) {
+        exigerTransitionStatut(ancienStatut, statutCible);
+      }
+      safeBody.statut = statutCible;
+    } else {
+      delete safeBody.statut;
+    }
+
+    // Garde existante PRÉSERVÉE : motif obligatoire pour un rejet.
     if (safeBody.statut === 'rejete' && !safeBody.motif_rejet) {
       throw new BadRequestException('Le motif de rejet est obligatoire');
     }
@@ -521,8 +581,38 @@ export class IdentificationsController {
     const prenom = actor?.first_name || existing?.acteur_nom?.split?.(' ')?.[0] || 'Utilisateur';
     const telephone = actor?.phone || body?.telephone || body?.phone || '';
 
-    const result = await this.repo.update(id, safeBody);
-    if (safeBody.statut === 'rejete') {
+    // Mise à jour + entrée d'audit DANS LA MÊME TRANSACTION (motif repris
+    // d'admin-wallets.service) : impossible d'écrire un changement de statut
+    // sans sa trace, et une panne du journal annule la mutation (C-12 /
+    // ADMINNAT-04 — l'ancien PATCH n'écrivait AUCUN audit).
+    const statutEffectif: string | null = statutCible ?? null;
+    const result = await this.dataSource.transaction(async (em) => {
+      let res: any = { affected: 0, raw: [], generatedMaps: [] };
+      if (Object.keys(safeBody).length > 0) {
+        res = await em.update(Identification, id, safeBody);
+      }
+      if (statutEffectif && statutEffectif !== ancienStatut) {
+        await em.query(
+          `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,'identification',$3,$4)`,
+          [
+            user?.id ?? user?.userId ?? null,
+            'IDENTIFICATION_STATUT_MODIFIE',
+            id,
+            JSON.stringify({
+              ancien_statut: ancienStatut,
+              nouveau_statut: statutEffectif,
+              motif: safeBody.motif_rejet ?? null,
+              source: sourceStatut,
+            }),
+          ],
+        );
+      }
+      return res;
+    });
+    // Les branches SMS ci-dessous regardent le statut RÉELLEMENT appliqué
+    // (statutEffectif) — posé par un agent habilité, ou par le serveur pour la
+    // resoumission du complément ('en_attente' : aucun SMS, comme avant).
+    if (statutEffectif === 'rejete') {
       if (phone) {
         try {
           await this.feedbakSmsService.notifyDossierRejete(String(phone), String(prenom), String(safeBody.motif_rejet || 'Non précisé'));
@@ -531,7 +621,7 @@ export class IdentificationsController {
         }
       }
     }
-    if (safeBody.statut === 'approuve' || safeBody.statut === 'valide') {
+    if (statutEffectif === 'approuve' || statutEffectif === 'valide') {
       if (phone) {
         try {
           // P0.0 (ADR-002) : le template DOSSIER_VALIDE ("connectez-vous avec 0000")
@@ -564,7 +654,7 @@ export class IdentificationsController {
         }
       }
     }
-    if (safeBody.statut === 'complement') {
+    if (statutEffectif === 'complement') {
       if (phone) {
         try {
           await this.feedbakSmsService.notifyComplementRequis(String(phone), String(prenom));
