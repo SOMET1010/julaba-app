@@ -12,6 +12,7 @@ import { Server, Socket } from "socket.io";
 import { Injectable, Logger } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { JwtService } from "@nestjs/jwt";
+import { UserRole } from "../users/entities/user.entity";
 
 @Injectable()
 @WebSocketGateway({
@@ -56,10 +57,28 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
       client.data.userId = userId;
       client.data.role = role;
 
-      // Rejoindre rooms
+      // Rejoindre rooms.
+      // C-14 (audit comptable 12/10) : la room « all » est une room de SIGNAL
+      // uniquement (ex. stock:updated du marché) — elle ne doit JAMAIS recevoir
+      // de données d'argent. Les événements d'argent partent dans des rooms
+      // ciblées : le propriétaire dans SA room `user:<id>` (montant visible de
+      // lui seul), les rôles BO dans « admin » avec une version anonymisée
+      // (voir emitTransactionCreated).
       client.join("all");
       client.join(`user:${userId}`);
-      if (["admin", "super_admin", "admin_national", "operateur_terrain", "gestionnaire_zone", "operateur_terrain"].includes(role)) {
+      // Room « admin » = flux de supervision BO. Rôles réels de UserRole
+      // (users/entities/user.entity.ts:18-29) — le littéral fantôme 'admin'
+      // (aucun compte de ce rôle en base) est retiré, admin_general (oublié)
+      // est ajouté et le doublon operateur_terrain est dédoublonné
+      // (M-01 / ADMINGEN-03). Aligné sur BO_ROLES (auth.service.ts:40).
+      const ROLES_ADMIN_WS: readonly string[] = [
+        UserRole.SUPER_ADMIN,
+        UserRole.ADMIN_GENERAL,
+        UserRole.ADMIN_NATIONAL,
+        UserRole.GESTIONNAIRE_ZONE,
+        UserRole.OPERATEUR_TERRAIN,
+      ];
+      if (ROLES_ADMIN_WS.includes(role as UserRole)) {
         client.join("admin");
       }
 
@@ -92,9 +111,35 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   }
 
   // ── Events metier ───────────────────────────────────────────────
+  // C-14 : PLUS AUCUN broadcast de données d'argent vers la room globale « all ».
+  // Décision de routage :
+  //  1) Le propriétaire de la transaction (data.userId / data.user_id, tel que
+  //     émis par caisse-rest.controller) reçoit l'événement COMPLET — montant
+  //     visible de lui seul — dans SA room `user:<id>` (rejointe à la connexion,
+  //     authentification JWT du handshake : auth.token, header Authorization ou
+  //     cookie access_token).
+  //  2) Les rôles BO (room « admin », liste réelle ci-dessus) qui ont besoin
+  //     d'un flux global reçoivent une version ANONYMISÉE (whitelist, sans
+  //     montant ni user_id ni détails) : un signal « une transaction a eu lieu »
+  //     qui sert de déclencheur de re-synchronisation (le BO re-tire ses
+  //     données via l'API, qui applique ses propres autorisations).
   emitTransactionCreated(data: any) {
-    this.broadcast("transaction:created", data);
-    this.broadcastToAdmins("admin:transaction:created", data);
+    const ownerId = data?.userId ?? data?.user_id ?? data?.user?.id;
+    if (ownerId) {
+      this.broadcastToUser(String(ownerId), "transaction:created", data);
+    }
+    this.broadcastToAdmins("admin:transaction:created", this._anonymiserTransaction(data));
+  }
+
+  // Version BO du flux transaction — whitelist stricte : on ne diffuse que ce
+  // qui est nécessaire au compteur/signal, jamais le montant ni l'identité.
+  private _anonymiserTransaction(data: any): Record<string, unknown> {
+    const d = (data ?? {}) as Record<string, unknown>;
+    const anon: Record<string, unknown> = { type: d.type, _anonymise: true };
+    if (d.id ?? d._id) anon.id = d.id ?? d._id;
+    if (d.statut ?? d.status) anon.statut = d.statut ?? d.status;
+    if (d.created_at ?? d.date) anon.date = d.created_at ?? d.date;
+    return anon;
   }
 
   emitWalletUpdated(userId: string, data: any) {
@@ -123,7 +168,17 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   @SubscribeMessage("getStats")
   handleGetStats(@ConnectedSocket() client: Socket) {
     const info = this.connectedClients.get(client.id) || client.data;
-    if (info?.role && ["admin", "super_admin"].includes(info.role)) {
+    // Statistiques d'infrastructure WS (nombre de connexions) : supervision
+    // NATIONALE uniquement. Le fantôme 'admin' est remplacé par les vrais rôles
+    // d'administration (UserRole) — les rôles territoriaux/terrain
+    // (gestionnaire_zone, operateur_terrain) n'ont pas à voir la métrique
+    // globale (M-01 / ADMINGEN-03).
+    const ROLES_STATS_WS: readonly string[] = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ADMIN_GENERAL,
+      UserRole.ADMIN_NATIONAL,
+    ];
+    if (info?.role && ROLES_STATS_WS.includes(info.role)) {
       client.emit("stats", { connections: this.connectedClients.size, timestamp: new Date().toISOString() });
     }
   }
