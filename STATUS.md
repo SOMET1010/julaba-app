@@ -8,10 +8,10 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **05/10/2026** |
+| relevé | **19/10/2026** |
 | branche par défaut | `main` |
-| branche en cours | `claude/cadre-de-travail` |
-| dernier commit | `1ae880d` — cadre de travail (3 commits) |
+| branche en cours | `dev` |
+| dernier commit | `725caf7e` — fix(wallets) : création automatique des wallets manquants |
 | dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
@@ -53,7 +53,35 @@ l'aperçu local**, pas sur une URL de preview.
 
 ## Livrable en cours
 
-**Vue de connexion ramenée à celle de `main` + Rapport et Dev Mode
+**Session 19/10 — dictée vocale sur le WEB + corrections de session** (branche
+`dev`, non commitée en fin de session — commits antérieurs : `725caf7e`).
+Arbitrage Patrick (19/10) : reconnaissance vocale **native du navigateur**
+(`SpeechRecognition`) sur tout le web ; sherpa-WASM écarté ; sherpa reste le
+seul moteur de l'APK. Trace : `docs/DECISIONS.md` 19/10.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| Dictée dispo sur navigateur : ventes **et** dictée du numéro | ✅ | `voice-offline/webReco.ts` ; branché dans `useVoiceCore`, `useDicteeLive`, `LoginPassword` (`voixEcouteDispo`) |
+| Un reset ne livre jamais un texte périmé (brouillon annulation corrigé) | ✅ | contrat `conclure()/annuler()` — `webReco.test.mts` [3][4] |
+| APK exclue de la reco navigateur (jamais deux moteurs) | ✅ | `webReco.test.mts` [2] |
+| Pavé clavier reste le filet partout ; aucun micro sur le code secret | ✅ | `webReco.test.mts` [1] ; `recoWebDispo()` gate |
+| Nouveau banc inscrit dans `verify` (règle : sinon orphelin) | ✅ | script `test:web-reco` + `maillons-verify.json` (152 maillons) ; `test:maillons-orphelins` vert |
+| Aucun rouge **nouveau** dans `verify` | ✅ | 144 vert / 8 rouge sur 152 : 2 connus + 6 **préexistants à l'HEAD** (prouvés par stash : les 6 sont rouges sans mon lot) |
+| VOICE-01 intact | ✅ | `test:voix-trace-source` : mêmes 5 échecs avant/après |
+| Typecheck + check | ✅ | `tsc -b` 0 ; `npm run check` vert (garde-argent informatif connu) |
+| **Vérifié à l'oreille / au micro réel** | ⬜ | à faire sur navigateur réel (Chrome/Safari) : dire un prix, vérifier la dictée et l'annulation |
+
+**Corrections livrées avec (trace `docs/DECISIONS.md` 19/10)** : `GET
+/wallets/me` crée le wallet manquant (+ backfill, 18 wallets) ; proxy Vite
+`/socket.io` → `localhost:3001` ; bouton « Retour » retiré de l'écran code
+secret.
+
+**Signalement, non touché** : `WalletContext.tsx` mappe `balance: w.solde || 0`
+— violation ACC-03 potentielle, arbitrage Patrick avant tout changement.
+
+---
+
+**Session 15/10 — Vue de connexion ramenée à celle de `main` + Rapport et Dev Mode
 réinstallés** (session 15/10, demande expresse du propriétaire).
 - `LoginPassword.tsx` = version de `main` (`24b40b3`) : le redesign maquette
   12/10 (slogan, carte Tata, micro au bout de la ligne, pavé avec lettres) et
@@ -126,6 +154,7 @@ Backlog : `BOScoreFinancier.tsx` même chemin `/api/v1` relatif ; `RoleDashboard
 | `test:i18n-empreintes-argent` | 🟠 empreinte `intentLocal` — diff établi : **14 phrases / 844, unité ajoutée, 0 franc déplacé**. Attend `--calculer` |
 | `test:garde-argent` | 🟠 **12 entrés / 14 perdues**. Attend `--figer-perimetre` |
 | `test:entree-unique`, `test:nom-tantie` | ❌ bancs **orphelins** découverts le 03/10, jamais exécutés avant. Hors `verify`, cause non diagnostiquée |
+| 6 rouges **nouveaux dans `verify`** (19/10) | `test:enum-check-phone` (`.env` sans `AUTH_TELEPHONES_TEST`), `test:i18n-source` (phrase absente : `WithdrawWalletModal.tsx:207`), `test:refus-hors-ligne-commande` (`toast is not defined`), `test:accueil-honnete` (Keiwa/tuile argent), `test:voix-connexion-lot-a` (effacement, 1 mot d'écart), `test:modules-pilote` (38 routes d'argent). **Tous rouges à l'HEAD sans mon lot** (prouvé par stash) — préexistants, absents de la liste `CONNUS` de `verify-tout.mjs`. Écart à arbitrer : les ajouter à `CONNUS` ou les corriger |
 
 ---
 

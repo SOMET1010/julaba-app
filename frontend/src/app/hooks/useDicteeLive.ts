@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { stopAllVoice } from '../services/audioManager';
 import { stopIntro } from '../services/onboardingVoix';
 import { startLiveDictation, offlineModelReady, offlineModelInstalled } from '../voice-offline/offlineStt';
+import { recoWebDispo, demarrerRecoWeb } from '../voice-offline/webReco';
 import { extractPhoneDigits, fusionnerChiffresDictes } from '../utils/frenchDigits';
 import { vlog, vlogStart } from '../utils/voiceDebug';
 import { CONTRAINTES_MICRO_DICTEE } from '../services/contraintesMicro';
@@ -106,6 +107,46 @@ export function useDicteeLive() {
   // On transcrit pendant qu'elle parle ; les chiffres se remplissent à l'écran ;
   // on s'ARRÊTE dès que la valeur est complète et valide (jamais sur un minuteur).
   // Gère les nombres composés (« vingt-six » : on ne fige pas sur le « vingt »).
+  //
+  // UNE SEULE pipeline de chiffres, DEUX moteurs (19/10/2026) : sherpa natif
+  // (startLiveDictation, APK) ou reconnaissance du navigateur (webReco, web).
+  // Le texte arrive par `surPasseSTT` dans les deux cas — le moteur change,
+  // le traitement des chiffres non.
+  const surPasseSTT = (texte: string, estFinal: boolean) => {
+    const cfg = dictCfgRef.current;
+    if (!cfg) return;
+    if (dictDoneRef.current && !estFinal) return;
+    const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
+    if (estFinal || digits.length > bestDigitsRef.current.length) {
+      vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
+    }
+    // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
+    bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
+    if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
+    const best = bestDigitsRef.current;
+    cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
+    // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
+    // arrive en 2 temps : on ne fige PAS sur un partiel, on attend la fin de
+    // phrase du moteur OU une valeur STABLE ~0,8 s (le « six » corrige le « vingt »).
+    if (best.length >= cfg.max && cfg.estComplet(best)) {
+      if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+      if (estFinal) { finaliserDictee(best); return; }
+      if (best !== lastTenRef.current) {
+        lastTenRef.current = best;
+        if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 800);
+      }
+      return;
+    }
+    if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+    lastTenRef.current = '';
+    // Incomplet : ~1,6 s pour continuer (sans jamais couper), sinon on termine.
+    if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
+    if (estFinal) {
+      settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
+    }
+  };
+
   const demarrerDictee = async (cfg: DicteeCfg) => {
     if (isListening) { vlog('RE_TAP_STOP'); arreterEcoute(); return; }
     vlogStart('dictée');
@@ -113,23 +154,32 @@ export function useDicteeLive() {
     vlog('MODEL_READY', { ready: offlineModelReady(), installed: offlineModelInstalled() });
     vlog('VOIX_ENTREE', 'Tantie Nanti Lou · clips locaux uniquement');
 
-    if (!offlineModelReady()) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
+    // WEB : sherpa n'existe pas dans un navigateur — la reconnaissance native
+    // du navigateur (webReco.ts) fournit le texte, la pipeline ci-dessus le
+    // traite. Hors navigateur équipé (ex. Firefox) : le pavé reste le filet,
+    // comme avant (siPasPrete).
+    const surWeb = recoWebDispo();
+    if (!offlineModelReady() && !surWeb) { vlog('STT_NOT_READY'); cfg.siPasPrete(); return; }
 
     vlog('MIC_ASK');
-    let stream: MediaStream;
-    try {
-      // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
-      // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
-      // chiffres venus de la voix de Tantie entraient dans le numéro de
-      // téléphone. Réglage unique : `services/contraintesMicro`.
-      stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
-      vlog('MIC_OK');
-    } catch (e) {
-      vlog('MIC_DENIED', String(e));
-      cfg.siMicRefuse();
-      return;
+    let stream: MediaStream | null = null;
+    if (!surWeb) {
+      try {
+        // MIC-01 — anti-écho : la dictée du numéro et du code s'ouvre juste
+        // après la consigne dite. Nu, ce micro entendait le haut-parleur, et des
+        // chiffres venus de la voix de Tantie entraient dans le numéro de
+        // téléphone. Réglage unique : `services/contraintesMicro`.
+        stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
+        vlog('MIC_OK');
+      } catch (e) {
+        vlog('MIC_DENIED', String(e));
+        cfg.siMicRefuse();
+        return;
+      }
+      mediaStreamRef.current = stream;
+    } else {
+      vlog('MIC_OK', 'navigateur (permission gérée par la reconnaissance)');
     }
-    mediaStreamRef.current = stream;
     dictCfgRef.current = cfg;
     // Apprentissage 'auto' : le canal « voix » appartient à l'écran, le mécanisme
     // au hook — le hook SIGNALE, l'écran note.
@@ -148,55 +198,43 @@ export function useDicteeLive() {
     try { stopIntro(); } catch { /* ignore */ }
     try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
 
-    let handle: { stop: () => Promise<void> };
-    try {
-      handle = await startLiveDictation(stream, (texte, estFinal) => {
-        // Une repasse FINALE (estFinal) fait TOUJOURS autorité sur bestDigitsRef,
-        // même après le début de la finalisation (dictDoneRef déjà vrai) : c'est
-        // elle que finaliserDictee() attend pour conclure sur le résultat
-        // définitif du STT plutôt que sur un instantané intermédiaire (cf. le
-        // commentaire de finaliserDictee). Seule la suite du handler (remplissage
-        // écran, auto-arrêt) ne doit plus s'exécuter une fois la dictée finalisée.
-        if (dictDoneRef.current && !estFinal) return;
-        const digits = extractPhoneDigits(texte || '').slice(0, cfg.max);
-        if (estFinal || digits.length > bestDigitsRef.current.length) {
-          vlog('TXT', { fin: estFinal, brut: (texte || '').slice(0, 40), digits });
-        }
-        // Le résultat FINAL fait autorité (corrige) ; un partiel ne fait que grandir.
-        bestDigitsRef.current = fusionnerChiffresDictes(estFinal, digits, bestDigitsRef.current);
-        if (dictDoneRef.current) return; // déjà en cours de finalisation : bestDigitsRef mis à jour, rien d'autre à faire
-        const best = bestDigitsRef.current;
-        cfg.onLive(best); // remplissage EN DIRECT (contrôle à l'œil)
-        // Valeur complète + valide → on s'arrête. Nombre composé (« vingt-six »)
-        // arrive en 2 temps : on ne fige PAS sur un partiel, on attend la fin de
-        // phrase du moteur OU une valeur STABLE ~0,8 s (le « six » corrige le « vingt »).
-        if (best.length >= cfg.max && cfg.estComplet(best)) {
+    if (surWeb) {
+      const reco = demarrerRecoWeb({
+        interim: (texte) => surPasseSTT(texte, false),
+        conclure: (texte) => surPasseSTT(texte, true),
+        erreur: (code) => {
+          // L'écoute navigateur est morte (micro refusé, réseau, panne) : on
+          // nettoie COMME un démarrage natif échoué et on rend la main au pavé.
+          // Jamais d'« écoute en cours » affichée sans micro derrière.
+          vlog('WEB_RECO_ERR', code);
+          dictDoneRef.current = true;
+          if (micStartTimeoutRef.current) { clearTimeout(micStartTimeoutRef.current); micStartTimeoutRef.current = null; }
           if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-          if (estFinal) { finaliserDictee(best); return; }
-          if (best !== lastTenRef.current) {
-            lastTenRef.current = best;
-            if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-            confirmTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 800);
-          }
-          return;
-        }
-        if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
-        lastTenRef.current = '';
-        // Incomplet : ~1,6 s pour continuer (sans jamais couper), sinon on termine.
-        if (settleTimerRef.current) { clearTimeout(settleTimerRef.current); settleTimerRef.current = null; }
-        if (estFinal) {
-          settleTimerRef.current = setTimeout(() => finaliserDictee(bestDigitsRef.current), 1600);
-        }
-      }, undefined, (tag, data) => vlog(tag, data));
-      vlog('LIVE_START');
-    } catch (e) {
-      vlog('LIVE_FAIL', String(e));
-      try { stream.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-      mediaStreamRef.current = null;
-      cfg.siEchec();
-      return;
+          if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
+          liveStopRef.current = null;
+          setIsListening(false);
+          setIsFinalizingDictation(false);
+          if (code === 'micro') cfg.siMicRefuse(); else cfg.siEchec();
+        },
+      });
+      if (!reco) { cfg.siEchec(); return; }
+      liveStopRef.current = reco.conclure;
+      vlog('LIVE_START', 'navigateur');
+    } else {
+      let handle: { stop: () => Promise<void> };
+      if (!stream) { cfg.siEchec(); return; } // étroit pour TS : hors web, le micro est demandé juste au-dessus
+      try {
+        handle = await startLiveDictation(stream, surPasseSTT, undefined, (tag, data) => vlog(tag, data));
+        vlog('LIVE_START');
+      } catch (e) {
+        vlog('LIVE_FAIL', String(e));
+        try { stream?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+        mediaStreamRef.current = null;
+        cfg.siEchec();
+        return;
+      }
+      liveStopRef.current = handle.stop;
     }
-    liveStopRef.current = handle.stop;
 
     setIsListening(true);
     try { navigator.vibrate?.(60); } catch { /* ignore */ }

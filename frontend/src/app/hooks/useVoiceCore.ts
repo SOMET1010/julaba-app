@@ -26,6 +26,8 @@ import { resolveLocalVoiceChoice } from "../services/localVoiceChoice";
 import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
 import { acquiescement } from '../voice-offline/grammaireAcquiescement';
+// WEB : dictée par la reconnaissance du navigateur (sherpa reste le moteur de l'APK).
+import { demarrerRecoWeb, type EcouteRecoWeb } from '../voice-offline/webReco';
 
 // ─── TYPES ───────────────────────────────────────────────────────
 
@@ -415,6 +417,7 @@ export function useVoiceCore({
   }, []);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const browserRecognitionRef = useRef<EcouteRecoWeb | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const _initHistory = (): VoiceMessage[] => {
@@ -537,6 +540,14 @@ export function useVoiceCore({
     stopSilenceDetection();
     playBip('stop'); // Bip arrêt
     setLiveTranscript("Analyse en cours...");
+    if (browserRecognitionRef.current) {
+      // conclure() livre le texte entendu puis résout : onend tournera avant
+      // la fin de la promesse (le chemin natif livre de la même façon).
+      void browserRecognitionRef.current.conclure();
+      browserRecognitionRef.current = null;
+      setState("processing");
+      return;
+    }
     if (mediaRecorderRef.current?.state !== "inactive") {
       mediaRecorderRef.current?.stop();
       setState("processing");
@@ -575,6 +586,12 @@ export function useVoiceCore({
   // ── Reset ────────────────────────────────────────────────────
   const stopAll = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (browserRecognitionRef.current) {
+      // annuler() : reset / démontage — JAMAIS de commande envoyée d'un texte
+      // en attente après un reset (le brouillon livrait encore ici).
+      browserRecognitionRef.current.annuler();
+      browserRecognitionRef.current = null;
+    }
     if (mediaRecorderRef.current?.state !== "inactive") {
       try { mediaRecorderRef.current?.stop(); } catch (e) { console.warn('[voice]', e); }
     }
@@ -1019,6 +1036,54 @@ try {
     if (isSpeaking) { ttsStop(); setIsSpeaking(false); }
     interruptRef.current = false;
     setError(""); setTranscript(""); setLiveTranscript("");
+    // WEB : sherpa est un plugin Capacitor Android (SherpaSttPlugin.kt) et
+    // n'existe pas dans un navigateur — dictée par la reconnaissance native du
+    // navigateur (voice-offline/webReco.ts), puis MÊME traitement local
+    // (`intentLocal`) et même workflow de vente, aucun serveur de transcription.
+    const reco = demarrerRecoWeb({
+      interim: (texte) => setLiveTranscript(texte),
+      conclure: (texte) => {
+        if (!texte) {
+          setState("idle");
+          setLiveTranscript("");
+          return;
+        }
+        setTranscript(texte);
+        setLiveTranscript("Analyse en cours...");
+        void sendTextRef.current?.(texte);
+      },
+      erreur: (code) => {
+        // La cause dite est la vraie cause : le micro du navigateur refusé,
+        // son réseau indisponible, ou un échec quelconque.
+        const message =
+          code === "micro"
+            ? "Accès au micro refusé. Autorise le micro pour Jùlaba puis réessaie."
+            : code === "reseau"
+              ? "La voix sur le navigateur a besoin d'internet. Réessaie connectée, ou touche les produits."
+              : "Je n'ai pas réussi à t'écouter. Réessaie.";
+        vtrace.erreur("useVoiceCore.webReco", code);
+        setError(message);
+        setState("error");
+        setLiveTranscript("");
+        if (onError) onError(message);
+      },
+    });
+    if (reco) {
+      browserRecognitionRef.current = reco;
+      playBip("start"); // Bip démarrage — même retour sonore que le chemin natif
+      vtrace.ecoute("debut", "useVoiceCore.webReco");
+      setState("listening");
+      setRecordingTime(0);
+      // Filet identique au chemin natif : le micro navigateur ne s'arrête pas
+      // tout seul — au-delà de maxRecordingSeconds, on conclut.
+      timerRef.current = setInterval(() => {
+        setRecordingTime((t) => {
+          if (t >= maxRecordingSeconds) { stopRecording(); return t; }
+          return t + 1;
+        });
+      }, 1000);
+      return;
+    }
     // Micro indisponible dans ce contexte (WebView embarquee, contexte non securise) :
     // inutile de tenter getUserMedia, on guide l'utilisateur vers un vrai navigateur.
     if (!navigator.mediaDevices?.getUserMedia || window.isSecureContext === false) {
@@ -1130,6 +1195,9 @@ try {
     pendingCount: offlinePending, isReplaying: offlineReplaying,
     isListening: state === "listening",
     isProcessing: state === "processing" || state === "thinking",
-    isSupported: typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia,
+    isSupported: typeof navigator !== "undefined" && (
+      !!navigator.mediaDevices?.getUserMedia ||
+      typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+    ),
   };
 }
