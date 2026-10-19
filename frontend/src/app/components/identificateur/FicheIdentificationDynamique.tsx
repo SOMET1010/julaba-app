@@ -973,12 +973,14 @@ export function FicheIdentificationDynamique() {
   }, []);
 
   // Brouillon auto : charger au montage si un brouillon existe pour ce profil.
-  // localStorage survit au redémarrage de l’APK/WebView (contrairement à sessionStorage).
+  // IDENTIFICATEUR-04 (audit 19/10) : retour au sessionStorage — le brouillon
+  // embarque de la PII (nin, CNPS, CMU, signature, photo) qui ne doit PAS
+  // survivre au redémarrage de l’APK/WebView ni à la fermeture de l’app.
   useEffect(() => {
     if (!profil || locationState2) return;
     try {
       const draftKey = `julaba:fiche-draft:${profil}`;
-      const stored = localStorage.getItem(draftKey);
+      const stored = sessionStorage.getItem(draftKey);
       if (!stored) return;
 
       const parsed = JSON.parse(stored);
@@ -1014,7 +1016,7 @@ export function FicheIdentificationDynamique() {
       try {
         const draftKey = `julaba:fiche-draft:${profil}`;
         const draftPayload = { data, step, savedAt: new Date().toISOString() };
-        localStorage.setItem(draftKey, JSON.stringify(draftPayload));
+        sessionStorage.setItem(draftKey, JSON.stringify(draftPayload));
       } catch (e: any) {
         console.warn('[BrouillonAuto] Sauvegarde échouée:', e?.message);
       }
@@ -1530,7 +1532,7 @@ export function FicheIdentificationDynamique() {
     }
     if (profil) {
       try {
-        localStorage.removeItem(`julaba:fiche-draft:${profil}`);
+        sessionStorage.removeItem(`julaba:fiche-draft:${profil}`);
       } catch (e: any) {
         console.warn('[FicheIdentificationDynamique] cleanup brouillon échoué:', e?.message);
       }
@@ -1733,7 +1735,10 @@ export function FicheIdentificationDynamique() {
             await apiRequest(API_URL, `/identifications/${locationState2.identificationId}`, {
               method: 'PATCH',
               body: JSON.stringify({
-                statut: isEdit ? (locationState2.statut || 'validee') : 'en_attente',
+                // C-12 (audit 19/10) — le statut n'est PLUS une propriété du
+                // client : le serveur seul décide des transitions (la
+                // resoumission d'un complément est repositionnée serveur :
+                // complement → en_attente). Un statut envoyé ici répond 403.
                 acteur_nom: fullName,
                 commune: data.commune || '',
                 region: data.region || null,
