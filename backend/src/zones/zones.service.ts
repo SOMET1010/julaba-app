@@ -18,8 +18,17 @@ export class ZonesService {
     return rows[0];
   }
 
-  async getZonesWithStats() {
-    return this.dataSource.query(`
+  async getZonesWithStats(zoneIdGestionnaire?: string | null) {
+    // C-11 / GESTZONE-04 (audit comptable 12/10 §5.8, audit GZ 19/10) :
+    // isolation territoriale des agrégats d'argent. `volumeTotal` est la somme
+    // des caisse_transactions de la zone — un gestionnaire_zone ne doit
+    // recevoir QUE sa zone (liste + KPI). Sans zoneIdGestionnaire (admins
+    // nationaux, identificateur) : comportement inchangé. Le controller refuse
+    // déjà 403 un GZ sans zone ; le prédicat paramétré ci-dessous est la
+    // défense en profondeur.
+    const whereSql = zoneIdGestionnaire ? 'WHERE z.id::text = $1' : '';
+    return this.dataSource.query(
+      `
       SELECT
         z.id, z.nom, z.ville, z.region, z.description,
         z.gestionnaire_id, z.actif, z.created_at,
@@ -50,9 +59,12 @@ export class ZonesService {
         AND u.zone_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
         AND u.zone_id::uuid = z.id
       LEFT JOIN caisse_transactions ct ON ct.user_id::uuid = u.id
+      ${whereSql}
       GROUP BY z.id
       ORDER BY z.ville, z.nom
-    `);
+    `,
+      zoneIdGestionnaire ? [zoneIdGestionnaire] : [],
+    );
   }
 
   async getTerritoires() {
