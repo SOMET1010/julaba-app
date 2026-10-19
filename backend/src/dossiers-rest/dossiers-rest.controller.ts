@@ -8,6 +8,8 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Identification } from '../identifications/identification.entity';
 import { User } from '../users/entities/user.entity';
+import { aPermissionBO } from '../auth/bo-autorisation';
+import { exigerTransitionStatut } from '../identifications/statuts-identification';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('identificateur', 'admin_general', 'super_admin')
@@ -56,12 +58,59 @@ export class DossiersRestController {
     if (user.role === 'identificateur' && identification.identificateur_id !== user.id) {
       throw new ForbiddenException('Accès refusé');
     }
+    // C-12 (19/10/2026) : même verrou que PATCH /identifications/:id — sans
+    // quoi cette route (non appelée par le front) resterait un contournement
+    // complet de la machine à états : le propriétaire du dossier pourrait
+    // s'auto-approuver ET basculer users.validated par appel API direct.
+    const peutValider = aPermissionBO(user, 'enrolement.validate');
+    if (body?.statut !== undefined && body?.statut !== null && !peutValider) {
+      throw new ForbiddenException(
+        "Le statut d'un dossier d'identification ne peut être modifié que par un agent habilité (permission enrolement.validate). Le propriétaire du dossier ne peut pas s'auto-approuver (C-12).",
+      );
+    }
     const CHAMPS_AUTORISES = ['statut', 'notes', 'commentaire', 'date_validation'];
     const safeBody = Object.fromEntries(
       Object.entries(body).filter(([k]) => CHAMPS_AUTORISES.includes(k))
     );
-    const result = await this.repo.update(id, safeBody);
-    if (result.affected === 0) throw new NotFoundException('Dossier introuvable');
+    // Machine à états serveur (C-12) : transition hors mappe ou statut actuel
+    // inconnu → 409. Réécrire la même valeur est un no-op autorisé.
+    const ancienStatut = String(identification.statut ?? '');
+    const statutDemandeDossier: string | undefined =
+      typeof body?.statut === 'string' && body.statut.trim() !== '' ? body.statut.trim() : undefined;
+    if (statutDemandeDossier) {
+      exigerTransitionStatut(ancienStatut, statutDemandeDossier);
+      safeBody.statut = statutDemandeDossier;
+    } else {
+      delete safeBody.statut;
+    }
+    const statutEffectif: string | null = statutDemandeDossier ?? null;
+    // Mise à jour + entrée d'audit DANS la même transaction (motif
+    // admin-wallets.service) — l'ancien PATCH n'écrivait AUCUN audit.
+    const result = await this.repo.manager.transaction(async (em) => {
+      let res: any = { affected: 0 };
+      if (Object.keys(safeBody).length > 0) {
+        res = await em.update(Identification, id, safeBody);
+      }
+      if (statutEffectif && statutEffectif !== ancienStatut) {
+        await em.query(
+          `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,'identification',$3,$4)`,
+          [
+            user?.id ?? null,
+            'IDENTIFICATION_STATUT_MODIFIE',
+            id,
+            JSON.stringify({
+              ancien_statut: ancienStatut,
+              nouveau_statut: statutEffectif,
+              motif: safeBody.commentaire ?? safeBody.notes ?? null,
+              source: 'agent_habilite',
+              route: 'PATCH /dossiers/:id',
+            }),
+          ],
+        );
+      }
+      return res;
+    });
+    if (Object.keys(safeBody).length > 0 && result.affected === 0) throw new NotFoundException('Dossier introuvable');
     // Si validation → activer le compte acteur
     if (safeBody.statut && ['validee', 'valide', 'approuve', 'rejetee', 'rejete'].includes(String(safeBody.statut))) {
       if (identification.acteur_id) {
