@@ -53,10 +53,13 @@ describe('Invariant — toggle BO cron ⇒ effet réel sur les jobs @Cron()', ()
     alertesService = mod.get(AlertesService);
     bpayCronService = mod.get(BpayCronService);
 
-    // Compte admin_general : signup normal (rôle marchand, jamais admin en
+    // Compte super_admin : signup normal (rôle marchand, jamais admin en
     // self-service) puis élévation directe en base — RolesGuard relit le
     // rôle depuis la base à chaque requête (JwtStrategy.validate), donc le
     // token émis avant l'élévation reste valide pour les routes admin.
+    // MAJ 19/10 (C-15, Task 46-e) : le toggle est super_admin only —
+    // l'élévation admin_general répondait désormais 403 ; l'invariant teste
+    // le GESTE autorisé (celui du super_admin) et son EFFET RÉEL sur les jobs.
     const su = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')
       .send({ phone: ADMIN_PHONE, firstName: 'Admin', lastName: 'CronTest', role: 'marchand', genre: 'femme' });
@@ -68,7 +71,7 @@ describe('Invariant — toggle BO cron ⇒ effet réel sur les jobs @Cron()', ()
       .send({ oldPassword: '0000', newPassword: '1234' });
 
     const ds = app.get(DataSource);
-    await ds.query(`UPDATE users SET role = 'admin_general' WHERE id = $1`, [su.body.user.id]);
+    await ds.query(`UPDATE users SET role = 'super_admin' WHERE id = $1`, [su.body.user.id]);
   }, 60000);
 
   afterAll(async () => {
