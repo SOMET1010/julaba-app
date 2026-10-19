@@ -54,7 +54,7 @@ l'aperçu local**, pas sur une URL de preview.
 ## Livrable en cours
 
 **Session 19/10 — dictée vocale sur le WEB + corrections de session** (branche
-`dev`, non commitée en fin de session — commits antérieurs : `725caf7e`).
+`dev`, commit `55a8e0c0`, poussé — antérieur : `725caf7e` fix wallets).
 Arbitrage Patrick (19/10) : reconnaissance vocale **native du navigateur**
 (`SpeechRecognition`) sur tout le web ; sherpa-WASM écarté ; sherpa reste le
 seul moteur de l'APK. Trace : `docs/DECISIONS.md` 19/10.
