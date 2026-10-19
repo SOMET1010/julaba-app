@@ -168,28 +168,34 @@ export function AppLayout() {
           (en haut, au centre). Rien de ce qui sert à vendre n'est recouvert.
 
           À RETIRER QUAND LE PILOTE SERA QUALIFIÉ. Ce n'est pas un élément de
-          la charte : c'est un instrument de recette. */}
-      <button
-        type="button"
-        aria-label="Rapport de test — copier le journal"
-        onClick={async () => {
-          const r = await vlogPartager();
-          if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
-          else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
-        }}
-        className="lg:left-[292px] xl:left-[332px]"
-        style={{
-          position: 'fixed', left: 12, bottom: 96, zIndex: 60,
-          display: 'flex', alignItems: 'center', gap: 8,
-          minHeight: 56, padding: '10px 18px',
-          fontSize: 17, lineHeight: '22px', fontWeight: 800, fontFamily: 'inherit',
-          color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A',
-          borderRadius: 999, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer',
-        }}
-      >
-        <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
-        Rapport
-      </button>
+          la charte : c'est un instrument de recette.
+
+          MARCHAND-12 (audit 19/10) : GATED SUR `import.meta.env.DEV` — absent
+          du bundle de production (même motif que le ProfileSwitcher ci-dessous) ;
+          reste monté en dev, où il sert d'instrument de recette. */}
+      {import.meta.env.DEV && (
+        <button
+          type="button"
+          aria-label="Rapport de test — copier le journal"
+          onClick={async () => {
+            const r = await vlogPartager();
+            if (r.methode === 'copie') toast.success('Rapport copié — colle-le dans la conversation.');
+            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+          }}
+          className="lg:left-[292px] xl:left-[332px]"
+          style={{
+            position: 'fixed', left: 12, bottom: 96, zIndex: 60,
+            display: 'flex', alignItems: 'center', gap: 8,
+            minHeight: 56, padding: '10px 18px',
+            fontSize: 17, lineHeight: '22px', fontWeight: 800, fontFamily: 'inherit',
+            color: '#7A4A24', background: '#F5D6BD', border: '2px solid #D9A87A',
+            borderRadius: 999, boxShadow: '0 4px 14px rgba(0,0,0,0.18)', cursor: 'pointer',
+          }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+          Rapport
+        </button>
+      )}
 
       {/* Dev Profile Switcher - Only in development */}
       {import.meta.env.DEV && <ProfileSwitcher />}
