@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
@@ -27,11 +27,18 @@ interface CompteDemo {
   role: UserRole;
   // Code de connexion. Rôles « acteur » = pavé à 4 chiffres -> ACTEUR_PASSWORD.
   // Rôles back-office = écran /backoffice/login (champ texte) -> BO_PASSWORD.
+  // Exception 46-h : les rôles BO « terrain » (gestionnaire_zone,
+  // operateur_terrain) portent motDePasseActeur=true — voir COMPTES.
   password: string;
   avecDonnees?: boolean; // jeu de données caisse (marchand uniquement)
   email?: string;        // back-office : connexion par email
   sousProfilMarchand?: string; // marchand : grossiste | demi_grossiste | detaillant
   cooperativeName?: string;
+  // 46-h : utilise le mot de passe ACTEURS (publié, « 1234 ») au lieu du
+  // secret BO. Réservé aux rôles BO SANS pouvoir d'administration ni d'argent.
+  motDePasseActeur?: boolean;
+  // Zone attribuée au compte (colonne users.zone_id) — gestionnaire_zone.
+  zoneId?: string;
 }
 
 // Mot de passe unique pour TOUS les comptes acteurs de démo (connexion /login,
@@ -84,6 +91,11 @@ const BO_PASSWORD = motDePasseBackOffice() ?? '';
 
 // Un compte de démo par univers, pour que les équipes testent CHAQUE rôle.
 // Acteurs (connexion sur /login, code à 4 chiffres = ACTEUR_PASSWORD) :
+
+// Zone de démonstration du gestionnaire_zone (géographie du scénario : Hervé
+// enrôle et Bénito récolte à Korhogo). UUID fixe = idempotence du seed.
+const ZONE_DEMO_ID = 'dede0000-0000-4000-8000-000000000701';
+
 const COMPTES: CompteDemo[] = [
   // ── Marchand (caisse) ──
   { phone: '+2250700000009', firstName: 'Awa', lastName: 'Koné', genre: 'femme', role: UserRole.MARCHAND, password: ACTEUR_PASSWORD, avecDonnees: true },
@@ -99,6 +111,15 @@ const COMPTES: CompteDemo[] = [
   { phone: '+2250700000015', firstName: 'Aïcha', lastName: 'Bamba', genre: 'femme', role: UserRole.INSTITUTION, password: ACTEUR_PASSWORD },
   // ── Back-office admin (connexion sur /backoffice/login, code à 6 chiffres = BO_PASSWORD) ──
   { phone: '+2250700000016', firstName: 'Admin', lastName: 'Julaba', genre: 'homme', role: UserRole.ADMIN_GENERAL, password: BO_PASSWORD },
+  // ── Back-office « terrain » (46-h — OPERATEUR-11 / GESTZONE : aucun compte
+  //    démo n'existait pour ces deux rôles, la recette runtime était bloquée).
+  //    Ils se connectent par /backoffice/login mais n'ont AUCUN pouvoir
+  //    d'administration ni d'argent (J5 tenu, fail-closed vérifié par les
+  //    audits) : ils reçoivent le mot de passe ACTEURS publié (1234) comme les
+  //    comptes terrain, via motDePasseActeur — l'administration (admin_general,
+  //    super_admin) reste derrière SEED_DEMO_BO_PASSWORD.
+  { phone: '+2250740404040', firstName: 'Sékou', lastName: 'Diomandé', genre: 'homme', role: UserRole.GESTIONNAIRE_ZONE, password: ACTEUR_PASSWORD, motDePasseActeur: true, zoneId: ZONE_DEMO_ID },
+  { phone: '+2250780808080', firstName: 'Nadège', lastName: 'Gnamien', genre: 'femme', role: UserRole.OPERATEUR_TERRAIN, password: ACTEUR_PASSWORD, motDePasseActeur: true },
 
   // ─────────────────────────────────────────────────────────────────────────
   // Comptes de démonstration OFFICIELS (numéros distribués pour la présentation).
@@ -130,6 +151,18 @@ export class SeedDemoService {
     if (process.env.NODE_ENV === 'production' && process.env.SEED_DEMO !== 'true') return;
     if (process.env.SEED_DEMO === 'false') return; // désactivable partout ailleurs
 
+    // 46-h : convergence des bases de démo DÉJÀ peuplées. L'early-exit
+    // ci-dessous court-circuite toute la boucle de création : les comptes BO
+    // « terrain » ajoutés après coup n'apparaîtraient jamais sur un serveur de
+    // démo existant (recette GZ/OT bloquée pour toujours — OPERATEUR-11,
+    // GESTZONE). On garantit donc CES comptes-là avant l'early-exit (deux
+    // findOne, quelques ms) ; tout le reste du seed, lui, ne rejoue pas.
+    try {
+      await this.assurerComptesTerrain(this.dataSource.getRepository(User));
+    } catch {
+      // Tables pas encore prêtes : le seed normal (plus bas) prendra le relais.
+    }
+
     // Démarrage rapide : si le jeu de démo est DÉJÀ chargé (acteur en attente
     // « Awa Nénè », créé en fin de scénario), on ne rejoue RIEN. Rejouer le seed
     // à chaque redémarrage (bcrypt + dizaines de requêtes vers Paris) chargeait
@@ -156,6 +189,9 @@ export class SeedDemoService {
     // porte.
     const motDePasseBO = motDePasseBackOffice();
     const comptesAcreer = COMPTES.filter((c) => {
+      // 46-h : les comptes BO « terrain » (motDePasseActeur) sont créés comme
+      // les acteurs — ils n'ouvrent aucun pouvoir d'administration.
+      if (c.motDePasseActeur) return true;
       if (!estCompteBackOffice(String(c.role))) return true;
       if (motDePasseBO) return true;
       return false;
@@ -178,9 +214,11 @@ export class SeedDemoService {
         // process, la constante tombait juste ; dev local : hash vide, connexion
         // BO impossible). Le filtre d'activation (`motDePasseBO`) ci-dessus,
         // lui, lit déjà l'env au runtime — on s'aligne sur lui.
-        const motDePasseCompte = estCompteBackOffice(String(c.role))
-          ? (motDePasseBackOffice() ?? '')
-          : c.password;
+        const motDePasseCompte = c.motDePasseActeur
+          ? c.password
+          : estCompteBackOffice(String(c.role))
+            ? (motDePasseBackOffice() ?? '')
+            : c.password;
         const passwordHash = await bcrypt.hash(motDePasseCompte, 10);
         if (!user) {
           const nouveau = users.create({
@@ -195,6 +233,7 @@ export class SeedDemoService {
             ...(c.email ? { email: c.email } : {}),
             ...(c.sousProfilMarchand ? { sousProfilMarchand: c.sousProfilMarchand } : {}),
             ...(c.cooperativeName ? { cooperativeName: c.cooperativeName } : {}),
+            ...(c.zoneId ? { zoneId: c.zoneId } : {}),
             // Compte de démo : directement utilisable, pas d'écran « changez
             // votre mot de passe » à la première connexion.
             mustChangePassword: false,
@@ -210,6 +249,7 @@ export class SeedDemoService {
             ...(c.email ? { email: c.email } : {}),
             ...(c.sousProfilMarchand ? { sousProfilMarchand: c.sousProfilMarchand } : {}),
             ...(c.cooperativeName ? { cooperativeName: c.cooperativeName } : {}),
+            ...(c.zoneId ? { zoneId: c.zoneId } : {}),
             mustChangePassword: false,
           } as Partial<User>);
         }
@@ -233,6 +273,72 @@ export class SeedDemoService {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // 46-h : comptes back-office « terrain » (gestionnaire_zone,
+  // operateur_terrain — les COMPTES marqués motDePasseActeur). Idempotent,
+  // défensif, conçu pour être sûr AVANT l'early-exit : sur une base de démo
+  // déjà peuplée, c'est le SEUL chemin qui fait exister ces comptes.
+  // ───────────────────────────────────────────────────────────────────────────
+  private async assurerComptesTerrain(users: Repository<User>): Promise<void> {
+    for (const c of COMPTES.filter((x) => x.motDePasseActeur)) {
+      try {
+        const passwordHash = await bcrypt.hash(c.password, 10);
+        let u = await users.findOne({ where: { phone: c.phone } });
+        if (!u) {
+          u = await users.save(
+            users.create({
+              phone: c.phone,
+              passwordHash,
+              firstName: c.firstName,
+              lastName: c.lastName,
+              genre: c.genre,
+              role: c.role,
+              status: UserStatus.ACTIF,
+              validated: true,
+              ...(c.zoneId ? { zoneId: c.zoneId } : {}),
+              mustChangePassword: false,
+            } as Partial<User>) as User,
+          );
+          this.logger.log(`Compte BO terrain créé : ${c.phone} (${c.firstName} ${c.lastName} — ${c.role})`);
+        } else if (String(u.role) !== String(c.role)) {
+          // Compte présent sous un autre rôle (testeur) : réaligné.
+          await users.update(u.id, { role: c.role, passwordHash } as Partial<User>);
+        }
+        // La zone du gestionnaire doit exister pour que le zone_id du compte
+        // pointe vers une ligne réelle (recette de l'isolation territoriale).
+        if (c.zoneId) await this.assurerZoneGestionnaire(c.zoneId, u.id);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`Compte BO terrain ${c.phone} ignoré : ${message}`);
+      }
+    }
+  }
+
+  // Garantit la ligne zone + son gestionnaire + le zone_id du compte (idempotent).
+  private async assurerZoneGestionnaire(zoneId: string, gestionnaireId: string): Promise<void> {
+    const dejaLa = await this.dataSource.query(
+      `SELECT 1 FROM zones WHERE id = $1 LIMIT 1`,
+      [zoneId],
+    );
+    if (!dejaLa || dejaLa.length === 0) {
+      await this.dataSource.query(
+        `INSERT INTO zones (id, nom, ville, region, description, gestionnaire_id, actif, created_at, updated_at)
+         VALUES ($1, 'Zone Korhogo (démo)', 'Korhogo', 'Poro',
+                 'Zone de démonstration du gestionnaire de zone', $2, true, now(), now())`,
+        [zoneId, gestionnaireId],
+      );
+    }
+    // Réalignement TOUJOURS rejoué (compte repris d'un testeur, zone recréée…).
+    await this.dataSource.query(
+      `UPDATE zones SET gestionnaire_id = $2, updated_at = now() WHERE id = $1`,
+      [zoneId, gestionnaireId],
+    );
+    await this.dataSource.query(
+      `UPDATE users SET zone_id = $1, updated_at = now() WHERE id = $2 AND (zone_id IS NULL OR zone_id <> $1)`,
+      [zoneId, gestionnaireId],
+    );
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // Scénario lié bout-à-bout, pour une démonstration où chaque écran découle du
   // précédent. Idempotent : UUIDs fixes + ON CONFLICT DO NOTHING. Chaque bloc
   // est isolé (un échec local n'empêche pas les autres).
@@ -250,6 +356,7 @@ export class SeedDemoService {
     const coop = await idByPhone('+2250970707070');     // coopérative (COOP-CACAO)
     const adjoua = await idByPhone('+2250725252525');   // demi-grossiste
     const aya = await idByPhone('+2250790909090');      // détaillant
+    const gestionnaireZone = await idByPhone('+2250740404040'); // 46-h : gestionnaire_zone
 
     const run = async (label: string, fn: () => Promise<void>): Promise<void> => {
       try {
@@ -427,6 +534,15 @@ export class SeedDemoService {
           );
         });
       }
+    }
+
+    // 6) 46-h : la zone du gestionnaire_zone (+2250740404040) — sans elle, le
+    //    compte aurait un zone_id qui ne pointe vers aucune ligne et la
+    //    recette de l'isolation territoriale (GESTZONE) resterait impossible.
+    if (gestionnaireZone) {
+      await run('zone démo du gestionnaire', async () => {
+        await this.assurerZoneGestionnaire(ZONE_DEMO_ID, gestionnaireZone);
+      });
     }
 
     this.logger.log('Scénario de démonstration cohérent chargé (Hervé → Bénito → COOP → Michelle → DG).');
