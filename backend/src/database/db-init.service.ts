@@ -875,5 +875,28 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur table boutique_mouvements: ' + message);
     }
+
+    // Backfill des wallets manquants : seuls les comptes créés par
+    // auth.service.signup ont un wallet (createForUser). Les comptes insérés
+    // directement (seed démo, comptes admin/back-office) n'en avaient pas —
+    // GET /wallets/me répondait alors 404 « Wallet introuvable » en boucle.
+    // Idempotent : ON CONFLICT (user_id unique) DO NOTHING, solde 0 — aucun
+    // mouvement d'argent n'est inventé. getByUserId (wallets.service) fait la
+    // même création paresseuse pour les comptes créés APRÈS ce passage.
+    try {
+      const result = await this.dataSource.query(`
+        INSERT INTO wallets (user_id, solde, solde_bloque, currency)
+        SELECT u.id, 0, 0, 'XOF'
+        FROM users u
+        WHERE NOT EXISTS (SELECT 1 FROM wallets w WHERE w.user_id = u.id)
+        ON CONFLICT (user_id) DO NOTHING;
+      `);
+      if (result?.rowCount > 0) {
+        this.logger.log(`Wallets backfillés pour ${result.rowCount} compte(s) sans wallet.`);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur backfill wallets: ' + message);
+    }
   }
 }

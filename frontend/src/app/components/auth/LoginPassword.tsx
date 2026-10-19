@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
-import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, ChevronLeft, Eye, Keyboard, Check, Play } from 'lucide-react';
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -118,7 +118,7 @@ import { PaveSaisie } from './PaveSaisie';
  *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
-import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
+import { vlog, vlogStart } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 // AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
@@ -261,7 +261,7 @@ export function LoginPassword() {
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
-  // MODE DÉVELOPPEUR (caché) : outils de test (rapport, version, tutoriel…). Masqué
+  // MODE DÉVELOPPEUR (caché) : outils de test. Masqué
   // pour la marchande (expérience simple). On l'active en tapant 5× le coin haut-gauche.
   // AUTH-10 — le geste et son état vivent dans useDevMode ; le drapeau
   // showDevButton (ci-dessous) reste ici : d'autres chemins l'allument.
@@ -359,8 +359,8 @@ export function LoginPassword() {
   // en guidage vocal. Une sourde ou une marchande dans le bruit la perçoit.
   // Journal de diagnostic ouvert dès l'ARRIVÉE sur l'écran, et non plus
   // seulement au démarrage d'une dictée (voir vlogStart('dictée') plus bas) :
-  // sans cela, « 🐞 Rapport de test » ne contenait rien pour une marchande qui
-  // ne dicte pas — or c'est précisément le cas où la voix manque. vlogStart
+  // sans cela le journal ne contiendrait rien pour une marchande qui ne dicte
+  // pas — or c'est précisément le cas où la voix manque. vlogStart
   // enregistre déjà la présence de speechSynthesis et les voix FR du téléphone.
   // Doit rester le PREMIER effet du composant : les suivants y écrivent.
   useEffect(() => {
@@ -745,8 +745,8 @@ export function LoginPassword() {
     if (import.meta.env.DEV && phone === '0501604040') { setShowDevButton(true); setError(''); return; }
     if (!pwd || pwd.length === 0) { setError('Bon, mets les quatre chiffres de ton code secret.'); return; }
     setIsLoading(true); setError('');
-    // Espion de connexion : trace l'URL réellement appelée + le résultat, visible
-    // dans « 🐞 Rapport de test ». Permet de diagnostiquer « Erreur de connexion »
+    // Espion de connexion : trace l'URL réellement appelée + le résultat pour
+    // diagnostiquer « Erreur de connexion »
     // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
     vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
     try {
@@ -822,24 +822,25 @@ export function LoginPassword() {
         // l'attente sans la voir venir. Le compte des essais vient du SERVEUR —
         // le compteur local d'avant mentait dès le premier rechargement.
         const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
+        // Le clip prototype `codeErreur` est muet hors prévisualisation. Le
+        // clip lot A couvre l'échec standard et reste audible dans le build.
+        const clipErreur = restants === 1
+          ? ENTREE_VOICE_CLIPS.dernierEssai
+          : ENTREE_VOICE_CLIPS.mauvaisCodeAttention;
         const message = restants !== null && restants <= 2
           ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
-          : ENTREE_VOICE_CLIPS.codeErreur.texte;
+          : clipErreur.texte;
         setError(message);
         // AUTH-03 — avertissement AUDIBLE, par clip TOUJOURS DISPONIBLE :
         // une seule chance → login-29 le dit EXACTEMENT (« Il te reste une
         // seule chance », la vraie gravité du moment) ; deux chances →
         // login-28 (lot A) — le clip générique codeErreur est un « prototype »,
-        // muet dans tout build livré ; au-delà → codeErreur (trou AUTH-ERR
-        // documenté, hors périmètre P1). Aucune mention de compte n'est faite
-        // en voix qui ne soit pas enregistrée ; la mention « encore N essais »
-        // reste ÉCRITE dans la bannière.
+        // muet dans tout build livré ; login-28 est donc utilisé pour tous les
+        // autres échecs. La mention « encore N essais » reste écrite dans la
+        // bannière, car aucun clip ne porte ce nombre variable.
         try {
-          parle(restants === 1
-            ? ENTREE_VOICE_CLIPS.dernierEssai.texte
-            : restants === 2
-              ? ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte
-              : ENTREE_VOICE_CLIPS.codeErreur.texte);
+          if (restants === 1) parle(ENTREE_VOICE_CLIPS.dernierEssai.texte);
+          else parle(ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte);
         } catch { /* la voix n'est jamais bloquante */ }
         setPinInput(""); setIsLoading(false); return;
       }
@@ -1028,15 +1029,15 @@ export function LoginPassword() {
     annulerRelecture(); // AUTH-04 — elle agit : le balayage s'efface
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
-      setPhone(p => p.slice(0, -1));
+      const next = phone.slice(0, -1);
+      setPhone(next);
       // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
       // révèle aucun chiffre, contrairement au numéro lui-même.
       rendreALaMain('numero', 'effacement');
-      // Texte aligné MOT POUR MOT sur le clip login-24 (AUTH_24). Il ne dit
-      // toujours rien de ce qui a été tapé — la règle du commentaire ci-dessus
-      // tient. Avant cet alignement, aucune clé ne portait « Effacé. » : le mot
-      // était prononcé par personne.
-      if (guidageVocal(accessMode)) parle('C\'est effacé net.');
+      // Chaque effacement réel est annoncé par la porte vocale de l'entrée.
+      if (phone.length > 0) {
+        void parlerAvantConnexion('connexion', 'Tu es en train d\'effacer le numéro hein !');
+      }
     } else {
       if (pinInput.length === 0) {
         retourDepuisCode();
@@ -1103,7 +1104,6 @@ export function LoginPassword() {
             <Volume2 aria-hidden="true" size={26} />
           </button>
         </div>
-        {step === 'password' && <button type="button" onClick={retourDepuisCode} className="login-help" disabled={isLoading}><ChevronLeft aria-hidden="true" size={22} />Retour</button>}
         {devMode && (
           <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
         )}
@@ -1502,52 +1502,6 @@ export function LoginPassword() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
-          Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier. */}
-      {devMode && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 8, padding: '14px 0 18px' }}
-      >
-        <button
-          type="button"
-          onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
-          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '10px 22px', minHeight: 44, color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <Play aria-hidden="true" size={10} strokeWidth={2.5} color="#7C6250" />
-          Revoir le tutoriel
-        </button>
-        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
-        <p
-          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
-          title="Version de l'application"
-          style={{ fontSize: 9, color: 'var(--encre-4)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
-        >
-          v{__APP_VERSION__} · {__BUILD_ID__}
-        </p>
-        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
-            à Claude et déboguer précisément (phase de test).
-            MARCHAND-12 (audit 19/10) : GATED SUR `import.meta.env.DEV` — le geste
-            5 tapes (useDevMode) est un gate d'exécution, pas de build : en
-            production le bouton ne doit pas exister dans le bundle. */}
-        {import.meta.env.DEV && (
-          <button
-            type="button"
-            onClick={async () => {
-              const r = await vlogPartager();
-              if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
-              else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
-            }}
-            style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
-          >
-            <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
-            Rapport de test
-          </button>
-        )}
-      </motion.div>
-      )}
     </div>
   );
 }

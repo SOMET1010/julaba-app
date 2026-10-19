@@ -170,6 +170,14 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
+      // Socket.IO (EventsGateway, namespace /ws) : sans ce route, le client
+      // frappe le serveur Vite lui-même sur /socket.io → timeout en boucle
+      // ([WS] Erreur connexion: timeout). `ws: true` relaie le upgrade.
+      "/socket.io": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   build: {
