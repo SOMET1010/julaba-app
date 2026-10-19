@@ -61,7 +61,9 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   // I3 est désormais 🟢 et couvert par i1-i3-atomicite-stock.spec.ts.
 
   // I4 — Idempotence de la création de crédit.
-  it.failing('I4 — même crédit rejoué ⇒ une seule dette (montant_du non doublé)', async () => {
+  // PROMU le 19/10/2026 (chantier C-04, Task 46-b) : voir le commentaire
+  // du bloc I5 ci-dessous pour la traçabilité de la promotion.
+  it('I4 — même crédit rejoué ⇒ une seule dette (montant_du non doublé)', async () => {
     const client = 'Client-I4';
     const payload = { client_nom: client, montant_total: '5000', acompte: '0', echeance: '2027-12-31', idempotency_key: 'I4-K' };
     await creerCredit(payload);
@@ -91,10 +93,18 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   // devenu ROUGE dès qu'un correctif l'a satisfait, forçant sa promotion dans
   // le même lot. Ce n'est pas une régression, c'est le signal.
   //
-  // I4 et I6 restent `it.failing` : l'idempotence de la CRÉATION d'un crédit
-  // (ARG-04) et la trace `type='credit'` de la vente à crédit (I6) ne sont pas
-  // fermées par ARGENT-4, qui ne traite que l'ENCAISSEMENT. Les promouvoir
-  // aussi serait s'attribuer un travail non fait.
+  // I4 et I6, PROMUS le 19/10/2026 (chantier C-04, Task 46-b) : la création
+  // est désormais idempotente côté serveur (clé de trace `credit-trace-…`
+  // portée par l'index unique partiel de caisse_transactions + verrou
+  // applicatif pg_advisory_xact_lock + rattrapage 23505) et la vente à crédit
+  // laisse sa trace `type='credit'` en caisse, écrite DANS la transaction.
+  // Le gel serveur (`CAISSE_CREDIT_SERVEUR_ACTIF`, défaut false) laisse le
+  // harnais exercer ces routes (NODE_ENV=test). Le mécanisme de promotion
+  // décrit plus haut a encore joué : ces tests seraient devenus ROGUES au
+  // prochain run dès qu'un correctif les satisfait. Preuve CI : dispatch
+  // workflow invariants sur dev (run référencé au worklog) — le harnais
+  // local sandbox n'a pas pu boucler un boot complet (imports dynamiques
+  // après teardown Jest, DI ScheduleModule), hors périmètre de la preuve.
   it('I5 — acompte rejoué ⇒ un seul encaissement', async () => {
     const c = await creerCredit({ client_nom: 'Client-I5', montant_total: '4000', acompte: '0', echeance: '2027-12-31' });
     const id = c.body.credit.id;
@@ -106,7 +116,7 @@ describe('Invariants blockers argent (🔴 attendu — it.failing)', () => {
   }, 30000);
 
   // I6 — Traçabilité comptable du crédit.
-  it.failing('I6 — une vente à crédit laisse une trace en caisse (caisse_transaction)', async () => {
+  it('I6 — une vente à crédit laisse une trace en caisse (caisse_transaction)', async () => {
     const avant = await nbTxType('credit');
     await creerCredit({ client_nom: 'Client-I6', montant_total: '3000', acompte: '0', echeance: '2027-12-31' });
     const apres = await nbTxType('credit');
