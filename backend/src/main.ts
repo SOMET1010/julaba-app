@@ -12,6 +12,7 @@ import { SeedDemoService } from './database/seed-demo.service';
 import { AdminDivisionsSeedService } from './admin-divisions/seed/admin-divisions-seed.service';
 import { computeBootDbFlags } from './database/schema-flags';
 import { parseTrustProxy } from './config/trust-proxy.config';
+import { captureBpayWebhookRawBody } from './bpay/bpay-webhook.securite';
 
 // Préparation automatique de la base — AUCUN réglage manuel requis.
 // Si la base est VIERGE (pas de table "users"), on construit le schéma depuis les
@@ -189,7 +190,14 @@ async function bootstrap() {
 
   // Body parser UNIQUE — avant tous les middlewares
   const express = require('express');
-  app.use(express.json({ limit: '10mb' }));
+  // C-07/SEC-022 — les webhooks B-Pay vérifient une HMAC-SHA256 calculée sur
+  // le corps BRUT (les octets tels qu'envoyés par l'opérateur). body-parser
+  // donne ces octets via `verify` : on les dépose sur la requête pour les
+  // DEUX routes webhook uniquement (estCheminWebhookBpay) — le parsing JSON
+  // continue ensuite son travail normal, et TOUTES les autres routes sont
+  // inchangées (aucune capture, aucune mémoire). Voir
+  // src/bpay/bpay-webhook.securite.ts pour la vérification elle-même.
+  app.use(express.json({ limit: '10mb', verify: captureBpayWebhookRawBody }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   app.use(cookieParser());
