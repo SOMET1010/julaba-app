@@ -1,16 +1,47 @@
-import { BadRequestException, Controller, Get, NotFoundException, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, ForbiddenException, Get, NotFoundException, Post, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { encaisserCredit, EncaissementInvalide } from './encaisser-credit';
 import { exigerJourneeOuverte } from './journee-ouverte';
+import { CaisseTransaction } from './caisse-transaction.entity';
+
+// ── C-04 / MARCHAND-01 — LE GEL DU CRÉDIT DEVIENT UNE PROTECTION SERVEUR ────
+//
+// Le gel du crédit n'était qu'une CONSTANTE UI (`POSCaisse.tsx`) : les routes
+// restaient appelables en API directe, création de dette non idempotente en
+// tête (audit MARCHAND-01 du 19/10/2026, constat C-04 de l'audit comptable du
+// 12/10). Le serveur ferme désormais lui-même la porte.
+//
+// LA RÈGLE : dev/prod sont FAIL-CLOSED — le crédit n'existe que si
+// `CAISSE_CREDIT_SERVEUR_ACTIF === 'true'` (voir backend/.env.example : ne
+// l'ouvrir qu'après verdissement des invariants I4/I6). Le harnais
+// d'invariants, lui (`NODE_ENV='test'`, forcé par test/invariants/env.ts, base
+// jetable contrôlée par test-db.ts), reste EXERÇABLE par défaut : c'est lui
+// qui prouve I4/I5/I6 contre un vrai postgres — l'ouvrir au test ne change
+// rien pour l'argent réel ; le fermer explicitement y reste possible
+// (`CAISSE_CREDIT_SERVEUR_ACTIF='false'`).
+export const MESSAGE_CREDIT_DESACTIVE =
+  'Crédit client désactivé côté serveur (pilote espèces)';
+
+export function creditServeurActif(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.NODE_ENV === 'test') return env.CAISSE_CREDIT_SERVEUR_ACTIF !== 'false';
+  return env.CAISSE_CREDIT_SERVEUR_ACTIF === 'true';
+}
 
 @UseGuards(JwtAuthGuard)
 @Controller('caisse/credits')
 export class CreditsController {
   constructor(@InjectDataSource() private ds: DataSource) {}
+
+  // Course perdue : deux requêtes concurrentes écrivent la même clé → la 2ᵉ
+  // viole l'unicité partielle de `caisse_transactions.idempotency_key`. Même
+  // motif que la vente (`caisse-rest.controller.ts`).
+  private estViolationUnicite(e: any): boolean {
+    return e?.code === '23505' || /duplicate key|unique/i.test(e?.message || '');
+  }
 
   // ── GET tous les crédits du marchand ──────────────────
   @Get()
@@ -30,6 +61,10 @@ export class CreditsController {
   // ── POST créer un crédit ───────────────────────────────
   @Post()
   async create(@Body() body: any, @CurrentUser() user: User) {
+    // C-04 — le serveur ferme la porte tant que le pilote n'a pas rouvert le
+    // crédit (voir `creditServeurActif` en tête de fichier).
+    if (!creditServeurActif()) throw new ForbiddenException(MESSAGE_CREDIT_DESACTIVE);
+
     const {
       client_nom, client_phone = '', montant_total,
       acompte = 0, echeance, articles = [], notes = '', transaction_id = null
@@ -43,6 +78,31 @@ export class CreditsController {
     const montantParsed = parseFloat(montant_total);
     if (acompteParsed > montantParsed) throw new BadRequestException('L\'acompte ne peut pas dépasser le montant total');
 
+    // C-04 / I4 — IDEMPOTENCE DE LA CRÉATION, SANS MIGRATION.
+    //
+    // La table `credits` n'a AUCUNE colonne de clé d'idempotence (lecture de
+    // BaselineSchema.ts / db-init.service.ts : id, marchand_id, client_nom,
+    // montant_total, acompte, echeance, articles, notes, transaction_id… —
+    // aucune contrainte unique d'idempotence, et poser une colonne exigerait
+    // une migration dont le périmètre est confisqué). La clé vit donc sur la
+    // TRACE DE DETTE en caisse (voir `tracerCreationCredit`) :
+    // `caisse_transactions.idempotency_key` porte déjà un index unique partiel
+    // (ux_caisse_tx_idempotency_key) qui devient la contrainte
+    // anti-doublon de la création.
+    //
+    // MOTIF (copié de la vente) : pré-check + écriture + rattrapage 23505.
+    // DEUX verrous en plus, parce que la création écrit PLUSIEURS tables
+    // (clients, credits, trace) : un verrou pessimiste applicatif
+    // (pg_advisory_xact_lock — posé dans la transaction, libéré à sa fin, ne
+    // touche aucun schéma) sérialise deux créations concurrentes de MÊME clé
+    // AVANT tout écrit ; le rattrapage 23505 reste en ceinture de sécurité.
+    // La clé est PRÉFIXÉE (`credit-trace-…`) pour ne jamais croiser les
+    // espaces des autres natures (`credit-acompte-…`, `credit-reglement-…`,
+    // et la clé nue des ventes) sur l'index global.
+    const cleTrace = body.idempotency_key
+      ? `credit-trace-${String(body.idempotency_key)}`
+      : null;
+
     // ARGENT-4 — CRÉATION ET PREMIER ENCAISSEMENT, D'UN SEUL TENANT.
     //
     // L'acompte versé à la création écrivait `credits.acompte` et baissait le
@@ -54,6 +114,34 @@ export class CreditsController {
     await qr.connect();
     await qr.startTransaction();
     try {
+      // I4 — SELECT DE DÉDOUBLONNAGE, SOUS VERROU PESSIMISTE. Une création
+      // rejouée (même clé) retourne le crédit DÉJÀ créé sans rien réécrire :
+      // ni dette doublée sur le client, ni crédit en plus, ni acompte
+      // re-encaissé. Le verrou sérialise la course ; la lecture rend la
+      // réponse du rejeu bonne dès le premier tour.
+      if (cleTrace) {
+        await qr.query(
+          'SELECT pg_advisory_xact_lock(hashtextextended($1, 42))',
+          [cleTrace],
+        );
+        const [deja] = await qr.query(
+          'SELECT details FROM caisse_transactions WHERE idempotency_key = $1 LIMIT 1',
+          [cleTrace],
+        );
+        const idDeja = deja?.details?.creditId;
+        if (idDeja) {
+          const [existant] = await qr.query(
+            'SELECT * FROM credits WHERE id = $1 AND marchand_id = $2',
+            [idDeja, user.id],
+          );
+          if (existant) {
+            // Rien n'a été écrit ici : on clôt une transaction vide.
+            await qr.commitTransaction();
+            return { credit: existant, rejeu: true };
+          }
+        }
+      }
+
       // Le client naît avec la dette ENTIÈRE. C'est l'encaissement qui la
       // réduit ensuite, et lui seul : deux endroits qui décrémentent la même
       // dette, c'est deux chances de la décrémenter deux fois.
@@ -81,6 +169,17 @@ export class CreditsController {
         ],
       );
       const credit = result[0];
+
+      // I6 — LA TRACE DE DETTE. Une vente à crédit laisse une ligne en caisse,
+      // écrite ICI, dans la même transaction : type `credit`, montant 0 —
+      // noter une dette ne déplace aucun franc d'espèce, et la clôture ne la
+      // compte pas (voir `caisseTheorique`). Elle porte la clé d'idempotence
+      // de la création (celle du corps, sinon dérivée de l'id du crédit) :
+      // c'est ELLE qui rend le rejeu détectable, y compris pour une création
+      // sans acompte. Écrite via l'entité TypeORM sur le manager de la
+      // transaction — ce contrôleur n'écrit jamais la caisse par SQL direct
+      // (garde ARGENT-4, prouvée par argent-4-encaissement-unique.spec.ts).
+      await this.tracerCreationCredit(qr, user.id, credit, client_nom.trim(), montantParsed, cleTrace);
 
       if (acompteParsed > 0) {
         // CAI-09 — UN ACOMPTE À LA CRÉATION EST UN ENCAISSEMENT COMME UN AUTRE.
@@ -110,13 +209,67 @@ export class CreditsController {
         `SELECT * FROM credits WHERE id = $1`, [credit.id],
       );
       return { credit: frais ?? credit };
-    } catch (e) {
+    } catch (e: any) {
       await qr.rollbackTransaction();
       if (e instanceof EncaissementInvalide) throw new BadRequestException(e.message);
+      // I4 — course de rejeu : la 2ᵉ création a perdu la course sur l'index
+      // unique de la trace → renvoyer le crédit déjà enregistré (motif de la
+      // vente, 23505-safe).
+      if (this.estViolationUnicite(e) && cleTrace) {
+        const [trace] = await this.ds.query(
+          'SELECT details FROM caisse_transactions WHERE idempotency_key = $1 LIMIT 1',
+          [cleTrace],
+        );
+        const idExistant = trace?.details?.creditId;
+        if (idExistant) {
+          const [existant] = await this.ds.query(
+            'SELECT * FROM credits WHERE id = $1 AND marchand_id = $2',
+            [idExistant, user.id],
+          );
+          if (existant) return { credit: existant, rejeu: true };
+        }
+      }
       throw e;
     } finally {
       await qr.release();
     }
+  }
+
+  /**
+   * I6 — la trace de dette en caisse (voir l'appelant).
+   * @param cleTrace  La clé de l'appelant (`credit-trace-…`), sinon dérivée de
+   *                  l'id du crédit — les créations sans clé restent tracées,
+   *                  mais un rejeu SANS clé ne peut pas être dédoublonné
+   *                  (aucune information stable pour reconnaître le rejeu) :
+   *                  c'est le contrat du client d'envoyer sa clé, comme pour
+   *                  la vente.
+   */
+  private async tracerCreationCredit(
+    qr: QueryRunner,
+    marchandId: string,
+    credit: any,
+    clientNom: string,
+    montantTotal: number,
+    cleTrace: string | null,
+  ): Promise<void> {
+    const repo = qr.manager.getRepository(CaisseTransaction);
+    await repo.save(repo.create({
+      user_id: marchandId,
+      marchand_id: marchandId,
+      session_id: '',
+      type: 'credit',
+      montant: 0,
+      description: `Crédit — ${clientNom}`,
+      source: 'kassa',
+      mode_paiement: 'especes',
+      details: {
+        creditId: credit.id,
+        clientNom,
+        montantTotal,
+        echeance: credit?.echeance ?? null,
+      },
+      idempotency_key: cleTrace ?? `credit-trace-${credit.id}`,
+    } as any));
   }
 
   // ── PATCH marquer payé ────────────────────────────────
@@ -134,6 +287,9 @@ export class CreditsController {
   // zéro. Rien ici ne nomme cette nature.
   @Patch(':id/payer')
   async marquerPaye(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    // C-04 — même porte fermée que la création (voir `creditServeurActif`).
+    if (!creditServeurActif()) throw new ForbiddenException(MESSAGE_CREDIT_DESACTIVE);
+
     const [credit] = await this.ds.query(
       `SELECT id, montant_total, COALESCE(acompte,0) AS acompte, statut
          FROM credits WHERE id=$1 AND marchand_id=$2`,
@@ -191,6 +347,9 @@ export class CreditsController {
   // primitive qui le décide.
   @Patch(':id/acompte')
   async ajouterAcompte(@Param('id') id: string, @Body() body: any, @CurrentUser() user: User) {
+    // C-04 — même porte fermée que la création (voir `creditServeurActif`).
+    if (!creditServeurActif()) throw new ForbiddenException(MESSAGE_CREDIT_DESACTIVE);
+
     const montant = parseFloat(body?.montant);
     if (isNaN(montant) || montant <= 0) throw new BadRequestException('montant invalide');
     if (!body?.idempotency_key) {
