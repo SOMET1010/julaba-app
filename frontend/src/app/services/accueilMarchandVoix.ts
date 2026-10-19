@@ -14,6 +14,8 @@ interface AccueilMarchandVoiceClip {
   file: string;
   texte: string;
   prototype: true;
+  /** Clip disponible dans le parcours livré, même sans mode preview. */
+  lotA?: true;
 }
 
 const BASE = '/voix/fr-CI/prototype';
@@ -52,6 +54,7 @@ export const ACCUEIL_MARCHAND_VOICE_CLIPS: Record<AccueilMarchandVoiceKey, Accue
     file: `${BASE}/tata-reconnaissance-proposition.mp3`,
     texte: 'Veux-tu que ton téléphone te reconnaisse la prochaine fois ? Ce sera plus rapide.',
     prototype: true,
+    lotA: true,
   },
   reconnaissanceReussie: {
     file: `${BASE}/tata-reconnaissance-reussie.mp3`,
@@ -76,7 +79,8 @@ export const ACCUEIL_MARCHAND_VOICE_CLIPS: Record<AccueilMarchandVoiceKey, Accue
 };
 
 export function accueilMarchandClipUrl(key: AccueilMarchandVoiceKey): string | null {
-  return prototypesVoixActifs() ? ACCUEIL_MARCHAND_VOICE_CLIPS[key].file : null;
+  const clip = ACCUEIL_MARCHAND_VOICE_CLIPS[key];
+  return clip.lotA || prototypesVoixActifs() ? clip.file : null;
 }
 
 /**

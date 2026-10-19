@@ -52,13 +52,30 @@ export class WalletsService {
    * Récupérer le wallet d'un utilisateur
    */
   async getByUserId(userId: string): Promise<Wallet> {
-    const wallet = await this.walletRepository.findOne({
+    let wallet = await this.walletRepository.findOne({
       where: { userId },
       relations: ['user'],
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet introuvable');
+      // Création paresseuse : tout compte existant doit avoir un wallet, même
+      // s'il a été créé hors signup (seed démo, comptes admin/back-office —
+      // ces chemins insèrent users directement sans createForUser). Sans cela,
+      // GET /wallets/me renvoie 404 « Wallet introuvable » en boucle pour
+      // chaque compte seedé. ON CONFLICT (user_id unique) : sûre sous
+      // concurrence. Solde 0 : aucun mouvement d'argent n'est inventé ici.
+      await this.walletRepository.query(
+        `INSERT INTO wallets (user_id, solde, solde_bloque, currency)
+         VALUES ($1, 0, 0, 'XOF') ON CONFLICT (user_id) DO NOTHING`,
+        [userId],
+      );
+      wallet = await this.walletRepository.findOne({
+        where: { userId },
+        relations: ['user'],
+      });
+      if (!wallet) {
+        throw new NotFoundException('Wallet introuvable');
+      }
     }
 
     // Sécurité : la relation `user` chargée ci-dessus embarque l'entité User
