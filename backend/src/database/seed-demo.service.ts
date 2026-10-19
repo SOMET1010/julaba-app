@@ -332,8 +332,10 @@ export class SeedDemoService {
       `UPDATE zones SET gestionnaire_id = $2, updated_at = now() WHERE id = $1`,
       [zoneId, gestionnaireId],
     );
+    // (pas de `updated_at` ici : la colonne n'existe pas sur users et le garde
+    // schema-pilote refuse toute colonne écrite en SQL brut absente du schéma)
     await this.dataSource.query(
-      `UPDATE users SET zone_id = $1, updated_at = now() WHERE id = $2 AND (zone_id IS NULL OR zone_id <> $1)`,
+      `UPDATE users SET zone_id = $1 WHERE id = $2 AND (zone_id IS NULL OR zone_id <> $1)`,
       [zoneId, gestionnaireId],
     );
   }
