@@ -17,6 +17,7 @@
     "preview": "vite preview",
     "test:voix-trace": "tsx src/app/utils/voiceTrace.test.mts",
     "test:voix-trace-source": "node scripts/test-voix-trace-source.mjs",
+    "test:web-reco": "tsx src/app/voice-offline/webReco.test.mts",
     "i18n:inventaire": "node scripts/i18n-inventaire.mjs",
     "i18n:export": "tsx scripts/i18n-export.mjs",
     "test:i18n-locales": "tsx src/app/i18n/voice/validators/validateLocale.mts",

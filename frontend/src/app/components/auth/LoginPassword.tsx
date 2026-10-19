@@ -86,6 +86,7 @@ function direConsigne(key: EntreeVoiceKey): Promise<void> {
 // (offlineModelInstalled, startLiveDictation et la mécanique du moteur vivent
 // dans hooks/useDicteeLive ; l'écran ne garde que la sonde de disponibilité.)
 import { offlineModelReady } from '../../voice-offline/offlineStt';
+import { recoWebDispo } from '../../voice-offline/webReco';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
@@ -212,15 +213,16 @@ export function LoginPassword() {
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
   const accessMode: EffectiveMode = getEffectiveMode();
   const [showKeypad, setShowKeypad] = useState(clavierParDefaut(accessMode)); // ouvert d'office en mode lecture
-  // Voix (écoute) réellement disponible sur l'appareil (moteur natif prêt) :
-  // signal de certification MINIMAL (design v0.3). Fausse aujourd'hui sur le web
-  // et sur l'APK sans moteur → le NUMÉRO se saisit au PAVÉ, sans micro trompeur.
-  // (Lot 5 remplacera ce signal par une certification vocale complète.)
+  // Voix (écoute) réellement disponible sur l'appareil : sherpa natif prêt
+  // (APK) OU navigateur qui sait écouter (webReco,19/10/2026 — dictée web
+  // arbitrée par Patrick). Signal de certification MINIMAL (design v0.3) :
+  // sinon, ou sur l'APK sans moteur, le NUMÉRO se saisit au PAVÉ, sans micro
+  // trompeur. (Lot 5 remplacera ce signal par une certification vocale complète.)
   // La sonde répétée du moteur hors-ligne proposée par Manus (verifierOfflineModel)
   // N'EST PAS reprise ici : c'est le lot B3 du plan de récupération, une
   // correction fonctionnelle qui doit entrer avec sa reproduction et son test,
   // pas dans un lot visuel.
-  const voixEcouteDispo = (() => { try { return offlineModelReady(); } catch { return false; } })();
+  const voixEcouteDispo = (() => { try { return offlineModelReady() || recoWebDispo(); } catch { return false; } })();
   // Le pavé est la référence : toujours visible tant que la voix n'écoute pas.
   const clavierVisible = showKeypad || !voixEcouteDispo;
   // Un numéro est déjà là (dicté ou tapé) : l'écran n'a plus à le DEMANDER,

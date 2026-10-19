@@ -74,6 +74,7 @@
     "test:api-authorization",
     "test:voix-trace",
     "test:voix-trace-source",
+    "test:web-reco",
     "test:i18n-locales",
     "test:i18n-argent",
     "test:i18n-source",
