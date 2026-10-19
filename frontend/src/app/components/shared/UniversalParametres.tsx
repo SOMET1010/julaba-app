@@ -1034,6 +1034,10 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               au moment précis où on en a besoin.
               C'EST UN RÉGLAGE DE PÉRIODE, pas un choix de charte : à ramener à
               sa taille discrète quand le pilote sera qualifié. */}
+          {/* MARCHAND-12 (audit 19/10) — rapport de recette GATED dev : le
+              gate build le fait disparaître du bundle de production, comme
+              AppLayout et LoginPassword. Le code reste vivant en dev. */}
+          {import.meta.env.DEV && (
           <div className="flex flex-col items-stretch gap-1 pb-3 px-2">
             <button
               type="button"
@@ -1058,6 +1062,7 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               Touche ici après un problème, puis colle le rapport dans la conversation.
             </p>
           </div>
+          )}
 
           {/* ATTRIBUTION OBLIGATOIRE — ce n'est pas une politesse.
               La voix de synthèse embarquée dérive du jeu de données SIWIS,

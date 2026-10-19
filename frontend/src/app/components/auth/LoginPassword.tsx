@@ -1528,19 +1528,24 @@ export function LoginPassword() {
           v{__APP_VERSION__} · {__BUILD_ID__}
         </p>
         {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
-            à Claude et déboguer précisément (phase de test). */}
-        <button
-          type="button"
-          onClick={async () => {
-            const r = await vlogPartager();
-            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
-            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
-          }}
-          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
-        >
-          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
-          Rapport de test
-        </button>
+            à Claude et déboguer précisément (phase de test).
+            MARCHAND-12 (audit 19/10) : GATED SUR `import.meta.env.DEV` — le geste
+            5 tapes (useDevMode) est un gate d'exécution, pas de build : en
+            production le bouton ne doit pas exister dans le bundle. */}
+        {import.meta.env.DEV && (
+          <button
+            type="button"
+            onClick={async () => {
+              const r = await vlogPartager();
+              if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
+              else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+            }}
+            style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+            Rapport de test
+          </button>
+        )}
       </motion.div>
       )}
     </div>
