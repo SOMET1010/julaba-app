@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, UseGuards, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Query, Param, Req, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -72,19 +72,42 @@ export class MiscRestController {
     return { jobs };
   }
 
+  // C-15 / SUPERADMIN-04 (19/10/2026) : la bascule d'un job cron — dont
+  // `bpay_reconciliation`, qui réconcilie aussi les RETRAITS mobile money
+  // (argent déjà débité, en attente de confirmation opérateur ou de
+  // remboursement) — est un acte d'administration critique : SUPER_ADMIN
+  // UNIQUEMENT (admin_general retiré), identité du job vérifiée contre le
+  // registre réel, et chaque bascule journalisée DANS la même transaction
+  // (CronJobsConfigService.toggleAvecAudit, motif admin-wallets).
   @Patch('cron/:id/toggle')
-  @Roles('super_admin', 'admin_general')
-  async toggleCronJob(@Param('id') id: string) {
+  @Roles('super_admin')
+  async toggleCronJob(@Param('id') id: string, @Req() req: any) {
     const key = String(id || '').trim();
-    const result = await this.cronJobsConfig.toggle(key);
-    return { success: true, id: result.id, actif: result.actif };
+    if (!CRON_JOBS_REGISTRY.some((def) => def.id === key)) {
+      throw new NotFoundException(`Job cron inconnu : ${key}`);
+    }
+    const result = await this.cronJobsConfig.toggleAvecAudit(
+      key,
+      req?.user?.id ?? req?.user?.userId ?? null,
+    );
+    return { success: true, id: result.id, actif: result.actif, actif_avant: result.actif_avant };
   }
 
+  // C-15 : FIN du « retry factice ». L'ancien handler répondait
+  // `{ success: true, relancedAt }` SANS exécuter le moindre job — un mensonge
+  // pur (doctrine zéro-faux-zéro), que le front transformait en toast
+  // « Tâche relancée » (BOCronDashboard.tsx:110-119). Il n'existe aucun
+  // mécanisme de relance manuelle des jobs `@Cron()` : on l'assume avec un
+  // 501 honnête plutôt que de prétendre un succès. Pour réactiver un job en
+  // pause, il y a PATCH /cron/:id/toggle.
   @Post('cron/:id/retry')
-  @Roles('super_admin', 'admin_general')
-  async retryCronJob(@Param('id') id: string) {
+  @Roles('super_admin')
+  retryCronJob(@Param('id') id: string) {
     const key = String(id || '').trim();
-    return { success: true, id: key, relancedAt: new Date() };
+    throw new HttpException(
+      `Relance manuelle non implémentée pour le job « ${key} » : les tâches planifiées s'exécutent selon leur planification. Pour réactiver un job en pause, utilisez PATCH /cron/${key}/toggle.`,
+      HttpStatus.NOT_IMPLEMENTED,
+    );
   }
 
   // GET /communication — historique réel des campagnes envoyées.

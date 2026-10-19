@@ -8,6 +8,7 @@ import { BO_PRIMARY } from './bo-theme';
 import { fadeInUp, hoverGlow } from './bo-animations';
 import { toast } from 'sonner';
 import { API_URL } from '../../utils/api';
+import { useBackOffice } from '../../contexts/BackOfficeContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 
 type TaskStatut = 'actif' | 'pause' | 'erreur' | 'termine';
@@ -79,6 +80,10 @@ export function BOCronDashboard() {
     return () => controller.abort();
   }, []);
 
+  // C-15 (audit 19/10) — toggle réservé au super_admin côté serveur : on ne
+  // montre plus les gestes que le backend refusera (403).
+  const estSuperAdmin = useBackOffice().user?.role === 'super_admin';
+
   const counts = {
     actif: tasks.filter(t => t.statut === 'actif').length,
     pause: tasks.filter(t => t.statut === 'pause').length,
@@ -92,12 +97,16 @@ export function BOCronDashboard() {
         method: 'PATCH',
         credentials: 'include',
       });
+      if (res.status === 403) {
+        toast.error('Réservé au super administrateur (C-15).');
+        return;
+      }
       if (!res.ok) throw new Error('Erreur toggle cron');
-      setTasks(prev => prev.map(t => {
-        if (t.id !== id) return t;
-        const newStatut: TaskStatut = t.statut === 'actif' ? 'pause' : 'actif';
-        return { ...t, statut: newStatut };
-      }));
+      const data = await res.json().catch(() => null);
+      // C-15 — le backend renvoie la vérité {actif, actif_avant} : plus de
+      // flip optimiste qui pouvait mentir si la bascule avait échoué.
+      const statut: TaskStatut = data?.actif ? 'actif' : 'pause';
+      setTasks(prev => prev.map(t => (t.id === id ? { ...t, statut } : t)));
       toast.success('Statut mis à jour');
     } catch (err) {
       console.warn('[BOCronDashboard] handleToggle failed:', err instanceof Error ? err.message : err);
@@ -105,19 +114,11 @@ export function BOCronDashboard() {
     }
   };
 
-  const handleRetry = async (id: string) => {
-    try {
-      const res = await fetch(`${API_URL}/cron/${id}/retry`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('Erreur retry cron');
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, statut: 'actif' as const, derniereErreur: null } : t));
-      toast.success('Tâche relancée');
-    } catch (err) {
-      console.warn('[BOCronDashboard] handleRetry failed:', err instanceof Error ? err.message : err);
-      toast.error('Impossible de relancer la tâche');
-    }
+  const handleRetry = async (_id: string) => {
+    // C-15 — le backend répond 501 : la « relance » factice a été supprimée
+    // (elle renvoyait {success:true} sans rien faire). Les tâches suivent
+    // leur planification ; on l'énonce au lieu de simuler.
+    toast.info('Relance manuelle non disponible — les tâches suivent leur planification.');
   };
 
   const formatTime = (iso: string) => {
@@ -177,16 +178,18 @@ export function BOCronDashboard() {
                     )}
                   </div>
                   <div className="flex gap-1">
-                    {task.statut === 'erreur' && (
+                    {estSuperAdmin && task.statut === 'erreur' && (
                       <motion.button onClick={() => handleRetry(task.id)} whileTap={{ scale: 0.9 }}
                         className="p-2 rounded-xl bg-blue-50 border border-blue-200" title="Relancer">
                         <RefreshCw className="w-4 h-4 text-blue-600" />
                       </motion.button>
                     )}
-                    <motion.button onClick={() => handleToggle(task.id)} whileTap={{ scale: 0.9 }}
-                      className="p-2 rounded-xl bg-gray-50 border border-gray-200" title={task.statut === 'actif' ? 'Mettre en pause' : 'Activer'}>
-                      {task.statut === 'actif' ? <Pause className="w-4 h-4 text-amber-500" /> : <Play className="w-4 h-4 text-green-500" />}
-                    </motion.button>
+                    {estSuperAdmin && (
+                      <motion.button onClick={() => handleToggle(task.id)} whileTap={{ scale: 0.9 }}
+                        className="p-2 rounded-xl bg-gray-50 border border-gray-200" title={task.statut === 'actif' ? 'Mettre en pause' : 'Activer'}>
+                        {task.statut === 'actif' ? <Pause className="w-4 h-4 text-amber-500" /> : <Play className="w-4 h-4 text-green-500" />}
+                      </motion.button>
+                    )}
                   </div>
                 </div>
               </div>
