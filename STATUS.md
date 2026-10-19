@@ -69,6 +69,24 @@ réinstallés** (session 15/10, demande expresse du propriétaire).
   nouveau. L'arbitrage REVIEW-004 est **contrarié** par cette demande.
 
 La session précédente a livré le Lot A (authentification d'agent) et l'a poussé.
+**Correctifs démo (12/10)** — branche `claude/correctifs-demo`, sans PR (Patrick : « oui fais lot de correctif »).
+Défauts trouvés en capturant l'écosystème pour la présentation Primature.
+
+| Critère | Statut | Preuve |
+|---|---|---|
+| Une seule définition du volume : ventes de caisse non annulées, Keiwa exclu | ✅ | `backend/src/commun/vente-de-caisse.ts` ; invariant `chiffres-ventes-de-caisse` 6 rouges → verts |
+| Tableau de bord institution : ventes de la zone, aucun zéro inventé | ✅ | unitaire 17/17 ; `test:accueil-institution` |
+| Tableau de bord BO : bonne base d'API, chiffres cohérents Rapports/Supervision/Acteurs | ✅ | `test:base-api-temps-reel`, `test:ventes-bo`, `test:compteurs-acteurs-bo` |
+| Images produits, débordements, fiche membre | ✅ | `test:image-produit`, `test:debordements-demo`, `test:fiche-membre` |
+| Validations | ✅ | jest-unit 268/268 · invariants 296/296 · check vert · garde-argent tient · verify 150/151 (seul rouge connu VOICE-01) |
+| Vérifié à l'écran | ⬜ | aucune preview ; à refaire sur stack locale ou après fusion |
+
+Relecture : 1re NON CONFORME (5 bloquants) → corrigés → 2e CONFORME.
+
+À DÉCIDER (Patrick) : retirer `test:garde-argent` et `test:i18n-empreintes-argent` de `CONNUS` (redevenus verts) ; « attiéké » ne mène plus au manioc (pas d'image attiéké).
+Backlog : `BOScoreFinancier.tsx` même chemin `/api/v1` relatif ; `RoleDashboard.tsx:706` `|| 0` ; `BODashboard.tsx:556` mois non mesuré affiché « aucune donnée » ; `alertesCritiquesActives: 0` en dur ; seed déjà peuplé garde « COOP-CACAO » (ON CONFLICT DO NOTHING).
+
+> **Fusion** : lot intégré dans `dev` le 19/10 (merge `claude/correctifs-demo` → `dev`), après résolution des conflits `frontend_src/` → `frontend/`. La vérification « à l'écran » reste à refaire sur la stack locale.
 
 ---
 

@@ -464,7 +464,10 @@ export function ScoreResumeCard({
                             // la ligne) ; seule la zone TAPABLE est étendue à
                             // 44px autour d'elle. C'est le bouton qui FAIT PARLER
                             // l'explication : le seul chemin pour qui ne lit pas.
-                            style={{ boxSizing: 'content-box', padding: 14, margin: -14 }}
+                            // `backgroundClip` : le gris reste sur les 16px ; sans
+                            // lui, il peignait la zone de 44px et masquait le
+                            // libellé (« Cotisations » sur l'accueil coopérative).
+                            style={{ boxSizing: 'content-box', padding: 14, margin: -14, backgroundClip: 'content-box' }}
                           >
                             <Info className="w-2.5 h-2.5 text-gray-600" />
                           </span>

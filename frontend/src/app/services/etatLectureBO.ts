@@ -87,11 +87,12 @@ export type AffichageKpi =
  * autre chose qu'un nombre fini (NaN sur une donnée abîmée) ne fabrique pas
  * un zéro non plus — il rend « indisponible », ce qui est la vérité.
  */
-export function kpiDepuis<T>(etat: EtatLecture<T>, mesure: (valeur: T) => number): AffichageKpi {
+export function kpiDepuis<T>(etat: EtatLecture<T>, mesure: (valeur: T) => number | null | undefined): AffichageKpi {
   if (etat.type === 'attente') return { type: 'chargement' };
   if (etat.type === 'indisponible') return { type: 'indisponible', raison: etat.raison };
   const n = mesure(etat.valeur);
-  if (!Number.isFinite(n)) return { type: 'indisponible', raison: 'Donnée illisible' };
+  // `null` = non mesuré par le serveur : ce n'est pas un zéro non plus.
+  if (typeof n !== 'number' || !Number.isFinite(n)) return { type: 'indisponible', raison: 'Donnée illisible' };
   return { type: 'nombre', valeur: n };
 }
 
@@ -145,7 +146,8 @@ export interface TransactionCompte { readonly montant?: number }
 export interface StatsBO {
   readonly total_acteurs?: number;
   readonly utilisateurs_actifs?: number;
-  readonly montant_total?: number;
+  /** `null` = le serveur a lu un montant de vente illisible. */
+  readonly montant_total?: number | null;
 }
 
 /** Ce que la liste des acteurs rapporte : les lignes ET le total serveur. */
@@ -214,7 +216,11 @@ export function kpisTableauDeBord(l: LecturesTableauDeBord): KpisTableauDeBord {
       { etat: l.acteurs, mesure: (a: LectureActeurs) => a.liste.filter(x => x.statut === 'actif').length } as SourceKpi<LectureActeurs>,
     ),
 
-    volumeTotal: kpiParmi(
+    // `montant_total: null` n'est pas un champ absent : le serveur DIT que le
+    // volume est illisible. Aucun repli (la page de transactions n'y suffit pas).
+    volumeTotal: l.stats.type === 'lue' && l.stats.valeur?.montant_total === null
+      ? { type: 'indisponible', raison: 'montant de vente illisible côté serveur' }
+      : kpiParmi(
       champDesStats(l.stats, 'montant_total'),
       {
         etat: l.transactions,
@@ -254,6 +260,11 @@ export function nombreDuKpi(kpi: AffichageKpi): number | undefined {
   return kpi.type === 'nombre' ? kpi.valeur : undefined;
 }
 
+/** Le texte d'un compteur sans animation : le nombre lu, ou le mot d'état. */
+export function texteDuKpi(kpi: AffichageKpi): string {
+  return kpi.type === 'nombre' ? kpi.valeur.toLocaleString('fr-FR') : (motDuKpi(kpi) ?? MOT_INDISPONIBLE);
+}
+
 /** L'explication proposée à l'agent — c'est là que la RAISON devient utile. */
 export function explicationDuKpi(kpi: AffichageKpi): string | undefined {
   if (kpi.type === 'indisponible') {
@@ -262,6 +273,7 @@ export function explicationDuKpi(kpi: AffichageKpi): string | undefined {
   if (kpi.type === 'chargement') return 'Lecture en cours. Le chiffre s’affichera dès que le serveur aura répondu.';
   return undefined;
 }
+
 
 /** Le sous-titre « sur N zones » — qui ne doit pas non plus inventer un N. */
 export function sousTitreZones(zonesTotal: AffichageKpi): string {

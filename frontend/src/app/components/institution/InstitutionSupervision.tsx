@@ -35,6 +35,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
+import { montantLisible, texteMontant } from '../../services/ventesBO';
 
 const C = '#712864';
 const C_LIGHT = '#F9F5F8';
@@ -116,11 +117,11 @@ function toBadgeStatut(apiStatut: string | undefined): StatutTx {
   return 'en_attente';
 }
 
-function txMontant(tx: any, periode: PeriodType): number {
+/** Montant lu, ou `null` s'il est illisible — jamais 0 (ACC-03). */
+function txMontant(tx: any, periode: PeriodType): number | null {
   const m = tx?.montant;
-  if (typeof m === 'number') return m;
-  if (m && typeof m === 'object') return Number(m[periode] ?? m.mois ?? tx?.amount ?? 0);
-  return Number(tx?.amount ?? 0);
+  if (m && typeof m === 'object') return montantLisible(m[periode] ?? m.mois ?? tx?.amount);
+  return montantLisible(m ?? tx?.amount);
 }
 
 function txDisplayFields(tx: any) {
@@ -171,7 +172,6 @@ export function InstitutionSupervision() {
       enAttente: tx.filter(t => t.statut === 'en_cours').length,
       rejetes: tx.filter(t => t.statut === 'annulee').length,
       valides: tx.filter(t => t.statut === 'validee').length,
-      volumeMois: tx.filter(t => t.statut === 'validee').reduce((s, t) => s + (t.montant ?? t.amount ?? 0), 0),
     };
   }, [transactions]);
 
@@ -554,7 +554,9 @@ export function InstitutionSupervision() {
                             </div>
                           </div>
                           <div className="flex flex-col items-center gap-0.5">
-                            <MontantRing montant={montant} size={56} />
+                            {montant === null
+                              ? <span className="text-xs font-bold text-gray-500">{texteMontant(null)}</span>
+                              : <MontantRing montant={montant} size={56} />}
                           </div>
                         </div>
                       </motion.div>
@@ -633,9 +635,9 @@ function SupervisionTxDrawer({ tx, onClose }: { tx: any; onClose: () => void }) 
               { label: 'Région', value: disp.region },
               { label: 'Commune', value: disp.commune },
               { label: 'Date', value: `${disp.d.toLocaleDateString('fr-FR')} à ${disp.heure}` },
-              { label: 'Mois en cours', value: `${(disp.montantObj.mois || 0).toLocaleString()} FCFA` },
-              { label: 'Cumul annuel', value: `${(disp.montantObj.annuel || 0).toLocaleString()} FCFA` },
-              { label: 'Historique', value: `${(disp.montantObj.historique || 0).toLocaleString()} FCFA` },
+              { label: 'Mois en cours', value: texteMontant(disp.montantObj.mois) },
+              { label: 'Cumul annuel', value: texteMontant(disp.montantObj.annuel) },
+              { label: 'Historique', value: texteMontant(disp.montantObj.historique) },
             ].map(item => (
               <div key={item.label} className="bg-gray-50 rounded-2xl p-3">
                 <p className="text-xs text-gray-400 font-semibold mb-1">{item.label}</p>

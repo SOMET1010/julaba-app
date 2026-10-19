@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Activity,
@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock,
-  Coins,
   Download,
   Eye,
   FileSpreadsheet,
@@ -42,6 +41,9 @@ import {
   type Transaction,
   type TransactionStatusValue,
 } from '../../services/backoffice-api';
+import { enAttente, indisponible, lue, type EtatLecture } from '../../services/etatLectureBO';
+import { kpiTuile } from '../../services/tuileKpi';
+import { kpiVolumeDepuisLecture, texteMontant, type ResumeVentes } from '../../services/ventesBO';
 
 const BOSupervisionMap = lazy(() => import('./BOSupervisionMap'));
 
@@ -65,7 +67,6 @@ type SupervisionTransaction = Transaction & {
   categorie?: string | null;
   montant?: number | string | null;
   amount?: number | string | null;
-  commission?: number | string | null;
   created_at?: string;
   updated_at?: string;
   date?: string;
@@ -125,10 +126,6 @@ function StatutBadge({ statut }: { statut: string }) {
   );
 }
 
-function parseAmount(value: unknown): number {
-  const numeric = typeof value === 'number' ? value : Number(value || 0);
-  return Number.isFinite(numeric) ? numeric : 0;
-}
 
 function optionalString(value: unknown): string {
   if (typeof value === 'string') return value;
@@ -185,14 +182,6 @@ function getInitials(name: string): string {
     .slice(0, 2)
     .join('');
   return initials || '?';
-}
-
-function formatMoney(value: unknown): string {
-  return `${parseAmount(value).toLocaleString('fr-FR')} FCFA`;
-}
-
-function formatNumber(value: unknown): string {
-  return parseAmount(value).toLocaleString('fr-FR');
 }
 
 function formatDate(value: string): string {
@@ -293,6 +282,7 @@ export function BOSupervision() {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [totalItems, setTotalItems] = useState(0);
   const [transactions, setTransactions] = useState<SupervisionTransaction[]>([]);
+  const [lectureResume, setLectureResume] = useState<EtatLecture<ResumeVentes | null>>(enAttente());
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
@@ -332,16 +322,14 @@ export function BOSupervision() {
     };
   }, [customDateFrom, customDateTo, periodPreset]);
 
-  const computeDateRangeRef = useRef(computeDateRange);
-  computeDateRangeRef.current = computeDateRange;
-
   useEffect(() => {
     const controller = new AbortController();
 
     const fetchTransactions = async () => {
       setLoading(true);
+      setLectureResume(enAttente());
       try {
-        const dateRange = computeDateRangeRef.current();
+        const dateRange = computeDateRange();
         const res = await boGetTransactions({
           page: currentPage,
           limit: itemsPerPage,
@@ -353,7 +341,9 @@ export function BOSupervision() {
         if (controller.signal.aborted) return;
         setTransactions(res.data as SupervisionTransaction[]);
         setTotalItems(res.total);
+        setLectureResume(lue(res.resume));
       } catch (error) {
+        if (!controller.signal.aborted) setLectureResume(indisponible(error));
         if ((error as { name?: string })?.name !== 'AbortError') {
           toast.error('Erreur chargement transactions');
         }
@@ -364,7 +354,9 @@ export function BOSupervision() {
 
     void fetchTransactions();
     return () => controller.abort();
-  }, [currentPage, filterRegion, filterStatut, itemsPerPage, reloadTick]);
+    // `computeDateRange` change avec la période et les dates personnalisées :
+    // sans lui, changer de période ne relisait rien.
+  }, [computeDateRange, currentPage, filterRegion, filterStatut, itemsPerPage, reloadTick]);
 
   useEffect(() => {
     if (!detailModal.open || !detailModal.txId) {
@@ -416,14 +408,10 @@ export function BOSupervision() {
     ];
   }, [transactions]);
 
-  const visibleVolume = useMemo(
-    () => filteredTransactions.reduce((sum, tx) => sum + parseAmount(tx.montant ?? tx.amount), 0),
-    [filteredTransactions],
-  );
-  const visibleCommissions = useMemo(
-    () => filteredTransactions.reduce((sum, tx) => sum + parseAmount(tx.commission), 0),
-    [filteredTransactions],
-  );
+  // Volume = bilan des ventes calculé par le serveur sur TOUT le filtre
+  // (`resume`), pas la somme de la page affichée. Pas de « Commissions » :
+  // aucune n'existe côté serveur.
+  const kpiVolume = kpiVolumeDepuisLecture(lectureResume);
   const visibleLitigesGelees = useMemo(
     () => filteredTransactions.filter(tx => ['litige', 'gelee'].includes(normalizeStatut(tx.statut || tx.status))).length,
     [filteredTransactions],
@@ -581,10 +569,9 @@ export function BOSupervision() {
         </div>
       </div>
 
-      <KPIGrid cols={4} className="mb-4">
+      <KPIGrid cols={3} className="mb-4">
         <UniversalKPI label="Transactions" animatedTarget={totalItems} icon={Activity} color="#185FA5" bgColor="#E6F1FB" borderColor="#B5D4F4" iconAnimation="float" active={viewMode === 'liste'} />
-        <UniversalKPI label="Volume total" animatedTarget={visibleVolume} suffix="FCFA" icon={TrendingUp} color="#5B5248" bgColor="#F5F3EF" borderColor="#D7CFC0" iconAnimation="float" />
-        <UniversalKPI label="Commissions" animatedTarget={visibleCommissions} suffix="FCFA" icon={Coins} color="#3B6D11" bgColor="#EAF3DE" borderColor="#C0DD97" iconAnimation="bounce" />
+        <UniversalKPI label="Volume des ventes" {...kpiTuile(kpiVolume)} suffix={kpiVolume.type === 'nombre' ? 'FCFA' : undefined} icon={TrendingUp} color="#5B5248" bgColor="#F5F3EF" borderColor="#D7CFC0" iconAnimation="float" />
         <UniversalKPI label="Litiges / Gelées" animatedTarget={visibleLitigesGelees} icon={AlertTriangle} color="#A32D2D" bgColor="#FCEBEB" borderColor="#F7C1C1" iconAnimation="pulse" />
       </KPIGrid>
 
@@ -701,7 +688,6 @@ export function BOSupervision() {
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Acteur</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>TYPE OPÉRATION</th>
                       <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Montant</th>
-                      <th className="text-right p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Commission</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Statut</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Région</th>
                       <th className="text-left p-3 text-xs font-semibold uppercase tracking-wider" style={{ color: BO_PRIMARY }}>Date</th>
@@ -736,8 +722,7 @@ export function BOSupervision() {
                             <div className="font-medium text-gray-900">{operation.type}</div>
                             <div className="text-xs text-gray-500">{operation.produit}</div>
                           </td>
-                          <td className="p-3 text-right font-medium text-gray-900">{formatMoney(tx.montant ?? tx.amount)}</td>
-                          <td className="p-3 text-right font-medium" style={{ color: '#3B6D11' }}>{formatMoney(tx.commission)}</td>
+                          <td className="p-3 text-right font-medium text-gray-900">{texteMontant(tx.montant ?? tx.amount)}</td>
                           <td className="p-3"><StatutBadge statut={statut} /></td>
                           <td className="p-3 text-gray-600 text-xs">{getRegion(tx)}</td>
                           <td className="p-3 text-gray-500 text-xs">{formatDate(getTransactionDate(tx))}</td>
@@ -828,8 +813,7 @@ export function BOSupervision() {
               <Field label="Type d’opération" value={deriveType(getProductLabel(detailData), detailData).type} />
               <Field label="Description" value={getProductLabel(detailData)} />
               <Field label="Quantité" value={detailData.quantite ? `${detailData.quantite}` : '-'} />
-              <Field label="Montant" value={`${formatNumber(detailData.montant ?? detailData.amount)} FCFA`} highlight />
-              <Field label="Commission" value={parseAmount(detailData.commission) > 0 ? `${formatNumber(detailData.commission)} FCFA` : 'Aucune'} />
+              <Field label="Montant" value={texteMontant(detailData.montant ?? detailData.amount)} highlight />
             </Section>
 
             <Section title="Statut et suivi">

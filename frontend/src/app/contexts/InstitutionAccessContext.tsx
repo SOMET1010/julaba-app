@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { useUser } from './UserContext';
+import { nomAffiche } from '../services/accueilInstitution';
 
 export interface InstitutionProfil {
   id?: string;
-  nom: string;
+  /** Nom réel de la personne connectée, ou `null` : jamais « undefined ». */
+  nom: string | null;
   region: string;
   type: string;
   modules: string[];
@@ -49,7 +51,7 @@ export function InstitutionAccessProvider({ children }: { children: ReactNode })
   const institutionProfil: InstitutionProfil | null = user?.role === 'institution'
     ? {
         id: user.id,
-        nom: `${user.firstName} ${user.lastName} -- ${user.activity || 'Institution'}`,
+        nom: nomAffiche(user.prenoms, user.nom),
         region: user.region || 'Nationale',
         type: user.activity || 'Supervision',
         modules: accessModules,

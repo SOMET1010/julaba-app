@@ -7,7 +7,6 @@ import { AdminService } from './admin.service';
 import { AdminWalletsService } from './admin-wallets.service';
 import { User } from '../users/entities/user.entity';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
-import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
 import { AuditLog } from '../audit-rest/audit-log.entity';
 import { WalletsModule } from '../wallets/wallets.module';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
@@ -15,7 +14,7 @@ import { VoiceModule } from '../voice/voice.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Cooperative, WalletTransaction, AuditLog]),
+    TypeOrmModule.forFeature([User, Cooperative, AuditLog]),
     WalletsModule,
     FeedbakSmsModule,
     VoiceModule,
