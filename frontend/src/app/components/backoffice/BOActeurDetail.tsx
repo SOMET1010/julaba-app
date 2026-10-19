@@ -14,6 +14,7 @@ import { BOProgressBar } from './BOProgressBar';
 import { UniversalKPI } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
 import { boAdminResetPassword, boChangeSousProfilMarchand, boGetUserFlags, boUpdateActeur, texteRemiseSms, type RemiseParSms, type UserFlag } from '../../services/backoffice-api';
+import { texteMontant } from '../../services/ventesBO';
 import { SOUS_PROFILS_MARCHAND } from '../../types/sousProfilMarchand';
 import { CAN_VIEW_ALERTS } from '../../utils/permissions-bo';
 import { getContextualTabLabel, ROLE_OPTIONS, STATUT_CONFIG, TYPE_COLORS } from '../../utils/role-config';
@@ -869,8 +870,7 @@ export function BOActeurDetail() {
                         <p className="text-xs text-gray-500">{tx.quantite} • {tx.modePaiement}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-black text-base" style={{ color: BO_PRIMARY }}>{(tx.montant || 0).toLocaleString('fr-FR')} FCFA</p>
-                        <p className="text-xs text-gray-500">Commission: {(tx.commission || 0).toLocaleString('fr-FR')} FCFA</p>
+                        <p className="font-black text-base" style={{ color: BO_PRIMARY }}>{texteMontant(tx.montant)}</p>
                       </div>
                     </div>
                   ))}

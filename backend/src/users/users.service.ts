@@ -153,12 +153,14 @@ export class UsersService {
       UserRole.OPERATEUR_TERRAIN,
     ];
 
-    const rows = await this.userRepository
-      .createQueryBuilder('user')
-      .select('user.role', 'role')
-      .addSelect('COUNT(user.id)', 'count')
-      .groupBy('user.role')
-      .getRawMany<{ role: string; count: string }>();
+    // Les compteurs comptent CE QUE LA LISTE MONTRE : même clause que
+    // findAll (ni supprimés, ni acteurs terrain sans dossier). Ils comptaient
+    // tous les comptes — « Tous 16 » au-dessus d'une liste de 6.
+    const { whereSql, whereParams } = this.buildActeursListWhereClause({} as UsersBoListQueryDto, undefined, requesterRole);
+    const rows: Array<{ role: string; count: string }> = await this.dataSource.query(
+      `SELECT u.role AS role, COUNT(u.id) AS count FROM users u ${whereSql} GROUP BY u.role`,
+      whereParams,
+    );
 
     const result = {
       all: 0,

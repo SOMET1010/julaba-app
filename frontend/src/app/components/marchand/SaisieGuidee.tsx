@@ -38,7 +38,7 @@ import { BoutonDirePrix } from './BoutonDirePrix';
 // STK-03 — on ne lit plus `CATALOGUE_PRODUITS` : ses 37 entrées portent des
 // PRIX qui ne sont pas ceux de la marchande. Les deux fonctions qui restent ne
 // servent qu'à retrouver une IMAGE par son nom, jamais un prix.
-import { getImageByNom, rechercherProduitCatalogue } from '../../data/catalogue-produits';
+import { getImageByNom } from '../../data/catalogue-produits';
 import { vueDeLEtal, type ProduitDeLEtal } from '../../services/etalDeLaMarchande';
 import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { vignetteProduit } from '../../utils/emojiTile';
@@ -94,7 +94,9 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
 
   // STK-03 — l'écran ne décide pas s'il a des tuiles : la règle le dit.
   const vue = vueDeLEtal(etal);
-  const produitImage = produit ? (rechercherProduitCatalogue(produit)?.image || getImageByNom(produit)) : '';
+  // Une seule correspondance nom → image (services/correspondanceProduit.ts) :
+  // la recherche floue du catalogue donnait la banane douce au plantain.
+  const produitImage = produit ? getImageByNom(produit) : '';
   const produitChoisi = produit.trim().length >= 2;
 
   // VOIX. Dernière phrase dite : garde l'effet d'étape contre les rendus

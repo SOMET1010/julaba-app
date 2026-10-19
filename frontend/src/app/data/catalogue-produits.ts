@@ -1,4 +1,5 @@
 import { emojiTile } from '../utils/emojiTile';
+import { produitCorrespondant } from '../services/correspondanceProduit';
 import {
   IMG_PRODUIT_RIZ, IMG_PRODUIT_TOMATE, IMG_PRODUIT_AUBERGINE,
   IMG_PRODUIT_PIMENT, IMG_PRODUIT_GOMBO, IMG_PRODUIT_MANIOC,
@@ -30,7 +31,7 @@ export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
   { nom: 'Aubergine', categorie: 'legumes', unite: 'kg', prixAchat: 700, prixVente: 800, image: IMG_PRODUIT_AUBERGINE, mots_cles: ['aubergine', 'eggplant'] },
   { nom: 'Piment', categorie: 'legumes', unite: 'tas', prixAchat: 100, prixVente: 150, image: IMG_PRODUIT_PIMENT, mots_cles: ['piment', 'pepper', 'pili pili'] },
   { nom: 'Gombo', categorie: 'legumes', unite: 'tas', prixAchat: 120, prixVente: 150, image: IMG_PRODUIT_GOMBO, mots_cles: ['gombo', 'okra'] },
-  { nom: 'Manioc', categorie: 'tubercules', unite: 'kg', prixAchat: 150, prixVente: 200, image: IMG_PRODUIT_MANIOC, mots_cles: ['manioc', 'cassava', 'attiéké'] },
+  { nom: 'Manioc', categorie: 'tubercules', unite: 'kg', prixAchat: 150, prixVente: 200, image: IMG_PRODUIT_MANIOC, mots_cles: ['manioc', 'cassava'] },
   { nom: 'Igname', categorie: 'tubercules', unite: 'kg', prixAchat: 350, prixVente: 400, image: IMG_PRODUIT_IGNAME, mots_cles: ['igname', 'yam'] },
   { nom: 'Maïs', categorie: 'cereales', unite: 'kg', prixAchat: 200, prixVente: 250, image: IMG_PRODUIT_MAIS, mots_cles: ['mais', 'maïs', 'corn'] },
   { nom: 'Banane', categorie: 'fruits', unite: 'régime', prixAchat: 500, prixVente: 700, image: IMG_PRODUIT_BANANE, mots_cles: ['banane', 'banana'] },
@@ -65,9 +66,12 @@ export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
   { nom: 'Autre', categorie: 'autre', unite: 'unité', prixAchat: 0, prixVente: 0, image: IMG_PRODUIT_AUTRE, mots_cles: ['autre', 'divers'] },
 ];
 
+/** L'image d'un produit nommé librement — SEULE correspondance nom → image
+ *  (règle : services/correspondanceProduit.ts). Inconnu → image générique,
+ *  jamais la photo d'un autre produit. L'attiéké n'a pas de photo au
+ *  catalogue : il prend l'image générique, pas celle du manioc. */
 export function getImageByNom(nom: string): string {
-  const p = CATALOGUE_PRODUITS.find(p => p.nom.toLowerCase() === nom.toLowerCase() || p.mots_cles.some(mc => mc === nom.toLowerCase()));
-  return p?.image || IMG_PRODUIT_AUTRE;
+  return produitCorrespondant(CATALOGUE_PRODUITS, nom)?.image || IMG_PRODUIT_AUTRE;
 }
 
 /** Repli 100 % embarqué pour la caisse. La photo reste prioritaire quand elle
