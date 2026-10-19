@@ -1,10 +1,13 @@
 import {
-  Controller, Get, Post, Put, Delete, Query, Param, Body,
+  Controller, Get, Post, Put, Delete, Query, Param, Body, Req,
   UseGuards, ParseIntPipe, DefaultValuePipe, UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -18,7 +21,10 @@ import { AdminWalletsService } from './admin-wallets.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('admin/wallets')
 export class AdminWalletsController {
-  constructor(private readonly adminWalletsService: AdminWalletsService) {}
+  constructor(
+    private readonly adminWalletsService: AdminWalletsService,
+    @InjectDataSource() private readonly dataSource: DataSource,
+  ) {}
 
   @Get('stats')
   getStats() {
@@ -115,16 +121,63 @@ export class AdminWalletsController {
     return this.adminWalletsService.debitWallet(userId, montant, motif ?? description, admin.id);
   }
 
+  // ── C-13 (audit comptable 12/10 §6 + ADMINGEN-11 + ADMINNAT-06) ─────────
+  // Les exports CSV contiennent des soldes + PII (téléphones) en masse. Avant :
+  // servis au seul jeton 'ADMIN' générique (tous les rôles BO, dont
+  // gestionnaire_zone et operateur_terrain), sans permission dédiée ni trace.
+  // Décision de scoping : rôles EXPLICITES super_admin + admin_general — les
+  // deux rôles nationaux les plus élevés du registre bo-autorisation (les
+  // rôles territoriaux en sortent ; retirer admin_general au profit
+  // d'admin_national aurait inversé la hiérarchie du registre). Chaque export
+  // écrit une entrée d'audit (acteur, type d'export, nombre de lignes — jamais
+  // les données elles-mêmes) AVANT la réponse : un export non tracé ne part
+  // pas (même esprit que J5 : si le journal échoue, rien ne sort).
   @Get('export/csv')
-  async exportWallets() {
+  @Roles('super_admin', 'admin_general')
+  async exportWallets(@CurrentUser() admin: User, @Req() req: Request) {
     const csv = await this.adminWalletsService.exportWalletsCSV();
+    await this.tracerExport(req, admin, 'EXPORT_WALLETS_CSV', 'soldes_wallets', this.compterLignes(csv));
     return { csv };
   }
 
   @Get('transactions/export/csv')
-  async exportTransactions() {
+  @Roles('super_admin', 'admin_general')
+  async exportTransactions(@CurrentUser() admin: User, @Req() req: Request) {
     const csv = await this.adminWalletsService.exportTransactionsCSV();
+    await this.tracerExport(req, admin, 'EXPORT_TRANSACTIONS_CSV', 'transactions_wallets', this.compterLignes(csv));
     return { csv };
+  }
+
+  private compterLignes(csv: string): number {
+    const lignesNonVides = String(csv ?? '').split('\n').filter((l) => l.trim().length > 0).length;
+    return Math.max(0, lignesNonVides - 1); // moins la ligne d'en-tête
+  }
+
+  private async tracerExport(
+    req: Request,
+    admin: User,
+    action: string,
+    type: string,
+    lignes: number,
+  ): Promise<void> {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = Array.isArray(forwarded)
+      ? forwarded[0]
+      : typeof forwarded === 'string'
+        ? forwarded.split(',')[0]
+        : req.ip;
+    await this.dataSource.query(
+      `INSERT INTO audit_logs (user_id, action, entite, entite_id, details, ip, created_at)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6, NOW())`,
+      [
+        admin?.id ?? null,
+        action,
+        'admin_wallets',
+        null,
+        JSON.stringify({ type, format: 'csv', lignes }),
+        ip ?? null,
+      ],
+    );
   }
 
   @Get('audit/logs')
