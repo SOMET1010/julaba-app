@@ -22,6 +22,10 @@ on:
   # Les deux déclencheurs ci-dessus sont inchangés : ce workflow continue de
   # tourner seul, exactement comme avant.
   workflow_call:
+  # AJOUT PUREMENT ADDITIF (19/10/2026, Task 46-z) — déclenchement manuel pour
+  # prouver un lot de correctifs argent sur une branche de travail (dev) sans
+  # attendre un PR vers main : ex. la promotion I4/I6 (C-04).
+  workflow_dispatch:
 
 permissions:
   contents: read
