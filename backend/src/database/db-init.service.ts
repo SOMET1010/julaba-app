@@ -900,5 +900,33 @@ export class DbInitService {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur backfill wallets: ' + message);
     }
+
+    // ── Régularisation des statuts LEGACY des dossiers (DGE-09 / IDENT-07) ───
+    // L'ancienne route fantôme POST/PATCH /dossiers écrivait des statuts hors
+    // machine à états C-12 : `en_cours` (création), `validee` / `rejetee`
+    // (décisions). Ces lignes étaient immuables (409 à la première transition)
+    // et invisibles pour l'écran Suivi (fail-closed assumé). On les ramène aux
+    // équivalents canoniques — idempotent : après le premier passage, plus
+    // aucune ligne ne correspond. Aucun dossier n'est ni créé ni supprimé :
+    // seules les valeurs hors mappe retrouvent leur sens métier.
+    try {
+      const legacy = await this.dataSource.query(`
+        UPDATE identifications SET statut = 'en_attente' WHERE statut = 'en_cours';
+        UPDATE identifications SET statut = 'approuve'  WHERE statut = 'validee';
+        UPDATE identifications SET statut = 'rejete'    WHERE statut = 'rejetee';
+      `);
+      const touched = (legacy ?? []).reduce(
+        (n: number, r: any) => n + (Number(r?.rowCount) || 0),
+        0,
+      );
+      if (touched > 0) {
+        this.logger.log(
+          `Statuts LEGACY régularisés (en_cours→en_attente, validee→approuve, rejetee→rejete) : ${touched} dossier(s).`,
+        );
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur régularisation statuts legacy: ' + message);
+    }
   }
 }
