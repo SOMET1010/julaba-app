@@ -194,6 +194,20 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
     expect(response.body.message).toContain('Circuit de négociation non autorisé');
   });
 
+  it('refuse le circuit grossiste → détaillant', async () => {
+    const repo = ds.getRepository(User);
+    const detaillant: any = await repo.save(repo.create({
+      phone: '+2250700059196', firstName: 'Vendeur', lastName: 'Détaillant', genre: 'homme',
+      role: UserRole.MARCHAND, sousProfilMarchand: 'detaillant', status: UserStatus.ACTIF,
+      passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId: detaillant.id, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: 'publication-inexistante' });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('Circuit de négociation non autorisé');
+  });
+
   it('I-NEG-1 : négociation acceptée réserve ET convertit le stock de sa publication d\'origine', async () => {
     const pub = await creerPublication(100);
     const prop = await proposer(marchandToken, pub, 30, 350);
