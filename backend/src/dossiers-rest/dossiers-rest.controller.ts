@@ -24,11 +24,18 @@ export class DossiersRestController {
     if (!body.acteur_id || typeof body.acteur_id !== 'string' || !body.acteur_id.trim()) {
       throw new BadRequestException('acteur_id requis');
     }
+    // DGE-09 / IDENT-07 (20/10/2026) : le dossier naît dans le SEUL état
+    // d'entrée que connaît la machine à états C-12 (statuts-identification.ts) :
+    // `en_attente`. L'ancien `en_cours` est un statut LEGACY hors mappe — un
+    // dossier ainsi créé était immuable côté statut (409 à la première
+    // transition) et illisible pour l'écran Suivi. Comme partout ailleurs
+    // (POST /identifications, create-with-acteur), le client ne choisit jamais
+    // le statut : `body.statut` est ignoré.
     const dossier = this.repo.create({
       acteur_id: body.acteur_id,
       identificateur_id: user.id,
       zone_id: body.zone_id || null,
-      statut: 'en_cours',
+      statut: 'en_attente',
       notes: body.notes || null,
     } as any);
     return this.repo.save(dossier);
