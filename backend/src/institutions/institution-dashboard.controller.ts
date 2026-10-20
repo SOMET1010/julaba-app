@@ -149,6 +149,98 @@ export class InstitutionDashboardController {
     };
   }
 
+  // DGE-03 — L'ANALYTIQUE DE L'ESPACE INSTITUTION, SUR DES ROUTES À LUI.
+  // Le contexte institution appelait /admin/analytics/{roles,produits,
+  // graphique,alertes} et /admin/config : N'EXISTENT PAS (404), et même si
+  // elles existaient, @Roles('ADMIN') exclut le rôle institution → 403 —
+  // l'écran DashboardAnalytics rendait des zéros silencieux (audit DGE 20/10).
+  // Une seule route scopée par le périmètre (InstitutionScopeGuard, même
+  // fail-closed que le reste), définition unique des « ventes » =
+  // conditionVenteRetenue. Rien n'est inventé : chaque série vient d'une
+  // requête réelle, une journée sans vente vaut zéro.
+  @Get('analytics')
+  @RequireInstitutionModule('dashboard')
+  async getAnalytics(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
+    const acteurs = (await this.acteursDuPerimetre(user, scope))
+      .filter(u => ACTEUR_ROLES.includes(u.role as string));
+
+    // Répartition réelle par rôle (même source que le dashboard).
+    const roles = ACTEUR_ROLES.map((role) => ({ role, count: acteurs.filter(u => u.role === role).length }));
+
+    // Inscriptions réelles par jour — 7 derniers jours du périmètre (le filtre
+    // vit dans le JOIN pour que les jours sans inscription restent à zéro).
+    const paramsInsc: unknown[] = [];
+    let filtreInsc = '';
+    if (user.role === 'institution') {
+      filtreInsc = 'AND u.zone_id::text = $1 AND u.role = ANY($2)';
+      paramsInsc.push(String(scope!.zoneId), ACTEUR_ROLES);
+    }
+    const inscriptionsParJour = await this.ventesRepo.query(
+      `SELECT TO_CHAR(d.day, 'YYYY-MM-DD') AS jour, COUNT(u.id)::int AS inscriptions
+         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
+         LEFT JOIN users u ON u.created_at::date = d.day::date ${filtreInsc}
+        GROUP BY d.day ORDER BY d.day`,
+      paramsInsc,
+    );
+
+    // Ventes de caisse par jour — la définition unique (conditionVenteRetenue),
+    // périmètre appliqué sur les lignes EXISTANTES seulement (t.id IS NULL
+    // garde les jours vides).
+    const paramsVentes: unknown[] = [];
+    let filtreVentes = '';
+    if (user.role === 'institution') {
+      filtreVentes = 'AND (u.zone_id::text = $1 AND u.role = ANY($2))';
+      paramsVentes.push(String(scope!.zoneId), ACTEUR_ROLES);
+    }
+    const graphique = await this.ventesRepo.query(
+      `SELECT TO_CHAR(d.day, 'YYYY-MM-DD') AS jour,
+              COUNT(t.id) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee')::int AS transactions,
+              COALESCE(SUM(t.montant) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee'), 0)::float AS volume
+         FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
+         LEFT JOIN caisse_transactions t ON t.created_at::date = d.day::date
+         LEFT JOIN users u ON u.id::text = t.user_id::text
+        WHERE t.id IS NULL OR (TRUE${filtreVentes})
+        GROUP BY d.day ORDER BY d.day`,
+      paramsVentes,
+    );
+
+    // Top produits réels : les commandes du périmètre (hors annulée/litige).
+    const paramsProd: unknown[] = [];
+    let filtreProd = '';
+    if (user.role === 'institution') {
+      filtreProd = 'AND u.zone_id::text = $1';
+      paramsProd.push(String(scope!.zoneId));
+    }
+    const produits = await this.ventesRepo.query(
+      `SELECT c.produit AS nom, COUNT(*)::int AS commandes, COALESCE(SUM(c.total), 0)::float AS volume
+         FROM commandes c
+         JOIN users u ON u.id::text = c.vendeur_id::text
+        WHERE c.statut NOT IN ('annulee', 'litige') ${filtreProd}
+        GROUP BY c.produit ORDER BY volume DESC LIMIT 5`,
+      paramsProd,
+    );
+
+    // Alertes réelles du périmètre — rien de simulé.
+    const alertes: Array<{ niveau: string; message: string }> = [];
+    const suspendus = acteurs.filter(u => (u as any).status === 'suspendu').length;
+    if (suspendus > 0) {
+      alertes.push({ niveau: 'info', message: `${suspendus} acteur(s) suspendu(s) dans votre périmètre` });
+    }
+    const epuises = await this.ventesRepo.query(
+      `SELECT COUNT(*)::int AS n
+         FROM publications p
+         JOIN users u ON u.id::text = p.user_id::text
+        WHERE p.statut = 'epuise' ${filtreProd}`,
+      paramsProd,
+    );
+    const nEpuises = Number(epuises[0]?.n) || 0;
+    if (nEpuises > 0) {
+      alertes.push({ niveau: 'info', message: `${nEpuises} publication(s) épuisée(s) dans votre périmètre` });
+    }
+
+    return { roles, produits, graphique, inscriptionsParJour, alertes };
+  }
+
   @Get('acteurs')
   @RequireInstitutionModule('acteurs')
   async getActeurs(@CurrentUser() user: User, @CurrentInstitutionScope() scope?: InstitutionScope) {
