@@ -318,3 +318,13 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; message
 Batteries re-jouées À CHAUD sur b94b7b3 (preuves de première main, pas de citation) : tsc -b --force EXIT 0 ; eslint sur les 11 fichiers des lots C+D : 0 erreur (11 warnings préexistants) ; verify-tout complet : **150 vert / 2 rouge (2 CONNUS) / 152** — 106 s, 3e trace cohérente du jour (08:25, 08:53, à chaud). APK : run « APK pilote — construction à la demande » sur b94b7b3 success (08:56:52 ; job « Construire l'APK de debug » 08:56:56→08:59:24) ; release pilote-latest : julaba-b94b7b3.apk (272 979 241 o) + julaba-latest.apk (alias) créés 08:59:04Z ; run précédent c7d23c1 (19/10 21:45) aussi success.
 
 Atomicité : docs only — rapport + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F`.
+
+## 2026-10-20 — « La voix de l'effacement + la dictée web » (lot 49, agent Z.ai Code)
+
+1. `fix(voix): chaque effacement du numéro se dit — « Mmmh… Hein ! » (décision 20/10)` — AUTH_41 (login-41.mp3, TTS 5,9 s, atteste:false) joué à CHAQUE effacement du numéro via parle() dans handleKeyDelete ; texte aux 5 endroits (entreeVoix+EntreeVoiceKey, écran, script AUTH_41, catalogue, TATA_UI_CLIPS) ; effacement du CODE reparle (AUTH_24, était muet — écart §3.5 fermé) ; garde lot A [5] recalée sur la décision ; INVENTAIRE 433/244 ; registre vocal régénéré.
+2. `fix(voix): sur le web sans SpeechRecognition, la cause dite est la vraie` — useVoiceCore.ts:975 : le message hérité (« disponible que dans l'application ») était devenu FAUX depuis la décision webReco du 19/10 ; il ne sort plus que si sherpa ABSENT ET recoWebDispo() FAUX, et dit la vraie cause (navigateur sans oreille → Chrome ou le toucher). Sherpa = correctement implémenté (plugin Android uniquement, par décision du 11/08).
+3. `docs(voix): lot 49` — LOT-49-VOIX-EFFACEMENT-WEB-2026-10-20.md + COMMIT_LOG + worklog 49. Réponse « dictionnaire produits » : lexique 28 formes → SON étal → création au nom libre (aucun défaut trouvé).
+
+Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 12 suites vertes ; **verify complet : 150 vert / 2 rouge (2 CONNUS) / 152 — 0 rouge nouveau**.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via `git commit -F` ; UN seul heredoc par commande bash.

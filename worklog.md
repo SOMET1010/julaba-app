@@ -1069,3 +1069,22 @@ Stage Summary:
 - Rapport archivé dans .ai/AUDITS/ et poussé sur dev : 18 commits le 20/10 en 4 lots, verify 150/2/152 stable toute la journée, 0 rouge non-documenté, APK success sur le SHA final b94b7b3.
 - Aucun code touché par ce Task (docs only : rapport + COMMIT_LOG + worklog).
 - Restes ouverts inchangés : recette appareil P3 (14 scénarios SPEC, téléphone réel + APK — l'APK est prêt dans pilote-latest), 2 CONNUS assumés.
+
+---
+Task ID: 49
+Agent: Z.ai Code (sandbox)
+Task: « Prononce la phrase... Tu es en train d'effacer le numéro ! ... faut qu'il le prononce pour chaque suppression » + « Pour vendre je vois "La dictée n'est disponible que dans l'application" — dispo en web aussi, regarde si Sherpa est correctement implémenté » + « avons-nous un dictionnaire de produits ? »
+
+Work Log:
+- T1 (clip d'effacement) : phrase EXACTE « Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! » posée aux 5 endroits que la garde [4] exige (ENTREE_VOICE_CLIPS.effacementNumero + EntreeVoiceKey, écran parle() dans handleKeyDelete, loginVoiceScript AUTH_41, catalogue i18n AUTH_41, TATA_UI_CLIPS). Clip login-41.mp3 généré par TTS (voix tongtong, Mmmh ~1 s → atempo 1,25 → 5,9 s, mono 24 kHz 64 kbps, atteste:false) ; le clip reflue par direEntreeTexte (recherche PAR LE TEXTE — mot pour mot obligatoire).
+- T1 (règle) : la règle lot A « un effacement ne nomme pas le numéro » est détendue pour le NUMÉRO SEULEMENT (décision datée) ; l'effacement du CODE garde AUTH_24 et PARLE désormais (il était muet — écart §3.5 de 47-bis fermé). Garde voixConnexionLotA recalée ([5] : AUTH_24 anonyme, AUTH_41 texte exact + aucun chiffre écrit + le parle vit dans le geste).
+- T1 (pièges fermés en route) : validateLocale exige owner ∈ {manus, claude} (mon 'zai' a rougi → 'manus') ; clipsEmbarques compte les orphelins (le clip non déclaré dans tataUiClips/tataVoice faisait monter le cliquet 8→9 → déclaré dans TATA_UI_CLIPS) ; registre vocal à régénérer (generer-registre-voix.mjs) ; type EntreeVoiceKey + table CLE_CATALOGUE de l'écran à compléter (tsc TS2341/TS2741).
+- T2 (dictée web) : diagnostic de première main — la dictée web EXISTE (décision 19/10, webReco.ts : reconnaissance du navigateur, APK exclue) ; le message hérité useVoiceCore.ts:975 ne sortait que quand le navigateur n'a PAS de SpeechRecognition (Firefox, vieux Safari, WebView d'applis sociales) → chemin sherpa → échec → message DEVENNU FAUX depuis le 19/10. Sherpa = correctement implémenté (nativeStt → SherpaSttPlugin.kt, Android seulement, décision du 11/08). Correctif : message conditionné à (!offlineModelReady() && !recoWebDispo()) et dit la vraie cause + guide Chrome.
+- T3 (dictionnaire produits) : réponse sans défaut trouvé — 3 couches : lexique moteur (28 formes, PRODUITS_FORMES) → SON étal (nomDeSonEtal + apparierProduit, ambiguïté → refus) → sinon « je n'ai pas compris » et elle crée le produit (nom libre dicté : nomLibreDicte tout nom, 1aa133c ; tactile « Autre article », e3e3a63). INVENTAIRE-VOIX régénéré (433 sites / 244 phrases) ; registre régénéré.
+- Gates : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 12 suites vertes ; verify complet 150 vert / 2 rouge (2 CONNUS) / 152 — 0 rouge nouveau. Commits : 50f01ac (clip), b66469b (message web), docs.
+
+Stage Summary:
+- L'effacement du numéro PARLE à chaque tape (clip AUTH_41, décision Patrick 20/10), l'effacement du code reparle, la dictée web affiche désormais la VRAIE cause quand le navigateur ne sait pas écouter.
+- Sherpa : correct (APK native) ; la dictée web est portée par la reconnaissance du navigateur (Chrome/Edge/Safari ≥ 14.1) — les navigateurs sans l'API gardent le pavé, avec un message honnête.
+- Dictionnaire de produits : OUI, trois couches ; un produit hors liste se CRÉE (voix ou tactile) puis est reconnu pour toujours.
+- Restes ouverts inchangés : P3 appareil, 2 CONNUS, voix TTS = travail (atteste:false), dioula AUTH_41 à enregistrer.
