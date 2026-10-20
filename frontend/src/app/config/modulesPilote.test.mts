@@ -64,7 +64,11 @@ const MASQUEES: Array<[string, string]> = [
   ['/producteur/keiwa/paiements', '/producteur'],
   ['/cooperative/keiwa/banque', '/cooperative'],
   ['/institution/keiwa/carte', '/institution'],
-  ['/identificateur/keiwa/historique', '/identificateur'],
+  // IDENT-06 (20/10/2026) : l'identificateur est SORTI de PROFILS_KEIWA — ses
+  // routes Keiwa ont été retirées de routes.tsx (IDENTIFICATEUR-16, 19/10),
+  // le masque n'a plus rien à couvrir sur son namespace. La garde contre une
+  // résurrection est l'ABSENCE de route (NotFound), pas le masque : la ligne
+  // est déplacée dans la liste OUVERTES ci-dessous.
   ['/backoffice/keiwa', '/backoffice/dashboard'],
   ['/marchand/tontines', '/marchand'],
   ['/marchand/tontines/42', '/marchand'],
@@ -94,6 +98,7 @@ const OUVERTES = [
   '/producteur', '/producteur/production', '/producteur/recoltes',
   '/cooperative', '/cooperative/membres', '/cooperative/finances', '/cooperative/marche',
   '/identificateur', '/identificateur/identification',
+  '/identificateur/keiwa/historique',     // plus masquée : route morte (IDENT-06) — NotFound, pas redirection
   '/institution', '/institution/acteurs',
   '/backoffice/dashboard', '/backoffice/acteurs',
   '/', '/login', '/payer-plus-tard',
@@ -179,8 +184,15 @@ console.log('\n[7] Les entrées de menu suivent le drapeau');
     'RoleDashboard : la carte Keiwa (accueils producteur, coopérative) suit le drapeau');
   ok(/\.\.\.\(moduleVisible\('keiwa'\) \? \[\{\s*\n\s*id: 'keiwa'/.test(lire('../components/backoffice/BOLayout.tsx')),
     'BOLayout : le groupe « Keiwa Wallet » suit le drapeau');
-  ok(/moduleVisible\('keiwa'\) && \(\s*\n\s*<Section title="Wallet et Commissions"/.test(lire('../components/shared/UniversalParametres.tsx')),
-    'UniversalParametres : « Mon Keiwa » (identificateur) suit le drapeau');
+  // IDENT-06 (20/10/2026) : plus aucune ligne Keiwa côté identificateur —
+  // ni masquée ni visible. L'acteur est monétiquement neutre (IDENTIFICATEUR-16,
+  // arbitrage A-02) : la garde s'assure que « Mon Keiwa » ne revient PAS,
+  // même dans un build hors pilote ouvert.
+  const parametres = lire('../components/shared/UniversalParametres.tsx');
+  ok(!/Mon Keiwa/.test(parametres),
+    'UniversalParametres : aucun « Mon Keiwa » côté identificateur (neutre, IDENT-06)');
+  ok(!/identificateur\/keiwa/.test(parametres.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')),
+    'UniversalParametres : aucune navigation vers /identificateur/keiwa (route morte)');
 }
 
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');

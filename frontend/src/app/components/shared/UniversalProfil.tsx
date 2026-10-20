@@ -71,7 +71,9 @@ export const ROLE_CONFIG: Record<
     routes: {
       parametres: string;
       academy: string;
-      keiwa: string;
+      /** Absent pour l'identificateur : acteur monétiquement neutre
+       *  (IDENTIFICATEUR-16 / arbitrage A-02) — aucune route Keiwa. */
+      keiwa?: string;
       cooperative?: string;
       besoin?: string;
       tontines?: string;
@@ -122,7 +124,7 @@ export const ROLE_CONFIG: Record<
     routes: {
       parametres: '/identificateur/parametres',
       academy: '/identificateur/academy',
-      keiwa: '/identificateur/keiwa',
+      // IDENT-06 : pas de `keiwa` — l'identificateur ne porte aucun argent.
     },
   },
   institution: {
@@ -534,6 +536,10 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
   const navigate = useNavigate();
   const cfg = ROLE_CONFIG[role];
   const { color, routes, version } = cfg;
+  // IDENT-06 : la tuile Keiwa n'existe que si le rôle porte une route Keiwa
+  // réelle — pour l'identificateur elle était morte (NotFound). Capturée hors
+  // JSX pour que TypeScript rétrécisse le type optionnel.
+  const cheminKeiwa = routes.keiwa;
   const { speak, setIsModalOpen, user: appUser, setUser } = useApp();
   const { user, updateUser } = useUser();
 
@@ -666,7 +672,7 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
           <AcademyKeiwaRow
             color={color}
             onAcademy={() => navigate(routes.academy)}
-            onKeiwa={role === 'marchand' ? undefined : () => navigate(routes.keiwa)}
+            onKeiwa={role === 'marchand' ? undefined : cheminKeiwa ? () => navigate(cheminKeiwa) : undefined}
           />
 
           {role === 'marchand' && <ProfilMarchandExtras color={color} navigate={navigate} sousProfil={appUser?.sousProfilMarchand ?? null} />}

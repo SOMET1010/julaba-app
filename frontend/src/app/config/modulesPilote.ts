@@ -62,8 +62,11 @@ interface RegleMasque {
   chemin: string;
 }
 
-/** Les profils qui portent les 6 routes Keiwa (routes.tsx) — tous, sans exception. */
-const PROFILS_KEIWA = ['marchand', 'producteur', 'cooperative', 'institution', 'identificateur'] as const;
+/** Les profils dont l'espace porte les routes Keiwa (routes.tsx). `identificateur`
+ *  n'y figure PAS : acteur MONÉTIQUEMENT NEUTRE (IDENTIFICATEUR-16, arbitrage
+ *  A-02 du 20/10/2026) — ses routes Keiwa ont été retirées, donc il n'y a plus
+ *  rien à masquer sur son namespace, même dans un build hors pilote ouvert. */
+const PROFILS_KEIWA = ['marchand', 'producteur', 'cooperative', 'institution'] as const;
 
 /**
  * LA LISTE — et le POURQUOI de chaque ligne, constaté dans le code le 07/10.
@@ -71,7 +74,7 @@ const PROFILS_KEIWA = ['marchand', 'producteur', 'cooperative', 'institution', '
 export const MODULES_HORS_PILOTE: readonly RegleMasque[] = [
   // KEIWA — portefeuille : transfert, paiements, banque, carte. Débite et
   // crédite un wallet réel. « HORS PILOTE, contrainte permanente » (GO-PILOTE).
-  // Le préfixe couvre `/keiwa` et ses 5 sous-routes, sur les 5 profils.
+  // Le préfixe couvre `/keiwa` et ses 5 sous-routes, sur les 4 profils.
   ...PROFILS_KEIWA.map((p): RegleMasque => ({ module: 'keiwa', mode: 'prefixe', chemin: `/${p}/keiwa` })),
   // Le tableau de bord Keiwa du back-office CRÉDITE et DÉBITE des wallets à la
   // main (boCreditWallet / boDebitWallet). Le reste du back-office reste ouvert.
