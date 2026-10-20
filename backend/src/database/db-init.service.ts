@@ -351,6 +351,13 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS cout_total numeric(14,2);`,
       );
+      // PROD-03 — distinguer LIVRÉ de VENDU en quantités : l'état « effectivement
+      // livré » d'une récolte. Incrémenté à la transition livree d'une commande,
+      // restitué si annulée/litige. Miroir de la migration
+      // 1782300000010-RecolteStockLivre (règle « DbInit ⊆ migrations »).
+      await this.dataSource.query(
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS stock_livre numeric(10,2) NOT NULL DEFAULT 0;`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );
