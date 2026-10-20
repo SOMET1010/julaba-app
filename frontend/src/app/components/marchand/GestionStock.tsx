@@ -36,6 +36,8 @@ const P = 'var(--commerce-action)';
 interface Stock {
   id: string; name: string; image: string;
   quantity: number; unit: string;
+  /** false = quantité non suivie/inconnue, et non rupture de stock. */
+  stockTracked: boolean;
   purchasePrice: number; salePrice: number;
   threshold: number; category: string;
   promoPrice?: number | null; promoFin?: string | null;
@@ -44,11 +46,12 @@ interface Stock {
 function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Stock; montantsMasques: boolean; onTap: () => void; onDelete: () => void }) {
   const x = useMotionValue(0);
   const deleteOpacity = useTransform(x, [-72, -20], [1, 0]);
-  const isLow = stock.quantity < stock.threshold;
-  const isEmpty = stock.quantity <= 0;
+  const isTracked = stock.stockTracked !== false;
+  const isLow = isTracked && stock.quantity < stock.threshold;
+  const isEmpty = isTracked && stock.quantity <= 0;
   const benefice = stock.salePrice - stock.purchasePrice;
   const marginPct = stock.purchasePrice > 0 ? Math.round((benefice / stock.purchasePrice) * 100) : 0;
-  const borderColor = isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)';
+  const borderColor = !isTracked ? 'var(--herite-gris-40)' : isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)';
   const stockPct = Math.min(100, Math.round((stock.quantity / Math.max(stock.threshold * 2, 1)) * 100));
 
   return (
@@ -112,12 +115,12 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
             {/* Pill statut haut gauche */}
             <div style={{
               position: 'absolute', top: 8, left: 8,
-              background: isEmpty ? 'rgba(220,38,38,0.92)' : isLow ? 'rgba(239,68,68,0.92)' : 'rgba(22,163,74,0.92)',
+              background: !isTracked ? 'rgba(100,116,139,0.92)' : isEmpty ? 'rgba(220,38,38,0.92)' : isLow ? 'rgba(239,68,68,0.92)' : 'rgba(22,163,74,0.92)',
               borderRadius: 30, padding: '2px 8px',
               fontSize: 8, fontWeight: 900, color: 'var(--herite-blanc-pur)',
               textTransform: 'uppercase', letterSpacing: '0.4px',
             }}>
-              {isEmpty ? '✕ Rupture' : isLow ? '⚠ Stock bas' : '✓ En stock'}
+              {!isTracked ? '◌ Stock non suivi' : isEmpty ? '✕ Rupture' : isLow ? '⚠ Stock bas' : '✓ En stock'}
             </div>
             {/* Pill marge haut droite */}
             {!montantsMasques && marginPct !== 0 && (
@@ -150,7 +153,7 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
               gap: 4, marginBottom: 8,
             }}>
               <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
-                {stock.quantity.toLocaleString('fr-FR')}
+                {isTracked ? stock.quantity.toLocaleString('fr-FR') : '—'}
               </span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
@@ -167,8 +170,8 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
                 fontSize: 8, fontWeight: 700, color: 'var(--herite-gris-80)',
                 textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 4,
               }}>
-                <span>Stock</span>
-                <span>seuil : {stock.threshold} {stock.unit}</span>
+                <span>{isTracked ? 'Stock suivi' : 'Quantité à renseigner'}</span>
+                {isTracked && <span>seuil : {stock.threshold} {stock.unit}</span>}
               </div>
               <div style={{ background: 'var(--commerce-gray-100)', borderRadius: 20, height: 5, overflow: 'hidden' }}>
                 <motion.div
@@ -281,7 +284,7 @@ export function GestionStock() {
   const stocks: Stock[] = useMemo(() => {
     const duCatalogue: Stock[] = (!products || !Array.isArray(products)) ? [] : products.map(p => ({
       id: p.id, name: p.nom, image: p.image || '',
-      quantity: p.stock || 0, unit: p.unite,
+      quantity: p.stock || 0, stockTracked: p.stock !== null && p.stock !== undefined, unit: p.unite,
       purchasePrice: Number(p.prix_achat ?? 0) || 0,
       salePrice: p.prix || 0,
       threshold: (p as any).seuil_alerte || 10,
@@ -292,7 +295,7 @@ export function GestionStock() {
     if (duCatalogue.length > 0) return duCatalogue;
     return stockCtx.stock.map(s => ({
       id: s.id, name: s.produit, image: '',
-      quantity: s.quantite, unit: s.unite,
+      quantity: s.quantite, stockTracked: s.suiviStock !== false, unit: s.unite,
       purchasePrice: (s as any).prixAchat || 0,
       salePrice: s.prixUnitaire || 0,
       threshold: (s as any).seuilAlerte || 10,
