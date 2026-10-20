@@ -99,7 +99,11 @@ export class StocksRestController {
           id: p.id,
           produit: p.nom,
           nom: p.nom,
+          // `stock` NULL signifie « non suivi/inconnu », pas « stock épuisé ».
+          // Garder `quantite` numérique pour compatibilité, mais exposer
+          // un booléen explicite afin que l'interface distingue les deux.
           quantite: Number(p.stock) || 0,
+          suivi_stock: p.stock !== null && p.stock !== undefined,
           prix: Number(p.prix) || 0,
           prix_achat: Number(p.prix_achat) || 0,
           unite: p.unite || 'unite',
@@ -131,6 +135,7 @@ export class StocksRestController {
         nom: s.produit,
         quantite: Number(s.quantite) || 0,
         quantity: Number(s.quantite) || 0,
+        suivi_stock: true,
         prix: Number(s.prix_vente) || 0,
         prix_achat: Number(s.prix_achat) || 0,
         prix_vente: Number(s.prix_vente) || 0,
