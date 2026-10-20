@@ -187,7 +187,7 @@ export class InstitutionDashboardController {
     const paramsInsc: unknown[] = [];
     let filtreInsc = '';
     if (user.role === 'institution') {
-      filtreInsc = 'AND u.zone_id::text = $1 AND u.role = ANY($2)';
+      filtreInsc = 'AND u.zone_id::text = $1 AND u.role::text = ANY($2::text[])';
       paramsInsc.push(String(scope!.zoneId), ACTEUR_ROLES);
     }
     const inscriptionsParJour = await this.ventesRepo.query(
@@ -204,7 +204,7 @@ export class InstitutionDashboardController {
     const paramsVentes: unknown[] = [];
     let filtreVentes = '';
     if (user.role === 'institution') {
-      filtreVentes = 'AND (u.zone_id::text = $1 AND u.role = ANY($2))';
+      filtreVentes = 'AND (u.zone_id::text = $1 AND u.role::text = ANY($2::text[]))';
       paramsVentes.push(String(scope!.zoneId), ACTEUR_ROLES);
     }
     const graphique = await this.ventesRepo.query(
