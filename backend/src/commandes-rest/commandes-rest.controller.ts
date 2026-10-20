@@ -459,6 +459,56 @@ export class CommandesRestController {
     // stock a l'acceptation) — cf. JULABA_DECISIONS.md "B2, voie negociation
     // non couverte par la reservation".
     const publicationId = String(body.publicationId || body.publication_id || '').trim() || null;
+
+    // Verrou métier : une négociation ne doit jamais contourner les filtres du
+    // marché. Seuls grossistes et coopératives peuvent négocier avec un producteur.
+    // Le demi-grossiste négocie avec un grossiste ; le détaillant n'a pas d'achat amont.
+    const vendeurs = await this.dataSource.query(
+      `SELECT id, role, sous_profil_marchand FROM users WHERE id = $1`,
+      [vendeurId],
+    );
+    const vendeur = vendeurs[0];
+    if (!vendeur) throw new NotFoundException('Vendeur introuvable');
+
+    const acheteurRole = String(user?.role || '').toLowerCase();
+    const acheteurSousProfil = String(user?.sousProfilMarchand || '').toLowerCase();
+    const vendeurRole = String(vendeur.role || '').toLowerCase();
+    const vendeurSousProfil = String(vendeur.sous_profil_marchand || '').toLowerCase();
+    let circuitAutorise = false;
+    if (acheteurRole === 'cooperateur') {
+      circuitAutorise = vendeurRole === 'producteur';
+    } else if (acheteurRole === 'marchand' && acheteurSousProfil === 'grossiste') {
+      circuitAutorise = ['producteur', 'cooperateur'].includes(vendeurRole);
+    } else if (acheteurRole === 'marchand' && acheteurSousProfil === 'demi_grossiste') {
+      circuitAutorise = vendeurRole === 'marchand' && vendeurSousProfil === 'grossiste';
+    }
+    if (!circuitAutorise) {
+      throw new ForbiddenException('Circuit de négociation non autorisé pour votre profil');
+    }
+
+    if (publicationId) {
+      const offres = await this.dataSource.query(
+        `SELECT id, user_id, type_marche, statut, active FROM publications WHERE id = $1`,
+        [publicationId],
+      );
+      const offre = offres[0];
+      if (!offre) throw new NotFoundException('Offre du marché introuvable');
+      if (String(offre.user_id) !== String(vendeurId)) {
+        throw new ForbiddenException('Le vendeur ne correspond pas à cette offre');
+      }
+      if (offre.active !== true || offre.statut !== 'disponible') {
+        throw new BadRequestException('Cette offre n’est plus disponible');
+      }
+      const typeMarche = String(offre.type_marche || '').toLowerCase();
+      const canalAutorise =
+        (acheteurRole === 'cooperateur' && typeMarche === 'producteur' && vendeurRole === 'producteur') ||
+        (acheteurRole === 'marchand' && acheteurSousProfil === 'grossiste' && typeMarche === 'producteur' && ['producteur', 'cooperateur'].includes(vendeurRole)) ||
+        (acheteurRole === 'marchand' && acheteurSousProfil === 'demi_grossiste' && typeMarche === 'cooperative' && vendeurRole === 'marchand' && vendeurSousProfil === 'grossiste');
+      if (!canalAutorise) {
+        throw new ForbiddenException('Canal de marché non autorisé pour cette négociation');
+      }
+    }
+
     const neg = this.negRepo.create({
       marchandId: user.id, vendeurId, produit, publicationId,
       quantite: Number(quantite), prixOriginal: Number(prixOriginal),
