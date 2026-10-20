@@ -1,9 +1,12 @@
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { timingSafeEqual } from 'node:crypto';
+import { attenteApresEchecs, attenteEnClair, essaisAvantAttente } from '../auth/verrou-pin';
+import { PinCryptoService } from '../auth/pin-crypto.service';
 import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { buildMeta } from '../common/paginate';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Controller, Get, Patch, Delete, UseGuards, Param, Body, Query, Request, ForbiddenException, NotFoundException, BadRequestException, Post, UploadedFile, UseInterceptors, HttpCode, HttpStatus, Logger, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, UseGuards, Param, Body, Query, Request, ForbiddenException, NotFoundException, BadRequestException, UnauthorizedException, Post, UploadedFile, UseInterceptors, HttpCode, HttpStatus, Logger, ParseUUIDPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UsersService } from './users.service';
@@ -11,6 +14,8 @@ import { DuplicatesService } from './duplicates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from './entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { UsersBoListQueryDto } from './dto/users-bo-list-query.dto';
 import { AdminUsersService } from './admin-users.service';
@@ -33,7 +38,66 @@ export class UsersController {
     private readonly adminUsersService: AdminUsersService,
     private readonly backofficeUsersService: BackofficeUsersService,
     private readonly feedbakSmsService: FeedbakSmsService,
+    private readonly pinCrypto: PinCryptoService,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
   ) {}
+
+  // ── IDENT-05 — LE PIN SERVEUR SUR LES ÉCRITURES PII ───────────────────────
+  //
+  // L'identificateur modifie la PII des acteurs de sa zone (numCNPS, numCMU,
+  // dateNaissance, photo…) via PATCH /users/:id. Jusqu'ici la re-vérification
+  // du PIN ne vivait que dans l'ÉCRAN (POST /auth/identificateur/me/verify-pin)
+  // : un attaquant avec la session ouverte (téléphone volé) appelait le PATCH
+  // directement, sans PIN — IDENTIFICATEUR-02 du 19/10 restait valable.
+  //
+  // Désormais la vérification est SERVEUR, sur chaque écriture PII hors self,
+  // avec la MÊME échelle de verrou (verrou-pin.ts : 3 échecs → 5 min, 6 → 15
+  // min, 9+ → 1 h, jamais définitif) et SES colonnes dédiées. L'arbitrage « 4
+  // chiffres, alphabet 2-9 » (pin-identificateur.ts) tient PARCE QUE ce chemin
+  // est verrouillé.
+  private async exigerPinIdentificateurActeur(requerant: User, pin: unknown): Promise<void> {
+    if (!/^\d{4}$/.test(String(pin || ''))) {
+      throw new UnauthorizedException(
+        'PIN requis (4 chiffres) pour modifier la fiche d\'un acteur de votre zone',
+      );
+    }
+    const jusqua = (requerant as any).identificateurPinLockedUntil as Date | null;
+    if (jusqua && jusqua.getTime() > Date.now()) {
+      throw new UnauthorizedException(
+        `Verrou PIN : attendez ${attenteEnClair(jusqua.getTime() - Date.now())}`,
+      );
+    }
+    if (!(requerant as any).pinCodeEncryptedIdentificateur) {
+      throw new UnauthorizedException('Aucun PIN défini — réinitialisez votre code auprès de la DGE');
+    }
+    let valide = false;
+    try {
+      const secret = this.pinCrypto.decrypt((requerant as any).pinCodeEncryptedIdentificateur);
+      const a = Buffer.from(String(secret).trim().padEnd(4, '\0'));
+      const b = Buffer.from(String(pin).trim().padEnd(4, '\0'));
+      valide = timingSafeEqual(a, b);
+    } catch {
+      valide = false;
+    }
+    if (valide) {
+      // Seul un PIN JUSTE remet le compteur à zéro (même règle que le verify-pin).
+      await this.usersRepo.update(requerant.id, {
+        failedIdentificateurPinAttempts: 0,
+        identificateurPinLockedUntil: null,
+      } as any);
+      return;
+    }
+    const essais = (((requerant as any).failedIdentificateurPinAttempts ?? 0) as number) + 1;
+    const attente = attenteApresEchecs(essais);
+    const patch: Record<string, unknown> = { failedIdentificateurPinAttempts: essais };
+    if (attente > 0) patch.identificateurPinLockedUntil = new Date(Date.now() + attente);
+    await this.usersRepo.update(requerant.id, patch as any);
+    throw new UnauthorizedException(
+      attente > 0
+        ? `PIN incorrect — ${attenteEnClair(attente)} d\'attente avant de réessayer`
+        : `PIN incorrect — ${essaisAvantAttente(essais)} essai(s) avant la prochaine pause`,
+    );
+  }
 
   @Get('me')
   async getProfile(@CurrentUser() user: User) {
@@ -341,6 +405,10 @@ export class UsersController {
       if (!memeZone) {
         throw new ForbiddenException('Cet acteur n\'est pas dans votre zone');
       }
+      // IDENT-05 — le PIN est vérifié ICI, côté serveur, à chaque écriture PII
+      // d'un acteur de la zone (le check écran ne suffit jamais).
+      const requerant = await this.usersService.findOne(req.user.id);
+      await this.exigerPinIdentificateurActeur(requerant, body.pin);
     }
 
     const actorId = req.user?.id;
