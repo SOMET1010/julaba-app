@@ -127,6 +127,28 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
       vendeurId, produit: 'Igname', quantite, prixOriginal: 400, prixPropose, unite: 'kg', publicationId: pubId,
     });
 
+  it('refuse une négociation du marché sans publicationId', async () => {
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg' });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('publicationId requis');
+  });
+
+  it('refuse une négociation si la publication appartient à un autre vendeur', async () => {
+    const pub = await creerPublication(20);
+    const repo = ds.getRepository(User);
+    const autreVendeur: any = await repo.save(repo.create({
+      phone: '+2250700059099', firstName: 'Autre', lastName: 'Vendeur', genre: 'homme',
+      role: UserRole.PRODUCTEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId: autreVendeur.id, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: pub });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('ne correspond pas');
+  });
+
   it('I-NEG-1 : négociation acceptée réserve ET convertit le stock de sa publication d\'origine', async () => {
     const pub = await creerPublication(100);
     const prop = await proposer(marchandToken, pub, 30, 350);
