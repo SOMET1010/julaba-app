@@ -146,6 +146,10 @@ export const router = createBrowserRouter([
         { path: "keiwa/banque", element: L(() => import("./components/wallet/BanquePage").then(m => ({ default: m.BanquePage }))), errorElement: <ErrorFallback /> },
         { path: "keiwa/carte", element: L(() => import("./components/wallet/CartePage").then(m => ({ default: m.CartePage }))), errorElement: <ErrorFallback /> },
         { path: "keiwa/historique", element: L(() => import("./components/wallet/HistoriquePage").then(m => ({ default: m.HistoriquePage }))), errorElement: <ErrorFallback /> },
+        // PROD-04 — cotisations CNPS/CNAM accessibles DEPUIS l'espace producteur (même
+        // composant que la marchande ; le backend est role-agnostique). Hors pilote :
+        // le mode keiwa débite le wallet (MODULES_HORS_PILOTE).
+        { path: "protection-sociale", element: L(() => import("./components/marchand/ProtectionSociale").then(m => ({ default: m.ProtectionSociale }))), errorElement: <ErrorFallback /> },
         { path: "parametres", element: L(() => import("./components/producteur/ProducteurParametres").then(m => ({ default: m.ProducteurParametres }))), errorElement: <ErrorFallback /> },
         { path: "alertes", element: L(() => import("./components/producteur/ProducteurAlertes").then(m => ({ default: m.ProducteurAlertes }))), errorElement: <ErrorFallback /> },
         { path: "support", element: L(() => import("./components/shared/SupportPage").then(m => ({ default: m.SupportPage }))), errorElement: <ErrorFallback /> },

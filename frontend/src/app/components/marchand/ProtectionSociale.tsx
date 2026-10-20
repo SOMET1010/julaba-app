@@ -6,6 +6,7 @@
  * (protectionSociale.service) ; le jour où les API CNPS/CNAM seront branchées,
  * cet écran fonctionne à l'identique sans modification.
  */
+import { useLocation } from 'react-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, HeartPulse, Plus, Volume2, Check, Clock, X, Info } from 'lucide-react';
@@ -24,7 +25,11 @@ import {
   type Cotisation,
 } from '../../services/protectionSociale.service';
 
-const COLOR = 'var(--herite-orange)';
+// PROD-04 — la page est routée pour le producteur ET la marchande : le rôle
+// est déduit du préfixe d'URL (couleur et header suivent le profil), le reste
+// (CNPS/CNAM, modes de paiement) est identique — le backend est role-agnostique.
+const COLOR_MARCHAND = 'var(--herite-orange)';
+const COLOR_PRODUCTEUR = 'var(--herite-verte)';
 const ORG_STYLE: Record<Organisme, { color: string; icon: React.ElementType }> = {
   CNPS: { color: '#2E7D32', icon: Shield },
   CNAM: { color: '#1565C0', icon: HeartPulse },
@@ -43,6 +48,9 @@ function libellePeriode(p: string): string {
 }
 
 export function ProtectionSociale() {
+  const { pathname } = useLocation();
+  const roleProfil = pathname.startsWith('/producteur') ? 'producteur' : 'marchand';
+  const COLOR = roleProfil === 'producteur' ? COLOR_PRODUCTEUR : COLOR_MARCHAND;
   const { user, speak } = useApp();
   const userId = user?.id || 'anon';
 
@@ -113,7 +121,7 @@ export function ProtectionSociale() {
 
   return (
     <SubPageLayout
-      role="marchand"
+      role={roleProfil}
       title="Ma protection sociale"
       subtitle="CNPS retraite · CNAM santé"
       rightContent={

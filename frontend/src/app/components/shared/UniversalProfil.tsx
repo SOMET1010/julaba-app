@@ -25,6 +25,7 @@ import {
   Fingerprint,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
+import { moduleVisible } from '../../config/modulesPilote';
 import { toast } from 'sonner';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
@@ -390,10 +391,37 @@ function ProfilProducteurExtras({ color }: { color: string }) {
   const recoltes = Array.isArray(rawRecoltes) ? rawRecoltes : [];
   const cycles = Array.isArray(rawCycles) ? rawCycles : [];
   const actifs = cycles.filter((c) => c.status === 'active').length;
+  const navigate = useNavigate();
+  // PROD-04 — le producteur cotise lui aussi (CNPS/CNAM) : même page que la
+  // marchande, même garde hors pilote (le mode keiwa débite SON wallet).
+  const protectionVisible = moduleVisible('protection-sociale');
   return (
-    <div className="grid grid-cols-2 gap-3 mb-4">
-      <KPICard label="Récoltes" value={recoltes.length} color={color} />
-      <KPICard label="Plantations actives" value={actifs} color={color} />
+    <div className="mb-4">
+      {protectionVisible && (
+        <motion.button
+          type="button"
+          onClick={() => navigate('/producteur/protection-sociale')}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.06, type: 'spring', stiffness: 200 }}
+          whileTap={{ scale: 0.98 }}
+          className="w-full p-4 rounded-2xl border-2 shadow-md flex items-center gap-3 text-left mb-3"
+          style={{ borderColor: `${color}40`, background: `linear-gradient(to bottom right, ${color}14, #ffffff, ${color}14)` }}
+        >
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}25` }}>
+            <Shield className="w-6 h-6" style={{ color }} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold encre">Ma protection sociale</h3>
+            <p className="text-xs encre-3">Cotisations CNPS (retraite) & CNAM (santé)</p>
+          </div>
+          <ChevronRight className="w-6 h-6 encre-4 ml-auto" />
+        </motion.button>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <KPICard label="Récoltes" value={recoltes.length} color={color} />
+        <KPICard label="Plantations actives" value={actifs} color={color} />
+      </div>
     </div>
   );
 }
