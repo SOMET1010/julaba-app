@@ -25,7 +25,7 @@ export interface StockItem {
   produit: string;
   quantite: number;
   /** false si la quantité n'a pas été renseignée ; true si elle est suivie. */
-  suiviStock: boolean;
+  suiviStock?: boolean;
   unite: string;
   prixUnitaire: number;
   prixAchat?: number;   // alias prixUnitaire
