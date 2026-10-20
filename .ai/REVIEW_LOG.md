@@ -440,3 +440,38 @@ Chaque nom passé au peigne fin (`rg -w -F`, tous canaux : process.env direct, p
 ### Restent ouverts (inchangés)
 - backend/.env.production (serveur, hors dépôt) : clés mortes éventuelles inertes — nettoyage facultatif (Patrick).
 - Re-gel humain Patrick (périmètre + gardes) inchangé ; `npm run check` racine complet (knip/jscpd) toujours à rejouer après install racine.
+
+## REVIEW-009 — Circuit d’approvisionnement et garde de négociation (2026-10-20)
+
+- **Reviewer** : Agent Reviewer (revue indépendante via connecteur GitHub)
+- **Branche revue** : `dev`
+- **Commit principal** : `e174f7595a082c940128e9fbca9e830992251a7b`
+- **Fichiers revus** : `backend/src/commandes-rest/commandes-rest.controller.ts`, avec vérification de cohérence dans `backend/src/publications-rest/publications-rest.controller.ts`, `backend/test/invariants/negociation-reservation-stock.spec.ts` et `docs/SOUS_PROFILS_MARCHAND.md`.
+- **Périmètre** : seuls grossiste et coopérative peuvent acheter/négocier auprès d’un producteur ; demi-grossiste limité aux offres grossistes ; détaillant sans achat amont dans le marché virtuel.
+- **Statut** : ⚠️ APPROUVÉ AVEC REMARQUES — revue statique, validation CI non confirmée.
+
+### Constats
+
+- ✅ Le marché backend filtre les offres par rôle et canal ; le détaillant et les profils non autorisés reçoivent une liste vide.
+- ✅ La création de commande du marché vérifie côté serveur le profil acheteur, le rôle du vendeur, le canal de publication et l’appartenance de l’offre au vendeur.
+- ✅ Le point d’entrée de négociation vérifie désormais les rôles acheteur/vendeur ; si une publication est fournie, il vérifie aussi son propriétaire, son statut et le canal attendu.
+- ⚠️ La négociation accepte encore `publicationId` absent pour compatibilité historique. Les rôles restent filtrés, mais l’offre/canal ne peut alors pas être prouvé par cette requête. À terme, rendre la publication obligatoire pour toute négociation d’approvisionnement, ou isoler explicitement les négociations hors marché dans un flux différent.
+- ⚠️ Aucun test d’autorisation dédié aux nouveaux refus de négociation n’a été confirmé dans cette revue. Ajouter des cas négatifs : détaillant→producteur, demi-grossiste→producteur, coopérative→grossiste, grossiste→détaillant, vendeur ne correspondant pas à la publication et publication inactive.
+- ⚠️ Les checks CI du commit revu n’ont pas fourni de statut exploitable au moment de la revue ; aucune affirmation de tests verts n’est faite.
+
+### Critères
+
+- Qualité / lisibilité : ✅
+- Séparation des couches : ⚠️ logique d’autorisation répétée dans le contrôleur ; extraction ultérieure possible vers un service/policy partagé.
+- Sécurité des circuits : ✅ avec la réserve de compatibilité ci-dessus.
+- Tests nominaux et négatifs : ⚠️ couverture ciblée à compléter.
+- Documentation : ⚠️ le journal de revue est mis à jour ; une documentation d’API des règles de négociation reste à compléter.
+
+### Actions demandées
+
+1. Ajouter des tests d’intégration de refus couvrant chaque circuit interdit.
+2. Décider si `publicationId` doit devenir obligatoire pour une négociation liée au marché.
+3. Rejouer typecheck, tests invariants de commandes/négociations et CI sur le commit final avant toute validation de livraison.
+
+- **Décision finale** : ne pas déclarer la feature prête pour production sur la seule base de cette revue statique.
+
