@@ -1067,7 +1067,7 @@ export function LoginPassword() {
       overflowY: 'auto',
       overflowX: 'hidden',
       // On garde de la place sous le clavier pour la barre de navigation Android.
-      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
       position: 'relative',
     }}>
       {import.meta.env.DEV && showDevButton && (
@@ -1092,7 +1092,7 @@ export function LoginPassword() {
           alignItems: 'center',
           width: '100%',
           boxSizing: 'border-box',
-          padding: 'max(8px, env(safe-area-inset-top, 0px)) 16px 0',
+          padding: '22px 24px 4px',
         }}
       >
         <div className="login-brand">
@@ -1117,7 +1117,7 @@ export function LoginPassword() {
         style={{
           width: '100%',
           maxWidth: 420,
-          padding: '0 16px',
+          padding: '0 24px',
           margin: '0 auto',
           flex: 1,
           boxSizing: 'border-box',
@@ -1127,7 +1127,7 @@ export function LoginPassword() {
           // Centré quand il n'y a que le micro ; aligné en haut quand le clavier
           // est ouvert (sinon le haut sortait de l'écran, non atteignable).
           justifyContent: 'flex-start',
-          paddingTop: clavierVisible ? 4 : 0,
+          paddingTop: clavierVisible ? 12 : 0,
         }}
       >
         <AnimatePresence mode="wait">
@@ -1158,7 +1158,7 @@ export function LoginPassword() {
                   onClick={handleBiometric}
                   disabled={isLoading}
                   style={{
-                    width: '100%', height: 68,
+                    width: '100%', height: 96,
                     borderRadius: 14, border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
                     background: 'var(--commerce-action)',
                     boxShadow: '0 2px 8px #3325330C',
