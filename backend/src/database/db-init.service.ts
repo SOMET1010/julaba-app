@@ -56,6 +56,16 @@ export class DbInitService {
         ALTER TABLE identifications
         ADD COLUMN IF NOT EXISTS form_data JSONB;
       `);
+      // IDENT-09 (20/10/2026) : clé d'idempotence de la soumission
+      // (create-with-acteur) — rejeu du client = renvoi du dossier existant.
+      await this.dataSource.query(`
+        ALTER TABLE identifications
+        ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+      `);
+      await this.dataSource.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_identifications_idempotency_key
+        ON identifications (idempotency_key) WHERE idempotency_key IS NOT NULL;
+      `);
       this.logger.log('Colonnes current_step et form_data verifiees sur identifications');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
