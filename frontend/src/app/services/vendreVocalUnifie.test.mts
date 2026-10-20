@@ -238,6 +238,19 @@ function main() {
     eq(muet.appelsSpeak.length, 0, "guidage désactivé → Tata se tait");
   }
 
+  console.log("\n[11] Ligne provisoire : le panier reste intact avant confirmation");
+  {
+    const h = creerDeps();
+    const provisoires: [ProduitPourPanier, number, number | undefined][] = [];
+    h.deps.proposerLigne = (produit, quantite, totalExact) => { provisoires.push([produit, quantite, totalExact]); };
+    vendreVocalUnifie("tomates", 2, 1000, h.deps);
+    eq(h.appelsAddToCart.length, 0, "aucun appel panier avant confirmation");
+    eq(provisoires.length, 1, "une ligne provisoire capturée");
+    eq(provisoires[0][0].id, "p1", "la ligne conserve le produit du catalogue");
+    eq(provisoires[0][1], 2, "la ligne conserve la quantité");
+    eq(provisoires[0][2], 1000, "la ligne conserve le total exact");
+  }
+
   console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
   if (failures > 0) process.exit(1);
 }

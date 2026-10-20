@@ -54,6 +54,8 @@ import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/geste
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
+import { interpreterReponse } from '../../services/grammaireCorrection';
+import { corrigerPrix, corrigerQuantite } from '../../services/ligneProvisoire';
 import { produitPourVente } from '../../services/preselectionVente';
 import { lireVenteAuCatalogue, venteSansProduit } from '../../services/venteAuCatalogue';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
@@ -63,6 +65,7 @@ import { resumeQuantite } from '../../services/dialoguesTata';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces, vibrerTic } from '../../utils/haptique';
 import { SaisieGuidee } from './SaisieGuidee';
+import { ConfirmationLigne } from './ConfirmationLigne';
 import tataAccueil from '../../../assets/redesign/tata-accueil.webp';
 
 // PLUS AUCUNE COULEUR EN DUR ICI (VOIX-01, lot F). Le lot B avait recopié
@@ -188,6 +191,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // Repli tactile — ABSORBÉ dans cette surface (arbitrage n°3 du 20/09/2026) :
   // il ne renvoie plus vers un écran séparé, il s'ouvre ici même.
   const [saisieOuverte, setSaisieOuverte] = useState(false);
+  // Une dictée comprise devient d'abord une ligne provisoire, jamais une
+  // mutation directe du panier.
+  const [ligneVocale, setLigneVocale] = useState<LigneProvisoire | null>(null);
 
   // La ligne confirmée va au PANIER, jamais encaissée ici.
   //
@@ -222,6 +228,31 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     toast.success(`C'est dans le panier : ${resumeQuantite(l)}`);
     if (guidageVocal()) speakMessage('TATA_AJOUT_PANIER');
     setSaisieOuverte(false);
+    setLigneVocale(null);
+    // Un produit inconnu n'est proposé au catalogue qu'après la confirmation
+    // de sa ligne et son entrée effective dans le panier.
+    if (!l.produitId && navigator.onLine !== false) {
+      setPropositionProduit({ nom: l.nomAffiche, prix: prixU });
+    }
+  };
+
+  const proposerLigneVocale = (produit: { id: string; nom: string; prix: number; unite?: string }, quantite: number, totalExact?: number) => {
+    const qte = Math.max(1, Math.floor(quantite || 1));
+    const total = totalExact ?? produit.prix * qte;
+    setLigneVocale({
+      id: `lp-${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
+      nomParle: produit.nom,
+      produitId: produit.id.startsWith('libre-') ? null : produit.id,
+      nomAffiche: produit.nom,
+      quantite: qte,
+      unite: produit.unite || 'unité',
+      prixUnitaire: Math.round(total / qte),
+      total,
+      interpretationPrix: 'unitaire',
+      statut: 'a_confirmer',
+      creeLe: new Date().toISOString(),
+    });
+    setSaisieOuverte(true);
   };
 
   /**
@@ -238,7 +269,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const vendreUnifie = (nomParle: string | undefined, quantite: number, montant: number, uniteParlee?: string | null, lectureDictee?: 'unitaire' | 'total' | null) =>
     vendreVocalUnifie(nomParle, quantite, montant, {
       products,
+      // Capture d'abord la ligne : `addToCart` réel ne doit arriver qu'après
+      // la confirmation visuelle/vocale de `ConfirmationLigne`.
       addToCart,
+      proposerLigne: proposerLigneVocale,
       speak: direEtRetenir,
       vibrerSucces,
       notifierAjoutPanier: (message) => toast.success(message),
@@ -292,10 +326,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       topStocks: topStocks || '',
       dernierProduit: dernierProduit || '',
     },
-    // « vendre » n'encaisse rien : il ajoute une ligne au panier PARTAGÉ, la
-    // même fonction que le tactile. L'encaissement reste le bloc « Payer en
-    // espèces » de cette même page. « vendre » n'attend pas de confirmation
-    // orale et agit même hors ligne (panier local, aucune écriture serveur).
+    // « vendre » n'encaisse rien : il capture une ligne provisoire relue dans
+    // `ConfirmationLigne`. L'encaissement reste le bloc « Payer en espèces »;
+    // le panier n'est muté qu'après confirmation explicite.
     //
     // Les intentions d'ENCAISSEMENT (lot C) sont dans les deux listes pour les
     // mêmes raisons, à une nuance près : elles ont bien une confirmation,
@@ -314,6 +347,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       if (data.action?.type && estIntentionEncaissement(data.action.type)) { onIntentionEncaissement(data.action.type); return; }
 
       const action = data.action;
+      // Tant qu'une ligne vocale attend confirmation, la réponse est une
+      // correction de cette ligne, jamais une nouvelle vente.
+      if (ligneVocale) {
+        const reponse = interpreterReponse(data.transcript || '');
+        if (reponse.type === 'confirmation') ajouterLigneAuPanier(ligneVocale);
+        else if (reponse.type === 'annulation' || reponse.type === 'suppression') {
+          setLigneVocale(null); setSaisieOuverte(false);
+        } else if (reponse.type === 'correction-quantite') {
+          setLigneVocale(corrigerQuantite(ligneVocale, reponse.quantite));
+        } else if (reponse.type === 'correction-prix') {
+          setLigneVocale(corrigerPrix(ligneVocale, reponse.montant, reponse.mode));
+        } else if (reponse.type === 'refus') {
+          speakMessage('TATA_QUESTION_CORRECTION');
+        }
+        return;
+      }
       if (action?.type === 'vendre') {
         /**
          * CAT-01 — C'EST ICI QUE ÇA SE JOUE, ET NULLE PART AILLEURS.
@@ -970,7 +1019,14 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
 
       {saisieOuverte && (
         <div style={{ marginTop: 'var(--caisse-esp-3)' }}>
-          <SaisieGuidee
+          {ligneVocale ? (
+            <ConfirmationLigne
+              ligne={ligneVocale}
+              onLigneChange={setLigneVocale}
+              onAnnuler={() => { setLigneVocale(null); setSaisieOuverte(false); }}
+              onConfirmer={ajouterLigneAuPanier}
+            />
+          ) : <SaisieGuidee
             etal={products}
             onValider={ajouterLigneAuPanier}
             apparier={(nom) => {
@@ -979,7 +1035,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             }}
             initialProduit={produitPreselectionne?.nom}
             initialPrix={produitPreselectionne?.prix}
-          />
+          />}
         </div>
       )}
     </section>

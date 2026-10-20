@@ -1,8 +1,8 @@
 /**
- * Convergence voix/tactile POS — Lot 2 : « vendre » devient un AJOUT AU
- * PANIER, jamais un encaissement direct. Le panier reste la seule source de
- * vérité (`CaisseContext.cart`) ; l'encaissement reste exclusivement le
- * bouton tactile « Payer en espèces » (`POSCaisse.handlePay`).
+ * Convergence voix/tactile POS : « vendre » devient une LIGNE PROVISOIRE,
+ * jamais un encaissement direct. Le panier reste la seule source de vérité
+ * (`CaisseContext.cart`) ; l'encaissement reste exclusivement le bouton
+ * tactile « Payer en espèces » (`POSCaisse.handlePay`).
  *
  * Module PUR au sens fort (voir Lot 1) : aucun accès direct à l'environnement
  * applicatif. Tout ce qui touchait un global reste injecté via
@@ -10,8 +10,8 @@
  *
  * Différences avec la version Lot 1 (qui appelait `enregistrerVente`
  * directement) :
- * - plus d'écriture financière ici — `addToCart`, exactement la même
- *   fonction que `POSCaisse`/`ajouterLigneAuPanier` (chemin guidé) ;
+ * - aucune mutation du panier quand `proposerLigne` est fourni ; la ligne est
+ *   confirmée par l'UI avant l'appel à `addToCart` ;
  * - plus de bloc « avertissement de rupture » ni de refetch du stock : ces
  *   effets n'ont de sens qu'APRÈS un encaissement réel, qui n'a pas encore
  *   eu lieu ici (le stock ne bouge qu'à `POSCaisse.handlePay`) ;
@@ -62,6 +62,8 @@ export interface DependancesVendreVocalUnifie {
    * « Par la voix ». Sans lui, une vente dictée est indiscernable d'une vente
    * tapée au doigt. */
   addToCart: (produit: ProduitPourPanier, quantite: number, totalExact?: number, origine?: 'vocal') => void;
+  /** Capture la ligne vocale avant confirmation ; le panier ne doit pas muter ici. */
+  proposerLigne?: (produit: ProduitPourPanier, quantite: number, totalExact?: number, origine?: 'vocal') => void;
   /** Synthèse vocale — jamais appelée sans être gardée par `guidageVocalActif()`. */
   speak: (texte: string) => void;
   /** Retour haptique de succès (même geste que le chemin guidé). */
@@ -302,13 +304,14 @@ export function vendreVocalUnifie(
     // `'vocal'` : cette vente vient de la voix, et l'écran « Ventes passées »
     // doit pouvoir le retrouver. Ce chemin-ci l'oubliait — il passait par
     // deps.addToCart, pas par les appels directs de la modale.
-    deps.addToCart({ ...produitCat, categorie, prix: ligne.prix, prix_promo: null, promo_fin: null }, qte, ligne.total, 'vocal');
+     const produit = { ...produitCat, categorie, prix: ligne.prix, prix_promo: null, promo_fin: null };
+     (deps.proposerLigne ?? deps.addToCart)(produit, qte, ligne.total, 'vocal');
   } else {
     // Produit inconnu → ligne libre (comme « Autre article »), id TOUJOURS
     // unique (voir DependancesVendreVocalUnifie.creerIdLigne) : deux énoncés
     // du même produit inconnu créent deux lignes distinctes plutôt que de
     // risquer d'écraser silencieusement un prix différent.
-    deps.addToCart(
+    (deps.proposerLigne ?? deps.addToCart)(
       { id: 'libre-' + deps.creerIdLigne(), nom: ligne.nom, prix: ligne.prix, categorie: 'Autre', stock: 0, unite: uniteParlee ?? 'unité' },
       qte,
       ligne.total,
@@ -316,8 +319,13 @@ export function vendreVocalUnifie(
     );
   }
 
-  deps.vibrerSucces();
-  deps.notifierAjoutPanier(`C'est dans le panier : ${qte} × ${ligne.nom}`);
+  const enAttenteConfirmation = Boolean(deps.proposerLigne);
+  if (!enAttenteConfirmation) {
+    deps.vibrerSucces();
+    deps.notifierAjoutPanier(`C'est dans le panier : ${qte} × ${ligne.nom}`);
+  } else {
+    deps.notifierAjoutPanier(`J'ai compris : ${qte} × ${ligne.nom}. Vérifie avant d'ajouter.`);
+  }
   // Tata dit CE QU'ELLE A COMPRIS, pas seulement qu'elle a fait quelque chose :
   // c'est le seul moment où une marchande qui ne lit pas peut détecter un
   // malentendu sur la quantité ou le montant. Voir phraseCompris().
@@ -332,7 +340,7 @@ export function vendreVocalUnifie(
     deps.speak(phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }));
   }
 
-  if (!produitCat) {
+  if (!produitCat && !enAttenteConfirmation) {
     // Proposer l'ajout au catalogue (en ligne seulement — la création parle
     // au serveur). Après le feedback d'ajout, jamais bloquant dessus.
     try {

@@ -161,6 +161,51 @@ Suivi de l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`) —
 - SCHEMA-07 trouvé par `schema-pilote.yml` avant le terrain
 - Incident 18/09/2026 : `caisse_transaction_status_enum already exists` → `DB_MIGRATIONS_RUN=false` en prod
 
+## Suivi des corrections — session du 2026-10-19
+
+Chaque entrée conserve la cause observée, le périmètre modifié et la preuve de
+validation. Les redémarrages locaux du backend sont consignés comme incidents
+d'exécution, pas comme corrections de code.
+
+### Connexion et voix
+
+- **Éléments retirés de l'écran de connexion** — `frontend/src/app/components/auth/LoginPassword.tsx` : suppression de « Rapport de test », de la version, de « By Icône Solution » et de « Revoir le tutoriel ». Imports et commentaires obsolètes nettoyés.
+- **Annonce du code incorrect restaurée** — même composant : le fallback silencieux `codeErreur` (clip prototype) est remplacé par les clips livrés `mauvaisCodeAttention` et `dernierEssai`, selon le nombre d'essais restant. Preuves : `npm run typecheck`, `npm run test:verrou-connexion`.
+- **Effacement du numéro annoncé** — même composant : chaque suppression réelle déclenche l'annonce « Mmmh ! Tu es en train d'effacer le numéro un, hein ! » via la porte vocale de connexion. Une suppression sur champ vide ne parle pas. Preuve : `npm run typecheck`.
+- **Proposition de reconnaissance audible** — `frontend/src/app/services/accueilMarchandVoix.ts` : le clip existant `tata-reconnaissance-proposition.mp3` est marqué `lotA` et devient disponible hors mode preview, sans activer les autres prototypes. Preuves : `npm run typecheck`, `accueilVoixUneSeuleSortie`.
+
+### Dictée de vente sur le web
+
+- **Cause** : Sherpa STT est correctement limité au plugin natif Capacitor Android (`nativeStt.ts`). Le web passait donc dans `offlineModelReady() === false` et affichait « La dictée n'est disponible que dans l'application ».
+- **Correction** — `frontend/src/app/hooks/useVoiceCore.ts` : ajout du chemin `SpeechRecognition`/`webkitSpeechRecognition` en navigateur (`fr-FR`), avec résultats intermédiaires, arrêt propre et réutilisation du même `sendText`/`intentLocal` que l'APK. Sherpa Android reste inchangé.
+- **Preuves** : `npm run typecheck`, `npm run test:voice-confirmation-bypass`, `npm run test:offline-voice-hook`, `git diff --check`.
+
+### Correction en cours — ligne provisoire de vente vocale (2026-10-19)
+
+- **Cause auditée** : `vendreVocalUnifie` ajoutait directement au panier et
+  `MicroVenteCaisse` bypassait la confirmation de `vendre`, contrairement à
+  `docs/SPEC_VENTE_VOCALE.md`.
+- **Correction appliquée** : `MicroVenteCaisse` capture maintenant la vente
+  vocale dans `ligneVocale`, l'affiche via `ConfirmationLigne`, et n'appelle le
+  vrai `addToCart` qu'après `onConfirmer`. Le service accepte explicitement le
+  crochet `proposerLigne` ; l'unité `VoiceAction.unite` est typée.
+- **Preuve ajoutée** : `vendreVocalUnifie.test.mts` vérifie qu'avec
+  `proposerLigne`, aucun appel panier n'a lieu avant confirmation et que le
+  produit, la quantité et le total exact sont conservés.
+- **État** : le P0 « mutation avant confirmation » est fermé sur le câblage
+  réel ; les corrections vocales `non, deux`, la persistance/reprise et
+  l'adoption guidée du produit inconnu restent à traiter avant clôture globale.
+- **Correction Web du bouton produit** — `BoutonDireProduit.tsx` appelait
+  directement `startLiveDictation` (Sherpa natif) après ouverture du micro ; sur
+  navigateur, il tombait donc sur « Le micro ne répond pas ». Il utilise
+  désormais `demarrerRecoWeb` quand `SpeechRecognition` est disponible et
+  conserve Sherpa sur Capacitor. Preuves : `npm run typecheck`,
+  `npm run test:web-reco`, `git diff --check`.
+
+### Incidents d'exécution locaux
+
+- **Backend absent sur le port proxy `3001`** : les réponses `500` vides de `/api/v1/health`, `/auth/check-phone` et `/auth/login` venaient du proxy Vite sans backend actif. Backend relancé et vérifié : health `200`, check-phone `200`, login `401` JSON pour identifiants invalides. Aucun fichier backend modifié.
+
 ## Historique antérieur
 
 Voir `git log` pour le détail des 780 commits (780 commits au total, ~51% signés Claude, contributeurs : Claude 396 / PATRICK 198 / SOMET1010 132 / claude[bot] 35 / Pascal Somet 14 / ABOA AKOUN BERNARD 3).
