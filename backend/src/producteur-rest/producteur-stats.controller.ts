@@ -15,7 +15,8 @@ import { User } from '../users/entities/user.entity';
  * Sources de vérité :
  *  • Production (kg)  → table `recoltes`, SUM(quantite).
  *  • Revenus (FCFA)   → table `commandes` du vendeur, SUM(total) hors
- *    annulée/litige — identique au filtrage de la page Commandes producteur.
+ *    annulée/litige ET payée (statut_paiement='paye') : un revenu est de
+ *    l'argent ENCAISSÉ, pas une promesse (PROD-05/BUG-010, audit 20/10).
  *
  * Lecture seule, aucun contact portefeuille (règle « argent gelé »).
  */
@@ -39,11 +40,16 @@ export class ProducteurStatsController {
       [user.id],
     );
 
-    // Revenus (FCFA) — commandes où ce producteur est vendeur, hors annulée/litige.
+    // Revenus (FCFA) — commandes où ce producteur est vendeur, hors
+    // annulée/litige. PROD-05 : « Revenus » ne compte QUE l'encaissé
+    // (statut_paiement='paye') ; le reste est exposé à part
+    // (revenusEnAttente) pour ne rien cacher, sans le présenter comme de
+    // l'argent en caisse.
     const [rev] = await this.dataSource.query(
       `SELECT
-         COALESCE(SUM(total), 0)                                                      AS revenus_total,
-         COALESCE(SUM(CASE WHEN created_at::date = CURRENT_DATE THEN total ELSE 0 END), 0) AS revenus_jour,
+         COALESCE(SUM(total) FILTER (WHERE statut_paiement = 'paye'), 0)                                               AS revenus_total,
+         COALESCE(SUM(CASE WHEN created_at::date = CURRENT_DATE AND statut_paiement = 'paye' THEN total ELSE 0 END), 0) AS revenus_jour,
+         COALESCE(SUM(total) FILTER (WHERE statut_paiement <> 'paye'), 0)                                              AS revenus_en_attente,
          COUNT(*) FILTER (WHERE statut IN ('en_attente', 'confirmee', 'en_livraison')) AS commandes_en_cours
        FROM commandes
        WHERE vendeur_id = $1
@@ -67,9 +73,10 @@ export class ProducteurStatsController {
       recoltesCount: n(rec?.recoltes_count),
       stockDisponibleKg: n(rec?.stock_disponible),
       stockVenduKg: n(rec?.stock_vendu),
-      // Revenus (FCFA) — source de vérité = commandes du vendeur.
+      // Revenus (FCFA) — source de vérité = commandes du vendeur ENCAISSÉES.
       revenusTotal: n(rev?.revenus_total),
       revenusJour: n(rev?.revenus_jour),
+      revenusEnAttente: n(rev?.revenus_en_attente),
       commandesEnCours: n(rev?.commandes_en_cours),
       // Marché.
       publicationsActives: n(pub?.n),
