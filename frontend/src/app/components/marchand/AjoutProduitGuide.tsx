@@ -38,6 +38,7 @@ import {
 } from '../../services/premierProduit';
 import type { CaisseProduct } from '../../contexts/CaisseContext';
 import { BoutonDirePrix } from './BoutonDirePrix';
+import { BoutonDireNom } from './BoutonDireNom';
 import { ClavierQuantite } from './ClavierQuantite';
 import { ComplementEtal } from './ComplementEtal';
 
@@ -309,6 +310,32 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
             aria-label="Quel produit tu veux ajouter ?" placeholder="Son nom"
             style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+          {/* DIRE LE NOM — audit 20/10 §5.3. L'étape du nom était la SEULE du
+              parcours sans micro : venue par le tactile, ou après une dictée
+              manquée, une non-lectrice devait TAPER un nom. Le bloc dictée
+              écoute ici, reprend SON orthographe (son étal est passé à la
+              lecture), et ce qu'elle a donné en même temps (unité, prix) est
+              conservé — jamais jeté (STK-25), jamais suffisant pour avancer
+              seul : c'est toujours elle qui appuie sur « C'est bon ».
+
+              LA CORRECTION PASSE PAR L'OREILLE : le nom transcrit est relu
+              (STOCK_059). Si c'est faux, elle appuie encore et REDIT — redire
+              REMPLACE, jamais mélange — ou corrige mot à mot dans le champ
+              ci-dessus, qui reste éditable. */}
+          <BoutonDireNom
+            sesProduits={(products || []).map(p => ({ nom: p.nom }))}
+            dire={dire}
+            onNom={(lu) => {
+              setNom(lu.brouillon.nom);
+              // Ce qu'elle a donné EN MÊME TEMPS que le nom n'est pas jeté :
+              // « piment au kilo à 500 » remplit les trois champs D'ELLE. Les
+              // étapes suivantes les relisent chacun — rien ne se pose sans
+              // son geste.
+              if (lu.brouillon.unite) setUnite(lu.brouillon.unite);
+              if (lu.brouillon.prix) setPrix(String(lu.brouillon.prix));
+              direMessage('STOCK_059', { produit: lu.brouillon.nom });
+            }}
+          />
           {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
               Le grand bouton pour elle : c'est le geste qu'elle sait faire.
               La touche OK du clavier pour qui va vite. Rien n'avance tout
