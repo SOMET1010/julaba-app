@@ -311,6 +311,10 @@ export function GestionStock() {
   const [showEdit, setShowEdit] = useState(false);
   const [showValue, setShowValue] = useState(false);
   const [reappQty, setReappQty] = useState('');
+  // STK-04 / A-05 — le réassort est un ACHAT : la marchande peut déclarer QUI
+  // (fournisseur) et COMBIEN ÇA LUI A COÛTÉ (optionnel — pas de coût inventé).
+  const [reappFournisseur, setReappFournisseur] = useState('');
+  const [reappCout, setReappCout] = useState('');
   const [isListening, setIsListening] = useState(false);
   /** STK-05 — ce qu'elle vient de dire, qui preremplit le parcours guide. */
   const [departDit, setDepartDit] = useState<EcouteProduit['brouillon'] | null>(null);
@@ -472,8 +476,8 @@ export function GestionStock() {
   // gardent leur sens — elle corrige ce qu'elle a elle-même posé.
 
 
-  const updateQty = async (id: string, qty: number) => {
-    stockCtx.updateStock(id, { quantite: qty });
+  const updateQty = async (id: string, qty: number, trace?: { fournisseur?: string; coutTotal?: number }) => {
+    stockCtx.updateStock(id, { quantite: qty, ...trace });
     try {
       await updateProduct(id, { stock: qty });
       toast.success('Produit mis à jour');
@@ -496,9 +500,25 @@ export function GestionStock() {
       return;
     }
     const newQty = selectedStock.quantity + reappNum;
-    void updateQty(selectedStock.id, newQty);
+    // STK-04 / A-05 : le coût déclaré part avec la quantité — le serveur écrit
+    // la ligne « achat » du ledger (fournisseur + coût optionnels). Le coût
+    // n'est PAS une dépense caisse : l'argent reste dans LA caisse, seule
+    // source de vérité (ADR-001) — ici on trace l'ENTRÉE de stock.
+    const coutNum = reappCout.trim() !== '' ? Number(reappCout) : undefined;
+    const coutValide = coutNum === undefined || (!isNaN(coutNum) && coutNum >= 0);
+    if (!coutValide) {
+      toast.error('Montant du coût invalide');
+      speak('Le montant du coût n\'est pas valide');
+      return;
+    }
+    void updateQty(selectedStock.id, newQty, {
+      fournisseur: reappFournisseur.trim() !== '' ? reappFournisseur.trim() : undefined,
+      coutTotal: coutNum,
+    });
     speak(`${reappNum} ${selectedStock.unit} de ${selectedStock.name} ajoutés. Stock à ${newQty} ${selectedStock.unit}`);
     setReappQty('');
+    setReappFournisseur('');
+    setReappCout('');
     showToast(`Stock mis à jour : ${selectedStock.name}`, 'success');
   };
 
@@ -1023,7 +1043,8 @@ export function GestionStock() {
 
                   <div style={{ height: 1, background: 'var(--commerce-paper)' }} />
 
-                  {/* 4. REAPPROVISIONNER */}
+                  {/* 4. REAPPROVISIONNER — STK-04/A-05 : un réassort est un ACHAT,
+                      il laisse une trace dans le ledger (fournisseur + coût optionnels). */}
                   <div style={{ border: '1.5px solid var(--trait)', borderRadius: 16, padding: '12px 14px' }}>
                     <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--encre)', marginBottom: 2 }}>Réapprovisionner</div>
                     <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginBottom: 10 }}>
@@ -1045,6 +1066,32 @@ export function GestionStock() {
                       >
                         + Ajouter
                       </motion.button>
+                    </div>
+                    {/* TRACE D'ACHAT (optionnelle) : qui a vendu, combien ça a coûté.
+                        Le coût n'est pas une dépense caisse — il trace l'entrée,
+                        l'argent reste dans LA caisse (ADR-001). */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', display: 'block', marginBottom: 4 }}>Fournisseur (optionnel)</label>
+                        <input
+                          value={reappFournisseur}
+                          onChange={e => setReappFournisseur(e.target.value)}
+                          type="text"
+                          placeholder="Chez qui ?"
+                          style={{ width: '100%', border: '1.5px solid var(--trait)', borderRadius: 12, padding: '8px 12px', fontSize: 13, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 10, fontWeight: 700, color: 'var(--encre-4)', display: 'block', marginBottom: 4 }}>Coût total (optionnel)</label>
+                        <input
+                          value={reappCout}
+                          onChange={e => setReappCout(e.target.value)}
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="FCFA"
+                          style={{ width: '100%', border: '1.5px solid var(--trait)', borderRadius: 12, padding: '8px 12px', fontSize: 13, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white', boxSizing: 'border-box' }}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1068,9 +1115,12 @@ export function GestionStock() {
                           }
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.type === 'annulation' ? 'Annulation' : 'Vente'}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre)' }}>{m.type === 'annulation' ? 'Annulation' : m.type === 'achat' ? 'Achat' : 'Vente'}</div>
                           <div style={{ fontSize: 10, color: 'var(--encre-4)', fontWeight: 600, marginTop: 1 }}>
                             {m.day}{mentionUniteInconnue(m) ? ` · ${mentionUniteInconnue(m)}` : ''}
+                            {/* STK-04/A-05 : l'achat dit QUI et COMBIEN — jamais un coût inventé. */}
+                            {m.type === 'achat' && m.fournisseur ? ` · ${m.fournisseur}` : ''}
+                            {m.type === 'achat' && m.coutTotal != null ? ` · ${m.coutTotal.toLocaleString('fr-FR')} FCFA` : ''}
                           </div>
                         </div>
                         <span style={{ fontSize: 13, fontWeight: 900, color: m.qty > 0 ? 'var(--color-green-600)' : 'var(--color-red-500)' }}>
