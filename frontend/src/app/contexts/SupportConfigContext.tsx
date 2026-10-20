@@ -95,12 +95,13 @@ const SupportConfigContext = createContext<SupportConfigContextType | undefined>
 export function SupportConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SupportConfig>(DEFAULT_CONFIG);
   const [isSaving, setIsSaving] = useState(false);
-  const { user: appUser } = useApp();
+  const { user: appUser, loading: appAuthLoading } = useApp();
   const bo = useBackOfficeOptional();
 
   // La route est protégée côté API : utiliser la configuration locale par défaut
   // sur l'écran de connexion et ne la demander qu'après authentification.
   useEffect(() => {
+    if (appAuthLoading || bo?.isAuthLoading) return;
     if (!appUser?.id && !bo?.user?.id) return;
     let cancelled = false;
     fetch(`${API_URL}/support/config`, { credentials: 'include' })
@@ -115,7 +116,7 @@ export function SupportConfigProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [appUser?.id, bo?.user?.id]);
+  }, [appAuthLoading, appUser?.id, bo?.isAuthLoading, bo?.user?.id]);
 
   // Persister sur l'API
   const persist = useCallback(async (newConfig: SupportConfig) => {
