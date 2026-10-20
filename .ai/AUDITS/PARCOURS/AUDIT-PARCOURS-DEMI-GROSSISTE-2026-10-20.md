@@ -18,7 +18,7 @@ Connexion → ouverture de caisse → consultation du stock → consolidation de
 
 | ID | Constat | Priorité | Action requise |
 |---|---|---|---|
-| DGR-01 | Le parcours fourni dit que le demi-grossiste achète auprès des **grossistes**. Or `docs/SOUS_PROFILS_MARCHAND.md` décrit son marché amont comme le marché coopératif de sa coopérative active. Contradiction métier/documentation. | P1 | Arbitrer le circuit autorisé : coopérative uniquement, grossiste, ou plusieurs canaux selon configuration. Mettre à jour exigences et droits backend. |
+| DGR-01 | **Correction engagée sur `dev`** : le parcours métier fourni est retenu — le demi-grossiste achète auprès des grossistes. `GET /publications/marche` expose les offres de marché coopératif publiées par des comptes `marchand/grossiste`, et `POST /commandes` valide le profil du vendeur et le canal avant réservation. | P1 | Recetter les cas autorisés/refusés avec une base de test et confirmer le périmètre de visibilité entre coopératives. |
 | DGR-02 | Le terme « semi-grossiste » du document et `demi_grossiste` du code sont deux libellés pour le même sous-profil ; la documentation demande explicitement de trancher la terminologie avant recette. | P2 | Choisir un libellé métier unique sans changer la valeur technique sans migration contrôlée. |
 | DGR-03 | L'expression de besoins, la commande, la livraison et le paiement sont quatre états distincts, mais le parcours les présente parfois comme un seul flux. | P1 | Définir les statuts et transitions, la quantité confirmée, les reliquats, l'annulation, le remboursement et le responsable de chaque transition. |
 | DGR-04 | Le document prévoit suivi des commandes, mais ne définit ni preuve de réception ni traitement d'une livraison partielle ou d'une marchandise non conforme. | P1 | Ajouter une étape de réception contradictoire et une procédure d'écart avant mise à jour définitive du stock. |
@@ -64,6 +64,14 @@ Connexion → ouverture de caisse → consultation du stock → consolidation de
 
 ## 7. Conclusion
 
-Le point bloquant principal est le **circuit d'approvisionnement** : le document métier nomme les grossistes comme fournisseurs du demi-grossiste, tandis que la documentation du dépôt décrit le marché coopératif de sa coopérative active. Il faut trancher cette règle avant de déclarer le parcours conforme ou d'adapter les interfaces. Les services sociaux, paiements et financement nécessitent une vérification d'intégration séparée.
+Le circuit d'approvisionnement a été aligné sur le parcours fourni dans le code de `dev` : les demi-grossistes voient les offres publiées par des grossistes et le backend valide le canal à la création de commande. La visibilité globale des offres et les cas limites restent à recetter. Les services sociaux, paiements et financement nécessitent une vérification d'intégration séparée.
 
 **Statut : À ARBITRER / À RECETTER — audit fonctionnel statique.**
+
+
+## Mise à jour après corrections du 20/10/2026
+
+- `backend/src/publications-rest/publications-rest.controller.ts` : filtrage des offres demi-grossiste sur les publications coopératives des vendeurs `marchand/grossiste`.
+- `backend/src/commandes-rest/commandes-rest.controller.ts` : une commande de marché exige une publication, verrouille l'offre, vérifie son vendeur, son statut et le circuit autorisé avant réservation.
+- `frontend/src/app/components/marchand/MarcheVirtuel.tsx` : les offres sont remplacées même si la réponse est vide ; le catalogue précédent ne reste pas affiché après un changement de session/profil ; libellé de secours « Grossiste » ajouté.
+- **Non vérifié à ce stade :** build TypeScript, tests d'intégration avec PostgreSQL et parcours E2E.
