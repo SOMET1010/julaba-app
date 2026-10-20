@@ -1113,3 +1113,22 @@ Stage Summary:
 - 9 nouveaux invariants verts. Le gate de schéma refigé selon la procédure du workflow.
 - Deux échecs préexistants documentés dans l'audit (commande-negociation-lien ; schema-pilote refigé).
 - Décision de portée : addMembre producteur = jointure producteur↔coopérative (cohérent A-04, docx) — révocable par écrit.
+
+---
+Task ID: p2-lot-20-10 (DGE-09, DGE-10, IDENT-06, IDENT-10)
+Agent: Z.ai Code (session Patrick)
+Task: « Continues avec les P2 restants » — fermer DGE-09 (dossier en_cours), DGE-10 (audit-trail institution), IDENT-06 (résidus Keiwa), IDENT-10 (test machine à états)
+
+Work Log:
+- Diagnostic sandbox aggravé : cette fois le WORKTREE entier était régressé (snapshot antérieur au lot C-12) — `git status` affirmait « clean » alors que les blobs disque ≠ blobs HEAD (ex. dossiers-rest.controller.ts sans verrou C-12, statuts-identification.ts absent). Parade : worktree DÉDIÉ `/home/z/wt-dev` (hors du répertoire projet géré, node_modules en symlink), toutes les lectures/écritures/tests y sont faits ; `git show dev:` comme source de vérité.
+- PostgreSQL de test : postmaster déjà vivant (port 55432, socket /tmp non visible entre sessions) — connexion TCP 127.0.0.1:55432 OK, base jetable julaba_test recréée par le global-setup des invariants.
+- DGE-09/IDENT-07 (846bd638) : POST /dossiers pose `en_attente` (seul état d'entrée C-12, body.statut ignoré) ; régularisation idempotente en DbInit des LEGACY (en_cours→en_attente, validee→approuve, rejetee→rejete). Invariant dge-09 3/3 verts, preuve rouge 3/3.
+- DGE-10 (bb5a4bdf, + 557d8e2b badge préexistant) : GET /institution/audit — module `audit` requis, InstitutionScopeGuard fail-closed, journal de SA zone (auteur en zone OU dossier d'identification en zone OU le régulateur lui-même) ; CHAQUE lecture écrit INSTITUTION_AUDIT_LECTURE (2013-450, INSTITUTION-05 premier pas) ; front InstitutionContext raccordé. Invariant dge-10 6/6 verts, preuve rouge 4/6.
+- IDENT-06 (4bb6c6a2) : identificateur sorti de PROFILS_KEIWA, section « Wallet et Commissions » + ligne « Code PIN Keiwa » retirées des paramètres identificateur, routes.keiwa optionnel/absent de la fiche profil ; garde modulesPilote.test.mts retournée en NÉGATIF (prouve que « Mon Keiwa » ne revient pas, même drapeau ouvert) — jeu de gardes entier vert.
+- IDENT-10 (99754628) : ident-10-machine-a-etats.spec.ts 7/7 verts — propriétaire 403 C-12 (zéro audit, zéro SMS via espion FeedbakSmsService), operateur_terrain 403 double porte, gestionnaire_zone 200 + audit source=agent_habilite, transition interdite 409, rejet sans motif 400, rejet avec motif 200+SMS+audit, contournement /dossiers 403. Preuve rouge rejouée sur le code d'AVANT C-12 (a0d5cb1c~1) : 7/7 échouent.
+- Docs (ec91f7b1) : tableaux §3 des audits DGE back-office et identificateur mis à jour (5 lignes FERMÉES avec preuves), R11 au vert.
+
+Stage Summary:
+- Les 4 P2 demandés sont FERMÉS (DGE-09 emporte IDENT-07 au passage) : 6 commits sur dev, 3 nouveaux invariants verts (dge-09 3/3, dge-10 6/6, ident-10 7/7), tsc backend et frontend 0 erreur.
+- Restent ouverts en P2 : DGE-11 (permissions front en dur + BOConfigInstitution muette), IDENT-02 (neutralité monétique serveur wallets), IDENT-03 (badge complement sur Suivi), IDENT-08 (academy identificateur), IDENT-09 (idempotence soumission). P3 : IDENT-11, PROD-06 à 12.
+- Décision de portée : le journal institution inclut les entrées dont l'AUTEUR est en zone (au-delà des seuls dossiers) — lisibilité régulateur assumée, révocable par écrit.
