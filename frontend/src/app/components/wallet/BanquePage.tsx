@@ -14,16 +14,18 @@ interface Banque {
   color: string;
 }
 
+// A-07 (arbitrage 20/10/2026, délégation Patrick) — VITRINE D'ORIENTATION.
+// Cette page ne promet AUCUN crédit : le MVP financement (demande +
+// éligibilité) est post-pilote, sur le socle score financier + ApiKeyGuard.
+// Les partenaires affichés sont CEUX DU WORKFLOW OFFICIEL (Celpaid, Orange
+// Bank, UNACOOPEC) — les anciens placeholders (SIB, SG, NSIA, BICICI liée
+// avec un faux numéro masqué) mentaient à l'actrice : des banques sans
+// intégration réelle, un compte « Connectée » qui n'existait pas.
+// Invariants I4-I6 : le crédit reste désactivé par défaut.
 const BANQUES: Banque[] = [
-  { id: 'sib',   logo: 'SIB',   name: 'SIB',             sub: 'Société Ivoirienne de Banque', color: '#e8000d' },
-  { id: 'eco',   logo: 'ECO',   name: 'Ecobank',          sub: 'Réseau panafricain',           color: '#003087' },
-  { id: 'uba',   logo: 'UBA',   name: 'UBA',              sub: 'United Bank for Africa',       color: '#e2001a' },
-  { id: 'vs',    logo: 'VS',    name: 'Versus Bank',      sub: 'Banque ivoirienne',            color: '#0057a8' },
-  { id: 'sg',    logo: 'SG',    name: 'Société Générale', sub: 'Banque internationale',        color: '#e60028' },
-  { id: 'biao',  logo: 'BIAO',  name: 'BIAO-CI',          sub: 'Banque Internationale',        color: '#00447c' },
-  { id: 'bni',   logo: 'BNI',   name: 'BNI',              sub: "Banque Nationale d'Invest.",   color: '#006633' },
-  { id: 'sgbci', logo: 'SGBCI', name: 'SGBCI',            sub: 'Société Générale CI',          color: '#c8102e' },
-  { id: 'nsia',  logo: 'NSIA',  name: 'NSIA Banque',      sub: 'Groupe NSIA',                  color: '#f77f00' },
+  { id: 'celpaid',     logo: 'CEP', name: 'Celpaid',      sub: 'Financement digital — bientôt sur Jùlaba', color: '#0e7490' },
+  { id: 'orange-bank', logo: 'OB',  name: 'Orange Bank',  sub: 'Crédit mobile — bientôt sur Jùlaba',       color: '#ff7900' },
+  { id: 'unacoopec',   logo: 'UNA', name: 'UNACOOPEC',    sub: 'Épargne et crédit coopératif — bientôt',   color: '#15803d' },
 ];
 
 // Icône cloche SVG animée
@@ -122,38 +124,23 @@ export function BanquePage() {
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </div>
           <div style={{ position: 'relative', zIndex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#2a1a0a' }}>Fonctionnalité en cours de déploiement</p>
-            <p style={{ fontSize: 11, color: '#b8956a', marginTop: 2, lineHeight: 1.4 }}>Bientôt vous pourrez lier votre compte bancaire directement à Keiwa.</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#2a1a0a' }}>Financement — ça arrive</p>
+            <p style={{ fontSize: 11, color: '#b8956a', marginTop: 2, lineHeight: 1.4 }}>Le financement (Celpaid, Orange Bank, UNACOOPEC) arrive sur Jùlaba. Active une alerte pour être prévenue — aucune demande de crédit n'est possible pour l'instant.</p>
           </div>
         </div>
 
-        {/* BANQUE LIÉE */}
-        <p style={{ fontSize: 13, fontWeight: 700, color: C, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Banque liée
-        </p>
-        <div style={{ background: 'white', borderRadius: 18, padding: '14px 16px', border: '1.5px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, position: 'relative', overflow: 'hidden' }}>
-          <motion.div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.5) 50%, transparent 65%)' }} animate={{ x: ['-100%', '200%'] }} transition={{ duration: 3, repeat: Infinity }} />
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: '#004a99', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', position: 'relative', zIndex: 1 }}>BICICI</div>
-          <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#2a1a0a' }}>BICICI</p>
-            <p style={{ fontSize: 11, color: '#b8956a', marginTop: 1 }}>CI•• •••• •••• 4892</p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
-              <motion.div
-                style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }}
-                animate={{ boxShadow: ['0 0 0 0 rgba(74,222,128,0.5)', '0 0 0 4px rgba(74,222,128,0)'] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-              />
-              <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>Connectée</span>
-            </div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8a882" strokeWidth="2" style={{ position: 'relative', zIndex: 1 }}><polyline points="9 18 15 12 9 6"/></svg>
+        {/* AUCUNE BANQUE LIÉE — l'ancien écran affichait une fausse carte
+            « BICICI connectée » avec un numéro masqué inventé : de la donnée
+            fausse présentée comme vraie (l'argent ne ment jamais). */}
+        <div style={{ background: 'transparent', borderRadius: 18, padding: '14px 16px', border: '1.5px dashed rgba(198,106,44,0.3)', marginBottom: 20, textAlign: 'center' }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#b8956a' }}>Aucune banque liée pour l'instant</p>
+          <p style={{ fontSize: 11, color: '#b8956a', marginTop: 2 }}>Dès qu'un partenaire ouvrira, tu la lieras ici.</p>
         </div>
 
-        {/* LISTE BANQUES */}
+        {/* LISTE PARTENAIRES */}
         <p style={{ fontSize: 13, fontWeight: 700, color: C, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C} strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-          Banques disponibles
+          Partenaires de financement
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
