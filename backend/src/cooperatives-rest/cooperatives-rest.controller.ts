@@ -155,20 +155,29 @@ export class CooperativesRestController {
     if (!coop || role !== 'president') {
       throw new ForbiddenException('Seul le responsable de la coopérative peut ajouter un membre');
     }
-    const marchandId = String(body?.marchand_id || '').trim();
-    if (!marchandId) throw new NotFoundException('marchand_id requis');
-    const marchand = await this.userRepo.findOne({ where: { id: marchandId, role: UserRole.MARCHAND } });
-    if (!marchand) throw new NotFoundException('Marchand introuvable');
+    // DGE-04 — la JOINTURE PRODUCTEUR↔COOPÉRATIVE existe désormais : le docx
+    // fait de la coopérative l'agrégateur des producteurs qu'elle regroupe
+    // (s'approvisionner AUPRÈS des producteurs, consolider leurs besoins) ;
+    // l'adhésion était réservée aux marchands, la liste groupée des
+    // producteurs d'une coopérative était donc impossible à construire.
+    // Paramètre historique `marchand_id` conservé (compat front), il désigne
+    // le candidat quelque soit son rôle marchand/producteur.
+    const candidatId = String(body?.marchand_id || '').trim();
+    if (!candidatId) throw new NotFoundException('marchand_id requis');
+    const candidat = await this.userRepo.findOne({
+      where: [{ id: candidatId, role: UserRole.MARCHAND }, { id: candidatId, role: UserRole.PRODUCTEUR }],
+    });
+    if (!candidat) throw new NotFoundException('Marchand ou producteur introuvable');
     const existing = await this.membreRepo.findOne({
-      where: { cooperative_id: coop.id, membre_id: marchandId },
+      where: { cooperative_id: coop.id, membre_id: candidatId },
     });
     if (existing) {
-      return { success: false, message: 'Ce marchand est déjà membre de la coopérative' };
+      return { success: false, message: 'Ce membre est déjà adhérent de la coopérative' };
     }
     const membre = await this.membreRepo.save(
       this.membreRepo.create({
         cooperative_id: coop.id,
-        membre_id: marchandId,
+        membre_id: candidatId,
         statut: 'actif',
         actif: true,
         role: String(body?.role_membre || 'membre'),
@@ -178,8 +187,8 @@ export class CooperativesRestController {
     // Même alignement que rejoindre() ci-dessous : le président peut ajouter
     // un membre directement (sans passer par la demande self-service), le
     // flag déclaratif doit suivre cette adhésion réelle aussi.
-    if (!marchand.estMembreCooperative) {
-      await this.userRepo.update(marchandId, { estMembreCooperative: true });
+    if (!candidat.estMembreCooperative) {
+      await this.userRepo.update(candidatId, { estMembreCooperative: true });
     }
     return { success: true, membre };
   }
