@@ -238,51 +238,21 @@ export class DbInitService {
         `CREATE INDEX IF NOT EXISTS idx_caisse_produits_categorie ON caisse_produits (categorie);`,
       );
 
-      // SEED initial : si la table est vide, on y injecte les 21 produits
-      // vivriers historiques (riz, tomate, manioc, etc.) extraits à l'identique
-      // de l'ancien tableau `CATALOGUE` hardcodé. Idempotent : ne réinjecte
-      // rien si la table contient déjà au moins une ligne (la donnée peut être
-      // éditée/maintenue en base sans être écrasée au redémarrage).
+      // SEED initial : SANS seed automatique.
+      //
+      // Le référentiel `caisse_produits` sert d'AIDE-MÉMOIRE à la saisie guidée,
+      // pas de liste fermée. L'ajout d'un produit doit TOUJOURS rester libre
+      // (le bouton « Ajouter en parlant » + le parcours guidé acceptent n'importe
+      // quel nom). Si la table est vide au démarrage, on la laisse VIDE — la
+      // marchande construit son propre catalogue au fur et à mesure.
+      //
+      // (Les 21 produits historiques ont été retirés du seed automatique le
+      // 20/10/2026 pour ne pas donner l'impression que seuls eux sont autorisés.)
       const [{ count: nbProduits }] = await this.dataSource.query(
         `SELECT count(*)::int AS count FROM caisse_produits`,
       );
       if (Number(nbProduits) === 0) {
-        // Liste extraite à l'identique de l'ancien `CATALOGUE` (21 produits).
-        // `prix_achat`/`prix_vente` en XOF, `mots_cles` en tableau text[] natif.
-        const produits: ReadonlyArray<{
-          nom: string; categorie: string; unite: string;
-          prixAchat: number; prixVente: number; mots_cles: ReadonlyArray<string>;
-        }> = [
-          { nom: 'Riz',            categorie: 'cereales',       unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['riz', 'rice'] },
-          { nom: 'Tomate',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['tomate', 'tomato'] },
-          { nom: 'Aubergine',      categorie: 'legumes',        unite: 'kg',     prixAchat: 700,  prixVente: 800,  mots_cles: ['aubergine', 'eggplant'] },
-          { nom: 'Piment',         categorie: 'legumes',        unite: 'tas',    prixAchat: 100,  prixVente: 150,  mots_cles: ['piment', 'pepper'] },
-          { nom: 'Gombo',          categorie: 'legumes',        unite: 'tas',    prixAchat: 120,  prixVente: 150,  mots_cles: ['gombo', 'okra'] },
-          { nom: 'Manioc',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 150,  prixVente: 200,  mots_cles: ['manioc', 'cassava'] },
-          { nom: 'Igname',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 350,  prixVente: 400,  mots_cles: ['igname', 'yam'] },
-          { nom: 'Maïs',           categorie: 'cereales',       unite: 'kg',     prixAchat: 200,  prixVente: 250,  mots_cles: ['mais', 'maïs', 'corn'] },
-          { nom: 'Banane',         categorie: 'fruits',         unite: 'régime', prixAchat: 500,  prixVente: 700,  mots_cles: ['banane', 'banana'] },
-          { nom: 'Plantain',       categorie: 'fruits',         unite: 'régime', prixAchat: 600,  prixVente: 800,  mots_cles: ['plantain', 'alloco'] },
-          { nom: 'Oignon',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['oignon', 'onion'] },
-          { nom: 'Avocat',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 100,  prixVente: 150,  mots_cles: ['avocat', 'avocado'] },
-          { nom: 'Huile de palme', categorie: 'condiments',     unite: 'L',      prixAchat: 1400, prixVente: 1500, mots_cles: ['huile', 'palm oil'] },
-          { nom: 'Mangue',         categorie: 'fruits',         unite: 'kg',     prixAchat: 200,  prixVente: 300,  mots_cles: ['mangue', 'mango'] },
-          { nom: 'Ananas',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 300,  prixVente: 400,  mots_cles: ['ananas', 'pineapple'] },
-          { nom: 'Arachide',       categorie: 'cereales',       unite: 'kg',     prixAchat: 600,  prixVente: 700,  mots_cles: ['arachide', 'peanut'] },
-          { nom: 'Cacao',          categorie: 'agriculture',    unite: 'kg',     prixAchat: 1100, prixVente: 1200, mots_cles: ['cacao', 'cocoa'] },
-          { nom: 'Café robusta',   categorie: 'agriculture',    unite: 'kg',     prixAchat: 800,  prixVente: 900,  mots_cles: ['cafe', 'café', 'robusta'] },
-          { nom: 'Anacarde',       categorie: 'agriculture',    unite: 'kg',     prixAchat: 600,  prixVente: 650,  mots_cles: ['anacarde', 'cajou', 'cashew'] },
-          { nom: 'Attiéké',        categorie: 'transformation', unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['attieke', 'attiéké'] },
-          { nom: 'Gari',           categorie: 'transformation', unite: 'kg',     prixAchat: 350,  prixVente: 450,  mots_cles: ['gari'] },
-        ];
-        for (const p of produits) {
-          await this.dataSource.query(
-            `INSERT INTO caisse_produits (nom, categorie, unite, prix_achat, prix_vente, mots_cles, actif)
-             VALUES ($1, $2, $3, $4, $5, $6::text[], true)`,
-            [p.nom, p.categorie, p.unite, p.prixAchat, p.prixVente, p.mots_cles],
-          );
-        }
-        this.logger.log(`Table caisse_produits seedée avec ${produits.length} produits vivriers`);
+        this.logger.log('Table caisse_produits créée vide — aucun seed automatique (référentiel = aide, jamais une porte)');
       } else {
         this.logger.log(`Table caisse_produits déjà peuplée (${nbProduits} lignes) — seed ignoré`);
       }
