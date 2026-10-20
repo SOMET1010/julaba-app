@@ -239,8 +239,50 @@ export class CommandesRestController {
     const cmd = await this.repo.findOne({ where: { id } });
     if (!cmd) throw new NotFoundException('Commande introuvable');
     if (cmd.vendeurId !== user.id) throw new ForbiddenException('Accès refusé');
-    cmd.statut = CommandeStatut.LIVREE;
-    return this.repo.save(cmd);
+
+    // PROD-03 : la livraison écrit l'état LIVRÉ EN QUANTITÉ (recoltes.stock_livre)
+    // dans la MÊME transaction que le changement de statut. Le garde atomique
+    // (UPDATE ... WHERE statut <> 'livree' RETURNING) rend le rejeu — double-clic,
+    // retry réseau — sans double effet : une livraison compte UNE fois.
+    const dejeLivree = cmd.statut === CommandeStatut.LIVREE;
+    await this.dataSource.transaction(async (manager) => {
+      const rows = await manager.query(
+        `UPDATE commandes SET statut = $1, updated_at = NOW() WHERE id = $2 AND statut <> $1 RETURNING id`,
+        [CommandeStatut.LIVREE, id],
+      );
+      if (rows.length > 0) {
+        await this.reservation.compterLivraison(manager, id);
+      }
+    });
+
+    if (!dejeLivree) {
+      try {
+        if (cmd.acheteurId) {
+          await this.notifService.create({
+            userId: cmd.acheteurId,
+            type: 'commande_statut',
+            titre: 'Commande livrée',
+            message: `La commande ${cmd.produit} a été livrée.`,
+            category: 'commandes',
+            priority: 'medium',
+            metadata: { commandeId: cmd.id, statut: 'livree', audience: 'acheteur' },
+          });
+        }
+        await this.notifService.create({
+          userId: cmd.vendeurId,
+          type: 'commande_statut',
+          titre: 'Commande livrée',
+          message: `La commande ${cmd.produit} a été livrée.`,
+          category: 'commandes',
+          priority: 'medium',
+          metadata: { commandeId: cmd.id, statut: 'livree', audience: 'vendeur' },
+        });
+      } catch {
+        // Le flux principal ne doit jamais échouer sur une notification.
+      }
+    }
+    const updated = await this.repo.findOne({ where: { id } });
+    return updated;
   }
 
 
@@ -406,6 +448,17 @@ export class CommandesRestController {
         });
       } else if (nextStatut === CommandeStatut.ANNULEE && cmd.statut !== CommandeStatut.ANNULEE) {
         await this.reservation.liberer(manager, id);
+      } else if (nextStatut === CommandeStatut.LIVREE && cmd.statut !== CommandeStatut.LIVREE) {
+        // PROD-03 : l'état livré devient une QUANTITÉ (stock_livre), une seule fois.
+        await this.reservation.compterLivraison(manager, id);
+      } else if (
+        (nextStatut === CommandeStatut.ANNULEE || nextStatut === CommandeStatut.LITIGE) &&
+        cmd.statut === CommandeStatut.LIVREE
+      ) {
+        // Restitution : le volume LIVRÉ compté est retiré (borné à 0). La
+        // réservation est déjà 'convertie' — liberer() n'agirait pas, et c'est
+        // le stock_livre qui doit revenir, pas le disponible marché.
+        await this.reservation.annulerLivraison(manager, id);
       }
     });
     if (nextStatut && nextStatut !== cmd.statut) {
