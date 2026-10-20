@@ -37,8 +37,8 @@ import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User, UserRole, UserStatus } from '../../src/users/entities/user.entity';
 
-const ZONE_A = '31111111-1111-1111-1111-111111111111';
-const ZONE_B = '32222222-2222-2222-2222-222222222222';
+const ZONE_A = '3a111111-4111-4111-8111-111111111111'; // uuid v4 valide (les DTO @IsUUID exigent la variante 4)
+const ZONE_B = '3b222222-4222-4222-9222-222222222222'; // uuid v4 valide
 
 describe('Invariant DGE-04/05 — les 4 listes jointes requêtables', () => {
   let app: INestApplication;
@@ -189,9 +189,6 @@ describe('Invariant DGE-04/05 — les 4 listes jointes requêtables', () => {
         phone: '+2250700020507', firstName: 'Identif', lastName: 'DGE05', genre: 'homme',
         role: 'identificateur', email: 'identif.dge05@julaba.ci', zoneId: ZONE_A, marcheId,
       });
-    if (![200, 201].includes(r.status)) {
-      console.error('[DGE-05] BO create refusé:', r.status, JSON.stringify(r.body));
-    }
     expect([200, 201]).toContain(r.status);
 
     const parZone = await api()
