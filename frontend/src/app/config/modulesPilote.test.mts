@@ -69,6 +69,7 @@ const MASQUEES: Array<[string, string]> = [
   ['/marchand/tontines', '/marchand'],
   ['/marchand/tontines/42', '/marchand'],
   ['/marchand/protection-sociale', '/marchand'],
+  ['/producteur/protection-sociale', '/producteur'],
   ['/marchand/cooperative', '/marchand'],
   ['/marchand/cooperative/', '/marchand'],
   ['/marchand/commandes', '/marchand'],

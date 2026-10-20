@@ -83,6 +83,9 @@ export const MODULES_HORS_PILOTE: readonly RegleMasque[] = [
   // PROTECTION SOCIALE — « Enregistrer un versement » CNPS/CNAM, dont le mode
   // keiwa débite le wallet (le backend refuse sur solde insuffisant).
   { module: 'protection-sociale', mode: 'prefixe', chemin: '/marchand/protection-sociale' },
+  // PROD-04 — la même page cotisations est routée pour le producteur (le mode
+  // keiwa débite son wallet : même garde hors pilote).
+  { module: 'protection-sociale', mode: 'prefixe', chemin: '/producteur/protection-sociale' },
 
   // MA COOPÉRATIVE (marchand) — « Payer ma cotisation : 25 000 FCFA »
   // (POST /cooperatives/cotisation, qui la marque payée). EXACT, pas préfixe :
