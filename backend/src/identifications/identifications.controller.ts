@@ -50,13 +50,23 @@ export class IdentificationsController {
     filters: { region?: string; role?: string; statut?: string },
   ): Promise<Record<string, unknown>[]> {
     const user = req.user;
-    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'].includes(user?.role);
+    // IDENT-01 / DGE-12 (20/10/2026) : `gestionnaire_zone` est le bras de
+    // terrain de la DGE (il porte `enrolement.validate` par défaut —
+    // auth/bo-autorisation.ts — et l'UI BO lui affiche l'écran Enrôlement).
+    // SCOPÉ À SA ZONE : il ne voit la carte que des dossiers de SA zone
+    // (fail-closed : sans zone affectée, il ne voit que les siens — aucun).
+    const zoneGZ = user?.role === 'gestionnaire_zone' ? (user?.zoneId ?? null) : null;
+    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role) || !!zoneGZ;
     const conditions: string[] = ['i.latitude IS NOT NULL', 'i.longitude IS NOT NULL'];
     const params: unknown[] = [];
     let p = 1;
     if (!isAdmin) {
       conditions.push(`i.identificateur_id = $${p}`);
       params.push(String(user.id));
+      p += 1;
+    } else if (zoneGZ) {
+      conditions.push(`i.zone_id::text = $${p}`);
+      params.push(String(zoneGZ));
       p += 1;
     }
     if (filters.region) {
@@ -95,17 +105,25 @@ export class IdentificationsController {
     const { page, limit } = parsePagination(query);
     const skip = (page - 1) * limit;
     const user = req.user;
-    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
+    // IDENT-01 / DGE-12 (20/10/2026) : `gestionnaire_zone` accède à la branche
+    // admin SCOPÉ À SA ZONE (identifications.zone_id = users.zone_id) —
+    // avant ce correctif il tombait dans la branche « ses propres dossiers »
+    // et sa liste d'enrôlements à traiter était VIDE. Fail-closed : sans zone
+    // affectée, la liste reste vide plutôt que de lui donner tout le pays.
+    const zoneGZ = user?.role === 'gestionnaire_zone' ? (user?.zoneId ?? null) : null;
+    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role) || !!zoneGZ;
     if (isAdmin) {
+      const filtreZone = zoneGZ ? `WHERE i.zone_id::text = $3::text` : '';
       const rows = await this.dataSource.query(`
         SELECT i.*,
           TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS identificateur_nom,
           COUNT(*) OVER() AS total_count
         FROM identifications i
         LEFT JOIN users u ON u.id::text = i.identificateur_id
+        ${filtreZone}
         ORDER BY i.created_at DESC
         LIMIT $1 OFFSET $2
-      `, [limit, skip]);
+      `, zoneGZ ? [limit, skip, String(zoneGZ)] : [limit, skip]);
       const total = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
       const data = rows.map(({ total_count, ...r }: any) => r);
       return { data, meta: buildMeta(page, limit, total) };
@@ -131,7 +149,12 @@ export class IdentificationsController {
     const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
     const identification = await this.repo.findOne({ where: { id } });
     if (!identification) throw new NotFoundException('Identification introuvable');
-    if (!isAdmin && String(identification.identificateur_id) !== String(user.id)) {
+    // IDENT-01 : un gestionnaire de zone lit le dossier SI et SEULEMENT s'il
+    // est de sa zone (scopage identique au GET de liste).
+    const dansSaZoneGZ = user?.role === 'gestionnaire_zone'
+      && !!user?.zoneId
+      && String((identification as any).zone_id ?? '') === String(user.zoneId);
+    if (!isAdmin && !dansSaZoneGZ && String(identification.identificateur_id) !== String(user.id)) {
       
       throw new ForbiddenException('Accès refusé');
     }
@@ -491,7 +514,15 @@ export class IdentificationsController {
     const existing = await this.repo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Identification introuvable');
     const estProprietaire = String(existing.identificateur_id) === String(user?.id);
-    if (!isAdmin && !estProprietaire) {
+    // IDENT-01 / DGE-12 : le gestionnaire de zone passe la porte d'entrée
+    // SCOPÉ À SA ZONE uniquement. La validation elle-même reste ensuite régie
+    // par la permission `enrolement.validate` (qu'il porte par défaut —
+    // auth/bo-autorisation.ts) et par la machine à états ; C-12 n'est pas
+    // touché (le propriétaire du dossier ne s'auto-approuve toujours pas).
+    const dansSaZoneGZ = user?.role === 'gestionnaire_zone'
+      && !!user?.zoneId
+      && String((existing as any).zone_id ?? '') === String(user.zoneId);
+    if (!isAdmin && !dansSaZoneGZ && !estProprietaire) {
       throw new ForbiddenException('Accès refusé');
     }
 
