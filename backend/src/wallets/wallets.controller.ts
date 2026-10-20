@@ -6,13 +6,25 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { WalletsService } from './wallets.service';
 import { BpayService } from '../bpay/bpay.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 
 @ApiTags('Wallets')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+// IDENT-02 (20/10/2026) — la neutralité monétique est SERVEUR, plus une
+// convention de navigation. Whitelist EXPLICITE : marchand, producteur,
+// cooperateur (les profils dont le wallet est une réalité du pilote).
+// EXCLUS fail-closed : identificateur (IDENTIFICATEUR-16, arbitrage A-02 —
+// celui qui enrôle ne touche pas à l'argent), institution (le régulateur
+// n'a pas de portefeuille), comptes admin (doctrine blocage-wallet-admin).
+// Tout rôle FUTUR de l'ENUM sera refusé par défaut tant que personne ne
+// l'ajoute ici par une décision écrite. Invariant :
+// ident-02-neutralite-monetic.spec.ts (prouvé rouge sur l'ancien code : 200).
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('marchand', 'producteur', 'cooperateur')
 @Controller('wallets')
 export class WalletsController {
   constructor(
