@@ -178,7 +178,10 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
 
   const getHistoriqueComplet = async (): Promise<HistoriqueEntry[]> => {
     try {
-      const data = await apiRequest<any>(API_URL, '/audit', { method: 'GET' });
+      // DGE-10 (20/10/2026) : la piste d'audit du régulateur passe par la route
+      // SCOPÉE /institution/audit (zone + module `audit`), plus /audit qui
+      // reste réservée aux rôles back-office (403 garanti pour ce rôle).
+      const data = await apiRequest<any>(API_URL, '/institution/audit', { method: 'GET' });
       return data.logs || [];
     } catch { return []; }
   };
