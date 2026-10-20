@@ -27,7 +27,7 @@ import { useOfflineVoiceQueue } from "./useOfflineVoiceQueue";
 import { dispatchVoiceAction } from "../voice-offline/offlineVoiceDispatch";
 import { acquiescement } from '../voice-offline/grammaireAcquiescement';
 // WEB : dictée par la reconnaissance du navigateur (sherpa reste le moteur de l'APK).
-import { demarrerRecoWeb, type EcouteRecoWeb } from '../voice-offline/webReco';
+import { demarrerRecoWeb, recoWebDispo, type EcouteRecoWeb } from '../voice-offline/webReco';
 
 // ─── TYPES ───────────────────────────────────────────────────────
 
@@ -971,8 +971,19 @@ export function useVoiceCore({
       // hors-ligne n'existe plus — le clavier reste le filet ». Ce n'est donc
       // pas une panne à réparer, c'est un endroit où la dictée n'existe pas :
       // on le dit, et on montre la sortie (toucher les produits).
-      const msg = !offlineModelReady()
-        ? "La dictée n'est disponible que dans l'application. Ici, touche les produits."
+      //
+      // DEPUIS LA DÉCISION DU 19/10 (docs/DECISIONS.md) la dictée existe AUSSI
+      // sur le web — par la reconnaissance du NAVIGATEUR (webReco.ts) — sur
+      // Chrome, Edge, Safari ≥ 14.1. Ce catch ne s'exécute donc sur le web que
+      // quand le navigateur lui-même ne sait pas écouter (Firefox, vieux
+      // Safari, WebView d'applis sociales) : sherpa n'y viendra JAMAIS (plugin
+      // Android), et il n'y a pas de SpeechRecognition à appeler. Le message
+      // hérité (« disponible que dans l'application ») était devenu FAUX — il
+      // disait à des marchandes sur Chrome que la voix n'existait pas ici.
+      // La cause dite est la vraie : CE navigateur ne sait pas écouter —
+      // Chrome oui, ou le toucher.
+      const msg = !offlineModelReady() && !recoWebDispo()
+        ? "Ton navigateur ne sait pas écouter la voix. Ouvre Jùlaba dans Chrome, ou touche les produits."
         : navigator.onLine
           ? "Je n'ai pas réussi à préparer ta voix. Réessaie."
           : "Je n'ai pas réussi à t'écouter, réessaie.";
