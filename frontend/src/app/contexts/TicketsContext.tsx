@@ -114,10 +114,21 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
   // toujours de la derniere valeur de isBO et de la liste courante.
   const isBORef = useRef(isBO);
   useEffect(() => { isBORef.current = isBO; }, [isBO]);
+  const authenticatedRef = useRef(!!appUser || !!bo?.user);
+  useEffect(() => {
+    authenticatedRef.current = !!appUser || !!bo?.user;
+  }, [appUser?.id, bo?.user?.id]);
   const ticketsRef = useRef<Ticket[]>(tickets);
   useEffect(() => { ticketsRef.current = tickets; }, [tickets]);
 
   const loadTickets = useCallback(async () => {
+    // Ne jamais appeler une route protégée tant qu'aucune session n'est active.
+    if (!authenticatedRef.current) {
+      setTickets([]);
+      setNouveauxCount(0);
+      setLoading(false);
+      return;
+    }
     if (DEV_MODE) {
       devLog('TicketsContext', 'Mode dev - skip API call');
       return;
@@ -144,7 +155,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
     // Chargement initial + rechargement quand le role detecte change
     // (resolution differee de l'utilisateur BO apres julaba:bo-login).
     void loadTickets();
-  }, [isBO, loadTickets]);
+  }, [isBO, appUser?.id, bo?.user?.id, loadTickets]);
 
   useEffect(() => {
     // Écoute login app ET login BO
