@@ -149,6 +149,8 @@ export interface StockServeur {
   proprietaire_id?: string;
   produit?: string;
   quantite?: number | string;
+  /** false = quantité inconnue/non suivie ; distinct d'un stock réellement nul. */
+  suivi_stock?: boolean;
   unite?: string;
   prix_unitaire?: number | string;
   prix?: number | string;
