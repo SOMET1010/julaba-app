@@ -133,3 +133,32 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 @media(max-width:360px){.login-number{gap:6px;padding:12px 6px}.login-number-value{font-size:16px}.login-paire{margin-right:.22em}.login-devise{gap:4px;font-size:13px}.login-devise-drapeau{font-size:15px}}
 @media(max-width:380px){.login-dictee-texte{display:none}.login-tata-ligne{font-size:11.5px}}
 @media(min-width:768px){.login-market-sheet{left:auto;right:6vw;bottom:6vh;width:430px}.login-market-message{left:7vw;top:24%}.login-market-scene img{object-position:center 45%}}
+
+
+/* AUTH — disposition compacte pour limiter le défilement sur les téléphones. */
+.login-page { min-height: 100svh; }
+.login-brand { gap: 6px; }
+.login-logo { width: clamp(92px, 25vw, 118px); }
+.login-page h1 { font-size: clamp(21px, 5.5vw, 25px); line-height: 1.12; margin: 8px 0 5px; }
+.login-guide { gap: 8px; margin: 3px 0 6px; }
+.login-guide > img { width: clamp(42px, 12vw, 54px); height: clamp(42px, 12vw, 54px); }
+.login-guide .login-replay { padding: 6px; }
+.login-keypad { gap: 6px; padding: 6px 4px; }
+.login-key { min-height: clamp(46px, 7.2svh, 56px); border-radius: 10px; font-size: clamp(21px, 5.5vw, 24px); }
+.login-key-image { font-size: clamp(25px, 7vw, 31px); }
+.login-pin-slots { gap: 8px; padding: 8px 0; }
+.login-pin-slot { width: 38px; height: 38px; border-radius: 9px; }
+.login-pin-slot::after { width: 8px; height: 8px; }
+@media (max-height: 740px) {
+  .login-page h1 { margin: 5px 0 3px; font-size: 21px; }
+  .login-guide { margin: 2px 0 4px; }
+  .login-guide > img { width: 42px; height: 42px; }
+  .login-keypad { gap: 5px; padding: 4px 2px; }
+  .login-key { min-height: 44px; }
+  .login-pin-slots { padding: 5px 0; }
+}
+@media (max-height: 640px) {
+  .login-key { min-height: 40px; }
+  .login-guide > img { width: 36px; height: 36px; }
+  .login-page h1 { font-size: 19px; }
+}
