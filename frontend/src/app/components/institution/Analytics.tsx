@@ -17,6 +17,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useInstitutionData } from '../../hooks/useInstitutionData';
+import { useInstitution } from '../../contexts/InstitutionContext';
 import { kpiDepuis, texteDuKpi } from '../../services/etatLectureBO';
 import { kpiTuile } from '../../services/tuileKpi';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
@@ -47,6 +48,7 @@ const PRIMARY_COLOR = '#712864';
 // ── Component ────────────────────────────────────────────────────────────────
 export function Analytics() {
   const { lectureDashboard, dataRepartition, dataRegions, loading, byRole } = useInstitutionData();
+  const { getInscriptionsParJour, getTopProduits } = useInstitution();
 
   const [activeView, setActiveView] = useState<'global' | 'regional' | 'secteur'>('global');
   const [selectedPeriod, setSelectedPeriod] = useState('30j');
@@ -57,23 +59,33 @@ export function Analytics() {
   const [volumesParProduit, setVolumesParProduit] = useState<any[]>([]);
   const [secteurActivite, setSecteurActivite] = useState<any[]>([]);
 
+  // DGE-08 — DES DONNÉES SOURCÉES, PLUS DE COEFFICIENT. L'ancien useEffect
+  // fabriquait une « évolution » mensuelle en multipliant les comptes par
+  // (0.4 + i*0.1) sur 7 mois étiquetés en dur (Sep..Mar) : une courbe inventée
+  // présentée au régulateur. Désormais : les inscriptions RÉELLES des 7
+  // derniers jours (GET /institution/analytics) et les vrais volumes produits
+  // (commandes du périmètre). « secteurActivite » n'a aucune source — son
+  // état vide explicite est gardé.
   React.useEffect(() => {
-    if (!byRole?.length) return;
-    const mois = ['Sep','Oct','Nov','Dec','Jan','Fev','Mar'];
-    const marchands      = byRole.find((r: any) => r.role === 'marchand')?.count || 0;
-    const producteurs    = byRole.find((r: any) => r.role === 'producteur')?.count || 0;
-    const cooperatives   = byRole.find((r: any) => r.role === 'cooperateur')?.count || 0;
-    const identificateurs = byRole.find((r: any) => r.role === 'identificateur')?.count || 0;
-    setEvolutionInscriptions(mois.map((m, i) => ({
-      mois: m,
-      marchands:      Math.round(Number(marchands) * (0.4 + i * 0.1)),
-      producteurs:    Math.round(Number(producteurs) * (0.4 + i * 0.1)),
-      cooperatives:   Math.round(Number(cooperatives) * (0.4 + i * 0.1)),
-      identificateurs: Math.round(Number(identificateurs) * (0.4 + i * 0.1)),
-    })));
-    setVolumesParProduit([]);
-    setSecteurActivite([]);
-  }, [byRole]);
+    let mort = false;
+    (async () => {
+      const [inscriptions, produits] = await Promise.all([
+        getInscriptionsParJour(),
+        getTopProduits(5),
+      ]);
+      if (mort) return;
+      setEvolutionInscriptions(inscriptions.map((i) => ({
+        mois: i.jour,
+        inscriptions: i.inscriptions,
+      })));
+      setVolumesParProduit(produits.map((p) => ({
+        produit: p.nom,
+        valeur: p.valeur,
+        quantite: p.volume,
+      })));
+    })();
+    return () => { mort = true; };
+  }, []);
 
   const resetFilters = () => {
     setSelectedPeriod('30j');
@@ -412,23 +424,23 @@ export function Analytics() {
             </AnimatedChart>
 
             <AnimatedChart
-              title="Évolution des inscriptions par profil"
-              subtitle="Croissance mensuelle par type d'acteur"
+              title="Inscriptions — 7 derniers jours"
+              subtitle="Inscriptions réelles du périmètre, jour par jour"
               delay={300}
             >
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={evolutionInscriptions || []}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="mois" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ borderRadius: '16px', border: '2px solid #71286440' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Line type="monotone" dataKey="marchands" stroke="#B74725" strokeWidth={2} name="Marchands" />
-                  <Line type="monotone" dataKey="producteurs" stroke="#2E8B57" strokeWidth={2} name="Producteurs" />
-                  <Line type="monotone" dataKey="cooperatives" stroke="#2072AF" strokeWidth={2} name="Coopératives" />
-                  <Line type="monotone" dataKey="identificateurs" stroke="#9F8170" strokeWidth={2} name="Identificateurs" />
+                  {/* DGE-08 : UNE série SOURCÉE (inscriptions réelles par jour)
+                      à la place des 4 courbes « par profil » fabriquées en
+                      multipliant un compte par 0.4..1.0 sur des mois en dur. */}
+                  <Line type="monotone" dataKey="inscriptions" stroke="#B74725" strokeWidth={2} name="Inscriptions" />
                 </LineChart>
               </ResponsiveContainer>
             </AnimatedChart>
