@@ -8,15 +8,15 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **431** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 448 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **432** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 449 |
 | — littéraux (phrase fixe en dur) | 200 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 72 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 73 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 91 |
 | — relais (`dire = (t) => speak(t)`) | 23 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
-| Dont dynamiques (avec variables) | 72 |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **243** |
+| Dont dynamiques (avec variables) | 73 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **57** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **473** |
 | Fichiers avec au moins un site d'appel | 83 |
@@ -34,8 +34,8 @@
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
+| `components/auth/LoginPassword.tsx` | auth | 12 | 7 | 1 | 6 | 0 | 0 | 0 |
 | `components/marchand/GestionStock.tsx` | stock | 12 | 7 | 4 | 1 | 1 | 0 | 2 |
-| `components/auth/LoginPassword.tsx` | auth | 11 | 7 | 0 | 6 | 0 | 0 | 0 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 10 | 8 | 0 | 0 | 2 | 0 | 0 |
@@ -122,7 +122,7 @@
 | wallet | 36 | 37 | 19 |
 | vente | 28 | 0 | 0 |
 | autre | 24 | 3 | 0 |
-| auth | 23 | 16 | 0 |
+| auth | 24 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
@@ -184,6 +184,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 845 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
 | 1048 | `parle` | literal | C'est effacé net. |  |  |
 | 1346 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 1535 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
@@ -295,8 +296,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 256 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
 | 262 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
 | 270 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 336 | `direMessage` | cle_i18n | STOCK_059 |  |  |
-| 370 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 340 | `direMessage` | cle_i18n | STOCK_059 |  |  |
+| 374 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
@@ -308,7 +309,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 65 | `dire` | relais | t |  |  |
+| 74 | `dire` | relais | t |  |  |
 
 ### `components/marchand/BoutonDirePrix.tsx` — autre
 
