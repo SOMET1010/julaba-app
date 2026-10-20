@@ -1036,9 +1036,16 @@ export function LoginPassword() {
       // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
       // révèle aucun chiffre, contrairement au numéro lui-même.
       rendreALaMain('numero', 'effacement');
-      // Chaque effacement réel est annoncé par la porte vocale de l'entrée.
+      // Chaque effacement réel est annoncé par la porte vocale de l'entrée :
+      // MOT POUR MOT le clip login-24 (AUTH_24, « A josila. » en dioula) —
+      // un mot d'écart et `direEntreeTexte` ne retrouve plus la clé, l'écran
+      // redevient muet sans erreur. La phrase longue dite ici (« Tu es en
+      // train d'effacer le numéro… ») nommait le numéro : aucun clip ne la
+      // porte, et la règle du lot A est qu'un effacement ne nomme ni chiffre,
+      // ni numéro, ni code. `parle()` est la porte canonique — clip exact,
+      // aucune voix machine en repli.
       if (phone.length > 0) {
-        void parlerAvantConnexion('connexion', 'Tu es en train d\'effacer le numéro hein !');
+        void parle('C\'est effacé net.');
       }
     } else {
       if (pinInput.length === 0) {
