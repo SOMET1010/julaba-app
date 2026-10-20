@@ -299,3 +299,14 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 Batteries : tsc -b front exit 0 (--force) ; eslint 0 erreur sur les 5 fichiers ; 15 suites vertes relancées (refus-hors-ligne, accueil-honnete, voix-connexion-lot-a, modules-pilote, i18n-source, i18n-locales, i18n-empreintes-argent, web-reco, lien-activation, auth-charte, charte-marchande, retour-frappe, micro-contraint, parole-entree, fcfa) ; **verify complet : 150 vert / 2 rouge / 152 — les 2 rouges sont les 2 CONNUS assumés, 0 rouge non-documenté** (l'audit consolidé du matin était 146/6).
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`) ; messages via `git commit -F` (jamais /tmp) ; UN seul heredoc par commande bash.
+
+## 2026-10-20 — « Vas-y corrigé tout » : C-C1 vidée + mot à mot + Rapport (agent Z.ai Code)
+
+1. `fix(catalogue): les prix inventés sont vidés — décision C-C1 (Patrick, 20/10)` — catalogue-produits.ts : interface sans prix, 38 entrées vidées, doctrinal STK-02 ; garde prixDeLaMarchande [5] recalée en verrouillage INVERSE (interdit tout prix). Aucune lecture active re-vérifiée avant de toucher.
+2. `feat(stock): la correction du nom se dit mot à mot — « non, pas kasso, kako »` — produitDit.ts (nomLibreDicte texte, nomRefute? : MOTS_REFUTATION toujours hors du nom, nom réfuté sort si la phrase le réfute, elisions à une lettre filtrées) ; BoutonDireNom reçoit nomActuel, AjoutProduitGuide passe nomActuel={nom} ; banc produitDit exécute LA LECTURE DU COMPOSANT.
+3. `fix(auth): le pied de page outils revient — « 🐞 Rapport de test » (main@24b40b3)` — LoginPassword.tsx : pied de page devMode verbatim main (tutoriel, By Icône Solution, version dite, Rapport via vlogPartager) ; inventaire voix régénéré (432 sites).
+4. `docs(audit)`: LOT-48-CORRECT-TOUT-2026-10-20.md + COMMIT_LOG + worklog 48.
+
+Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 17 suites vertes ; verify complet 150 vert / 2 rouge / 152 (2 CONNUS) — 0 rouge nouveau. Seule ouverture restante : recette appareil P3.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via git commit -F ; UN seul heredoc par commande bash.

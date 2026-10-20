@@ -1034,3 +1034,21 @@ Stage Summary:
 - origin/dev : 6 commits atomiques (R1 banc, R2 recalage, R3 produit+i18n, R4 plancher, CONNUS, registres) — les 4 rouges héritées de l'audit §5.4 sont FERMÉES, le guéri sort des CONNUS.
 - verify complet : **150 vert / 2 rouge / 152** (le matin : 146/6) — les 2 rouges restants sont les 2 CONNUS assumés (voix-trace-source VOICE-01, garde-argent). 0 rouge non-documenté.
 - Reste ouvert (assumé, inchangé) : recette appareil P3 (14 scénarios SPEC), dette C-C1 (arbitrage Patrick), correction vocale mot à mot (si Patrick la veut), 2 CONNUS.
+
+---
+Task ID: 48
+Agent: Z.ai Code (sandbox)
+Task: « Vas-y corrigé tout » — C-C1 (prix du catalogue), correction vocale mot à mot, bouton Rapport, puis APK
+
+Work Log:
+- Entrée : dev = origin/dev = d0bae2c (47-bis poussé). Aucun push parallèle constaté au fetch d'entrée ET au push.
+- C-C1 (décision Patrick) : re-vérification de première main — AUCUNE lecture active des prix du catalogue statique (38 entrées) : prixDeLaMarchande pose '' depuis STK-02, repli SaisieGuidee mort, POSCaisse/CaisseContext lisent les prix de SES produits. Interface sans prix + entrées vidées + doctrinal. Garde prixDeLaMarchande [5] recalée en verrouillage INVERSE (elle exigeait encore les prix — Patrick a tranché).
+- Correction mot à mot (« non, pas kasso, kako ») : probe tsx a mesuré le défaut (nom libre « Non pas kasso » — la réfutation et le mot réfuté ENTRAIENT dans le nom). nomLibreDicte(texte, nomRefute?) : MOTS_REFUTATION toujours hors du nom, nom réfuté sort si la phrase le réfute, elisions à une lettre filtrées (« c'est » → c + est). Wiring : AjoutProduitGuide nomActuel={nom} → BoutonDireNom (web + Sherpa). Le banc exécute LA LECTURE DU COMPOSANT (produitDit ?? nomLibreDicte) — première version du banc testait nomLibreDicte seul sur « gombo » : fiction (motOutil filtre les formes du lexique), corrigée avec l'explication dans le banc.
+- Bouton Rapport : pied de page OUTILS restauré verbatim de main@24b40b3 (devMode, 5 tapes) — tutoriel, By Icône Solution, version dite, Rapport vlogPartager. vlogPartager existait (voiceDebug.ts:203), import seul manquait. Inventaire voix régénéré (431→432 sites).
+- Pièges : banc fiction corrigé (voir ci-dessus) ; elisions à une lettre (« c » résiduel) ajoutées au filtre après l'échec « non c'est kako ».
+- Gates : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 17 suites vertes (prix-marchande, produit-dit, premier-produit, etal-marchande, vente-sans-prix, image-produit, charte-marchande, vente-au-catalogue, voix, web-reco, parcours-guide-parle, refus-parle, i18n-source, auth-charte, voix-connexion-lot-a, parole-entree, lien-activation) ; verify complet 150 vert / 2 rouge / 152 (2 CONNUS) — 0 rouge nouveau.
+
+Stage Summary:
+- origin/dev : 4 commits atomiques (C-C1, mot à mot, Rapport, registres).
+- C-C1 FERMÉE (décision Patrick), correction vocale mot à mot IMPLÉMENTÉE, bouton Rapport RESTAURÉ.
+- Seule ouverture restante du couple saisie/vente : recette appareil P3 (14 scénarios SPEC, téléphone réel + APK Sherpa).
