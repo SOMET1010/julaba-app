@@ -73,6 +73,11 @@ describe('Invariant DGE-04/05 — les 4 listes jointes requêtables', () => {
     expect([200, 201]).toContain(su.status);
     tokenPresident = su.body.accessToken;
     presidentId = su.body.user.id;
+    // mustChangePassword : la garde JWT bloque tout sauf change-password.
+    await api()
+      .post('/api/v1/auth/change-password')
+      .set('Authorization', `Bearer ${tokenPresident}`)
+      .send({ oldPassword: '0000', newPassword: '1234' });
     const coopRows = await ds.query('SELECT id FROM cooperatives WHERE responsable_id = $1 LIMIT 1', [presidentId]);
     coopId = coopRows[0].id;
 
@@ -184,6 +189,9 @@ describe('Invariant DGE-04/05 — les 4 listes jointes requêtables', () => {
         phone: '+2250700020507', firstName: 'Identif', lastName: 'DGE05', genre: 'homme',
         role: 'identificateur', email: 'identif.dge05@julaba.ci', zoneId: ZONE_A, marcheId,
       });
+    if (![200, 201].includes(r.status)) {
+      console.error('[DGE-05] BO create refusé:', r.status, JSON.stringify(r.body));
+    }
     expect([200, 201]).toContain(r.status);
 
     const parZone = await api()
