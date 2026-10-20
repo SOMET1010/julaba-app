@@ -123,7 +123,14 @@ console.log('\n[5] Aucune route Keiwa / tontine / paiement de routes.tsx n\'éch
   }
   const argent = complets.filter((c) =>
     /\/keiwa(\/|$)|\/tontines|\/protection-sociale|^\/marchand\/cooperative$|\/commandes$|^\/marchand\/marche$|^\/pay(\/|$)|^\/paiement(\/|$)/.test(c));
-  ok(argent.length >= 40, `${argent.length} routes d'argent hors pilote trouvées dans routes.tsx`);
+  // PLANCHER RECALÉ (20/10) : 40 → 38. Le 19/10, IDENTIFICATEUR-16 (commit
+  // b91f6a8) a retiré de l'espace identificateur ses 6 routes keiwa —
+  // décision, pas érosion : « Keiwa retire de l'espace identificateur ».
+  // Caisse, tontines, commandes, marché : tout est toujours là, et toutes
+  // couvertes par MODULES_HORS_PILOTE (assertions ci-dessous). Le plancher
+  // traque l'ÉROSION silencieuse : une route qui disparaît sans décision
+  // recale la garde, elle ne la franchit pas.
+  ok(argent.length >= 38, `${argent.length} routes d'argent hors pilote trouvées dans routes.tsx`);
   const echappees = argent.filter((c) => moduleDuChemin(c.replace(/:[a-zA-Z]+/g, 'x')) === null);
   ok(echappees.length === 0, `toutes couvertes par MODULES_HORS_PILOTE${echappees.length ? ' — ÉCHAPPENT : ' + echappees.join(', ') : ''}`);
   ok(complets.includes('/marchand/caisse') && complets.includes('/marchand/keiwa'),
