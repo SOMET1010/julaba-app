@@ -8,14 +8,14 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **430** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 447 |
-| — littéraux (phrase fixe en dur) | 199 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **431** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 448 |
+| — littéraux (phrase fixe en dur) | 200 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 91 |
 | — relais (`dire = (t) => speak(t)`) | 23 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
 | Dont dynamiques (avec variables) | 72 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **57** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **473** |
@@ -35,8 +35,8 @@
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
 | `components/marchand/GestionStock.tsx` | stock | 12 | 7 | 4 | 1 | 1 | 0 | 2 |
+| `components/auth/LoginPassword.tsx` | auth | 11 | 7 | 0 | 6 | 0 | 0 | 0 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
-| `components/auth/LoginPassword.tsx` | auth | 10 | 6 | 0 | 6 | 0 | 0 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 10 | 8 | 0 | 0 | 2 | 0 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
@@ -122,7 +122,7 @@
 | wallet | 36 | 37 | 19 |
 | vente | 28 | 0 | 0 |
 | autre | 24 | 3 | 0 |
-| auth | 22 | 15 | 0 |
+| auth | 23 | 16 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
@@ -182,7 +182,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 820 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
 | 844 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
 | 845 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
-| 1339 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 1048 | `parle` | literal | C'est effacé net. |  |  |
+| 1346 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
