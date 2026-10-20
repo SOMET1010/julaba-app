@@ -1,0 +1,96 @@
+# AUDIT PARCOURS — IDENTIFICATEUR — 2026-10-20
+
+> **Nature :** audit fonctionnel statique du parcours « f. Parcours de l'identificateur » du workflow officiel (*Workflow des parcours de la solution JULABA*), confronté au code de `dev` @ `a331b59`.
+> **Sources :** backend `identifications/`, `dossiers-rest/`, `oneci/`, `users/`, `auth/`, `zones/`, `protection-sociale/`, `wallets/`, `academy/` ; frontend `routes.tsx`, `components/identificateur/`, `components/backoffice/`, `config/`, `contexts/` ; audits antérieurs `.ai/AUDITS/ACTEURS/AUDIT-ACTEUR-IDENTIFICATEUR-2026-10-19.md` (IDENTIFICATEUR-01→16 rejoués).
+> **Contexte :** le lot 46 a fermé C-12 (machine à états), IDENTIFICATEUR-16 (retrait routes Keiwa), INSTITUTION-01/ONECI P0 — vérifié de première main.
+> **Statut :** PARCOURS CONFORME SOUS CONDITIONS — enrôlement et circuit de validation opérationnels ; P1 à traiter avant recette terrain.
+
+## 1. Tableau des 7 étapes du workflow officiel
+
+| # | Étape | Statut | Preuves | Écart |
+|---|---|---|---|---|
+| 1 | Connexion à la plateforme | **IMPLÉMENTÉ** | `LoginPassword.tsx:714-718,925-929` (navigate par rôle) ; `types/constants.ts:75-88` ROLE_ROUTES (`identificateur` → `/identificateur`) + garde `checkRouteAccess` (:144+) ; `routes.tsx:198-232` (arbre `/identificateur`) ; `roleConfig.ts:371-388` ; verrou PIN serveur `verrou-pin.ts`, anti-énumération `auth.controller.ts:85-95` | — |
+| 2 | Enrôlement des acteurs du vivrier marchand (détaillants, semi-grossistes, grossistes, coopératives, producteurs) | **IMPLÉMENTÉ** | Fiche `FicheIdentificationDynamique.tsx` : 3 profils marchand/producteur/coopérative (:800), `sousProfilMarchand` **obligatoire** (:1438-1439, envoyé :1801), `TYPES_COMMERCE` Grossiste/Semi-grossiste/Détaillant (:214-219), coopérative→`cooperateur` (:1790/:1824) ; backend `POST /identifications/create-with-acteur` `identifications.controller.ts:297-485` (allow-list rôles :316-325, zone héritée :327-331, P0.0 secret aléatoire + activation :333-361, transaction, adhésion coop :397-420, SMS :424-433) ; brouillons serveur (:184-244) + `MesBrouillons.tsx` ; lookup ONECI pré-remplissage (:2830-2940) | IDENT-09 (pas d'idempotence de soumission) |
+| 3 | Suivi de l'état des enrôlements (4 états) | **PARTIEL** | Machine serveur : `statuts-identification.ts:40-58` (`brouillon/en_attente/approuve/valide/rejete/complement`) ; écran Acteurs `Identifications.tsx:135-140` distingue soumis/validée/rejetée/**complement** + filtre + KPI (:238-243) ; suivi `SuiviIdentifications.tsx:39-57` — **`complement` collapsé en `submitted`** (:52-53 → badge « En cours » :581-583) ; résoumission propriétaire traduite serveur `identifications.controller.ts:547-556` | IDENT-03 |
+| 4 | Paiement cotisations CNPS+CNAM via KEIWA « selon son statut » | **MANQUANT (retrait volontaire, en contradiction avec le workflow)** | Routes Keiwa retirées de l'espace identificateur : `routes.tsx:222-229` (commentaire IDENTIFICATEUR-16, « acteur MONÉTIQUEMENT NEUTRE ») ; `roleConfig.ts:424` `hasKeiwa:false` ; protection-sociale montée uniquement sous `/marchand/protection-sociale` (`modulesPilote.ts:83-85`) ; backend CNPS/CNAM existe (`protection-sociale.controller.ts:25-26,67-152`) mais non exposé | IDENT-04 |
+| 5 | Historique des cotisations via KEIWA | **MANQUANT** (pour l'identificateur) | `GET /wallets/me/transactions` existe (`wallets.controller.ts:32-37`) mais aucun écran cotisations côté identificateur | IDENT-04 |
+| 6 | Alimentation du portefeuille KEIWA (Wave, Orange, Moov, MTN) | **MANQUANT** (pour l'identificateur) | Primitives existent : `POST /wallets/me/recharge-mobile` (`wallets.controller.ts:39-60`) ; 4 opérateurs = codes B-Pay `WAVE_CI/OM_CI/MOOV_CI/MTN_CI` (`bpay.service.ts:4-10`) ; écrans wallet montés pour marchand/producteur/coop mais **plus** sous `/identificateur` | IDENT-04, IDENT-06 |
+| 7 | Formation JULABA ACADEMY | **PARTIEL (implémenté, générique)** | Route montée `routes.tsx:221` ; chapitres dédiés « Mon Terrain / Mes Dossiers / Ma Validation » (`academyQuestions.ts:18-33`) ; pool questions identificateur (:345,557) ; badges « Détective », « Vérificateur » (`academyConfig.ts:188-205`) | IDENT-08 |
+
+## 2. Point de vigilance du workflow : droits identificateur vs DGE
+
+Le workflow exige de distinguer ce que l'identificateur peut faire (création et soumission des dossiers, consultation des statuts, mise à jour) de ce qui est réservé à la DGE (validation, demande d'informations complémentaires, rejet).
+
+### Endpoints de modification du statut d'un dossier (inventaire exhaustif)
+
+| Endpoint | Fichier:ligne | Garde de rôle | Qui peut muter `statut` |
+|---|---|---|---|
+| `PATCH /identifications/:id` | `identifications.controller.ts:487` | `JwtAuthGuard` classe (:22) ; autorisation interne :403 : `isAdmin` (:490 : admin_general, super_admin, operateur_terrain, admin_national — **gestionnaire_zone ABSENT**, voir IDENT-01) OU propriétaire (:493-496) | **Uniquement** un compte BO portant `enrolement.validate` (`aPermissionBO` :506, refus 403 explicite :512-516 « le propriétaire ne peut pas s'auto-approuver (C-12) ») ; `statut` ajouté à allowedFields **seulement** si habilité (:521-527) ; machine à états `exigerTransitionStatut` (:557-566) ; motif obligatoire pour `rejete` (:568-571) ; audit_logs **dans la même transaction** (:589-611) ; SMS rejete/approuve/complement (:615-665) |
+| `PATCH /dossiers/:id` (route secondaire, non appelée par le front) | `dossiers-rest.controller.ts:54` | `@UseGuards(JwtAuthGuard, RolesGuard)` + `@Roles('identificateur','admin_general','super_admin')` + scoping propriétaire (:58-60) | Même verrou C-12 : `aPermissionBO('enrolement.validate')` (:65-70) + machine à états (:77-85) + audit (:94-110) ; bascule `users.validated` réservée aux habilités (:114-123) |
+| `DELETE /identifications/:id` | `identifications.controller.ts:695-697` | `@Roles('super_admin')` | N/A (suppression brouillon) |
+
+### Matrice des permissions serveur (`enrolement.validate`)
+
+- `auth/bo-autorisation.ts:24-35` : `admin_general`, `admin_national`, `gestionnaire_zone` l'ont **par défaut** ; `operateur_terrain` **NE L'A PLUS** (C-19/10, :28-34) ; **identificateur JAMAIS** (hors `ROLES_BO` :22) ; `super_admin` toujours (:55).
+- Copie front **alignée** : `BackOfficeContext.tsx:191-195`.
+- UI BO gated : `BOEnrolement.tsx:226-227` (`canValidate`), boutons Valider/Rejeter/Demander complément rendus **seulement si** `canValidate` (:1034-1060) ; demande de complément poste la valeur canonique `complement` (:989-993) ; appel via `BackOfficeContext.tsx:690-695` → `PATCH /identifications/:id` (`backoffice-api.ts:993-995`).
+
+### Verdict sur les 5 opérations
+
+1. **Créer un dossier : OUI** — `POST /identifications` allow-list `['admin_general','super_admin','operateur_terrain','admin_national','identificateur']` (:249) ; `create-with-acteur` propriétaire = `req.user.id` (:365), statut figé serveur `en_attente` (:270,:367), aucun champ `statut`/`commission`/`motif_rejet` accepté du client (:254-257).
+2. **Soumettre : OUI** — la soumission pose `en_attente` côté serveur ; seule transition non-BO, exécutée par le serveur (`statuts-identification.ts:24,33-38`).
+3. **Consulter les statuts : OUI** — `GET /identifications` scoping `WHERE identificateur_id = user.id` pour non-admin (:93-126) ; `GET /:id` 403 si non propriétaire (:128-139).
+4. **Mettre à jour les informations : OUI, encadré** — propriétaire sans `statut` (allowedFields :521-527) ; fiche acteur `PATCH /users/:id` `@Roles(..., 'identificateur')` :305, **zone fail-closed** (:339-344), champs restreints hors `nin`/`phone` (:356-357) ; sous-profil marchand modifiable **uniquement** par BO (:382-384).
+5. **Valider / demander complément / rejeter : NON pour l'identificateur — RÉSERVÉ au BO** — 403 métier dédié (:512-516) + permission absente de ses défauts + UI BO gated. **Le point de vigilance du workflow est honoré par le code.**
+
+### « DGE » dans le code
+
+Aucun rôle nommé `dge` : la validation est portée par les rôles back-office (`super_admin/admin_general/admin_national/gestionnaire_zone`) via `enrolement.validate`. Le rôle `institution` (`user.entity.ts:23`) est un profil **consultation/statistiques** (dashboard régulateur `institutions/institution-dashboard.controller.ts`), explicitement **exclu** du lookup ONECI et sans droit de validation. Mapping DGE→rôles BO à consigner (IDENT-07bis → voir audit DGE).
+
+## 3. Écarts
+
+| ID | Constat | Priorité | Action requise |
+|---|---|---|---|
+| IDENT-01 | **`gestionnaire_zone` absent des listes `isAdmin` de `identifications.controller.ts`** (:98 findAll, :131 findOne, :490 PATCH ; incohérent avec :53 qui le contient). Or il porte `enrolement.validate` **par défaut** (`bo-autorisation.ts:27`) et l'UI BO lui affiche l'écran Enrôlement (`BackOfficeContext.tsx:194`). Résultat : sa liste de dossiers est **vide** (fallback « WHERE identificateur_id = son id » :113-122) et sa validation → **403 'Accès refusé'** (:494-496). Le rôle opérationnel de terrain ne peut pas valider. | **P1** | Ajouter `gestionnaire_zone` aux listes isAdmin (:98/:131/:490/:676) ou unifier via `estRoleBO()`/`aPermissionBO('enrolement.read')` ; recetter |
+| IDENT-02 | **Neutralité monétique non garantie serveur** : `wallets.controller.ts:15` = `JwtAuthGuard` seul (recharge/retrait/transfert/historique ouverts à tout authentifié). La neutralité de l'identificateur n'est qu'une convention de navigation (`routes.tsx:222-229`). | P2 | Décision d'architecture : `@Roles` sur wallets.controller (exclure identificateur) ou assumer par écrit le modèle « tout compte a un wallet » |
+| IDENT-03 | **L'état « En attente d'informations complémentaires » est invisible sur l'onglet Suivi** : `SuiviIdentifications.tsx:52-53` collapssse `complement` → `submitted` (badge « En cours » :581-583), alors que le workflow exige 4 états et que l'écran Acteurs (`Identifications.tsx:135-140`) les distingue correctement. Incohérence inter-écrans. | P2 | Afficher un 4ᵉ badge « Complément demandé » + action « Compléter le dossier » sur Suivi (mécanisme serveur de resoumission déjà existant :547-556) |
+| IDENT-04 | **Étapes 4-5-6 du workflow (KEIWA cotisations + historique + recharge) non implémentées pour l'identificateur** — retrait volontaire (IDENTIFICATEUR-16) en contradiction directe avec le parcours officiel. | **P1 (décision produit)** | Arbitrage écrit : réintégrer un espace KEIWA identificateur (« selon son statut ») ou faire amender le workflow ; purger les résidus (IDENT-06) |
+| IDENT-05 | **PIN serveur absent sur `PATCH /users/:id`** : l'identificateur modifie la PII d'acteurs de sa zone (numCNPS, numCMU, dateNaissance, photo :356-357) sans re-vérification de PIN serveur (verrou `verrou-pin.ts` jamais appelé sur cette route). IDENTIFICATEUR-02 du 19/10 **toujours valable**. | P1 | Exiger le PIN serveur sur les écritures PII de l'identificateur hors self |
+| IDENT-06 | **Résidus Keiwa côté identificateur** : `modulesPilote.ts:66` PROFILS_KEIWA inclut `identificateur` et `UniversalParametres.tsx:915-917` « Mon Keiwa » → `navigate('/identificateur/keiwa')` = **route morte → NotFound**. | P2 | Retirer `identificateur` de PROFILS_KEIWA + masquer la ligne UniversalParametres |
+| IDENT-07 | **`POST /dossiers` écrit `statut: 'en_cours'`** (`dossiers-rest.controller.ts:31`) — statut LEGACY **inconnu de la machine à états** (`statuts-identification.ts:18-21` : fail-closed 409). Tout dossier créé via cette route devient immuable côté statut et illisible pour l'écran Suivi. | P2 | Écrire `en_attente` (ou `brouillon`) dans POST /dossiers + migration de régularisation |
+| IDENT-08 | **Academy identificateur = quiz générique**, pas le module du workflow « identification/enrôlement, maîtrise des outils numériques, accompagnement des acteurs ». | P2 | Rédiger un curriculum identificateur dédié (chapitres/leçons déjà structurés par rôle) |
+| IDENT-09 | **Aucune reprise offline ni idempotence de la soumission** (POST create-with-acteur réseau obligatoire, pas d'Idempotency-Key) — IDENTIFICATEUR-11 reconduit ; le brouillon localStorage (Fiche :976-1017) protège la saisie, pas la soumission. | P2 | Outbox durable + clé d'idempotence sur create-with-acteur |
+| IDENT-10 | **Aucun test automatisé de la machine à états** : aucun `*.spec.ts` backend n'exerce `exigerTransitionStatut`/`enrolement.validate` — le correctif C-12 n'est pas verrouillé par la CI. | P2 | Spec invariants : propriétaire→403, operateur_terrain→403, gestionnaire_zone→200 (après IDENT-01), transition interdite→409, audit écrit |
+| IDENT-11 | **Perf suivi** : N+1 `GET /users/:id` par dossier (`IdentificateurContext.tsx:165`) + polling 30 s (:251) — IDENTIFICATEUR-12 reconduit. | P3 | JOIN/batch serveur + acteur_id côté filtre |
+
+## 4. Points positifs
+
+1. **C-12 (cœur du point de vigilance) corrigé et prouvé** : machine à états serveur documentée, 403 métier explicite pour le propriétaire et l'operateur_terrain, `statut` retiré de l'allow-list des non-habilités, audit_logs **dans la même transaction** (panne du journal = annulation de la mutation), SMS alignés sur le statut effectif.
+2. **Double porte** : la route de contournement `PATCH /dossiers/:id` porte le **même** verrou C-12 — aucun chemin d'auto-approbation subsistant.
+3. **ONECI fail-closed** : `@Roles('identificateur','super_admin','admin_general','admin_national','gestionnaire_zone')` + `RolesGuard` + throttle 30/min + journal d'accès avec **NNI masqué** (`oneci.controller.ts:49-51,59-88,113-132`).
+4. **Anti-injection de rôle et P0.0 vivants** sur `create-with-acteur` : allow-list stricte marchand/producteur/cooperateur (:316-325), secret aléatoire, compte `en_attente_activation` + code d'activation one-shot TTL 30 min (:333-361).
+5. **Zone fail-closed** sur les écritures de l'identificateur (`PATCH /users/:id` :339-344) et scoping propriétaire propre sur les dossiers.
+6. **Chaîne de création de l'identificateur conforme au parcours DGE** : `POST /users/backoffice/create` `@Roles(super_admin, admin_general, admin_national, gestionnaire_zone)` (`users.controller.ts:195-210`), `zoneId` **obligatoire** (`create-backoffice-user.dto.ts:63,99`), PIN **généré par le serveur** et envoyé par SMS, jamais visible d'un humain (`backoffice-users.service.ts:277-309`, SEC-08) ; allow-list M6/M8 empêche un identificateur de créer un identificateur (`auth.service.ts:53-73`).
+7. **Alignement front/back des permissions BO** (`BackOfficeContext.tsx:191-195` cohérent avec `bo-autorisation.ts`).
+8. Les 4 opérateurs mobile money du workflow existent côté B-Pay (`WAVE_CI/OM_CI/MOOV_CI/MTN_CI`) — socle technique prêt, ne manque que la décision produit.
+
+## 5. Matrice de recette minimale
+
+| Test | Résultat attendu |
+|---|---|
+| R1 — Connexion identificateur démo (`+2250710101010`) | Redirection `/identificateur` ; barre Accueil/Acteurs/Suivi/Moi ; aucune tuile d'argent |
+| R2 — Soumission fiche complète (marchand sous-profil Détaillant, NNI pré-rempli ONECI) | 1 user + 1 dossier `en_attente` créés en transaction ; code d'activation affiché une seule fois ; SMS parti ; notification BO |
+| R3 — Identificateur appelle `PATCH /identifications/:id {statut:'approuve'}` (API directe) | **403** message C-12 ; statut inchangé ; aucun SMS ; aucune ligne `audit_logs` |
+| R4 — `admin_national` valide puis rejette sans motif via BO | Validation OK + SMS + `audit_logs IDENTIFICATION_STATUT_MODIFIE` ; rejet sans motif → 400 |
+| R5 — Transition interdite `approuve → rejete` | **409** (machine à états) |
+| R6 — Identificateur complète un dossier `complement` et resoumet | Serveur repasse seul le dossier `en_attente`, audit `source=resoumission_proprietaire`, aucun SMS |
+| R7 — `operateur_terrain` dans le BO Enrôlement | Boutons Valider/Rejeter/Complément absents (`canValidate=false`) ; appel API direct → 403 |
+| R8 — `gestionnaire_zone` dans le BO Enrôlement | Liste des dossiers de sa zone visible + validation possible (**rouge aujourd'hui** = IDENT-01) |
+| R9 — JWT marchand sur `GET /oneci/lookup/:nni` | **403** ; JWT identificateur → 200 avec entrée journal `ONECI_LOOKUP_NNI` (NNI masqué) |
+| R10 — Identificateur modifie un acteur hors de sa zone | **403** « Cet acteur n'est pas dans votre zone » ; en zone : champs PII restreints, `nin`/`phone` non modifiables |
+| R11 — URL directe `/identificateur/keiwa` | NotFound (décision IDENTIFICATEUR-16) ; « Mon Keiwa » absent des paramètres (rouge = IDENT-06) |
+| R12 — Coupure réseau pendant la soumission | Brouillon conservé + **soumission unique** à la reprise (rouge = IDENT-09) |
+
+---
+
+**Conclusion.** Le point de vigilance du workflow (distinction droits identificateur vs DGE) est **implémenté et prouvé** côté serveur depuis le correctif C-12 : l'identificateur crée, soumet, consulte et met à jour ; la validation/demande de complément/rejet est réservée aux comptes BO portant `enrolement.validate`. Deux failles subsistent sur cette séparation : `gestionnaire_zone` est verrouillé hors de l'écran qu'il est censé opérer (IDENT-01, P1) et le PIN ne protège pas serveur les mises à jour PII (IDENT-05, P1). Les étapes 4-6 (KEIWA) du parcours officiel sont volontairement absentes du produit (IDENT-04) — arbitrage produit/document à trancher.
