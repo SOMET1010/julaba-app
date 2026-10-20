@@ -57,7 +57,7 @@ import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { interpreterReponse } from '../../services/grammaireCorrection';
 import { corrigerPrix, corrigerQuantite } from '../../services/ligneProvisoire';
 import { produitPourVente } from '../../services/preselectionVente';
-import { lireVenteAuCatalogue, venteSansProduit } from '../../services/venteAuCatalogue';
+import { lireVenteAuCatalogue, nomProduitLibre, venteSansProduit } from '../../services/venteAuCatalogue';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { t } from '../../i18n/voice/runtime';
 import type { LigneProvisoire } from '../../services/ligneProvisoire';
@@ -401,13 +401,24 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
          * NOMMÉ quelque chose après le nombre.
          */
         const corrige = reluAuCatalogue ? null : venteSansProduit(action, data.transcript || '');
-        const vente = reluAuCatalogue ?? (corrige ? { ...action, ...corrige } : action);
+        const nomLibre = reluAuCatalogue ? null : nomProduitLibre(data.transcript || '');
+        const venteBase = reluAuCatalogue ?? (corrige ? { ...action, ...corrige } : action);
+        // Le vocabulaire statique n'est pas une liste autorisée de produits.
+        // Si la marchande nomme un article absent de cette liste, on conserve
+        // son nom pour le chemin ligne libre/prix, puis l'ajout au catalogue.
+        const vente = !venteBase.produit && nomLibre
+          ? { ...venteBase, produit: nomLibre }
+          : venteBase;
         // MONTANT FACULTATIF : le prix est résolu en aval par
         // vendreVocalUnifie, seul à disposer du catalogue. `0` y signifie
         // « rien n'a été dicté » ; un montant réellement prononcé prime.
         const brut = Number(vente.montant);
         const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
-        const quantite = vente.quantite || 1;
+        // MÊME lecture, MÊME phrase : l'unité prononcée et ce que le montant
+        // veut dire (« à » / « pour » / négociation) viennent de la même
+        // extraction, jamais de deux relectures qui pourraient diverger.
+        const lu = extraire(data.transcript || '');
+        const quantite = vente.quantite || (lu.quantite ?? 1);
         // LE PRODUIT DÉJÀ TOUCHÉ N'EST PAS À REDIRE (lot B2). Elle vient de
         // toucher « Tomate » dans Mon stock et dit « trois tas » : sans ce
         // repli, le moteur recevait `undefined`, n'appariait rien, et Tata

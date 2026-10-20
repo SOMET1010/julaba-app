@@ -23,7 +23,7 @@
  * il montre et il parle.
  */
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
@@ -92,6 +92,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const [prix, setPrix] = useState(
     typeof depart?.prix === 'number' && depart.prix > 0 ? String(depart.prix) : '');
   const [uniteLibre, setUniteLibre] = useState(false);
+  const [valide, setValide] = useState(false);
   const [enCours, setEnCours] = useState(false);
 
   const dire = (t: string) => { if (guidageVocal()) speak(t); };
@@ -214,7 +215,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       const dit = { produit: deja.nom, stock, unite: deja.unite };
       if (prixDit != null && prixDit !== deja.prix) direMessage('STOCK_057', { ...dit, montant: deja.prix });
       else direMessage('STOCK_056', dit);
-      onPose();
+      setValide(true);
+      setTimeout(() => onPose(), 650);
     } catch {
       direMessage('TATA_VENTE_ECHEC');
       setEnCours(false);
@@ -251,7 +253,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       // croit que ça n'a pas marché et recommence.
       await refreshProducts();
       direMessage('TATA_PRODUIT_POSE', { produit: aPoser.nom, montant: aPoser.prix, unite: aPoser.unite });
-      onPose();
+      setValide(true);
+      setTimeout(() => onPose(), 650);
     } catch {
       // T7 : l'échec s'écrit aussi (même phrase que le catalogue dit).
       toast.error("La vente n'a pas pu être enregistrée. Réessaie.");
@@ -267,7 +270,27 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   };
 
   return (
-    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, position: 'relative', overflow: 'hidden' }}>
+      <AnimatePresence>
+        {valide && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+            style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', zIndex: 10 }}
+          >
+            <motion.div
+              initial={{ scale: 0.4, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+              style={{ width: 92, height: 92, borderRadius: '50%', background: VERT, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 18px 40px rgba(47, 138, 70, 0.25)' }}
+            >
+              <Check size={48} color="white" strokeWidth={3} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── A1. ELLE L'A DÉJÀ : COMBIEN ELLE EN AJOUTE ─────────────── */}
       {existant && (
