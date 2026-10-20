@@ -453,12 +453,12 @@ export class CommandesRestController {
   async proposerNegociation(@Body() body: any, @CurrentUser() user: User) {
     const { vendeurId, produit, quantite, prixOriginal, prixPropose, unite, message } = body;
     if (!vendeurId || !produit || !quantite || !prixPropose) throw new BadRequestException('Champs manquants');
-    // Lien publication d'origine (optionnel, retro-compat) : quand le front
-    // negocie depuis une offre du marche, il transmet l'id de cette publication.
-    // Sans lui la negociation fonctionne comme avant (aucune reservation de
-    // stock a l'acceptation) — cf. JULABA_DECISIONS.md "B2, voie negociation
-    // non couverte par la reservation".
-    const publicationId = String(body.publicationId || body.publication_id || '').trim() || null;
+    // Toute négociation d'approvisionnement doit être rattachée à une offre
+    // publiée : cela garantit le contrôle du canal et la réservation de stock.
+    const publicationId = String(body.publicationId || body.publication_id || '').trim();
+    if (!publicationId) {
+      throw new BadRequestException('publicationId requis pour une négociation du marché');
+    }
 
     // Verrou métier : une négociation ne doit jamais contourner les filtres du
     // marché. Seuls grossistes et coopératives peuvent négocier avec un producteur.
@@ -486,7 +486,7 @@ export class CommandesRestController {
       throw new ForbiddenException('Circuit de négociation non autorisé pour votre profil');
     }
 
-    if (publicationId) {
+    {
       const offres = await this.dataSource.query(
         `SELECT id, user_id, type_marche, statut, active FROM publications WHERE id = $1`,
         [publicationId],
