@@ -198,6 +198,87 @@ export class StockReservationService {
   }
 
   /**
+   * PROD-03 — Compte la LIVRAISON en quantité : quand une commande CONFIRMÉE
+   * passe à `livree`, la récolte liée voit son `stock_livre` augmenté de la
+   * quantité commandée. Livré ⊆ vendu : on ne touche NI stock_disponible NI
+   * stock_vendu (invariant I-C du spec stock-reservation reste vrai).
+   *
+   * Idempotence portée par l'APPELANT (garde atomique sur le statut de la
+   * commande : UPDATE ... WHERE statut <> 'livree' RETURNING). L'effet n'a
+   * lieu que si une réservation existe (commande confirmée rattachée à une
+   * récolte, directe ou via publication). Verrou récolte FOR UPDATE.
+   */
+  async compterLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    const res = await manager.query(
+      `SELECT quantite, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      [commandeId],
+    );
+    if (res.length === 0) return;
+    const row = res[0];
+    const q = Number(row.quantite);
+    if (!(q > 0)) return;
+
+    // Récolte cible : réservation directe (vente directe) OU via la publication.
+    let recolteId = row.recolte_id as string | null;
+    if (!recolteId && row.publication_id) {
+      const pub = await manager.query(
+        `SELECT recolte_id FROM publications WHERE id = $1`,
+        [row.publication_id],
+      );
+      recolteId = pub[0]?.recolte_id ?? null;
+    }
+    if (!recolteId) return;
+
+    await manager.query(
+      `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
+      [recolteId],
+    );
+    await manager.query(
+      `UPDATE recoltes
+         SET stock_livre = stock_livre + $1, updated_at = NOW()
+       WHERE id = $2`,
+      [q, recolteId],
+    );
+  }
+
+  /**
+   * PROD-03 — Restitue la livraison : si une commande DÉJÀ LIVRÉE retombe en
+   * `annulee` ou `litige`, le volume livré est retiré de stock_livre (borné à
+   * 0). Idempotence portée par l'appelant, comme pour compterLivraison.
+   */
+  async annulerLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    const res = await manager.query(
+      `SELECT quantite, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      [commandeId],
+    );
+    if (res.length === 0) return;
+    const row = res[0];
+    const q = Number(row.quantite);
+    if (!(q > 0)) return;
+
+    let recolteId = row.recolte_id as string | null;
+    if (!recolteId && row.publication_id) {
+      const pub = await manager.query(
+        `SELECT recolte_id FROM publications WHERE id = $1`,
+        [row.publication_id],
+      );
+      recolteId = pub[0]?.recolte_id ?? null;
+    }
+    if (!recolteId) return;
+
+    await manager.query(
+      `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
+      [recolteId],
+    );
+    await manager.query(
+      `UPDATE recoltes
+         SET stock_livre = GREATEST(0, stock_livre - $1), updated_at = NOW()
+       WHERE id = $2`,
+      [q, recolteId],
+    );
+  }
+
+  /**
    * Libere la reservation active d'une commande (annulation) : restitue le
    * disponible et marque la ligne 'liberee'. Idempotent : n'agit que sur une
    * reservation 'active' (ne restitue jamais une vente deja convertie).
