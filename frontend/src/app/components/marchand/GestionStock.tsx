@@ -152,12 +152,12 @@ function SwipeableCard({ stock, montantsMasques, onTap, onDelete }: { stock: Sto
               display: 'flex', alignItems: 'baseline', justifyContent: 'center',
               gap: 4, marginBottom: 8,
             }}>
-              <span style={{ fontSize:40, fontWeight:900, color:isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
+              <span style={{ fontSize:40, fontWeight:900, color:!isTracked ? 'var(--herite-gris-80)' : isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--color-green-600)' }}>
                 {isTracked ? stock.quantity.toLocaleString('fr-FR') : '—'}
               </span>
               <span style={{
                 fontSize: 13, fontWeight: 700,
-                color: isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--encre-4)',
+                color: !isTracked ? 'var(--herite-gris-80)' : isEmpty ? 'var(--destructive)' : isLow ? 'var(--color-red-500)' : 'var(--encre-4)',
               }}>
                 {stock.unit}
               </span>
