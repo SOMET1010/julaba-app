@@ -301,8 +301,13 @@ console.log("\n[AMB-02] Pendant l'arbitrage parlé, il ne reste que les deux ré
   const massques = (caisse.match(/\{!refChoisie && !arbitrageSansClavier && \(/g) || []).length;
   ok(massques === 2,
      `la recherche au catalogue et le bloc « Quoi ? / unité / combien » disparaissent également (${massques}/2)`);
-  ok(/\{!arbitrageSansClavier && \(\s*<button\s+type="button"\s+onClick=\{refChoisie \? adopterReference : ajouterMontantLibre\}/.test(caisse),
-     'et le bouton « Ajouter », de toute façon désactivé sans prix, ne traîne pas sous les deux réponses');
+  // e3e3a63 (audit catalogue 19/10) a donné au bouton final un geste unique à
+  // trois portes (`validerFeuilleAutreArticle` : adoption, création réelle au
+  // nom libre, montant libre). La garde suit le CODE — l'intention ne bouge
+  // pas : quelle que soit sa porte, le bouton ne traîne pas sous les deux
+  // réponses pendant l'arbitrage.
+  ok(/\{!arbitrageSansClavier && \(\s*<button\s+type="button"\s+onClick=\{validerFeuilleAutreArticle\}/.test(caisse),
+     'et le bouton « Ajouter » (trois portes depuis e3e3a63), de toute façon désactivé sans prix, ne traîne pas sous les deux réponses');
 
   // CE QUI RESTE, ET QUI DOIT RESTER.
   ok(/\{prixDitAArbitrer && \(/.test(caisse) && !/\{prixDitAArbitrer && !arbitrageSansClavier/.test(caisse),
