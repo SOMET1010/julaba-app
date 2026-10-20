@@ -39,6 +39,7 @@ export interface VoiceAction {
   montant?: number;
   produit?: string;
   quantite?: number;
+  unite?: string;
   description?: string;
   declencheur?: string;
   [key: string]: unknown;
