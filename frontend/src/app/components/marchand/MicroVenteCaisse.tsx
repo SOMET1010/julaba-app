@@ -55,7 +55,7 @@ import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncais
 import { apparierProduit, noterRefusCreation } from '../../services/venteVocale';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
 import { interpreterReponse } from '../../services/grammaireCorrection';
-import { corrigerPrix, corrigerQuantite } from '../../services/ligneProvisoire';
+import { confirmer, corrigerPrix, corrigerQuantite, ligneAReproposer, serialiser } from '../../services/ligneProvisoire';
 import { produitPourVente } from '../../services/preselectionVente';
 import { lireVenteAuCatalogue, nomProduitLibre, venteSansProduit } from '../../services/venteAuCatalogue';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
@@ -195,6 +195,36 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // mutation directe du panier.
   const [ligneVocale, setLigneVocale] = useState<LigneProvisoire | null>(null);
 
+  // ── REPRISE D'UNE LIGNE VOCALE (docs/SPEC_VENTE_VOCALE.md §3) ────────────
+  //
+  // « Une ligne provisoire CONFIRMÉE mais pas encore ajoutée (interruption,
+  // fermeture) est PERSISTÉE localement et reproposée à la réouverture. Une
+  // ligne NON confirmée est jetée sans bruit. »
+  //
+  // La machine PURE existait, testée et figée (ligneProvisoire.ts,
+  // `test:provisoire`), mais n'avait AUCUN appelant en production — l'audit
+  // AJOUT-PRODUIT-VOCAL du 19/10 classait ce branchement P1 (« non branchée »).
+  // Le créneau réel : entre le « oui » de la marchande et l'écriture au
+  // panier, l'app peut mourir (WebView tuée, batterie, appel entrant) — la
+  // ligne confirmée disparaissait sans un mot.
+  //
+  // La clé suit la convention cartStorage R2 : elle ne dépend que de
+  // l'utilisatrice — deux comptes sur l'appareil ne se partagent pas une
+  // vente en attente.
+  const cleLigneVocale = `julaba_ligne_vocale_${user?.id || 'anonyme'}`;
+  const sauverLigneConfirmee = (l: LigneProvisoire) => {
+    try {
+      // Garde du module pur : `confirmer` refuse une ligne dont le prix n'est
+      // pas résolu — rien ne se persiste alors, et le panier ne la recevra
+      // pas non plus (même règle, même silence).
+      const c = confirmer(l);
+      if (c) window.localStorage.setItem(cleLigneVocale, serialiser(c));
+    } catch { /* jamais bloquant — le panier reste la seule source de vérité */ }
+  };
+  const oublierLigneVocale = () => {
+    try { window.localStorage.removeItem(cleLigneVocale); } catch { /* ignore */ }
+  };
+
   // La ligne confirmée va au PANIER, jamais encaissée ici.
   //
   // IMPORTANT — un SEUL appel mutateur de panier par ajout. addToCart et
@@ -204,6 +234,10 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // directement dans le produit passé à addToCart (le négoce prime → on
   // neutralise la promo catalogue), sans second appel.
   const ajouterLigneAuPanier = (l: LigneProvisoire) => {
+    // REPRISE (§3) — la version CONFIRMÉE est persistée AVANT l'écriture au
+    // panier : si l'appareil meurt dans ce créneau, la ligne est reproposée
+    // à la réouverture au lieu de disparaître entre le « oui » et le panier.
+    sauverLigneConfirmee(l);
     const prixU = l.prixUnitaire ?? 0;
     // Total EXACT résolu par la ligne provisoire — en FCFA, 500/3 ne retombe
     // pas juste : `prixU` n'est qu'un unitaire arrondi, c'est `l.total` qui
@@ -229,6 +263,9 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     if (guidageVocal()) speakMessage('TATA_AJOUT_PANIER');
     setSaisieOuverte(false);
     setLigneVocale(null);
+    // La ligne a pris place dans le panier (persisté de son côté par
+    // cartStorage) : la clé de reprise n'a plus de raison d'exister.
+    oublierLigneVocale();
     // Un produit inconnu n'est proposé au catalogue qu'après la confirmation
     // de sa ligne et son entrée effective dans le panier.
     if (!l.produitId && navigator.onLine !== false) {
@@ -354,6 +391,8 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         if (reponse.type === 'confirmation') ajouterLigneAuPanier(ligneVocale);
         else if (reponse.type === 'annulation' || reponse.type === 'suppression') {
           setLigneVocale(null); setSaisieOuverte(false);
+          // « annule » / « enlève » : la ligne meurt ici, sa trace de reprise aussi.
+          oublierLigneVocale();
         } else if (reponse.type === 'correction-quantite') {
           setLigneVocale(corrigerQuantite(ligneVocale, reponse.quantite));
         } else if (reponse.type === 'correction-prix') {
@@ -494,6 +533,25 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     if (!guidageVocal()) return;
     speakMessage(...introMessage());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois à l'arrivée sur la caisse, pas à chaque re-render
+  }, []);
+
+  // REPRISE (§3, suite) — à l'arrivée sur la caisse : une ligne CONFIRMÉE et
+  // résolue qui n'est jamais entrée au panier est REPROPOSÉE — remise en
+  // `a_confirmer`, car l'application ne rejoue jamais seule un argent qui a
+  // été confirmé avant la coupure : elle redit la ligne et attend un nouveau
+  // « oui » (bouton vert ou voix). Une ligne non confirmée — ou une clé vide,
+  // corrompue, d'un autre profil — est jetée SANS BRUIT, exactement comme le
+  // fige le contrat du module pur (`ligneAReproposer`) et son test.
+  useEffect(() => {
+    let reproposable: LigneProvisoire | null = null;
+    try { reproposable = ligneAReproposer(window.localStorage.getItem(cleLigneVocale)); } catch { reproposable = null; }
+    if (reproposable) {
+      setLigneVocale({ ...reproposable, statut: 'a_confirmer' });
+      setSaisieOuverte(true);
+    } else {
+      oublierLigneVocale();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule reprise à l'arrivée sur la caisse, clé stable pour la session
   }, []);
 
   /**
@@ -1034,7 +1092,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
             <ConfirmationLigne
               ligne={ligneVocale}
               onLigneChange={setLigneVocale}
-              onAnnuler={() => { setLigneVocale(null); setSaisieOuverte(false); }}
+              onAnnuler={() => { setLigneVocale(null); setSaisieOuverte(false); oublierLigneVocale(); }}
               onConfirmer={ajouterLigneAuPanier}
             />
           ) : <SaisieGuidee
