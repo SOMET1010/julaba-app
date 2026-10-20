@@ -1074,7 +1074,7 @@ export function LoginPassword() {
       overflowY: 'auto',
       overflowX: 'hidden',
       // On garde de la place sous le clavier pour la barre de navigation Android.
-      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+      paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))',
       position: 'relative',
     }}>
       {import.meta.env.DEV && showDevButton && (
@@ -1099,7 +1099,7 @@ export function LoginPassword() {
           alignItems: 'center',
           width: '100%',
           boxSizing: 'border-box',
-          padding: '22px 24px 4px',
+          padding: '8px 12px 0',
         }}
       >
         <div className="login-brand">
@@ -1124,7 +1124,7 @@ export function LoginPassword() {
         style={{
           width: '100%',
           maxWidth: 420,
-          padding: '0 24px',
+          padding: '0 12px',
           margin: '0 auto',
           flex: 1,
           boxSizing: 'border-box',
@@ -1165,7 +1165,7 @@ export function LoginPassword() {
                   onClick={handleBiometric}
                   disabled={isLoading}
                   style={{
-                    width: '100%', height: 96,
+                    width: '100%', height: 58,
                     borderRadius: 14, border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
                     background: 'var(--commerce-action)',
                     boxShadow: '0 2px 8px #3325330C',
@@ -1173,7 +1173,7 @@ export function LoginPassword() {
                   }}
                   whileTap={{ scale: 0.96 }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 22, fontWeight: 750 }}><Fingerprint aria-hidden="true" size={36} />{isLoading ? 'En cours…' : 'Entrer'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, fontWeight: 750 }}><Fingerprint aria-hidden="true" size={26} />{isLoading ? 'En cours…' : 'Entrer'}</span>
                 </motion.button>
               ) : (
                 <motion.button
@@ -1190,7 +1190,7 @@ export function LoginPassword() {
                   }}
                   whileTap={{ scale: 0.96 }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 20, fontWeight: 750 }}><KeyRound aria-hidden="true" size={30} />Utiliser mon code</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 750 }}><KeyRound aria-hidden="true" size={24} />Utiliser mon code</span>
                 </motion.button>
               )}
               {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
@@ -1350,7 +1350,7 @@ export function LoginPassword() {
             {/* Bascule clavier : uniquement en mode voix (sinon le pavé est déjà
                 la référence, toujours affiché). */}
             {voixEcouteDispo && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
               <button type="button" aria-label="Taper mon numéro sur le clavier" onClick={() => setShowKeypad(v => !v)}
                 style={{ width: 58, height: 58, borderRadius: 18, background: showKeypad ? '#DB7A2C' : 'var(--commerce-apricot)', color: showKeypad ? '#fff' : '#8A5A34', border: 'none', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                 <Keyboard aria-hidden="true" size={27} />
@@ -1365,7 +1365,7 @@ export function LoginPassword() {
               // mode sombre le surcharge proprement (commerce.css html.dark).
               width: '100%', boxSizing: 'border-box', background: 'var(--commerce-paper)', borderRadius: 22, marginTop: 6,
               overflow: 'hidden', boxShadow: '0 2px 12px rgba(120,60,20,0.08)', border: '1px solid #F0E0CD',
-              position: 'relative', paddingBottom: 12,
+              position: 'relative', paddingBottom: 4,
             }}>
               <PaveSaisie
                 disabled={isLoading || isListening}
@@ -1378,7 +1378,7 @@ export function LoginPassword() {
             </div>
             </>
             )}
-            <button type="button" className="login-primary" style={{ marginTop: 16 }}
+            <button type="button" className="login-primary" style={{ marginTop: 5 }}
               disabled={phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES) || isListening || isFinalizingDictation || isLoading}
               onClick={() => scheduleTransitionToPasswordAfterCheck(phone)}>
               <CheckCircle aria-hidden="true" size={26} />{isLoading ? 'Vérification…' : 'C’est mon numéro'}
@@ -1396,7 +1396,7 @@ export function LoginPassword() {
             <div style={{
               // AUTH-16 — surface sur token (mode sombre cohérent).
               width: '100%', background: 'var(--commerce-surface)', borderRadius: 16,
-              padding: '22px 18px', display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 10px', display: 'flex', alignItems: 'center', gap: 8,
               boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}>
               <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -1496,7 +1496,7 @@ export function LoginPassword() {
               {/* Bascule OPT-IN, jamais le mode par défaut (doc « mot de passe imagé »,
                   variante A) : la correspondance chiffre↔image est fixe et publique —
                   seul le glyphe affiché change, le PIN envoyé reste les mêmes chiffres. */}
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 4px' }}>
                 <button type="button" onClick={basculerPinEnImages}
                   aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
                   // AUTH-09 — cible ≥ 44 px (mesurée 149×30 px en R5).
