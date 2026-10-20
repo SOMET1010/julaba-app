@@ -132,28 +132,6 @@ export function InstitutionActeurs() {
     });
   }, [acteurRows, searchQuery, activeFilter, selectedType, selectedRegion]);
 
-  const handleSuspendre = async (id: string) => {
-    try {
-      await apiRequest(API_URL, `/acteurs/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ statut: 'suspendu' }),
-      });
-      window.location.reload();
-      toast.success('Acteur suspendu');
-    } catch { toast.error('Impossible de suspendre. Réessaie.'); }
-  };
-
-  const handleReactiver = async (id: string) => {
-    try {
-      await apiRequest(API_URL, `/acteurs/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ statut: 'actif' }),
-      });
-      window.location.reload();
-      toast.success('Acteur réactivé');
-    } catch { toast.error('Impossible de réactiver. Réessaie.'); }
-  };
-
   const handleVoirDossier = (acteur: any) => {
     setDetailActeur(acteur);
     setActiveView('detail');

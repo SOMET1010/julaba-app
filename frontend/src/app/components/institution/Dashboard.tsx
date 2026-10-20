@@ -102,23 +102,15 @@ export function Dashboard() {
         >
           <Card className="p-6 rounded-2xl">
             <h3 className="text-lg font-bold text-gray-900 mb-6">Performance par région</h3>
-            <ResponsiveContainer key="chart-dashboard-region" width="100%" height={400}>
-              <BarChart data={[]}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="region" stroke="#6B7280" />
-                <YAxis yAxisId="left" orientation="left" stroke="#6B7280" />
-                <YAxis yAxisId="right" orientation="right" stroke="#6B7280" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#FFF',
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '12px',
-                  }}
-                />
-                <Bar yAxisId="left" dataKey="transactions" fill="#2072AF" radius={[8, 8, 0, 0]} />
-                <Bar yAxisId="right" dataKey="volume" fill="#00563B" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-[400px] flex flex-col items-center justify-center text-center gap-2">
+              {/* DGE-08 — le graphique « Performance par région » se rendait
+                  avec data={[]} : une coquille vide censée représenter des
+                  transactions régionales qu'aucun agrégat ne fournit. Tant
+                  qu'aucun axe régional agrégé n'existe côté serveur, l'état
+                  vide est dit explicitement — jamais un graphique mort. */}
+              <p className="text-sm font-semibold text-gray-600">Aucune donnée régionale agrégée pour l'instant</p>
+              <p className="text-xs text-gray-400">L'agrégat régional arrive avec les listes groupées de la DGE.</p>
+            </div>
             <div className="flex items-center justify-center gap-6 mt-4">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded" style={{ backgroundColor: '#2072AF' }} />

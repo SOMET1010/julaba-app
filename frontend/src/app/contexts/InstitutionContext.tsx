@@ -69,6 +69,7 @@ interface InstitutionContextType {
   getStatistiquesParRole: () => Promise<StatRole[]>;
   getTopProduits: (limit?: number) => Promise<TopProduit[]>;
   getDonneesGraphique: (jours: number) => Promise<DonneesGraphique[]>;
+  getInscriptionsParJour: () => Promise<Array<{ jour: string; inscriptions: number }>>;
   getAlertes: () => Promise<AlerteInstitution[]>;
   getHistoriqueComplet: () => Promise<HistoriqueEntry[]>;
 
@@ -150,6 +151,16 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
     } catch { return []; }
   };
 
+  const getInscriptionsParJour = async (): Promise<Array<{ jour: string; inscriptions: number }>> => {
+    try {
+      const data = await getInstitutionAnalytics();
+      return (data?.inscriptionsParJour || []).map((i: any) => ({
+        jour: String(i.jour || ''),
+        inscriptions: Number(i.inscriptions) || 0,
+      }));
+    } catch { return []; }
+  };
+
   const getAlertes = async (): Promise<AlerteInstitution[]> => {
     try {
       const data = await getInstitutionAnalytics();
@@ -179,6 +190,7 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
     getStatistiquesParRole,
     getTopProduits,
     getDonneesGraphique,
+    getInscriptionsParJour,
     getAlertes,
     getHistoriqueComplet,
 };
