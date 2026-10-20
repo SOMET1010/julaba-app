@@ -319,12 +319,16 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               seul : c'est toujours elle qui appuie sur « C'est bon ».
 
               LA CORRECTION PASSE PAR L'OREILLE : le nom transcrit est relu
-              (STOCK_059). Si c'est faux, elle appuie encore et REDIT — redire
-              REMPLACE, jamais mélange — ou corrige mot à mot dans le champ
-              ci-dessus, qui reste éditable. */}
+              (STOCK_059). Si c'est faux, TROIS gestes, une seule règle :
+              REMPLACER — redire (le micro reste là), corriger À LA VOIX
+              mot à mot (« non, pas kasso, gombo » — le nom affiché est passé
+              au micro via nomActuel : la réfutation et le mot réfuté sortent,
+              ce qui reste est son produit), ou corriger mot à mot au clavier
+              dans le champ ci-dessus, qui reste éditable. */}
           <BoutonDireNom
             sesProduits={(products || []).map(p => ({ nom: p.nom }))}
             dire={dire}
+            nomActuel={nom}
             onNom={(lu) => {
               setNom(lu.brouillon.nom);
               // Ce qu'elle a donné EN MÊME TEMPS que le nom n'est pas jeté :

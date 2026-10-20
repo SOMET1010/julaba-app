@@ -253,6 +253,56 @@ console.log('\n[10] STK-25 — UN NOM QUE PERSONNE NE CONNAÎT NE SE JETTE PLUS'
   ok(/nomLibreDicte\(/.test(bouton), 'le bouton « Ajouter en parlant » appelle bien le repli');
 }
 
+console.log('\n[correction mot à mot] « non, pas kasso, kako » — arbitrage Patrick 20/10');
+{
+  // LA LECTURE DU COMPOSANT, ET RIEN D'AUTRE : BoutonDireNom exécute
+  // `produitDit(texte) ?? nomLibreDicte(texte, nomActuel)`. Le banc l'exécute
+  // pareil — une phrase de correction avec le nom au lexique passe par
+  // `produitDit` (gombo), avec un nom libre par le repli (kako). Tester
+  // `nomLibreDicte` seul sur « gombo » serait une fiction : motOutil filtre
+  // les formes du lexique précisément parce que `extraire` les aurait prises.
+  const dit = (t: string, nomActuel?: string) =>
+    produitDit(t, [])?.brouillon.nom ?? nomLibreDicte(t, nomActuel)?.brouillon.nom ?? null;
+
+  // LE CAS FONDATRICE : le nom transcrit « Kasso » est faux, elle appuie et
+  // corrige À LA VOIX. Avant le lot, la réfutation et le mot réfuté ENTRAIENT
+  // dans le nom libre (« Non pas kasso ») — le champ se remplaçait par sa
+  // propre erreur. Les marqueurs sortent TOUJOURS ; le nom réfuté sort
+  // parce que la phrase le réfute.
+  ok(dit('non, pas kasso, kako', 'Kasso') === 'Kako',
+     '« non, pas kasso, kako » avec Kasso affiché → Kako (le mot à mot remplace, il ne mélange pas)');
+  // Les marqueurs sortent même SANS nom à réfuter : première dictée ratée.
+  ok(dit('non kako') === 'Kako',
+     '« non kako » → Kako (« non » n\'est jamais un produit)');
+  ok(dit("non c'est kako") === 'Kako',
+     "« non c'est kako » → Kako");
+  // Le produit DU lexique garde son chemin normal : la correction ne casse
+  // rien — « gombo » est reconnu même dans une réfutation.
+  ok(dit('non, pas kasso, gombo') === 'gombo',
+     'au lexique, `produitDit` garde son chemin : gombo');
+  // Réfuter SANS redonner : rien ne se remplace — le champ ne bouge pas,
+  // le refus se dit (STOCK_046), elle reprend la main.
+  ok(dit('non', 'Kasso') === null,
+     '« non » seul ne remplace rien (pas de champ vidé par un refus)');
+  ok(dit('non, pas kasso', 'Kasso') === null,
+     'réfuter le nom affiché sans proposer le bon : null, pas « vide »');
+  // REDIT POUR CONFIRMER : sans réfutation dans la phrase, le nom affiché ne
+  // sort pas — redire « kasso » reste possible, et un produit homonyme d'un
+  // autre reste dictable.
+  ok(dit('kasso', 'Kasso') === 'Kasso',
+     'redire « kasso » sans « non » reste une dictée : Kasso');
+  // La dictée STK-25 d'origine reste intacte.
+  ok(dit('ajoute dix kassos') === 'Kassos',
+     '« ajoute dix kassos » (STK-25) ne change pas');
+  // Le parcours guidé passe le nom affiché au micro.
+  const guide = readFileSync(new URL('../components/marchand/AjoutProduitGuide.tsx', import.meta.url), 'utf-8');
+  ok(/nomActuel=\{nom\}/.test(guide),
+     'AjoutProduitGuide passe le nom affiché (`nomActuel={nom}`) au bloc dictée');
+  const direNom = readFileSync(new URL('../components/marchand/BoutonDireNom.tsx', import.meta.url), 'utf-8');
+  ok(/nomLibreDicte\([^)]*,\s*nomActuel\)/.test(direNom),
+     'BoutonDireNom réfute le nom affiché à ses deux oreilles (web + Sherpa)');
+}
+
 console.log(echecs === 0
   ? '\n✅ Elle dit son produit ; on ne lui demande que ce qui manque.\n'
   : `\n❌ ${echecs} échec(s)\n`);

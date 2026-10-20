@@ -17,9 +17,14 @@
  *
  * LA CORRECTION D'UNE NON-LECTRICE PASSE PAR L'OREILLE. Le nom transcrit est
  * relu à voix haute (STOCK_059, dit par l'écran) : elle entend ce qui a été
- * écrit. Si c'est faux, elle appuie encore et REDIT — le micro reste là — ou
- * corrige mot à mot au clavier (le champ reste éditable). Redire = remplacer,
- * jamais mélanger : une dictée n'ajoute pas des mots à une dictée.
+ * écrit. Si c'est faux, TROIS gestes, une seule règle : REMPLACER.
+ *   · elle appuie encore et REDIT — le micro reste là, redire remplace ;
+ *   · elle corrige la correction mot à mot À LA VOIX : « non, pas kasso,
+ *     gombo » — les mots qui réfutent sortent, le nom réfuté (celui affiché,
+ *     `nomActuel`) sort, ce qui reste est SON produit (`nomLibreDicte`) ;
+ *   · ou elle corrige mot à mot au clavier (le champ reste éditable).
+ * Redire = remplacer, jamais mélanger : une dictée n'ajoute pas des mots à
+ * une dictée.
  *
  * ON NE RÉÉCRIT PAS LA DICTÉE. Les mêmes primitives que `BoutonDireProduit`
  * (STK-05) et `BoutonDirePrix` (VOX-03) : `startLiveDictation` (Sherpa, APK),
@@ -58,6 +63,10 @@ interface Props {
   onNom: (lu: EcouteProduit) => void;
   /** Fait parler l'écran (le guidage vocal de la caisse). */
   dire?: (texte: string) => void;
+  /** Le nom affiché dans le champ — celui qu'elle peut RÉFUTER à la voix
+   *  (« non, pas kasso, gombo »). Sans lui, la correction mot à mot garde
+   *  quand même les marqueurs de réfutation hors du nom. */
+  nomActuel?: string;
 }
 
 /** Une seule clé pour un refus : l'écran l'affiche et la voix le dit. */
@@ -65,7 +74,7 @@ const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
   void rendreMessage(resoudreMessage(id), (t) => dire?.(t));
 };
 
-export function BoutonDireNom({ sesProduits, onNom, dire }: Props) {
+export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
   const arretRef = useRef<null | (() => Promise<void>)>(null);
@@ -100,7 +109,7 @@ export function BoutonDireNom({ sesProduits, onNom, dire }: Props) {
         const web = demarrerRecoWeb({
           interim: () => {},
           conclure: (texte) => {
-            const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '');
+            const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
             void fermer();
             if (!lu) { DIRE_CLE('STOCK_046', dire); return; }
             onNom(lu);
@@ -122,8 +131,9 @@ export function BoutonDireNom({ sesProduits, onNom, dire }: Props) {
         if (!estFinal) return;
         // STK-25 AUX DEUX OREILLES — le lexique, puis SON étal, puis le nom
         // libre. « Ajoute dix kassos » ne peut pas être jeté par le seul
-        // chemin qui l'a pourtant transcrit.
-        const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '');
+        // chemin qui l'a pourtant transcrit. Et la correction mot à mot
+        // (« non, pas kasso, gombo ») réfute le nom affiché.
+        const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
         void fermer();
         if (lu) { onNom(lu); return; }
         DIRE_CLE('STOCK_046', dire);
