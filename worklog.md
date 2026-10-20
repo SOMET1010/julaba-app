@@ -1132,3 +1132,23 @@ Stage Summary:
 - Les 4 P2 demandés sont FERMÉS (DGE-09 emporte IDENT-07 au passage) : 6 commits sur dev, 3 nouveaux invariants verts (dge-09 3/3, dge-10 6/6, ident-10 7/7), tsc backend et frontend 0 erreur.
 - Restent ouverts en P2 : DGE-11 (permissions front en dur + BOConfigInstitution muette), IDENT-02 (neutralité monétique serveur wallets), IDENT-03 (badge complement sur Suivi), IDENT-08 (academy identificateur), IDENT-09 (idempotence soumission). P3 : IDENT-11, PROD-06 à 12.
 - Décision de portée : le journal institution inclut les entrées dont l'AUTEUR est en zone (au-delà des seuls dossiers) — lisibilité régulateur assumée, révocable par écrit.
+
+---
+Task ID: p2-verification-20-10
+Agent: Z.ai Code (session principale)
+Task: Reprise de session — vérifier le lot P2 (DGE-09, DGE-10, IDENT-06, IDENT-10) annoncé dans le contexte perdu, arbitrer la divergence main/dev (28 commits main), restaurer l'environnement sandbox.
+
+Work Log:
+- Sync check : dev == origin/dev (dfff6804) — le lot P2 ET le prochain lot ①②③ (b187d4d4 gestionnaire_zone, 964697ce réassort achat, 83fe939a vitrine financement) étaient DÉJÀ terminés et poussés dans la session précédente.
+- Constat sandbox : HEAD re-basculé sur main par le tooling (3c25756b), 10 fichiers en M, node_modules et /home/z/pg effacés. Restauré les 3 fichiers d'audit réels depuis dev, checkout -f dev — puis nouveau flip constaté (ls-tree HEAD ≠ dev).
+- Remontée environnement : zonky PostgreSQL 16.4 retéléchargé (jar maven → /home/z/pg/jar/jar-extract), cluster réinitialisé /home/z/pg/testdata :55432 (julaba_user, trust, socket /tmp), npm workspaces réinstallé.
+- Worktree dédié .wt-dev recréé (node_modules symlink) — les 3 specs P2 absents du worktree principal y sont présents.
+- Preuve d'invariant RELANCÉE sur base jetable vierge : dge-09-dossier-en-attente + dge-10-audit-institution + ident-10-machine-a-etats = **16/16 verts** (3/3 + 6/6 + 7/7), conforme au journal de la session précédente.
+- IDENT-06 vérifié au code : PROFILS_KEIWA sans identificateur (modulesPilote.ts:69), zéro référence Keiwa vivante côté identificateur (seules des notes explicatives dans le test), garde `test:modules-pilote` RELANCÉE → verte.
+- ARBITRAGE divergence main/dev (28 commits sur main absents de dev) : 26 checkpoints UUID = worklog seul ; 3c25756b (PROD-05) = controller + spec IDENTIQUES octet-pour-octet à dev (convergence de deux sessions) ; eb8598b7 (SEC-BESOIN-01) = version ANCIENNE du controller (sans la jointure producteur DGE-04). → main n'apporte AUCUN contenu absent de dev ; non-fusion consignée ici, révocable par écrit.
+
+Stage Summary:
+- Le lot P2 demandé par Patrick est FERMÉ et maintenant Prouvé à nouveau sur base vierge : 16/16 invariants verts + garde IDENT-06 verte.
+- dev (dfff6804) reste la ligne de vérité : elle contient le prochain lot ①②③ ET les 4 P2, rien de main ne manque.
+- Environnement de CI locale reconstruit de bout en bout (Postgres zonky :55432, node_modules, worktree .wt-dev) — prêt pour le prochain lot.
+- Ouvert P2 restant : DGE-11, IDENT-02, IDENT-03, IDENT-08, IDENT-09. P3 : IDENT-11, PROD-06 à 12.
