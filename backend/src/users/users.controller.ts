@@ -406,8 +406,11 @@ export class UsersController {
         throw new ForbiddenException('Cet acteur n\'est pas dans votre zone');
       }
       // IDENT-05 — le PIN est vérifié ICI, côté serveur, à chaque écriture PII
-      // d'un acteur de la zone (le check écran ne suffit jamais).
-      const requerant = await this.usersService.findOne(req.user.id);
+      // d'un acteur de la zone (le check écran ne suffit jamais). Lecture BRUTE
+      // via le repo : findOne du service passe par la sanitisation
+      // (stripSensitiveUserFields) qui retire le PIN chiffré — ici la matière
+      // sert à la VÉRIFICATION, elle ne repart jamais vers le client.
+      const requerant = await this.usersRepo.findOne({ where: { id: req.user.id } });
       await this.exigerPinIdentificateurActeur(requerant, body.pin);
     }
 
