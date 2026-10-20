@@ -189,8 +189,38 @@ export function InstitutionSupervision() {
     });
   }, [transactions, tab, searchQuery, filterType, filterRegion]);
 
+  // DGE-08 — l'export génère un VRAI fichier CSV (celles des lignes filtrées
+  // affichées), plus un toast qui n'écrit rien.
   const handleExport = (format: string) => {
-    toast.success(`Export ${format.toUpperCase()} lancé`, { description: `Période : ${periode === 'mois' ? 'Mois en cours' : periode === 'annuel' ? 'Cumul annuel' : 'Historique'}` });
+    const lignes = filtrees || [];
+    if (lignes.length === 0) {
+      toast.info('Rien à exporter sur la période');
+      return;
+    }
+    const entetes = ['Date', 'Acteur', 'Type', 'Region', 'Montant', 'Statut'];
+    const echapper = (v: unknown) => {
+      const str = String(v ?? '').replace(/"/g, '""');
+      return `"${str}"`;
+    };
+    const corps = lignes.map((tx: any) => [
+      tx.date ?? tx.createdAt ?? '',
+      tx.acteurNom ?? tx.nom ?? '',
+      tx.acteurType ?? tx.type ?? '',
+      tx.region ?? '',
+      tx.montant ?? '',
+      tx.statut ?? badge ?? '',
+    ].map(echapper).join(','));
+    const csv = [entetes.map(echapper).join(','), ...corps].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supervision-${periode}-${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'csv' : format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Export ${format.toUpperCase()} téléchargé`, { description: `${lignes.length} ligne(s) — période : ${periode === 'mois' ? 'Mois en cours' : periode === 'annuel' ? 'Cumul annuel' : 'Historique'}` });
   };
 
   return (
@@ -656,42 +686,19 @@ function SupervisionTxDrawer({ tx, onClose }: { tx: any; onClose: () => void }) 
           )}
           <div className="flex gap-3 pt-2 pb-6">
             {badge === 'en_attente' ? (
-              <>
-                <motion.button type="button"
-                  onClick={async () => {
-                    try {
-                      await apiRequest(API_URL, `/transactions/${tx.id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ statut: 'validee' }),
-                      });
-                      toast.success('Transaction validée');
-                      onClose();
-                    } catch { toast.error('Impossible de valider. Réessaie.'); }
-                  }}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
-                  style={{ backgroundColor: '#16A34A' }}
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <CheckCircle className="w-4 h-4" />
-                  Valider
-                </motion.button>
-                <motion.button type="button"
-                  onClick={async () => {
-                    try {
-                      await apiRequest(API_URL, `/transactions/${tx.id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ statut: 'annulee' }),
-                      });
-                      toast.error('Transaction rejetée');
-                      onClose();
-                    } catch { toast.error('Impossible de rejeter. Réessaie.'); }
-                  }}
-                  className="flex-1 py-3.5 rounded-2xl font-bold text-white bg-red-500 flex items-center justify-center gap-2"
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <XCircle className="w-4 h-4" />
-                  Rejeter
-                </motion.button>
-              </>
-            ) : (
+            <>
+              {/* DGE-06 / A-03 — les boutons Valider/Rejeter appelaient PATCH
+                  /transactions/:id réservé aux comptes BO : 403 GARANTI pour
+                  l'institution, un échec silencieux derrière un toast. La
+                  validation relève des comptes DGE/back-office (arbitrage
+                  A-03, délégation Patrick 20/10) : l'institution SUPERVISE,
+                  elle ne mutera aucun statut au pilote. */}
+              <div className="flex-1 bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 text-xs text-amber-800 font-semibold">
+                La validation d'une transaction relève des comptes DGE /
+                back-office — l'institution supervise sans muter les statuts.
+              </div>
+            </>
+) : (
               <motion.button type="button"
                 onClick={() => { toast('Export de la transaction'); onClose(); }}
                 className="flex-1 py-3.5 rounded-2xl font-bold text-white flex items-center justify-center gap-2"

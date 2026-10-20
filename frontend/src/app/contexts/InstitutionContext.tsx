@@ -60,38 +60,6 @@ export interface HistoriqueEntry {
   details?: string;
 }
 
-// ── Configuration Dashboard Institution ──────────────────────────────────────
-export interface DashboardConfig {
-  kpis: {
-    acteursActifs: boolean;
-    totalActeurs: boolean;
-    acteursSuspendus: boolean;
-    volumeTransactions: boolean;
-    valeurMonetaire: boolean;
-    digitalisation: boolean;
-    inclusionCNPS: boolean;
-    inclusionCNAM: boolean;
-    croissanceMensuelle: boolean;
-  };
-  resumeJour: {
-    nouveauxInscrits: boolean;
-    dossiersValides: boolean;
-    dossiersRejetes: boolean;
-    transactionsDuJour: boolean;
-    alertesActives: boolean;
-  };
-  graphiques: {
-    evolutionTransactions: boolean;
-    repartitionType: boolean;
-    activiteRegion: boolean;
-    courbeAdoption: boolean;
-  };
-  alertes: {
-    afficherBanniere: boolean;
-    afficherDetail: boolean;
-  };
-}
-
 interface InstitutionContextType {
   institution: Institution | null;
   setInstitution: (institution: Institution | null) => void;
@@ -104,56 +72,96 @@ interface InstitutionContextType {
   getAlertes: () => Promise<AlerteInstitution[]>;
   getHistoriqueComplet: () => Promise<HistoriqueEntry[]>;
 
-  // Configuration Dashboard
-  dashboardConfig: DashboardConfig | null;
-  getDashboardConfig: () => Promise<DashboardConfig>;
-  updateDashboardConfig: (config: DashboardConfig) => Promise<void>;
 }
 
 const InstitutionContext = createContext<InstitutionContextType | undefined>(undefined);
 
 export function InstitutionProvider({ children }: { children: ReactNode }) {
   const [institution, setInstitution] = useState<Institution | null>(null);
-  const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
 
   const getKPINationaux = async (): Promise<KPINational> => {
+    // DGE-03 — l'espace institution lit SES routes scopées (/institution/*),
+    // plus les routes /admin/* inexistantes ou interdites qui rendaient des
+    // zéros silencieux.
     try {
-      const data = await apiRequest<any>(API_URL, '/admin/analytics', { method: 'GET' });
+      const data = await apiRequest<any>(API_URL, '/institution/dashboard', { method: 'GET' });
       return {
-        totalActeurs: data.total_users || 0,
-        acteursActifs: data.validated_users || 0,
-        volumeTransactions: 0,
-        tauxCroissance: 0,
-        tauxInclusion: data.conversion_rate || 0,
+        totalActeurs: data?.macroKPIs?.totalActeurs ?? 0,
+        acteursActifs: data?.macroKPIs?.acteursActifs ?? 0,
+        volumeTransactions: data?.macroKPIs?.volumeTransactions ?? 0,
+        tauxCroissance: data?.macroKPIs?.croissanceMensuelle ?? 0,
+        tauxInclusion: data?.macroKPIs?.pctInclusionCNPS ?? 0,
       };
-    } catch { return { totalActeurs: 0, acteursActifs: 0, volumeTransactions: 0, tauxCroissance: 0, tauxInclusion: 0 }; }
+    } catch {
+      return { totalActeurs: 0, acteursActifs: 0, volumeTransactions: 0, tauxCroissance: 0, tauxInclusion: 0 };
+    }
+  };
+
+  // DGE-03 — UNE route pour les 4 séries : GET /institution/analytics (scopé
+  // périmètre, données réelles). Les 4 anciennes URLs /admin/analytics/* ou
+  // 404 ou 403.
+  let cacheAnalytics: { at: number; data: any } | null = null;
+  const getInstitutionAnalytics = async (): Promise<any> => {
+    if (cacheAnalytics && Date.now() - cacheAnalytics.at < 30_000) return cacheAnalytics.data;
+    const data = await apiRequest<any>(API_URL, '/institution/analytics', { method: 'GET' });
+    cacheAnalytics = { at: Date.now(), data };
+    return data;
   };
 
   const getStatistiquesParRole = async (): Promise<StatRole[]> => {
     try {
-      const data = await apiRequest<any>(API_URL, '/admin/analytics/roles', { method: 'GET' });
-      return data.roles || [];
+      const data = await getInstitutionAnalytics();
+      const total = (data?.roles || []).reduce((s: number, r: any) => s + Number(r.count || 0), 0);
+      return (data?.roles || []).map((r: any) => ({
+        role: r.role,
+        total: Number(r.count) || 0,
+        actifs: Number(r.actifs) || 0,
+        nouveauxMois: Number(r.nouveauxCeMois) || 0,
+        pourcentage: total > 0 ? Math.round((Number(r.count || 0) / total) * 100) : 0,
+      }));
     } catch { return []; }
   };
 
   const getTopProduits = async (limit: number = 5): Promise<TopProduit[]> => {
     try {
-      const data = await apiRequest<any>(API_URL, `/admin/analytics/produits?limit=${limit}`, { method: 'GET' });
-      return data.produits || [];
+      const data = await getInstitutionAnalytics();
+      // tendance : non calculé côté serveur (il faudrait comparer deux
+      // périodes) — 'stable' assumé, jamais une hausse inventée.
+      return (data?.produits || []).slice(0, limit).map((p: any) => ({
+        nom: p.nom,
+        volume: Number(p.commandes) || 0,
+        valeur: Number(p.volume) || 0,
+        tendance: 'stable' as const,
+      }));
     } catch { return []; }
   };
 
-  const getDonneesGraphique = async (jours: number): Promise<DonneesGraphique[]> => {
+  const getDonneesGraphique = async (jours: number = 7): Promise<DonneesGraphique[]> => {
     try {
-      const data = await apiRequest<any>(API_URL, `/admin/analytics/graphique?jours=${jours}`, { method: 'GET' });
-      return data.graphique || [];
+      const data = await getInstitutionAnalytics();
+      const series: any[] = data?.graphique || [];
+      const borne = Math.max(1, Math.min(30, jours));
+      // Le serveur fournit 7 jours ; le client coupe selon la demande.
+      return series.slice(-borne).map((g: any) => ({
+        label: String(g.jour || ''),
+        transactions: Number(g.transactions) || 0,
+        acteurs: 0, // non calculé par série temporelle côté serveur
+      }));
     } catch { return []; }
   };
 
   const getAlertes = async (): Promise<AlerteInstitution[]> => {
     try {
-      const data = await apiRequest<any>(API_URL, '/admin/analytics/alertes', { method: 'GET' });
-      return data.alertes || [];
+      const data = await getInstitutionAnalytics();
+      return (data?.alertes || []).map((a: any, i: number) => ({
+        id: `alerte-${i}-${a.message}`,
+        type: 'seuil' as const,
+        titre: 'Périmètre',
+        message: String(a.message || ''),
+        urgence: 'info' as const,
+        date: new Date().toISOString(),
+        lue: false,
+      }));
     } catch { return []; }
   };
 
@@ -162,25 +170,6 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
       const data = await apiRequest<any>(API_URL, '/audit', { method: 'GET' });
       return data.logs || [];
     } catch { return []; }
-  };
-
-  const getDashboardConfig = async (): Promise<DashboardConfig> => {
-    try {
-      const data = await apiRequest<any>(API_URL, '/admin/config', { method: 'GET' });
-      setDashboardConfig(data);
-      return data;
-    } catch {
-      const config: DashboardConfig = { kpis: { acteursActifs: true, totalActeurs: true, acteursSuspendus: true, volumeTransactions: true, valeurMonetaire: true, digitalisation: true, inclusionCNPS: true, inclusionCNAM: true, croissanceMensuelle: true }, resumeJour: { nouveauxInscrits: true, dossiersValides: true, dossiersRejetes: true, transactionsDuJour: true, alertesActives: true }, graphiques: { evolutionTransactions: true, repartitionType: true, activiteRegion: true, courbeAdoption: true }, alertes: { afficherBanniere: true, afficherDetail: true } };
-      setDashboardConfig(config);
-      return config;
-    }
-  };
-
-  const updateDashboardConfig = async (config: DashboardConfig): Promise<void> => {
-    try {
-      await apiRequest(API_URL, '/admin/config', { method: 'PATCH', body: JSON.stringify(config) });
-      setDashboardConfig(config);
-    } catch { setDashboardConfig(config); }
   };
 
   const value: InstitutionContextType = {
@@ -192,12 +181,7 @@ export function InstitutionProvider({ children }: { children: ReactNode }) {
     getDonneesGraphique,
     getAlertes,
     getHistoriqueComplet,
-
-    // Configuration Dashboard
-    dashboardConfig,
-    getDashboardConfig,
-    updateDashboardConfig,
-  };
+};
 
   return <InstitutionContext.Provider value={value}>{children}</InstitutionContext.Provider>;
 }
