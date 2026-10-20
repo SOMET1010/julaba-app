@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | date | 20/10/2026 |
-| déclencheur | Patrick : « Assure-toi que la saisie des produits à la voix fonctionne. Et aussi, la vente de produits à la voix. Mais avons-nous fait un audit complet de cette fonctionnalité ? » |
-| périmètre | front `marchand/{MicroVenteCaisse,ConfirmationLigne,SaisieGuidee,AjoutProduitGuide,POSCaisse}`, `services/{vendreVocalUnifie,ligneProvisoire,venteVocale,venteAuCatalogue,grammaireCorrection,webReco}`, `hooks/useVoiceCore`, `voice-offline/*` ; back `caisse-rest` (aucun changement requis) ; docs `SPEC_VENTE_VOCALE.md` |
-| base | dev@e3e3a63, correctif inclus : 0fea799 |
-| verdict | **CONFORME après correctif.** Les 3 P0 et les P2 de l'audit AJOUT-PRODUIT-VOCAL du 19/10 étaient déjà fermés dans dev ; le dernier P1 ouvert (reprise de ligne provisoire non branchée) est fermé par le commit 0fea799 inclus dans cet audit. Deux points restent ouverts assumés (§5). |
+| déclencheur | Patrick : « Assure-toi que la saisie des produits à la voix fonctionne. Et aussi, la vente de produits à la voix. Mais avons-nous fait un audit complet de cette fonctionnalité ? » — puis « Continue les corrections » |
+| périmètre | front `marchand/{MicroVenteCaisse,ConfirmationLigne,SaisieGuidee,AjoutProduitGuide,POSCaisse,BoutonDireNom,BoutonDireProduit}`, `services/{vendreVocalUnifie,ligneProvisoire,venteVocale,venteAuCatalogue,grammaireCorrection,webReco}`, `hooks/useVoiceCore`, `voice-offline/*` ; back `caisse-rest` (aucun changement requis) ; docs `SPEC_VENTE_VOCALE.md` |
+| base | dev@e3e3a63, correctifs inclus : 0fea799, puis lot « Continue les corrections » : 82c7471, 2ba6c01, f3d42a7, ab6da32 |
+| verdict | **CONFORME après correctifs.** Les 3 P0 et les P2 de l'audit AJOUT-PRODUIT-VOCAL du 19/10 étaient déjà fermés dans dev ; le dernier P1 ouvert (reprise de ligne provisoire non branchée) est fermé par 0fea799 ; le point ouvert §5.3 (dictée du nom dans le parcours) est fermé par 2ba6c01. Trois gardes rouges héritées du 19/10 ont été recalées (ab6da32) et deux phrases non cataloguées inscrites (f3d42a7). Restent les points ouverts assumés (§5). |
 
 ---
 
@@ -32,12 +32,14 @@
    (`MicroVenteCaisse.tsx:786 accepterCreation`), qui écrit `POST /caisse/produits`
    (back libre : `nomDeProduitSaisi` inséré tel quel, seule règle ≥ 2 lettres —
    cf. audit catalogue §2.2). Le refus est mémorisé par produit (`noterRefusCreation`).
-2. **Mon stock — AjoutProduitGuide** — nom libre tapé (zéro catalogue), prix À LA
-   VOIX : `BoutonDirePrix ouvrirToutSeul` (`AjoutProduitGuide.tsx:399-404`) — le
-   micro s'ouvre tout seul, Tata pose la question, le montant dicté remplit le
-   prix. L'animation de confirmation (821cc12) évite l'écran muet après validation.
-   Le NOM reste tactile : décision design assumée — la création vocale de produit
-   passe par la caisse (porte 1), l'écran stock reste le repli.
+2. **Mon stock — AjoutProduitGuide** — nom libre TAPÉ **ou DIT depuis le 20/10**
+   (bloc `BoutonDireNom`, audit §5.3 fermé par 2ba6c01 : le micro écoute à
+   l'étape du nom, reprend SON orthographe via son étal, conserve unité/prix
+   dits en même temps, RELIT le nom transcrit — STOCK_059 — et redire
+   REMPLACE), prix À LA VOIX : `BoutonDirePrix ouvrirToutSeul`
+   (`AjoutProduitGuide.tsx` étape « prix ») — le micro s'ouvre tout seul,
+   Tata pose la question, le montant dicté remplit le prix. L'animation de
+   confirmation (821cc12) évite l'écran muet après validation.
 3. **Caisse tactile — « Autre article »** (fix e3e3a63) — création d'un vrai
    produit au nom saisi (`POSCaisse.tsx:414-445`), sortie « Créer « X » comme
    nouveau produit » dans la recherche de références, et « Non — je crée mon
@@ -78,22 +80,46 @@
 1. **P3 — recette sur appareil** : les 14 scénarios de `SPEC_VENTE_VOCALE.md:161-173`
    (bruit, interruption, double appui, reprise panier…) exigent un téléphone réel +
    l'APK Sherpa. Le banc tsx prouve les briques ; la recette §5 du catalogue audit
-   (rejouée tactile depuis e3e3a63) reste à faire sur stack locale / APK.
+   (rejouée tactile depuis e3e3a63, complétée de la dictée du nom depuis 2ba6c01)
+   reste à faire sur stack locale / APK.
 2. **Dette C-C1** — prix du catalogue statique `data/catalogue-produits.ts` :
    arbitrage Patrick requis (déjà consigné, non retraité ici).
-3. **Nom du produit dans Mon stock non dictable** : la création vocale de produit
-   passe par la caisse (porte 1) ; si Patrick veut la dictée du nom AUSSI dans
-   AjoutProduitGuide, c'est un chantier à part (bloc dictée + correction mot à mot).
+3. ~~Nom du produit dans Mon stock non dictable~~ — **FERMÉ le 20/10** par le lot
+   « Continue les corrections » : `BoutonDireNom.tsx` (2ba6c01) dicte le nom à
+   l'étape « nom » du parcours guidé, reprend l'orthographe de son étal, relit le
+   nom transcrit par la voix (STOCK_059), conserve unité/prix dits en même temps,
+   et les refus se disent (STOCK_060/061). La correction d'une non-lectrice passe
+   par l'oreille : redire REMPLACE, ou correction mot à mot au clavier. Une
+   correction vocale MOT À MOT (« non, pas kasso, gombo ») resterait un chantier
+   à part si Patrick la veut.
+4. **Rouges hérités hors périmètre** (constatés au `verify` complet du 20/10,
+   préexistants sur dev, hors couple saisie/vente — à arbitrer par lot séparé) :
+   `test:refus-hors-ligne-commande` (banc : `toast` absent du scope d'eval —
+   l'import existe, MesCommandes.tsx:22), `test:accueil-honnete` (tuile Keiwa
+   producteur), `test:voix-connexion-lot-a` (effacement login),
+   `test:modules-pilote` (38 routes hors pilote), `test:prix-de-la-marchande`
+   (dette C-C1, hors maillons verify). Et `test:i18n-empreintes-argent` est
+   REDEVENU VERT (à retirer de CONNUS dans `verify-tout.mjs`).
 
-## 6. Preuves exécutées (20/10/2026, dev@e3e3a63 + 0fea799)
+## 6. Preuves exécutées (20/10/2026, dev@ab6da32)
 
-- `tsc -b` front ✅ (exit 0, après correctif) ; `nest build` back ✅
+- `tsc -b` front ✅ (exit 0 réel, --force) ; eslint 0 erreur sur les fichiers touchés
 - Suites vertes relancées de première main : `test:vendre-unifie`,
   `test:vendre-unifie-unite`, `test:provisoire`, `test:correction`,
   `test:prix-ambigu`, `test:prix-catalogue`, `test:prix-unitaire`,
   `test:prix-sans-quantite`, `test:prix-marchande`, `test:ecoute-caisse`,
   `test:voix`, `test:web-reco`, `test:offline`, `test:grammaire-encaissement`,
-  `test:choix-unite` — **15/15 ✅**
+  `test:choix-unite` — **15/15 ✅** ; ajout du lot : `test:produit-dit`,
+  `test:premier-produit`, `test:montant-dit`, `test:i18n-argent` ✅ ;
+  gardes de source : `test:bouton-dire-produit`, `test:parcours-guide-parle`,
+  `test:refus-parle`, `test:charte-marchande`, `test:vente-sans-prix`
+  (recalée), `test:caisse-micro` (recalée), `test:vente-au-catalogue`
+  (recalée), `test:i18n-locales`, `test:i18n-source` ✅
+- `verify` complet (dev@ab6da32) : **146 vert(s) / 6 rouge(s) sur 152** —
+  2 rouges CONNUS (voix-trace-source, garde-argent) + 4 rouges hérités TOUS
+  hors périmètre du lot (§5.4) ; **0 rouge nouveau dû au lot** — le lot a au
+  contraire fermé 5 rouges hérités (vente-sans-prix, i18n-source ×3,
+  caisse-micro, vente-au-catalogue)
 
 ## 7. Conclusion
 
@@ -101,7 +127,10 @@ Réponse à la question de Patrick : **oui, il existe maintenant un audit comple
 du couple saisie/vente à la voix — celui-ci — et **les deux fonctionnalités
 fonctionnent** : la dictée vend des produits connus et inconnus (avec création
 guidée au nom libre), le prix jamais inventé se fait redemander, la ligne
-provisoire se relit, se corrige et se confirme avant tout argent, et depuis
-0fea799 elle survit à une coupure de l'application. Le mur tactile du catalogue
-était déjà tombé (e3e3a63). Restent la recette sur appareil (P3) et deux
-arbitrages Patrick listés en §5.
+provisoire se relit, se corrige et se confirme avant tout argent, depuis 0fea799
+elle survit à une coupure de l'application, et depuis 2ba6c01 le nom du produit
+se DIT partout où il se demande — y compris à l'étape « nom » du parcours guidé,
+qui n'acceptait que le tactile. Le mur tactile du catalogue était déjà tombé
+(e3e3a63) ; la dictée web ne jette plus les noms libres que l'APK gardait
+(82c7471). Restent la recette sur appareil (P3), la dette C-C1 et les rouges
+hérités hors périmètre listés en §5.
