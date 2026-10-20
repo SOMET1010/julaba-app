@@ -85,13 +85,16 @@ export class PublicationsRestController {
         return { publications };
       }
 
-      // Demi-grossiste : marché coopératif scopé sur sa coopérative active
+      // Demi-grossiste : s'approvisionne auprès des grossistes via le marché.
+      // Les offres de grossistes sont publiées sur le canal coopératif par
+      // /publications/republier ; le vendeur doit être un marchand sous-profil
+      // grossiste. Le cloisonnement est appliqué ici côté serveur, pas seulement
+      // dans l'interface. Le parcours métier ne limite pas l'achat à la seule
+      // coopérative active du demi-grossiste.
       if (sousProfil === 'demi_grossiste') {
-        const coopId = await this.coopResolver.getActiveCooperativeId(user.id);
-        if (!coopId) return { publications: [] };
         const publications = await this.dataSource.query(
-          `${baseSelect} AND p.type_marche = 'cooperative' AND p.cooperative_id = $1${orderBy}`,
-          [coopId],
+          `${baseSelect} AND p.type_marche = 'cooperative'
+             AND u.role = 'marchand' AND u.sous_profil_marchand = 'grossiste'${orderBy}`,
         );
         return { publications };
       }
