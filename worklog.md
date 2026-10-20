@@ -1013,3 +1013,24 @@ Stage Summary:
 - Le couple saisie/vente à la voix est CONFORME et complet : trois portes de saisie (dictée caisse, Mon stock nom dit ou tapé, caisse tactile nom libre), prix jamais inventé, ligne provisoire reprise après coupure, catalogue maître = suggestion jamais une porte.
 - origin/dev : 82c7471 (dictée web STK-25) + 2ba6c01 (BoutonDireNom) + f3d42a7 (couverture i18n) + ab6da32 (gardes recalées) + registres ; verify 146/152, 0 rouge nouveau.
 - Reste §5 : recette appareil (P3), dette C-C1 (arbitrage Patrick), 4 rouges hérités hors périmètre, correction vocale mot à mot (si Patrick la veut).
+
+---
+Task ID: 47-bis
+Agent: Z.ai Code (sandbox)
+Task: « Passe a la suite des corrections » — fin des 4 rouges héritées de l'audit consolidé §5.4 + retrait du guéri des CONNUS
+
+Work Log:
+- Constat d'entrée : worktree et repo ABSORBÉS par le sandbox (3e fois — leçon perpétuée) → re-clone neuf ; origin/dev avait AVANCÉ au-delà de 821cc12 (session parallèle : 82c7471, 2ba6c01, f3d42a7, ab6da32, 3c4bc40). Travail sur dev@3c4bc40.
+- R1 refus-hors-ligne-commande : le banc (extraction eval du VRAI MesCommandes.tsx) plantait sur `toast is not defined` — le toast sonner du source (MesCommandes.tsx:22,191,194,208) n'était pas dans les deps du banc. Espion toast ajouté + assertions d'écrit (l'écrit est humain et = au dit, T7). Produit conforme, banc renforcé.
+- R2 accueil-honnete : conflit de décisions datées — 24/09 (tuile Mon argent retirée, Keiwa muet) vs 06/10 (arbitrage §8.3 AUDIT-UX-ROLES-2026-10-06, tuile RESTAURÉE sur délégation explicite ; preuve .ai/COMMIT_LOG.md:41). Garde recalée : l'accueil OUVRE Keiwa, porte unique, assertions inversées via code actif (lire() filtre les commentaires).
+- R3 voix-connexion-lot-a (VRAI BUG PRODUIT) : l'écran de connexion disait « Tu es en train d'effacer le numéro hein ! » — aucun clip ne porte ce texte (direEntreeTexte cherche la clé PAR LE TEXTE → écran muet sans erreur), canal machine, et il nommait « numéro » (violait la règle lot A §5). Rebranché mot pour mot sur le clip login-24 / AUTH_24 « C'est effacé net. » via parle(). INVENTAIRE-VOIX régénéré (430→431 sites, 241→242 phrases), i18n-source revenu vert.
+- R4 modules-pilote : plancher 40→38 routes d'argent — le retrait des 6 routes keiwa identificateur est une DÉCISION (IDENTIFICATEUR-16, commit b91f6a8), pas une érosion ; les autres assertions de la section [5] restent vertes (toutes couvertes par MODULES_HORS_PILOTE, rien supprimé).
+- §2 CONNUS : test:i18n-empreintes-argent retiré de verify-tout.mjs (redevu vert, exit 0 réel à dev@3c4bc40) — l'empreinte s'était réalignée aux lots voix 19-20/10. Restent 2 CONNUS.
+- R5 prix-marchande : le nom cité par l'audit (« test:prix-de-la-marchande ») n'existe pas ; la vraie suite est DÉJÀ VERTE — la dette C-C1 est documentée dans le test (« le catalogue garde ses prix, on cesse de les lire »). Décision Patrick toujours requise pour vider les prix du catalogue statique : NON tranchée ici.
+- Docs : AUDIT-CORRECTIONS-ROUGES-2026-10-20.md (constat par constat, preuves dev@3c4bc40) + COMMIT_LOG.
+- Piège évité : $? après pipe ; UN seul heredoc par commande bash ; messages via /home/z/*.txt + git commit -F ; worktree 100% git -C (jamais cd).
+
+Stage Summary:
+- origin/dev : 6 commits atomiques (R1 banc, R2 recalage, R3 produit+i18n, R4 plancher, CONNUS, registres) — les 4 rouges héritées de l'audit §5.4 sont FERMÉES, le guéri sort des CONNUS.
+- verify complet : **150 vert / 2 rouge / 152** (le matin : 146/6) — les 2 rouges restants sont les 2 CONNUS assumés (voix-trace-source VOICE-01, garde-argent). 0 rouge non-documenté.
+- Reste ouvert (assumé, inchangé) : recette appareil P3 (14 scénarios SPEC), dette C-C1 (arbitrage Patrick), correction vocale mot à mot (si Patrick la veut), 2 CONNUS.
