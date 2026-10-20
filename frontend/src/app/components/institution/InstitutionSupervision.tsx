@@ -208,7 +208,7 @@ export function InstitutionSupervision() {
       tx.acteurType ?? tx.type ?? '',
       tx.region ?? '',
       tx.montant ?? '',
-      tx.statut ?? badge ?? '',
+      tx.statut ?? '',
     ].map(echapper).join(','));
     const csv = [entetes.map(echapper).join(','), ...corps].join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
