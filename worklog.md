@@ -1152,3 +1152,23 @@ Stage Summary:
 - dev (dfff6804) reste la ligne de vérité : elle contient le prochain lot ①②③ ET les 4 P2, rien de main ne manque.
 - Environnement de CI locale reconstruit de bout en bout (Postgres zonky :55432, node_modules, worktree .wt-dev) — prêt pour le prochain lot.
 - Ouvert P2 restant : DGE-11, IDENT-02, IDENT-03, IDENT-08, IDENT-09. P3 : IDENT-11, PROD-06 à 12.
+
+---
+Task ID: p2-restants-20-10
+Agent: Z.ai Code (session principale)
+Task: « Continues avec les P2 restants » — DGE-11, IDENT-02, IDENT-03, IDENT-08, IDENT-09 (les 5 derniers P2 de la liste du lot précédent)
+
+Work Log:
+- Worktree .wt-dev + Postgres zonky reconstruits (sandbox a re-effacé /home/z/pg)
+- DGE-11 (8b403c7c + 6f5cd153) : InstitutionAccessContext lit GET /institutions (auto-scopé), hasAccess = règle du guard (présent ≠ 'aucun'), fail-closed avant réponse serveur, grant/revoke fantômes supprimés ; navItems alignés sur les 4 clés serveur (Analytics→dashboard, Supervision→acteurs) ; BOConfigInstitution = administration de institutions.modules (4 modules × 4 niveaux) avec PATCH /institutions/:id VRAI (journalisé) — fin du bouton condamné isBackendReady. Invariant dge-11-modules-persistes 5/5 (PATCH→200/403 immédiat, sans cache) + garde [7-bis] 7 règles rouges→vertes
+- IDENT-02 (bae03a20) : @Roles('marchand','producteur','cooperateur') sur TOUT WalletsController — identificateur/institution/admin 403 fail-closed (A-02 serveur). Invariant ident-02 3/3, preuve ROUGE : l'identificateur lisait son wallet en 200. Non-régression keiwa + blocage-wallet-admin
+- IDENT-03 (ef3b3970) : SuiviIdentifications passe à QUATRE états — badge « Complément demandé », KPI+filtre dédiés, action « Compléter » branchée sur le mode complément EXISTANT de la fiche (zéro flux inventé). Garde [7-ter] 4 règles rouges→vertes
+- IDENT-08 (a0b7c61b) : Academy identificateur dédiée (75→85 questions) — le faux « 4 statuts » corrigé (la machine C-12 en a SIX), outils réels enseignés (reprise brouillon, Compléter, ONECI, sous-profil), neutralité + PII + PIN serveur + P0.0. Garde [7-quater] 5 règles
+- IDENT-09 (test+fix, 42808341) : idempotence de la soumission — clé client randomUUID PERSISTÉE (sessionStorage), rejeu → dossier EXISTANT (flag dejaSoumis, zéro doublon, zéro SMS répété), migration 1782300000030 (index unique partiel) + miroir DbInit. Invariant ident-09 4/4, preuve ROUGE : rejeu = 400 « numéro déjà utilisé » sous l'ancien code. Garde [7-quinquies] 5 règles
+- Docs : les 5 écarts marqués FERMÉS dans les 2 audits de parcours (DGE-BACKOFFICE + IDENTIFICATEUR)
+- Régressions : dge-03-08 + dge-10 (11/11), keiwa + blocage-wallet-admin (7/7), ident-01/05/10 + p0-sms + dge-09 (24/24) — tsc backend et frontend 0 erreur
+
+Stage Summary:
+- LES 5 DERNIERS P2 SONT FERMÉS : 9 commits (2 DGE-11, 1 IDENT-02, 1 IDENT-03, 1 IDENT-08, 2 IDENT-09, 1 docs à venir), 3 nouveaux invariants serveur verts (dge-11 5/5, ident-02 3/3, ident-09 4/4), 21 nouvelles règles de garde front (7+4+5+5)
+- Il ne reste OUVERT que du P3 : IDENT-11 (perf N+1 suivi), PROD-06 à 12 — et les items hors-pilote documentés (IDENT-04 arbitrage déjà écrit A-02)
+- La doctrine tient sur toute la ligne : neutralité monétique SERVEUR (IDENT-02), fail-closed partout, preuve rouge avant chaque vert, 1 préoccupation = 1 commit
