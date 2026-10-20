@@ -65,10 +65,12 @@ export class PublicationsRestController {
 
     const role = String(user?.role || '').toLowerCase();
 
-    // Coopérateur : comportement inchangé (vue marché actuelle)
+    // Coopérative : le parcours métier prévoit un approvisionnement auprès
+    // des producteurs uniquement. Les offres d'autres coopératives ne doivent
+    // pas être proposées comme achats amont.
     if (role === 'cooperateur') {
       const publications = await this.dataSource.query(
-        `${baseSelect} AND u.role IN ('producteur', 'cooperateur')${orderBy}`,
+        `${baseSelect} AND p.type_marche = 'producteur' AND u.role = 'producteur'${orderBy}`,
       );
       return { publications };
     }
@@ -80,7 +82,8 @@ export class PublicationsRestController {
       // Grossiste : marché producteur global (aucune jointure coopérative)
       if (sousProfil === 'grossiste') {
         const publications = await this.dataSource.query(
-          `${baseSelect} AND p.type_marche = 'producteur'${orderBy}`,
+          `${baseSelect} AND p.type_marche = 'producteur'
+             AND u.role IN ('producteur', 'cooperateur')${orderBy}`,
         );
         return { publications };
       }
