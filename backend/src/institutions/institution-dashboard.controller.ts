@@ -214,7 +214,7 @@ export class InstitutionDashboardController {
          FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
          LEFT JOIN caisse_transactions t ON t.created_at::date = d.day::date
          LEFT JOIN users u ON u.id::text = t.user_id::text
-        WHERE t.id IS NULL OR (TRUE${filtreVentes})
+        WHERE t.id IS NULL OR (TRUE ${filtreVentes})
         GROUP BY d.day ORDER BY d.day`,
       paramsVentes,
     );
