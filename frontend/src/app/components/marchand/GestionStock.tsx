@@ -312,7 +312,6 @@ export function GestionStock() {
   /** STK-05 — ce qu'elle vient de dire, qui preremplit le parcours guide. */
   const [departDit, setDepartDit] = useState<EcouteProduit['brouillon'] | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false); // repli des champs optionnels de l'ajout produit
-  const dicteeNomRef = useRef(false); // true = la prochaine reconnaissance vocale remplit le NOM du produit (pas une commande)
   // STK-02 — LE TYPE DISAIT `number`, LE CODE ECRIVAIT `'' as any`.
   //
   // Un champ de prix a trois etats, pas deux : un montant, zero, ou PAS ENCORE
@@ -361,22 +360,12 @@ export function GestionStock() {
     context: { module: 'stock', prenom: user?.firstName || user?.prenoms || 'ma chere', genre: (user as any)?.genre || 'femme', userId: user?.id },
     onAction: async (data) => {
       setIsListening(false);
-      // Dictée du NOM du produit (micro du champ Nom) : on capte le texte brut dicté
-      // et on le pose dans le formulaire, SANS le traiter comme une commande. Permet
-      // à une non-lectrice d'ajouter un produit hors catalogue sans taper son nom.
-      if (dicteeNomRef.current) {
-        dicteeNomRef.current = false;
-        const brut = (data.transcript || '').trim();
-        if (brut) {
-          const nomPropre = brut.charAt(0).toUpperCase() + brut.slice(1);
-          setNewStock(prev => ({ ...prev, name: nomPropre }));
-          speak(nomPropre);
-        } else {
-          speak("Je n'ai pas entendu le nom. Réessaie, s'il te plaît.");
-        }
-        return;
-      }
-      const a: any = data.action || {};
+      // STK-25 — LE BLOC « DICTÉE DU NOM DU CHAMP » A ÉTÉ RETIRÉ : il était
+      // INATTEIGNABLE. `dicteeNomRef.current = true` n'était posé nulle part,
+      // et de toute façon `onAction` n'est jamais appelé sans intention
+      // comprise — le commentaire de `BoutonDireProduit` l'établit. Un code
+      // qui promet une dictée du nom et ne la reçoit jamais est pire qu'absent.
+      // Le nom dicté passe par `BoutonDireProduit` → `nomLibreDicte` (STK-25).
       const text = (data.transcript || '').toLowerCase();
 
       // LE BLOC `ajouter_stock` A ÉTÉ RETIRÉ — STK-05, 24/09.
@@ -394,7 +383,8 @@ export function GestionStock() {
       // correctifs de l'autre.
       //
       // L'ajout par la voix passe maintenant par `BoutonDireProduit` →
-      // `produitDit` → `AjoutProduitGuide` : un seul chemin de création.
+      // `produitDit` (ou `nomLibreDicte` pour un nom inconnu de tous) →
+      // `AjoutProduitGuide` : un seul chemin de création.
 
       if (text.includes('alerte') || text.includes('stock bas')) {
         const low = stocks.filter(s => s.quantity < s.threshold);

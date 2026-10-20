@@ -837,6 +837,43 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   }, [appUser?.id]);
 
   // ── Products ───────────────────────────────────────────────
+  /**
+   * LA CLÉ DU CACHE PRODUITS, PAR MARCHANDE.
+   *
+   * Elle vivait en double : dans `loadProducts` seulement. Comme elle sert
+   * maintenant AUSSI aux mutations (voir plus bas), elle est écrite une seule
+   * fois — deux calculs d'une même clé finiraient par diverger.
+   */
+  const cleCacheProduits = () => {
+    try {
+      const r = localStorage.getItem('julaba_auth_user');
+      const id = r ? (JSON.parse(r).id || 'anon') : 'anon';
+      return `julaba_cache_produits_${id}`;
+    } catch { return 'julaba_cache_produits_anon'; }
+  };
+
+  /**
+   * LE CACHE PRODUITS SE RÉÉCRIT À CHAQUE MUTATION.
+   *
+   * LE DÉFAUT, trouvé le 20/10/2026. Le cache du téléphone n'était écrit QUE
+   * par `loadProducts`, jamais par `addProduct` / `updateProduct` /
+   * `deleteProduct`. Conséquence mesurée :
+   *
+   *   1. la marchande ajoute un produit → il apparaît à l'écran ;
+   *   2. un `refreshProducts()` échoue (réseau de marché), ou l'application
+   *      redémarre hors ligne → `restaurerDepuisCache` ;
+   *   3. le cache PÉRIMÉ écrase l'état : LE PRODUIT AJOUTÉ DISPARAÎT.
+   *
+   * Elle croit que ça n'a pas marché — et elle recommence. Ou pire : une vente
+   * de ce produit part sans qu'il soit dans son catalogue.
+   *
+   * LE CACHE SUIT DONC L'ÉTAT, IMMÉDIATEMENT, après chaque écriture réussie.
+   * `loadProducts` garde la sienne : c'est lui qui RÉCONCILIE avec le serveur.
+   */
+  const ecrireCacheProduits = (liste: CaisseProduct[]) => {
+    try { localStorage.setItem(cleCacheProduits(), JSON.stringify(liste)); } catch { /* quota, mode privé */ }
+  };
+
   /** Repli sur le catalogue mémorisé du téléphone. Partagé par les DEUX
    *  chemins d'échec (réponse en erreur, et coupure réseau) : c'est leur
    *  divergence qui laissait un écran vide sur un simple 503. */
@@ -853,10 +890,7 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
   };
 
   const loadProducts = useCallback(async () => {
-    const cacheKey = (() => {
-      try { const r = localStorage.getItem('julaba_auth_user'); const id = r ? (JSON.parse(r).id || 'anon') : 'anon'; return `julaba_cache_produits_${id}`; }
-      catch { return 'julaba_cache_produits_anon'; }
-    })();
+    const cacheKey = cleCacheProduits();
     setLectureCatalogue('chargement');
     try {
       // UN SERVEUR QUI RÉPOND MAL EST PIRE QU'UN SERVEUR ABSENT — corrigé le
@@ -925,18 +959,22 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         // article partait donc sans produit — invendable, sans message.
         // Même défaut nommé qu'au chargement du catalogue, même retenue : le
         // refuser ferait échouer une création qui « passait » avant.
-        setProducts(prev => [...prev, {
-          id: p.id as string,
-          nom: p.nom ?? product.nom,
-          prix: Number(p.prix),
-          prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
-          categorie: p.categorie ?? product.categorie,
-          stock: Number(p.stock),
-          unite: p.unite ?? product.unite,
-          image: p.image || getImageByNom(p.nom ?? product.nom),
-          prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
-          promo_fin: p.promo_fin || null,
-        }]);
+        setProducts(prev => {
+          const suivant = [...prev, {
+            id: p.id as string,
+            nom: p.nom ?? product.nom,
+            prix: Number(p.prix),
+            prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
+            categorie: p.categorie ?? product.categorie,
+            stock: Number(p.stock),
+            unite: p.unite ?? product.unite,
+            image: p.image || getImageByNom(p.nom ?? product.nom),
+            prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+            promo_fin: p.promo_fin || null,
+          }];
+          ecrireCacheProduits(suivant);
+          return suivant;
+        });
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création du produit';
@@ -972,7 +1010,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       };
       await caisseApi.modifierProduitCaisse(id, updatedWithPrixAchat as Record<string, unknown>);
       eventBus.emit(EVENTS.PRODUCT_UPDATED, { id, ...updated }, { idempotencyKey: 'prod-' + id, priority: 'medium' });
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+      setProducts(prev => {
+        const suivant = prev.map(p => p.id === id ? { ...p, ...updates } : p);
+        ecrireCacheProduits(suivant);
+        return suivant;
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la mise à jour';
       throw new Error(message);
@@ -983,7 +1025,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     try {
       await caisseApi.supprimerProduitCaisse(id);
       eventBus.emit(EVENTS.PRODUCT_DELETED, { id }, { priority: 'medium' });
-      setProducts(prev => prev.filter(p => p.id !== id));
+      setProducts(prev => {
+        const suivant = prev.filter(p => p.id !== id);
+        ecrireCacheProduits(suivant);
+        return suivant;
+      });
     } catch (err: unknown) {
       throw err;
     }

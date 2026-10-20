@@ -336,8 +336,10 @@ export function lireVenteAuCatalogue(
 // marqueurs de prix, verbes d'intention, produits connus), jamais avec une
 // seconde liste écrite ici : deux listes finissent toujours par diverger.
 
-/** Les mots qui ne NOMMENT rien — ils comptent, mesurent, ou annoncent. */
-function motOutil(mot: string): boolean {
+/** Les mots qui ne NOMMENT rien — ils comptent, mesurent, ou annoncent.
+ *  Exporté pour `produitDit.nomLibreDicte` : une SEULE liste de « mots outils »,
+ *  jamais deux qui divergent. */
+export function motOutil(mot: string): boolean {
   if (/^[0-9]+$/.test(mot)) return true;
   if (mot in UNITES || mot in DIZAINES) return true;
   if (mot === 'cent' || mot === 'cents' || mot === 'mille' || mot === 'et') return true;

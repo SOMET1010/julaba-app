@@ -79,8 +79,9 @@
  */
 import { extraire } from '../voice-offline/extraction';
 import { apparierProduit } from './venteVocale';
-import { nomDeSonEtal, relireNombres } from './venteAuCatalogue';
-import { etapeCourante, type BrouillonProduit, type EtapeAjout } from './premierProduit';
+import { motOutil, nomDeSonEtal, relireNombres } from './venteAuCatalogue';
+import { NOM_PRODUIT_MINIMUM, etapeCourante, type BrouillonProduit, type EtapeAjout } from './premierProduit';
+import { MOTS_PAS_UNE_VENTE } from '../voice-offline/vocabulaire';
 
 export interface EcouteProduit {
   /** Ce qu'elle a donné, prêt à préremplir le parcours en trois questions. */
@@ -179,3 +180,69 @@ function composer(
     quantite: typeof quantite === 'number' && Number.isFinite(quantite) ? quantite : null,
   };
 }
+
+/**
+ * LE NOM QU'ELLE DIT, ET QUI N'EST DANS AUCUN RÉFÉRENTIEL — STK-25.
+ *
+ * « Ajoute dix kassos ». Le lexique (28 formes) et son étal ne connaissent
+ * pas « kasso » : `produitDit` rend `null`, et le bouton « Ajouter en
+ * parlant » répondait « Je n'ai pas entendu de produit » — en jetant un mot
+ * que sherpa avait pourtant TRANSCRIT exactement. Une non-lectrice ne pouvait
+ * donc ajouter par la voix AUCUN produit qui n'était pas déjà quelque part.
+ * C'est le référentiel qui devenait une porte, et `premierProduit.ts` le
+ * dit depuis le premier jour : « LE RÉFÉRENTIEL EST UNE AIDE, JAMAIS UNE
+ * PORTE. Un nom qu'il ne connaît pas se pose quand même, tel qu'elle l'a dit. »
+ *
+ * CE QUE ÇA RETIRE, ET RIEN DE PLUS : les mots qui ne nomment rien —
+ * chiffres, unités, intentions (`motOutil`, la même liste que la caisse),
+ * gestes d'ajout (`MOTS_PAS_UNE_VENTE`) et mots du discours. Ce qui reste
+ * EST son produit, tel qu'il est sorti du micro. On ne corrige ni l'orthographe
+ * ni le pluriel : le parcours guidé le pose sous son nom à elle.
+ *
+ * ET ÇA NE DÉCIDE RIEN SEUL. Ce n'est qu'un brouillon : le parcours en trois
+ * questions (unité, prix) reste obligatoire, `prix` n'est jamais prérempli
+ * d'un chiffre orphelin — un nombre sans produit est une QUANTITÉ, relu par
+ * la même `relireNombres` que la caisse (CAT-02) — et « Laisser pour
+ * l'instant » annule. Le bruit (« Croisignam » du journal) ouvre le même
+ * parcours : une marchande qui se trompe annule, une marchande qui nomme un
+ * vrai produit ne peut plus se heurter à un « je n'ai pas entendu ».
+ */
+export function nomLibreDicte(cequelleADit: string): EcouteProduit | null {
+  const texte = (cequelleADit ?? '').trim();
+  if (!texte) return null;
+
+  const mots = texte
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/['’]/g, ' ')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  const utiles = mots.filter((m) =>
+    !motOutil(m) &&
+    !MOTS_PAS_UNE_VENTE.includes(m) &&
+    !MOTS_DISCOURS.has(m));
+
+  const nom = utiles.join(' ').trim();
+  if (nom.length < NOM_PRODUIT_MINIMUM) return null;
+
+  const propre = nom.charAt(0).toUpperCase() + nom.slice(1);
+  const lu = extraire(texte);
+  // MÊME RELIRE QUE PARTOUT : sans produit reconnu, `extraire` range le « dix »
+  // de « ajoute dix kassos » en MONTANT. C'est une quantité, et le prendre
+  // pour un prix poserait 10 F sur son kasso.
+  const nombres = relireNombres(texte, lu);
+  return composer(propre, null, null, nombres.douteux ? null : nombres.montant, nombres.douteux ? null : nombres.quantite);
+}
+
+/** Les mots du discours — entendus, mais pas le produit. */
+const MOTS_DISCOURS = new Set([
+  'je', 'j', 'ai', 'veux', 'voudrais', 'voulez', 'voulait', 'vais', 'faut',
+  'dis', 'dit', 'dire', 'parle', 'parler', 'ecoute', 'entends',
+  'tantie', 'tata', 'hein', 'voila', "s'il", 'sil', 'plait',
+  'combien', 'maintenant', 'aussi', 'encore', 'ici', 'tu', 'ton', 'ta', 'tes',
+  'mon', 'ma', 'mes', 'notre', 'nos', 'leur', 'leurs',
+  'ce', 'cette', 'ces', "c'est", 'cest', 'que', 'qui', 'pour', 'avec',
+  'dans', 'sur', 'au', 'aux', 'un', 'une', 'et', 'ou', 'est', 'sont', 'en', 'y',
+]);

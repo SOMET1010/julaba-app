@@ -79,6 +79,46 @@ secret.
 **Signalement, non touché** : `WalletContext.tsx` mappe `balance: w.solde || 0`
 — violation ACC-03 potentielle, arbitrage Patrick avant tout changement.
 
+### STK-25 (20/10) — ajouter un produit inconnu par la voix
+
+Ta demande : « les produits sont pré-enregistrés, alors que l'utilisateur peut
+ajouter tous les produits qu'il veut ». **Reproduit**, et le défaut était réel.
+
+| Ce qui marche | Preuve |
+|---|---|
+| **Vendre** un produit inconnu par la voix : possible depuis CAT-01/02 | `vendreVocalUnifie.ts:307` (ligne libre) ; reproduction : « je vends 3 kassos à 500 » → demande de prix, pas de « pas compris » |
+| **Ajouter** un produit inconnu par la voix : **ne marchait pas** | `BoutonDireProduit.tsx` : le nom absent du lexique ET de l'étal → `produitDit` `null` → « Je n'ai pas entendu de produit » |
+
+**Cause** (tracée, pas devinée) : la reconnaissance de produit a deux portes
+écrites à la main — `PRODUITS_FORMES` (28 formes) et l'étal de la marchande.
+Un troisième nom, même parfaitement transcrit, n'entrait nulle part ; le
+`catch` du bouton jetait le texte. La vente, elle, a une porte de plus (l'article
+libre).
+
+**Correction** : `produitDit.nomLibreDicte` (nom conservé tel quel, mots outils
+retirés par les listes de la caisse) + `BoutonDireProduit` s'en sert. Le parcours
+guidé garde unité et prix obligatoires ; un nombre orphelin reste une quantité.
+Banc `test:produit-dit` section [10] ; `verify` 144/152 — **8 rouges, les mêmes
+qu'avant** (2 connus + 6 préexistants à l'HEAD). Code mort retiré
+(`dicteeNomRef`).
+
+### Correctif cache produits (20/10) — un ajout ne disparaît plus
+
+Ta remarque : « j'ai l'impression qu'il y a un cache lors de l'ajout de
+produits, si c'est pas passé ». **Reproduit**, défaut réel.
+
+**Cause** : le cache du téléphone (`julaba_cache_produits_<id>`) n'était écrit
+que par `loadProducts`. `addProduct` / `updateProduct` / `deleteProduct`
+modifiaient l'écran **sans réécrire le cache**. Donc : ajout → `refreshProducts()`
+échoue (réseau) ou redémarrage hors ligne → `restaurerDepuisCache` écrase l'état
+par le cache **périmé** → **le produit disparaît**.
+
+**Correction** : `cleCacheProduits` factorisé + `ecrireCacheProduits` après
+**chaque** mutation réussie. Reproductions : `repro-cache.mts` (❌ perdu) /
+`repro-cache-fixe.mts` (✓ survit). Garde : 2 assertions dans
+`test-fusion-panier.mjs` (banc existant, aucun maillon nouveau) ; test négatif
+vérifié. `tsc -b` 0 ; `verify` 144/152, **mêmes 8 rouges**.
+
 ---
 
 **Session 15/10 — Vue de connexion ramenée à celle de `main` + Rapport et Dev Mode

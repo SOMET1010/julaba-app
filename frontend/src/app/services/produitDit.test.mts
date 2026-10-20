@@ -17,7 +17,7 @@
  * Lancer : npm run test:produit-dit
  */
 import { readFileSync } from 'node:fs';
-import { produitDit } from './produitDit.js';
+import { produitDit, nomLibreDicte } from './produitDit.js';
 
 let echecs = 0;
 const ok = (c: boolean, quoi: string) => {
@@ -205,6 +205,52 @@ console.log("\n[9] UNE SEULE FAÇON DE RECONNAÎTRE UN PRODUIT, PARTAGÉE AVEC L
   ok(/export function nomDeSonEtal\(/.test(cat), 'la fonction partagée est bien exportée là-bas');
   ok((cat.match(/contientSuite\(phrase, nom\)/g) || []).length === 1,
      "la boucle de reconnaissance n'existe qu'à UN seul endroit");
+}
+
+console.log('\n[10] STK-25 — UN NOM QUE PERSONNE NE CONNAÎT NE SE JETTE PLUS');
+{
+  // « Ajoute dix kassos » : le lexique (28 formes) et son étal ignorent
+  // « kasso ». Avant, le bouton répondait « Je n\'ai pas entendu de produit »
+  // en jetant un mot que le micro avait TRANSCRIT. Une non-lectrice ne pouvait
+  // ajouter par la voix AUCUN produit absent des référentiels.
+  const r = nomLibreDicte('Ajoute dix kassos');
+  ok(r?.brouillon.nom === 'Kassos', 'son nom est gardé tel qu\'il est sorti du micro (capitalisé)');
+  ok(r?.quantite === 10, 'les dix sont une QUANTITÉ, pas un prix');
+  ok(r?.brouillon.prix === null, 'aucun prix inventé d\'un chiffre orphelin — c\'est CAT-02');
+  ok(r?.manque === 'unite', 'le parcours guidé lui demandera unité et prix');
+  ok(r?.reconnu === null, 'aucun appariement forcé : ce nom n\'est pas dans son étal');
+
+  // Sans verbe de vente non plus : le bouton du stock écoute « ajoute … ».
+  ok(nomLibreDicte('je vends trois kassos')?.brouillon.nom === 'Kassos', 'la forme « je vends » passe aussi');
+
+  // CE QU'ON RETIRE, ET RIEN DE PLUS : les mots qui ne nomment rien.
+  for (const [t, quoi] of [
+    ['ajoute', 'un geste seul'],
+    ['dix', 'un nombre seul'],
+    ['je veux ajouter', 'que des mots de discours'],
+    ['un sac', 'un nombre et une unité'],
+    ['a', 'une lettre'],
+    ['', 'du silence'],
+  ] as const) {
+    ok(nomLibreDicte(t) === null, `${quoi} (${JSON.stringify(t)}) → null, pas de formulaire vide`);
+  }
+
+  // LE BRUIT RESTE UN PARCOURS, JAMAIS UNE LIGNE : « Croisignam » (le journal)
+  // ouvre le parcours ; elle annule si c'est un malentendu. Rien n'entre au
+  // panier ni au stock sans les trois questions.
+  const bruit = nomLibreDicte('Ajoute du croisignam');
+  ok(bruit?.brouillon.nom === 'Croisignam' && bruit.manque === 'unite',
+     'un mot non reconnu ouvre le parcours guidé, il ne part pas en vente');
+
+  // UNE SEULE LISTE DE MOTS OUTILS : celle de la caisse, jamais une seconde.
+  const src = readFileSync(new URL('./produitDit.ts', import.meta.url), 'utf-8');
+  ok(/import \{[^}]*motOutil[^}]*\} from '\.\/venteAuCatalogue'/.test(src),
+     'le tri des mots passe par `motOutil` de la caisse, pas par une seconde liste');
+  ok(/MOTS_PAS_UNE_VENTE/.test(src),
+     'et les gestes d\'ajout viennent de `MOTS_PAS_UNE_VENTE`, la même source que la caisse');
+  // Le bouton ne doit plus jeter ce que `nomLibreDicte` vient de lui donner.
+  const bouton = readFileSync(new URL('../components/marchand/BoutonDireProduit.tsx', import.meta.url), 'utf-8');
+  ok(/nomLibreDicte\(/.test(bouton), 'le bouton « Ajouter en parlant » appelle bien le repli');
 }
 
 console.log(echecs === 0

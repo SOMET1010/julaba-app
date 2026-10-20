@@ -106,6 +106,26 @@ verifier(
   'un 503 laissait le catalogue vide alors que les prix étaient sur le téléphone.',
 );
 
+// 20/10/2026 — LE CACHE PRODUITS SUIT CHAQUE MUTATION.
+// Le cache du téléphone n'était écrit QUE par `loadProducts`. Un produit
+// AJOUTÉ vivait donc à l'écran mais pas dans le cache : au premier échec réseau
+// (ou au redémarrage hors ligne), `restaurerDepuisCache` écrasait l'état par le
+// cache périmé et LE PRODUIT DISPARAISSAIT — la marchande croyait que ça n'avait
+// pas marché. On vérifie ici que les TROIS mutations réécrivent le cache.
+verifier(
+  'ajouter un produit réécrit le cache du téléphone',
+  /setProducts\(prev => \{[\s\S]{0,900}ecrireCacheProduits\(suivant\)[\s\S]{0,200}return suivant;[\s\S]{0,80}\}\)/.test(code)
+    && (code.match(/ecrireCacheProduits\(suivant\)/g) || []).length >= 3,
+  'sinon un ajout disparaît au premier refresh raté, ou au prochain démarrage hors ligne.',
+);
+
+verifier(
+  'le cache produits est calculé au même endroit, pas recopié',
+  /const cleCacheProduits = \(\)/.test(code)
+    && !/const cacheKey = \(\(\) => \{[\s\S]{0,200}julaba_cache_produits_/.test(code),
+  'la clé vivait en double dans `loadProducts` ; deux calculs de la même clé finissent par diverger.',
+);
+
 if (echecs > 0) {
   console.log('\n✗ fusion du panier — échec');
   process.exit(1);
