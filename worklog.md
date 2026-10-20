@@ -1052,3 +1052,20 @@ Stage Summary:
 - origin/dev : 4 commits atomiques (C-C1, mot à mot, Rapport, registres).
 - C-C1 FERMÉE (décision Patrick), correction vocale mot à mot IMPLÉMENTÉE, bouton Rapport RESTAURÉ.
 - Seule ouverture restante du couple saisie/vente : recette appareil P3 (14 scénarios SPEC, téléphone réel + APK Sherpa).
+
+---
+Task ID: 48-bis
+Agent: Z.ai Code (sandbox)
+Task: « Fais un rapport détaillé de toutes corrections ou modifications apportées avec preuves et détails »
+
+Work Log:
+- fetch d'entrée : local = origin/dev = b94b7b3 — le lot 48 était déjà poussé, aucune poussée parallèle depuis ; git status propre.
+- Preuves relevées dans le HEAD (première main) : LoginPassword.tsx:1036-1049 (effacement = clip login-24 « C'est effacé net. ») et :122/:1541-1553 (bouton 🐞 Rapport via vlogPartager) ; catalogue-produits.ts:20-27 (doctrinal C-C1, prix vidés) ; produitDit.ts:210/235/237/284 (nomLibreDicte + MOTS_REFUTATION, mot à mot) ; verify-tout.mjs:62-65 (CONNUS réduit à 2) ; accueilHonnete.test.mts:158-159 (porte Keiwa) ; refusHorsLigneCommande.test.mts:116-118 (espion toast) ; modulesPilote.test.mts:133 (plancher 38) ; MarchandAccueilVoice.tsx:225 (tuile Mon argent) ; MesCommandes.tsx:22/191/194/208 (toast sonner) ; docs/langues/INVENTAIRE-VOIX.md (432 sites / 449 branches / 200 littéraux).
+- Gates re-joués À CHAUD sur b94b7b3 : npx tsc -b --force EXIT 0 ; eslint sur les 11 fichiers touchés des lots C+D : 0 erreur (exit 0) ; verify-tout complet : **150 vert / 2 rouge / 152** (106 s) — 3e trace cohérente du jour (verify-lot.log 08:25, verify-lot2.log 08:53, à chaud).
+- APK prouvé par l'API GitHub (token du remote) : run « APK pilote — construction à la demande » sur b94b7b3 — completed/success (créé 08:56:52Z ; job « Construire l'APK de debug » 08:56:56→08:59:24) ; release pilote-latest : julaba-b94b7b3.apk (272 979 241 o) + julaba-latest.apk (alias, même build) créés 08:59:04Z ; run précédent sur c7d23c1 (19/10 21:45) également success.
+- Rédaction de .ai/AUDITS/RAPPORT-DETAILLE-CORRECTIONS-2026-10-20.md : chronologie des 18 commits du 20/10 en 4 lots, détail par correction (preuve fichier:ligne), gates, APK, restes ouverts (P3 appareil, 2 CONNUS), index des archives.
+
+Stage Summary:
+- Rapport archivé dans .ai/AUDITS/ et poussé sur dev : 18 commits le 20/10 en 4 lots, verify 150/2/152 stable toute la journée, 0 rouge non-documenté, APK success sur le SHA final b94b7b3.
+- Aucun code touché par ce Task (docs only : rapport + COMMIT_LOG + worklog).
+- Restes ouverts inchangés : recette appareil P3 (14 scénarios SPEC, téléphone réel + APK — l'APK est prêt dans pilote-latest), 2 CONNUS assumés.

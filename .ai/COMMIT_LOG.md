@@ -310,3 +310,11 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 17 suites vertes ; verify complet 150 vert / 2 rouge / 152 (2 CONNUS) — 0 rouge nouveau. Seule ouverture restante : recette appareil P3.
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via git commit -F ; UN seul heredoc par commande bash.
+
+## 2026-10-20 — Rapport détaillé de la campagne de corrections (agent Z.ai Code)
+
+1. `docs(audit): rapport détaillé de la campagne — 18 commits, preuves à chaud` — RAPPORT-DETAILLE-CORRECTIONS-2026-10-20.md : les 18 commits du 20/10 reconstitués en 4 lots (A audit+fixes initiaux 01:00-01:32 ; B Task 47 02:15-02:21 ; C Task 47-bis 08:27 ; D Task 48 08:55), chaque correction avec sa preuve `fichier:ligne` dans le HEAD actuel (LoginPassword.tsx:1036-1049 et 1541-1553, catalogue-produits.ts:20-27, produitDit.ts:210/284, verify-tout.mjs:62-65, accueilHonnete.test.mts:158-159, refusHorsLigneCommande.test.mts:116-118, modulesPilote.test.mts:133, MarchandAccueilVoice.tsx:225, MesCommandes.tsx:22/191/194/208, INVENTAIRE-VOIX 432 sites) + APK prouvé par l'API GitHub.
+
+Batteries re-jouées À CHAUD sur b94b7b3 (preuves de première main, pas de citation) : tsc -b --force EXIT 0 ; eslint sur les 11 fichiers des lots C+D : 0 erreur (11 warnings préexistants) ; verify-tout complet : **150 vert / 2 rouge (2 CONNUS) / 152** — 106 s, 3e trace cohérente du jour (08:25, 08:53, à chaud). APK : run « APK pilote — construction à la demande » sur b94b7b3 success (08:56:52 ; job « Construire l'APK de debug » 08:56:56→08:59:24) ; release pilote-latest : julaba-b94b7b3.apk (272 979 241 o) + julaba-latest.apk (alias) créés 08:59:04Z ; run précédent c7d23c1 (19/10 21:45) aussi success.
+
+Atomicité : docs only — rapport + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F`.
