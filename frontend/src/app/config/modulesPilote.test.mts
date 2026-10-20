@@ -245,6 +245,28 @@ console.log('\n[7-ter] IDENT-03 : l\u2019état « complement » est visible sur 
     'SuiviIdentifications : action « Compléter » branchée sur le mode complément de la fiche');
 }
 
+console.log('\n[7-quater] IDENT-08 : l\u2019Academy identificateur enseigne le VRAI workflow');
+{
+  // IDENT-08 (20/10/2026) : le quiz enseignait « 4 statuts » alors que la
+  // machine serveur en compte SIX (brouillon/en_attente/approuve/valide/
+  // rejete/complement, statuts-identification.ts), et il taisait les outils
+  // réels (reprise de brouillon, complément, ONECI, sous-profil) ainsi que
+  // la neutralité monétique (A-02, wallets fermés côté serveur). La garde
+  // verrouille l'essentiel du curriculum dédié.
+  const academy = lire('../components/academy/academyQuestions.ts');
+  const academyCode = academy.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/4 statuts : Brouillon, Soumis, Validé, Rejeté/.test(academy),
+    'Academy : plus de « 4 statuts » (faux — la machine serveur en a 6) (IDENT-08)');
+  ok(/6 états : brouillon, en attente/.test(academy),
+    'Academy : la machine à 6 états est enseignée (IDENT-08)');
+  ok(/monétairement neutre|monetairement neutre/.test(academy) && /403/.test(academy),
+    'Academy : neutralité monétique enseignée (IDENTIFICATEUR-16, wallet 403 serveur)');
+  ok(/reprise de session/.test(academy) && /ONECI/.test(academy) && /sous-profil/i.test(academy),
+    'Academy : outils réels enseignés (reprise brouillon, ONECI, sous-profil)');
+  ok(/XXXXXX 6780/.test(academy) && /P0\.0/.test(academy),
+    'Academy : PII masquée + activation P0.0 enseignées');
+}
+
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
