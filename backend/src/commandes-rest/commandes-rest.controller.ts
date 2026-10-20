@@ -86,11 +86,18 @@ export class CommandesRestController {
   async create(@Body() body: any, @CurrentUser() user: User) {
     const isVenteDirecte = body.type === 'vente_directe';
     const vendeurId = body.vendeur_id || body.vendeurId;
+    const publicationId = body.publication_id || body.publicationId || null;
     if (!vendeurId) {
       throw new BadRequestException('vendeur_id requis');
     }
     if (isVenteDirecte && vendeurId !== user.id) {
       throw new ForbiddenException('Vente directe : le vendeur doit être le compte connecté');
+    }
+    // Une commande d'approvisionnement doit référencer l'offre qui réserve le
+    // stock. Sans publication_id, la commande pourrait afficher un achat sans
+    // contrôler le vendeur ni réserver la marchandise.
+    if (!isVenteDirecte && !publicationId) {
+      throw new BadRequestException('publication_id requis pour une commande du marché');
     }
 
     // #12 / ADR-0001 D2 : une vente directe est une sortie réelle de marchandise
@@ -134,11 +141,52 @@ export class CommandesRestController {
     // en_attente -> reserve (bloque 409 si stock insuffisant, la commande n'est
     // alors pas creee). confirmee -> convertit directement en vente ferme.
     const saved = await this.dataSource.transaction(async (manager) => {
+      if (publicationId) {
+        // Verrouiller l'offre et valider le circuit métier côté serveur avant
+        // toute commande/réservation. Le filtre d'interface ne suffit pas.
+        const offres = await manager.query(
+          `SELECT p.id, p.user_id, p.type_marche, p.statut, p.active,
+                  u.role AS vendeur_role,
+                  u.sous_profil_marchand AS vendeur_sous_profil
+             FROM publications p
+             JOIN users u ON u.id = p.user_id
+            WHERE p.id = $1
+            FOR UPDATE OF p`,
+          [publicationId],
+        );
+        const offre = offres[0];
+        if (!offre) throw new NotFoundException('Offre du marché introuvable');
+        if (String(offre.user_id) !== String(vendeurId)) {
+          throw new ForbiddenException('Le vendeur ne correspond pas à cette offre');
+        }
+        if (offre.active !== true || offre.statut !== 'disponible') {
+          throw new BadRequestException('Cette offre n’est plus disponible');
+        }
+
+        const vendeurRole = String(offre.vendeur_role || '').toLowerCase();
+        const typeMarche = String(offre.type_marche || '').toLowerCase();
+        let circuitAutorise = false;
+        if (user.role === 'marchand' && user.sousProfilMarchand === 'grossiste') {
+          circuitAutorise = typeMarche === 'producteur'
+            && ['producteur', 'cooperateur'].includes(vendeurRole);
+        } else if (user.role === 'marchand' && user.sousProfilMarchand === 'demi_grossiste') {
+          circuitAutorise = typeMarche === 'cooperative'
+            && vendeurRole === 'marchand'
+            && String(offre.vendeur_sous_profil || '').toLowerCase() === 'grossiste';
+        } else if (user.role === 'cooperateur') {
+          circuitAutorise = typeMarche === 'producteur' && vendeurRole === 'producteur';
+        }
+
+        if (!circuitAutorise) {
+          throw new ForbiddenException('Circuit d’approvisionnement non autorisé pour votre profil');
+        }
+      }
+
       const commande = await manager.save(
         manager.create(Commande, {
           acheteurId,
           vendeurId,
-          publicationId: body.publication_id || body.publicationId || null,
+          publicationId,
           recolteId,
           type: body.type,
           produit: body.produit,
