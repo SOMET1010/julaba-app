@@ -1,7 +1,7 @@
 {
-  "genereLe": "2026-09-19",
+  "genereLe": "2026-10-20",
   "tables": 61,
-  "colonnes": 694,
+  "colonnes": 699,
   "parTable": {
     "academy_modules": [
       "created_at",
@@ -418,6 +418,7 @@
       "actif",
       "adresse",
       "commune",
+      "cooperative_id",
       "created_at",
       "description",
       "id",
@@ -576,6 +577,7 @@
       "quantite",
       "statut",
       "stock_disponible",
+      "stock_livre",
       "stock_vendu",
       "unite",
       "updated_at",
@@ -599,7 +601,9 @@
       "nom"
     ],
     "stock_mouvements": [
+      "cout_total",
       "created_at",
+      "fournisseur",
       "id",
       "manquant",
       "marchand_id",
@@ -734,6 +738,7 @@
       "last_name",
       "lieu_naissance",
       "locked_until",
+      "marche_id",
       "market",
       "must_change_password",
       "nationalite",
