@@ -107,3 +107,116 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-change-account span {
   display: block;
 }
+
+
+/* AUTH compact — priorité aux écrans complets, sans réduire la zone tactile
+   des touches à moins de 48 px. Défilement conservé en dernier recours. */
+.login-page {
+  box-sizing: border-box;
+  padding-bottom: max(4px, env(safe-area-inset-bottom, 0px)) !important;
+}
+.login-page > div:has(.login-brand) {
+  padding: 8px 12px 0 !important;
+}
+.login-page .login-logo { width: 104px; }
+.login-page h1 {
+  margin: 7px 0 5px !important;
+  font-size: 23px !important;
+  line-height: 1.12 !important;
+}
+.login-page .login-guide {
+  gap: 8px;
+  margin: 2px 0 6px;
+}
+.login-page .login-guide > img {
+  width: 44px;
+  height: 44px;
+}
+.login-page > div:has(.login-number) {
+  padding: 0 12px !important;
+  gap: 5px !important;
+}
+.login-page .login-number {
+  min-height: 50px;
+  padding: 5px 7px;
+  gap: 7px;
+  border-radius: 10px;
+}
+.login-page .login-number-value {
+  font-size: clamp(18px, 5vw, 23px);
+}
+.login-page .login-dictate {
+  min-height: 50px;
+  margin: 4px 0;
+  padding: 6px 8px;
+  gap: 8px;
+  font-size: 15px;
+  border-width: 1px;
+}
+.login-page .login-keypad {
+  gap: 5px;
+  padding: 6px;
+}
+.login-page .login-key {
+  min-height: 48px;
+  border-radius: 9px;
+  font-size: 22px;
+}
+.login-page .login-key-image { font-size: 29px; }
+.login-page .login-pin-slots {
+  gap: 8px;
+  padding: 7px 0;
+}
+.login-page .login-pin-slot {
+  width: 34px;
+  height: 36px;
+  border-radius: 8px;
+}
+.login-page .login-pin-slot::after {
+  width: 8px;
+  height: 8px;
+}
+.login-page .login-primary {
+  min-height: 50px;
+  padding: 8px 10px;
+  gap: 8px;
+  font-size: 16px;
+}
+.login-page button.login-primary { margin-top: 5px !important; }
+.login-page .login-change-account {
+  min-height: 40px;
+  padding: 5px 8px;
+  margin-top: 0;
+}
+.login-page .login-account { gap: 5px; }
+.login-page .login-account img,
+.login-page .login-account-placeholder {
+  width: 64px;
+  height: 64px;
+}
+.login-page > div:has(.login-number) > div:has(> button[aria-label="Taper mon numéro sur le clavier"]) {
+  margin-top: 4px !important;
+}
+.login-page > div:has(.login-number) > div:has(> button[aria-label="Taper mon numéro sur le clavier"]) button {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+}
+@media (max-height: 740px) {
+  .login-page > div:has(.login-brand) { padding-top: 4px !important; }
+  .login-page .login-logo { width: 88px; }
+  .login-page h1 { margin: 4px 0 !important; font-size: 21px !important; }
+  .login-page .login-guide { margin: 0 0 3px; }
+  .login-page .login-guide > img { width: 36px; height: 36px; }
+  .login-page .login-number { min-height: 44px; }
+  .login-page .login-dictate { min-height: 44px; }
+  .login-page .login-key { min-height: 44px; }
+  .login-page .login-pin-slots { padding: 5px 0; }
+  .login-page .login-pin-slot { width: 30px; height: 32px; }
+  .login-page .login-primary { min-height: 46px; }
+}
+@media (max-height: 620px) {
+  .login-page .login-guide { display: none; }
+  .login-page .login-logo { width: 78px; }
+  .login-page h1 { font-size: 19px !important; margin: 3px 0 !important; }
+}
