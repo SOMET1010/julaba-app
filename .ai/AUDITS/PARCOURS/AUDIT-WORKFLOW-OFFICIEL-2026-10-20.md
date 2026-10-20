@@ -59,14 +59,14 @@
 
 ## 5. Plan d'action priorisé (consolidation des P1 de tous les audits)
 
-1. **IDENT-01 / DGE-12** — débloquer `gestionnaire_zone` (listes isAdmin de `identifications.controller.ts`) : c'est le rôle DGE de terrain, aujourd'hui incapable de valider.
+1. ~~**IDENT-01 / DGE-12** — débloquer `gestionnaire_zone` (listes isAdmin de `identifications.controller.ts`) : c'est le rôle DGE de terrain, aujourd'hui incapable de valider.~~ **✅ FERMÉ 20/10** (commit b187d4d4 — débloqué SCOPÉ zone, fail-closed sans zone affectée, C-12 intact ; invariant 6/6).
 2. **PROD-02 + PROD-03** — restituer les quantités COMMANDÉES (exposer `stock_reservations`, alimenter `stockReserve`) et distinguer LIVRÉ de VENDU (décrément à `livree` ou lignes de livraison) : c'est le cœur du point de vigilance producteur du docx.
-3. **DGE-01** — arbitrer par écrit le rôle DGE : habilitation `institution` scopée zone OU documentation que la DGE opère via comptes BO.
+3. ~~**DGE-01** — arbitrer par écrit le rôle DGE~~ **✅ ARBITRÉ 20/10 (A-03)** : la DGE opère via comptes BO ; `institution` hors validation au pilote (voir §7.1).
 4. **DGE-02** — endpoint d'agrégation des ventes par acteur avec buckets jour/mois/année (demande explicite du docx).
 5. **DGE-04 + DGE-05** — modéliser les liens demandés par le docx : `marches.cooperative_id`, jointure producteurs↔coopératives, `marcheId` sur les identificateurs ; créer les 4 endpoints de listes groupées.
 6. **T-02** — arbitrer la couverture cotisations par rôle (producteur/coopérative/identificateur) et documenter l'intégration CNPS/CNAM réelle ou son absence.
-7. **PROD-01 / T-01** — arbitrer la caisse producteur (dedicated vs amendement du docx).
-8. **PROD-04** — router la page cotisations pour l'espace producteur.
+7. ~~**PROD-01 / T-01** — arbitrer la caisse producteur~~ **✅ ARBITRÉ 20/10 (A-01)** : amendement docx au stade pilote (voir §7.1).
+8. **PROD-04** — router la page cotisations pour l'espace producteur. *(reste ouvert)*
 9. **PROD-05 (BUG-010)** — aligner `revenusTotal` serveur sur `statut_paiement='paye'`.
 10. ~~**SEC-BESOIN-01** — verrouiller `POST /cooperatives/besoins/consolider` sur la coopérative serveur.~~ **✅ FERMÉ 20/10** (fix + invariant `sec-besoin-01-consolidation-scopee.spec.ts`, 3/3 verts).
 11. **IDENT-05** — PIN serveur sur les écritures PII de l'identificateur.
@@ -103,11 +103,11 @@
 |---|---|---|
 | A-01 | **Amendement docx au stade pilote** : « Revenus du jour » = vue trésorerie du producteur ; la caisse producteur dédiée est POST-pilote, sur les invariants caisse marchande. | Rien à coder aujourd'hui ; le libellé « caisse » ne doit jamais être affiché côté producteur (PROD-01). |
 | A-02 | **Amendement docx** : l'identificateur reste MONÉTIQUEMENT NEUTRE (IDENTIFICATEUR-16 tenue) ; pas de réintégration KEIWA. | Aucun code ; docx amendé pour la cotisation identificateur (hors espace). |
-| A-03 | **La DGE valide via les comptes back-office** (C-12, `enrolement.validate`) ; rôle `institution` HORS validation au pilote ; déblocage `gestionnaire_zone` = chantier P1 prioritaire (IDENT-01/DGE-12). | Prochain lot : débloquer `gestionnaire_zone` dans les listes isAdmin de `identifications.controller.ts`. |
+| A-03 | **La DGE valide via les comptes back-office** (C-12, `enrolement.validate`) ; rôle `institution` HORS validation au pilote ; déblocage `gestionnaire_zone` = chantier P1 prioritaire (IDENT-01/DGE-12). | ✅ Fait le 20/10 : `gestionnaire_zone` débloqué SCOPÉ zone (commit b187d4d4, invariant 6/6). |
 | A-04 | **Hors plateforme au stade pilote** : canal in-app = offres + négociation ; la consolidation des besoins reste un module COOPÉRATIVE ; extension semi-grossiste/grossiste = POST-pilote (T-09). | Aucun code ; docx amendé (processus hors app au pilote). |
-| A-05 | **Principe adopté : un réassort est un ACHAT** (cible ledger type achat + dépense marchandise + fournisseur optionnel — STK-04 « cible actée ») ; déclaration a posteriori = voie officielle du pilote (le docx la décrit déjà). | Prochain lot : entrée ledger d'achat liée à la dépense caisse (STK-04). |
+| A-05 | **Principe adopté : un réassort est un ACHAT** (cible ledger type achat + dépense marchandise + fournisseur optionnel — STK-04 « cible actée ») ; déclaration a posteriori = voie officielle du pilote (le docx la décrit déjà). | ✅ Fait le 20/10 : entrée ledger 'achat' (commit 964697ce — delta sous verrou, fournisseur + coût optionnels, idempotent, migration 1782300000000 ; invariant 4/4). La dépense caisse reste le chemin de l'argent (ADR-001). |
 | A-06 | **Oui au principe** : crédit de points à l'encaissement confirmé, idempotent (une vente = une accréditation) ; implémentation POST-pilote après recette caisse. | Aucun code aujourd'hui (le flux de vente est en recette terrain). |
-| A-07 | **Vitrine d'orientation au pilote** (pas de flux de demande) ; MVP financement POST-pilote sur le socle score financier + ApiKeyGuard ; remplacer/retirer les placeholders SIB/SG/NSIA ; I4-I6 tenus. | Petit lot UI honnêteté : partenaires du docx à l'écran ou retrait des placeholders. |
+| A-07 | **Vitrine d'orientation au pilote** (pas de flux de demande) ; MVP financement POST-pilote sur le socle score financier + ApiKeyGuard ; remplacer/retirer les placeholders SIB/SG/NSIA ; I4-I6 tenus. | ✅ Fait le 20/10 : partenaires du docx à l'écran + fausse « banque liée » supprimée (commit 83fe939a). |
 
 ---
 
