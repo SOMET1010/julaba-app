@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
-import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check, Play } from 'lucide-react';
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -100,8 +100,6 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
 import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
-// AUTH-10 — le geste caché du mode développeur, sorti de l'écran.
-import { useDevMode } from '../../hooks/useDevMode';
 // AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
 import { BanniereErreur } from './BanniereErreur';
 import { PaveSaisie } from './PaveSaisie';
@@ -115,11 +113,10 @@ import { PaveSaisie } from './PaveSaisie';
  * changer UN SEUL appel de parole (la garde voix-trace fige l'inventaire
  * `parle()` de CE fichier — les consignes et leurs clips restent écrits ici) :
  *   · hooks/useDicteeLive.ts  — micro, moteur STT, partielles, filets ;
- *   · hooks/useDevMode.ts     — le geste caché 5 tapes ;
  *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
-import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
+import { vlog, vlogStart } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 // AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
@@ -267,7 +264,6 @@ export function LoginPassword() {
   // pour la marchande (expérience simple). On l'active en tapant 5× le coin haut-gauche.
   // AUTH-10 — le geste et son état vivent dans useDevMode ; le drapeau
   // showDevButton (ci-dessous) reste ici : d'autres chemins l'allument.
-  const { devMode, toggleDevMode } = useDevMode();
   const [showDevButton, setShowDevButton] = useState(false);
 
   // « Écouter Tantie » : chaque étape pointe vers un clip local de la MÊME voix.
@@ -1075,8 +1071,6 @@ export function LoginPassword() {
       paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
       position: 'relative',
     }}>
-      {/* Zone invisible (coin haut-gauche) : 5 tapes = mode développeur (caché à la marchande) */}
-      <div onClick={toggleDevMode} aria-hidden style={{ position: 'absolute', top: 0, left: 0, width: 54, height: 54, zIndex: 60 }} />
       {import.meta.env.DEV && showDevButton && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
@@ -1113,9 +1107,6 @@ export function LoginPassword() {
             <Volume2 aria-hidden="true" size={26} />
           </button>
         </div>
-        {devMode && (
-          <span style={{ marginTop: 12, fontSize: 10, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--encre-4)' }}>Tantie Nanti Lou · dev</span>
-        )}
       </motion.div>
 
 
@@ -1510,50 +1501,6 @@ export function LoginPassword() {
           )}
         </AnimatePresence>
       </motion.div>
-
-      {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
-          Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier.
-          Restauré verbatim de main@24b40b3 (c7d23c1) — arbitrage Patrick « corrige tout »,
-          20/10 : les outils de diagnostic reviennent avec l'écran refait. */}
-      {devMode && (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 8, padding: '14px 0 18px' }}
-      >
-        <button
-          type="button"
-          onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
-          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '10px 22px', minHeight: 44, color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <Play aria-hidden="true" size={10} strokeWidth={2.5} color="#7C6250" />
-          Revoir le tutoriel
-        </button>
-        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
-        <p
-          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
-          title="Version de l'application"
-          style={{ fontSize: 9, color: 'var(--encre-4)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
-        >
-          v{__APP_VERSION__} · {__BUILD_ID__}
-        </p>
-        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
-            à Claude et déboguer précisément (phase de test). */}
-        <button
-          type="button"
-          onClick={async () => {
-            const r = await vlogPartager();
-            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
-            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
-          }}
-          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
-        >
-          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
-          Rapport de test
-        </button>
-      </motion.div>
-      )}
 
     </div>
   );
