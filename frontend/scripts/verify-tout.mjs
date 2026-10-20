@@ -54,10 +54,14 @@ const { maillons } = JSON.parse(
 //   · test:i18n-source — 03/10/2026. `docs/langues/INVENTAIRE-VOIX.md` annonçait
 //     408 sites d'appel pour 407 réels ; un lot antérieur en avait retiré un sans
 //     régénérer. Les phrases distinctes concordaient déjà : rien n'était perdu.
+//   · test:i18n-empreintes-argent — 20/10/2026. Rouge « antérieur au 03/10 »,
+//     redevenu vert de première main (constaté à dev@3c4bc40, relance exit 0) :
+//     l'empreinte intentLocal s'était réalignée au fil des lots voix du
+//     19-20/10 (821cc12, 82c7471, 2ba6c01, f3d42a7). La liste CONNUS doit
+//     maigrir quand un rouge guérit — sinon elle dort.
 const CONNUS = new Map([
   ['test:voix-trace-source', 'VOICE-01 — 4 empreintes figées, refigeage réservé à Patrick'],
   ['test:garde-argent', 'état de référence 4 entrés / 14 perdues'],
-  ['test:i18n-empreintes-argent', 'empreinte intentLocal — antérieur au 03/10'],
 ]);
 
 const t0 = Date.now();
