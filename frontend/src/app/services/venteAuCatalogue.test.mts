@@ -215,8 +215,13 @@ console.log('\n[7] LA PREUVE TRAVERSE — l\'écran relit bien SON catalogue');
   // celui où la vente part.
   ok(/const reluAuCatalogue = lireVenteAuCatalogue\(data\.transcript \|\| '', products\);/.test(src),
      'onAction — LE chemin que le moteur emprunte — relit d\'abord son catalogue');
-  ok(/const vente = reluAuCatalogue \?\? \(corrige/.test(src),
+  // 821cc12 a renommé `vente` en `venteBase` — le nom libre dicté (STK-25) est
+  // fusionné APRÈS, et jamais sur un produit que SON catalogue a reconnu.
+  // L'ordre protégé ici ne bouge pas : son catalogue, PUIS le moteur.
+  ok(/const venteBase = reluAuCatalogue \?\? \(corrige/.test(src),
      'et son catalogue passe AVANT le lexique, le moteur restant le repli');
+  ok(/const vente = !venteBase\.produit && nomLibre\s*\? \{ \.\.\.venteBase, produit: nomLibre \}\s*: venteBase;/.test(src),
+     'CAT-01 renforcé — le nom libre ne comble qu\'une absence, jamais un nom de SON catalogue');
   ok(/venteSansProduit\(action, data\.transcript/.test(src),
      'CAT-02 — et le nombre orphelin est corrigé LÀ AUSSI, sur le vrai chemin');
   ok(/lireVenteAuCatalogue\(texte, products\) \?\? \(local\?\.action\?\.type === 'vendre'/.test(src),

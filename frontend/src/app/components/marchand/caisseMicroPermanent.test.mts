@@ -85,8 +85,13 @@ ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(co
 // « Produit vocal ». C'est le défaut que la recette navigateur a trouvé.
 ok(/vendreUnifie\(produitPourVente\(vente\.produit,\s*produitPreselectionne\)/.test(codeMicro),
   "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
-ok(/const vente = reluAuCatalogue \?\? \(corrige \? \{ \.\.\.action, \.\.\.corrige \} : action\);/.test(codeMicro),
+// 821cc12 a renommé `vente` en `venteBase` — le nom libre dicté (STK-25) est
+// fusionné APRÈS, et jamais sur un produit que SON catalogue a reconnu.
+// L'ordre protégé ici ne bouge pas : son catalogue, PUIS le moteur.
+ok(/const venteBase = reluAuCatalogue \?\? \(corrige \? \{ \.\.\.action, \.\.\.corrige \} : action\);/.test(codeMicro),
   "et le nom vient d'ABORD du catalogue de la marchande, le moteur en repli");
+ok(/const vente = !venteBase\.produit && nomLibre\s*\? \{ \.\.\.venteBase, produit: nomLibre \}\s*: venteBase;/.test(codeMicro),
+  "et le nom libre ne comble qu'une absence — il n'écrase jamais un nom de SON catalogue");
 // CAT-02 — et quand elle nomme ce qu'elle ne vend pas, le nombre orphelin est
 // une quantité, pas un prix : aucune ligne « Produit vocal » à 2 F.
 ok(/const corrige = reluAuCatalogue \? null : venteSansProduit\(action, data\.transcript \|\| ''\);/.test(codeMicro),
