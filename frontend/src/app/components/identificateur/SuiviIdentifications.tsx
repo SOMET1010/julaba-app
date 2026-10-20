@@ -11,6 +11,7 @@ import {
   Lock,
   CheckCircle2,
   Clock,
+  FileWarning,
   XCircle,
   UserCheck,
   Download,
@@ -36,7 +37,14 @@ const prefersReducedMotion =
 
 const repeatLoop = prefersReducedMotion ? 0 : Infinity;
 
-function normalizeStatut(statut: string): 'submitted' | 'approved' | 'rejected' {
+// IDENT-03 (20/10/2026) : quatre états, PAS trois — « complement » (En
+// attente d'informations complémentaires) était collapsé en « submitted »
+// (« En cours »), invisible sur cet onglet alors que l'écran Acteurs le
+// distingue correctement. Un dossier qui attend des informations n'est PAS
+// un dossier simplement en cours : l'identificateur doit le VOIR et savoir
+// QUOI faire (le compléter, la resoumission serveur existe : complément →
+// en_attente).
+function normalizeStatut(statut: string): 'submitted' | 'approved' | 'rejected' | 'complement' {
   switch (statut) {
     case 'en_cours':
       return 'submitted';
@@ -47,9 +55,10 @@ function normalizeStatut(statut: string): 'submitted' | 'approved' | 'rejected' 
     case 'rejete':
     case 'rejetee':
       return 'rejected';
+    case 'complement':
+      return 'complement';
     case 'soumis':
     case 'en_attente':
-    case 'complement':
       return 'submitted';
     default:
       return 'submitted';
@@ -98,7 +107,7 @@ export function SuiviIdentifications() {
   const { peutConsulterActeur, getStatsIdentificateur, identifications } = useIdentificateur();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'submitted' | 'approved' | 'rejected' | 'complement'>('all');
   const [selectedIdentification, setSelectedIdentification] = useState<string | null>(null);
   const [historiqueActeur, setHistoriqueActeur] = useState<
     Array<{ id: string; date: string; type: string; description: string }>
@@ -150,7 +159,7 @@ export function SuiviIdentifications() {
   useEffect(() => {
     if (location.state?.filter) {
       const filter = location.state.filter;
-      if (filter === 'submitted' || filter === 'approved' || filter === 'rejected') {
+      if (filter === 'submitted' || filter === 'approved' || filter === 'rejected' || filter === 'complement') {
         setActiveFilter(filter);
       }
     }
@@ -223,6 +232,21 @@ export function SuiviIdentifications() {
     () => mesIdentifications.filter((i) => normalizeStatut(i.statut) === 'rejected').length,
     [mesIdentifications]
   );
+  const complementCount = useMemo(
+    () => mesIdentifications.filter((i) => normalizeStatut(i.statut) === 'complement').length,
+    [mesIdentifications]
+  );
+
+  // IDENT-03 — reprendre un dossier « complement » : la fiche a un mode
+  // dédié (state { mode:'complement', identificationId, typeActeur }) et la
+  // resoumission serveur repasse le dossier en 'en_attente'. Aucun nouveau
+  // flux inventé : c'est LE mécanisme existant, enfin atteignable depuis le
+  // suivi.
+  const handleCompleter = (ident: Identification) => {
+    navigate('/identificateur/fiche-identification', {
+      state: { mode: 'complement', identificationId: ident.id, typeActeur: ident.typeActeur },
+    });
+  };
 
   const filteredIdentifications = useMemo(() => {
     let list = mesIdentifications;
@@ -422,6 +446,50 @@ export function SuiviIdentifications() {
             )}
           </motion.button>
 
+          {/* IDENT-03 — 4ᵉ état : « Complément demandé », enfin visible ici
+              comme sur l'écran Acteurs. */}
+          <motion.button
+            type="button"
+            aria-label="Filtrer les dossiers en attente d'informations complémentaires"
+            onClick={() => {
+              setActiveFilter('complement');
+              if (complementCount === 0) {
+                toast.success('Aucun dossier en attente de complément');
+              } else {
+                toast(`${complementCount} dossier${complementCount > 1 ? 's' : ''} en attente d'informations complémentaires`);
+              }
+            }}
+            className={`relative bg-gradient-to-br from-amber-50 via-white to-amber-50 rounded-3xl p-3 shadow-md overflow-hidden border-2 ${
+              activeFilter === 'complement' ? 'border-amber-500 ring-2 ring-amber-300' : 'border-amber-200'
+            } text-left cursor-pointer`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, type: 'spring', stiffness: 200 }}
+            whileHover={kpiHoverGreen}
+            whileTap={kpiTap}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-600 font-semibold">Compléments</p>
+              <motion.div
+                className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center"
+                animate={complementCount > 0 && !prefersReducedMotion ? { rotate: [0, 5, -5, 0] } : { rotate: 0 }}
+                transition={kpiIconTransition}
+              >
+                <FileWarning className="w-5 h-5 text-amber-600" strokeWidth={2.5} aria-hidden="true" />
+              </motion.div>
+            </div>
+            <motion.p
+              className="text-3xl font-bold text-amber-600"
+              animate={complementCount > 0 && !prefersReducedMotion ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+              transition={kpiIconTransition}
+            >
+              {complementCount}
+            </motion.p>
+            {activeFilter === 'complement' && (
+              <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-amber-500 rounded-full" />
+            )}
+          </motion.button>
+
           <motion.button
             type="button"
             aria-label="Filtrer les identifications rejetées"
@@ -562,9 +630,11 @@ export function SuiviIdentifications() {
                           className={`px-2 py-1 rounded-lg text-xs font-medium ${
                             normalizeStatut(ident.statut) === 'approved'
                               ? 'bg-green-100 text-green-700'
-                              : normalizeStatut(ident.statut) === 'submitted'
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-red-100 text-red-700'
+                              : normalizeStatut(ident.statut) === 'complement'
+                                ? 'bg-amber-100 text-amber-800'
+                                : normalizeStatut(ident.statut) === 'submitted'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-red-100 text-red-700'
                           }`}
                         >
                           {normalizeStatut(ident.statut) === 'approved' && (
@@ -573,14 +643,19 @@ export function SuiviIdentifications() {
                           {normalizeStatut(ident.statut) === 'submitted' && (
                             <Clock className="w-3 h-3 inline mr-1" aria-hidden="true" />
                           )}
+                          {normalizeStatut(ident.statut) === 'complement' && (
+                            <FileWarning className="w-3 h-3 inline mr-1" aria-hidden="true" />
+                          )}
                           {normalizeStatut(ident.statut) === 'rejected' && (
                             <XCircle className="w-3 h-3 inline mr-1" aria-hidden="true" />
                           )}
                           {normalizeStatut(ident.statut) === 'approved'
                             ? 'Validé'
-                            : normalizeStatut(ident.statut) === 'submitted'
-                              ? 'En cours'
-                              : 'Rejeté'}
+                            : normalizeStatut(ident.statut) === 'complement'
+                              ? 'Complément demandé'
+                              : normalizeStatut(ident.statut) === 'submitted'
+                                ? 'En cours'
+                                : 'Rejeté'}
                         </div>
                         <span className="text-xs text-gray-500">{formatDate(ident.dateIdentification)}</span>
                       </div>
@@ -601,6 +676,21 @@ export function SuiviIdentifications() {
                         )}
                         {isLocked ? 'Restreint' : 'Consulter'}
                       </button>
+
+                      {/* IDENT-03 — l'action qui va avec l'état : un dossier
+                          « complement » se COMPLÈTE (resoumission serveur,
+                          complément → en_attente), pas seulement consulté. */}
+                      {normalizeStatut(ident.statut) === 'complement' && !isLocked && (
+                        <button
+                          type="button"
+                          onClick={() => handleCompleter(ident)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 bg-amber-100 text-amber-800 hover:bg-amber-200"
+                          aria-label={`Compléter le dossier de ${ident.acteurNom || 'l\'acteur'}`}
+                        >
+                          <FileWarning className="w-3 h-3" aria-hidden="true" />
+                          Compléter
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
