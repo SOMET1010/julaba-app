@@ -14,22 +14,18 @@ import { ScrollToTop } from '../layout/ScrollToTop';
 
 const PRIMARY_COLOR = '#712864';
 
-// Map modules -> routes institution
-const MODULE_ROUTES: Record<keyof ModuleAcces, string[]> = {
-  dashboard: ['/institution', '/institution/dashboard', '/institution/dashboard-analytics'],
-  analytics: ['/institution/analytics'],
-  acteurs: ['/institution/acteurs'],
-  supervision: ['/institution/supervision'],
-  audit: ['/institution/audit-trail'],
-  export: [],
-};
-
-// Items de navigation complets — filtrés selon les permissions
+// DGE-11 (20/10/2026) — les clés de module ci-dessous sont CELLES DU SERVEUR
+// (@RequireInstitutionModule sur /institution/*) : 'dashboard' couvre aussi la
+// page Analytics (GET /institution/analytics est protégé par le module
+// 'dashboard'), 'acteurs' couvre Supervision (ses données viennent de
+// GET /institution/acteurs). Fin des clés 'supervision'/'analytics' que
+// l'API n'a jamais connues — un onglet ne s'affiche plus si le serveur
+// renverrait 403 sur ses données.
 const ALL_NAV_ITEMS = [
   { label: 'Accueil', path: '/institution', icon: Home, module: 'dashboard' as keyof ModuleAcces, exact: true },
   { label: 'Acteurs', path: '/institution/acteurs', icon: Users, module: 'acteurs' as keyof ModuleAcces },
-  { label: 'Supervision', path: '/institution/supervision', icon: Eye, module: 'supervision' as keyof ModuleAcces },
-  { label: 'Analytics', path: '/institution/analytics', icon: BarChart3, module: 'analytics' as keyof ModuleAcces },
+  { label: 'Supervision', path: '/institution/supervision', icon: Eye, module: 'acteurs' as keyof ModuleAcces },
+  { label: 'Analytics', path: '/institution/analytics', icon: BarChart3, module: 'dashboard' as keyof ModuleAcces },
   { label: 'Audit', path: '/institution/audit-trail', icon: FileText, module: 'audit' as keyof ModuleAcces },
   { label: 'Moi', path: '/institution/profil', icon: User, module: null },
 ];
@@ -388,7 +384,8 @@ export function InstitutionLayout() {
     );
   }
 
-  // Vérifier l'accès à la route actuelle
+  // Vérifier l'accès à la route actuelle (fail-closed : pendant le chargement
+// des modules serveur, canAccess = false — l'écran ne présume rien)
   const currentRouteBlocked = (() => {
     for (const item of ALL_NAV_ITEMS) {
       if (!item.module) continue;
