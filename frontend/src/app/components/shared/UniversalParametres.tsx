@@ -29,7 +29,6 @@ import { API_URL } from '../../utils/api';
 import { vlogPartager } from '../../utils/voiceDebug';
 import { toast } from 'sonner';
 import { t } from '../../i18n/voice/runtime';
-import { moduleVisible } from '../../config/modulesPilote';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -910,30 +909,13 @@ export function UniversalParametres({ role }: UniversalParametresProps) {
               <RowAction label="Ma zone assignée" sublabel={(user as any)?.zone || 'Zone non définie'} icon={MapPin} onClick={() => navigate('/identificateur/suivi')} />
               <RowAction label="Historique des identifications" sublabel="Tous mes dossiers soumis" onClick={() => navigate('/identificateur/suivi')} />
             </Section>
-            {/* Keiwa (transfert, paiements…) est hors pilote : la ligne n'existe
-                que si le build l'autorise (config/modulesPilote.ts, 07/10/2026). */}
-            {moduleVisible('keiwa') && (
-              <Section title="Wallet et Commissions" icon={BarChart3} color={color}>
-                <RowAction label="Mon Keiwa" sublabel="Solde et historique de commissions" onClick={() => navigate('/identificateur/keiwa')} />
-              </Section>
-            )}
+            {/* IDENT-06 / IDENTIFICATEUR-16 (20/10/2026) : plus aucune ligne
+                Keiwa sur l'espace identificateur — acteur monétiquement neutre
+                (arbitrage A-02). L'ancienne entrée de wallet menait à une route
+                morte (/identificateur/keiwa retirée → NotFound). */}
             <Section title="Sécurité" icon={Fingerprint} color={color}>
-              <div className="flex items-center justify-between px-5 py-4">
-                <div className="flex-1 pr-4">
-                  <p className="font-semibold encre">Code PIN Keiwa</p>
-                  <p className="text-xs encre-3 mt-0.5">
-                    {pinEnabled ? 'PIN activé — Keiwa sécurisé' : 'Active le PIN pour sécuriser ton Keiwa'}
-                  </p>
-                  {pinEnabled && (
-                    <motion.button onClick={() => { setPinMode('modify'); setShowPinModal(true); }}
-                      className="mt-1 text-sm font-bold" style={{ color }} whileTap={{ scale: 0.95 }}>
-                      Mode de déverrouillage
-                    </motion.button>
-                  )}
-                </div>
-                <Toggle value={pinEnabled} color={color}
-                  onChange={v => { if (v) { setPinMode('create'); setShowPinModal(true); } else { setPinMode('disable'); setShowPinModal(true); } }} />
-              </div>
+              {/* Le PIN « Keiwa » protège un portefeuille : l'identificateur
+                  n'en a pas — cette ligne ne lui est pas montrée. */}
               <RowAction label="Historique des connexions" sublabel="Voir les accès récents" onClick={() => setShowSessions(true)} />
               <RowAction label="Me faire reconnaître" sublabel="Ton téléphone te reconnaîtra (visage ou doigt)" icon={Fingerprint} onClick={() => { void handleRegisterBiometric(); }} />
               <RowAction label="Tester la reconnaissance" sublabel="Vérifie que ton téléphone te reconnaît bien" icon={Shield} onClick={() => { void handleTestBiometric(); }} />
