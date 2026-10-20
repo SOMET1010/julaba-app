@@ -8,36 +8,36 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **425** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 443 |
-| — littéraux (phrase fixe en dur) | 198 |
-| — gabarits (`${…}`, phrase dynamique à variables) | 73 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **430** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 447 |
+| — littéraux (phrase fixe en dur) | 199 |
+| — gabarits (`${…}`, phrase dynamique à variables) | 72 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 91 |
-| — relais (`dire = (t) => speak(t)`) | 22 |
-| — clés i18n (`speakMessage('…')`, `t('…')`) | 59 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
-| Dont dynamiques (avec variables) | 73 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **56** |
-| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **468** |
-| Fichiers avec au moins un site d'appel | 82 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 314 — **hors parcours vocal**, voir §8 |
+| — relais (`dire = (t) => speak(t)`) | 23 |
+| — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
+| Dont dynamiques (avec variables) | 72 |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **57** |
+| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **473** |
+| Fichiers avec au moins un site d'appel | 83 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 318 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
 | Fichier | Domaine | Appels | Littéraux | Gabarits | Dynamiques | Relais | Clés | Critiques argent |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
-| `components/marchand/POSCaisse.tsx` | caisse | 29 | 0 | 0 | 9 | 2 | 19 | 0 |
+| `components/marchand/POSCaisse.tsx` | caisse | 31 | 0 | 0 | 10 | 2 | 20 | 0 |
 | `components/producteur/CommandesProducteurPage.tsx` | producteur | 26 | 12 | 4 | 10 | 0 | 0 | 3 |
 | `components/producteur/Stocks.tsx` | stock | 23 | 11 | 12 | 0 | 0 | 0 | 1 |
+| `components/marchand/AjoutProduitGuide.tsx` | autre | 17 | 0 | 0 | 2 | 1 | 14 | 0 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 17 | 9 | 0 | 7 | 2 | 0 | 1 |
-| `components/marchand/AjoutProduitGuide.tsx` | autre | 16 | 0 | 0 | 2 | 1 | 13 | 0 |
-| `components/wallet/WithdrawWalletModal.tsx` | wallet | 15 | 11 | 4 | 0 | 0 | 0 | 10 |
-| `components/marchand/GestionStock.tsx` | stock | 14 | 8 | 4 | 2 | 1 | 0 | 2 |
+| `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
-| `components/auth/LoginPassword.tsx` | auth | 11 | 7 | 1 | 7 | 0 | 0 | 0 |
+| `components/marchand/GestionStock.tsx` | stock | 12 | 7 | 4 | 1 | 1 | 0 | 2 |
+| `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
+| `components/auth/LoginPassword.tsx` | auth | 10 | 6 | 0 | 6 | 0 | 0 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
-| `components/marchand/MicroVenteCaisse.tsx` | vente | 10 | 0 | 0 | 3 | 2 | 6 | 0 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 10 | 8 | 0 | 0 | 2 | 0 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
 | `components/marchand/ConfirmationLigne.tsx` | vente | 8 | 0 | 0 | 3 | 1 | 5 | 0 |
@@ -61,6 +61,7 @@
 | `pages/CollecteVoix.tsx` | pages | 5 | 1 | 0 | 3 | 1 | 0 | 0 |
 | `pages/marchand/MesDonnees.tsx` | pages | 5 | 4 | 0 | 1 | 0 | 0 | 0 |
 | `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
+| `components/marchand/BoutonDireProduit.tsx` | autre | 4 | 3 | 0 | 2 | 0 | 0 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
 | `contexts/ObjectifContext.tsx` | marchand_autre | 4 | 2 | 0 | 0 | 2 | 0 | 0 |
@@ -74,7 +75,6 @@
 | `components/academy/UniversalAcademy.tsx` | academy | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
-| `components/marchand/BoutonDireProduit.tsx` | autre | 2 | 1 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MarchandDepenses.tsx` | depense | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/ResumeCaisse.tsx` | caisse | 2 | 0 | 0 | 0 | 0 | 2 | 0 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
@@ -94,6 +94,7 @@
 | `components/cooperative/FinancesCooperative.tsx` | cooperative | 1 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `components/layout/Sidebar.tsx` | partage | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BesoinMarchand.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| `components/marchand/BoutonDireNom.tsx` | autre | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
 | `components/marchand/BoutonDirePrix.tsx` | autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ChoixUnite.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -116,13 +117,13 @@
 | producteur | 71 | 57 | 6 |
 | marchand_autre | 57 | 41 | 16 |
 | partage | 42 | 27 | 0 |
-| stock | 40 | 38 | 3 |
-| wallet | 35 | 36 | 18 |
-| caisse | 34 | 0 | 0 |
-| vente | 27 | 0 | 0 |
-| auth | 23 | 17 | 0 |
+| stock | 38 | 37 | 3 |
+| caisse | 36 | 0 | 0 |
+| wallet | 36 | 37 | 19 |
+| vente | 28 | 0 | 0 |
+| autre | 24 | 3 | 0 |
+| auth | 22 | 15 | 0 |
 | cooperative | 21 | 19 | 4 |
-| autre | 20 | 1 | 0 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
 | depense | 9 | 8 | 2 |
@@ -170,21 +171,18 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 246 | `parle` | literal | Voilà les photos qui sont sorties à la place des chiffres. Ton code n'a pas changé. |  |  |
-| 246 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
-| 374 | `parle` | dynamique | error |  |  |
-| 415 | `parle` | dynamique | suggestion.texte |  |  |
-| 423 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
-| 426 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
-| 622 | `parle` | literal | Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro. |  |  |
-| 815 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte |  |  |
-| 815 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
-| 835 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
-| 835 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
-| 835 | `parle` | dynamique | ENTREE_VOICE_CLIPS.codeErreur.texte |  |  |
-| 1036 | `parle` | literal | C'est effacé net. |  |  |
-| 1334 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
-| 1521 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
+| 248 | `parle` | literal | Voilà les photos qui sont sorties à la place des chiffres. Ton code n'a pas changé. |  |  |
+| 248 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
+| 378 | `parle` | dynamique | error |  |  |
+| 419 | `parle` | dynamique | suggestion.texte |  |  |
+| 427 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
+| 430 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
+| 626 | `parle` | literal | Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro. |  |  |
+| 820 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte |  |  |
+| 820 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
+| 844 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
+| 845 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
+| 1339 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
@@ -238,30 +236,30 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 936 | `speak` | template | Commande de {produit} envoyée. | `produit` |  |
-| 954 | `speak` | literal | Le produit a été retiré de votre marketplace. |  |  |
-| 968 | `speak` | literal | La commande du marchand a été acceptée. |  |  |
-| 1634 | `speak` | template | {produit} est maintenant visible par tous les marchands. | `produit` |  |
-| 1692 | `speak` | template | {produit} est maintenant visible par tous les marchands. | `produit` |  |
+| 880 | `speak` | template | Commande de {produit} envoyée. | `produit` |  |
+| 898 | `speak` | literal | Le produit a été retiré de votre marketplace. |  |  |
+| 912 | `speak` | literal | La commande du marchand a été acceptée. |  |  |
+| 1586 | `speak` | template | {produit} est maintenant visible par tous les marchands. | `produit` |  |
+| 1644 | `speak` | template | {produit} est maintenant visible par tous les marchands. | `produit` |  |
 
 ### `components/cooperative/Membres.tsx` — cooperative
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 393 | `speak` | dynamique | msg |  |  |
-| 418 | `speak` | template | {prenom} {nom} a été suspendu. Une notification a été envoyée. | `prenom` `nom` |  |
-| 449 | `speak` | template | {prenom} {nom} a été réactivé | `prenom` `nom` |  |
-| 484 | `speak` | template | {prenom} a été exclu définitivement de la coopérative | `prenom` |  |
-| 523 | `speak` | template | {prenom} {nom} a rejoint la coopérative | `prenom` `nom` |  |
-| 537 | `speak` | template | La demande de {prenom} {nom} a été refusée | `prenom` `nom` |  |
+| 394 | `speak` | dynamique | msg |  |  |
+| 419 | `speak` | template | {prenom} {nom} a été suspendu. Une notification a été envoyée. | `prenom` `nom` |  |
+| 450 | `speak` | template | {prenom} {nom} a été réactivé | `prenom` `nom` |  |
+| 485 | `speak` | template | {prenom} a été exclu définitivement de la coopérative | `prenom` |  |
+| 524 | `speak` | template | {prenom} {nom} a rejoint la coopérative | `prenom` `nom` |  |
+| 538 | `speak` | template | La demande de {prenom} {nom} a été refusée | `prenom` `nom` |  |
 
 ### `components/cooperative/Stock.tsx` — stock
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 188 | `speak` | template | {produit} ajouté au stock commun. | `produit` |  |
-| 229 | `speak` | literal | La distribution n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 233 | `speak` | literal | Distribution enregistrée avec succès. |  |  |
+| 166 | `speak` | template | {produit} ajouté au stock commun. | `produit` |  |
+| 207 | `speak` | literal | La distribution n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 211 | `speak` | literal | Distribution enregistrée avec succès. |  |  |
 
 ### `components/cooperative/TresorerieCooperative.tsx` — cooperative
 
@@ -281,28 +279,35 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 97 | `speak` | relais | t |  |  |
-| 169 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 187 | `direMessage` | cle_i18n | STOCK_047 |  |  |
-| 188 | `direMessage` | cle_i18n | STOCK_048 |  |  |
-| 189 | `direMessage` | cle_i18n | STOCK_049 |  |  |
-| 190 | `direMessage` | cle_i18n | STOCK_054 |  |  |
-| 197 | `direMessage` | cle_i18n | STOCK_055 |  |  |
-| 209 | `direMessage` | cle_i18n | STOCK_058 |  |  |
-| 215 | `direMessage` | cle_i18n | STOCK_057 |  |  |
-| 216 | `direMessage` | cle_i18n | STOCK_056 |  |  |
-| 219 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 242 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 253 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 258 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 266 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 320 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 99 | `speak` | relais | t |  |  |
+| 171 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 189 | `direMessage` | cle_i18n | STOCK_047 |  |  |
+| 190 | `direMessage` | cle_i18n | STOCK_048 |  |  |
+| 191 | `direMessage` | cle_i18n | STOCK_049 |  |  |
+| 192 | `direMessage` | cle_i18n | STOCK_054 |  |  |
+| 199 | `direMessage` | cle_i18n | STOCK_055 |  |  |
+| 211 | `direMessage` | cle_i18n | STOCK_058 |  |  |
+| 217 | `direMessage` | cle_i18n | STOCK_057 |  |  |
+| 218 | `direMessage` | cle_i18n | STOCK_056 |  |  |
+| 222 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 245 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 256 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 262 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 270 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 336 | `direMessage` | cle_i18n | STOCK_059 |  |  |
+| 370 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 55 | `speak` | literal | Votre besoin a été soumis à la coopérative |  |  |
+
+### `components/marchand/BoutonDireNom.tsx` — autre
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 65 | `dire` | relais | t |  |  |
 
 ### `components/marchand/BoutonDirePrix.tsx` — autre
 
@@ -314,8 +319,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 86 | `dire` | literal | Je n'ai pas entendu de produit. Dis-moi ce que tu vends. |  |  |
-| 105 | `dire` | dynamique | MICRO_INDISPONIBLE |  |  |
+| 97 | `dire` | literal | Je n'ai pas entendu de produit. Dis-moi ce que tu vends. |  |  |
+| 104 | `dire` | dynamique | MICRO_INDISPONIBLE |  |  |
+| 104 | `dire` | literal | La dictée web n'a pas répondu. Touche « Ajouter un produit ». |  |  |
+| 126 | `dire` | literal | Je n'ai pas entendu de produit. Dis-moi ce que tu vends. |  |  |
+| 144 | `dire` | dynamique | MICRO_INDISPONIBLE |  |  |
 
 ### `components/marchand/ChoixUnite.tsx` — caisse
 
@@ -375,20 +383,18 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
 | 252 | `speak` | relais | t |  |  |
-| 373 | `speak` | dynamique | nomPropre |  |  |
-| 375 | `speak` | literal | Je n'ai pas entendu le nom. Réessaie, s'il te plaît. |  |  |
-| 401 | `speak` | literal | Tous tes stocks sont bons |  |  |
-| 401 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
-| 404 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
-| 408 | `speak` | template | La valeur totale est {val} francs | `val` | € |
-| 487 | `speak` | literal | C'est mis à jour. |  |  |
-| 490 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 502 | `speak` | literal | Saisis une quantité valide |  | € |
-| 507 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
-| 536 | `speak` | template | {name} supprimé | `name` |  |
-| 544 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
-| 609 | `speak` | dynamique | dit |  |  |
-| 613 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
+| 391 | `speak` | literal | Tous tes stocks sont bons |  |  |
+| 391 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
+| 394 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
+| 398 | `speak` | template | La valeur totale est {val} francs | `val` | € |
+| 477 | `speak` | literal | C'est mis à jour. |  |  |
+| 480 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 492 | `speak` | literal | Saisis une quantité valide |  | € |
+| 497 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
+| 526 | `speak` | template | {name} supprimé | `name` |  |
+| 534 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
+| 599 | `speak` | dynamique | dit |  |  |
+| 603 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
 
 ### `components/marchand/MaCooperative.tsx` — marchand_autre
 
@@ -460,17 +466,18 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 166 | `speak` | relais | texte |  |  |
-| 169 | `speakMessage` | relais | id |  |  |
-| 223 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
-| 392 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 405 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
-| 435 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 674 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 679 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 688 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 837 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 837 | `speak` | dynamique | introLigne() |  |  |
+| 169 | `speak` | relais | texte |  |  |
+| 172 | `speakMessage` | relais | id |  |  |
+| 263 | `speakMessage` | cle_i18n | TATA_AJOUT_PANIER |  |  |
+| 401 | `speakMessage` | cle_i18n | TATA_QUESTION_CORRECTION |  |  |
+| 491 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 504 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
+| 534 | `speakMessage` | dynamique | ...introMessage() |  |  |
+| 792 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 797 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 806 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 955 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 955 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -490,34 +497,36 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 |---:|---|---|---|---|:-:|
 | 85 | `speak` | relais | t |  |  |
 | 93 | `speakMessage` | relais | id |  |  |
-| 226 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
-| 292 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
-| 334 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
-| 346 | `dire` | dynamique | res.message |  |  |
-| 346 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
-| 363 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
-| 387 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
-| 405 | `dire` | dynamique | direCoupure(valeur) |  |  |
-| 434 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
-| 438 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
-| 439 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
-| 513 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
-| 514 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
-| 526 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
-| 527 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
-| 550 | `dire` | dynamique | raison |  |  |
-| 556 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 633 | `speak` | dynamique | effet.texteParle |  |  |
-| 667 | `speak` | dynamique | effet.texteParle |  |  |
-| 697 | `dire` | dynamique | relu.texteParle |  |  |
-| 722 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
-| 796 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
-| 829 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
-| 862 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
-| 1004 | `speak` | dynamique | relectureAffichee |  |  |
-| 1040 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 1136 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
-| 1682 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
+| 229 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom: p?.nom \|\| p?.name \|\| 'Produit', quantite: q, unite: p?.unite, totalLigne, totalPanier: total + prixU }).texteParle |  |  |
+| 295 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
+| 337 | `direMessage` | cle_i18n | TATA_INDIQUE_PRIX |  |  |
+| 349 | `dire` | dynamique | res.message |  |  |
+| 349 | `dire` | cle_i18n | TATA_ARTICLE_IMPOSSIBLE |  |  |
+| 366 | `direMessage` | cle_i18n | TATA_ARTICLE_AJOUTE_CATALOGUE |  |  |
+| 390 | `dire` | dynamique | ligneAjouteeDeuxFormes({ nom, quantite: qte, unite: libreUnite, totalLigne, totalPanier: total + totalLigne }).texteParle |  |  |
+| 428 | `direMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 433 | `dire` | dynamique | message |  |  |
+| 461 | `dire` | dynamique | direCoupure(valeur) |  |  |
+| 490 | `direMessage` | cle_i18n | TATA_MONTANT_TOTAL_INVALIDE |  |  |
+| 494 | `direMessage` | cle_i18n | TATA_MONTANT_RECU_INSUFFISANT |  |  |
+| 495 | `direMessage` | cle_i18n | TATA_CHOISIS_OPERATEUR |  |  |
+| 569 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE_RUPTURE |  |  |
+| 570 | `direMessage` | cle_i18n | TATA_VENTE_ENREGISTREE |  |  |
+| 582 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE_RUPTURE |  |  |
+| 583 | `direMessage` | cle_i18n | TATA_VENTE_GARDEE_TELEPHONE |  |  |
+| 606 | `dire` | dynamique | raison |  |  |
+| 612 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 689 | `speak` | dynamique | effet.texteParle |  |  |
+| 723 | `speak` | dynamique | effet.texteParle |  |  |
+| 753 | `dire` | dynamique | relu.texteParle |  |  |
+| 778 | `direMessage` | cle_i18n | TATA_VENTE_CREDIT_ENREGISTREE |  |  |
+| 852 | `direMessage` | cle_i18n | TATA_QUANTITE_LIGNE |  |  |
+| 885 | `direMessage` | cle_i18n | TATA_PRIX_UNITE_LIGNE |  |  |
+| 918 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
+| 1060 | `speak` | dynamique | relectureAffichee |  |  |
+| 1096 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
+| 1192 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 1757 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -536,13 +545,13 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 107 | `speak` | relais | t |  |  |
-| 131 | `dire` | dynamique | questionEtape |  |  |
-| 155 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 156 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
-| 162 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
-| 355 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
-| 355 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
+| 109 | `speak` | relais | t |  |  |
+| 133 | `dire` | dynamique | questionEtape |  |  |
+| 157 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 158 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
+| 164 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
+| 357 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
+| 357 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
 
 ### `components/marchand/TontineDetail.tsx` — marchand_autre
 
@@ -581,32 +590,32 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 330 | `speak` | literal | Commande acceptée. Le marchand va maintenant payer. |  | € |
-| 336 | `speak` | dynamique | message |  |  |
-| 346 | `speak` | literal | Commande refusée. |  |  |
+| 309 | `speak` | literal | Commande acceptée. Le marchand va maintenant payer. |  | € |
+| 315 | `speak` | dynamique | message |  |  |
+| 325 | `speak` | literal | Commande refusée. |  |  |
+| 333 | `speak` | dynamique | message |  |  |
+| 345 | `speak` | template | Contre-proposition de {nouveauPrix} FCFA envoyée au marchand. | `nouveauPrix` | € |
 | 354 | `speak` | dynamique | message |  |  |
-| 366 | `speak` | template | Contre-proposition de {nouveauPrix} FCFA envoyée au marchand. | `nouveauPrix` | € |
-| 375 | `speak` | dynamique | message |  |  |
-| 384 | `speak` | literal | Livraison déclarée. Le marchand va confirmer la réception. |  |  |
-| 390 | `speak` | dynamique | message |  |  |
-| 403 | `speak` | literal | Paiement récupéré ! L'argent est dans ton Keiwa. |  |  |
-| 410 | `speak` | dynamique | message |  |  |
-| 543 | `speak` | template | Commande mise à jour : {statut} | `statut` |  |
-| 549 | `speak` | dynamique | message |  |  |
-| 635 | `speak` | template | Commande de {produit} ajoutée | `produit` |  |
-| 644 | `speak` | dynamique | message |  |  |
-| 685 | `speak` | literal | Toutes les commandes |  |  |
-| 694 | `speak` | literal | Commandes urgentes |  |  |
-| 703 | `speak` | literal | Mes revenus |  |  |
-| 712 | `speak` | literal | Commandes livrées |  |  |
-| 810 | `speak` | template | Demande pour {produit} | `produit` |  |
-| 1581 | `speak` | literal | Commande marquée comme livrée |  |  |
-| 1586 | `speak` | dynamique | message |  |  |
-| 1685 | `speak` | literal | Commande annulée |  |  |
-| 1691 | `speak` | dynamique | message |  |  |
-| 1708 | `speak` | literal | Commande annulée |  |  |
-| 1714 | `speak` | dynamique | message |  |  |
-| 2472 | `speak` | literal | Paiement encaissé ! L'argent est dans ton Keiwa. |  | € |
+| 363 | `speak` | literal | Livraison déclarée. Le marchand va confirmer la réception. |  |  |
+| 369 | `speak` | dynamique | message |  |  |
+| 382 | `speak` | literal | Paiement récupéré ! L'argent est dans ton Keiwa. |  |  |
+| 389 | `speak` | dynamique | message |  |  |
+| 522 | `speak` | template | Commande mise à jour : {statut} | `statut` |  |
+| 528 | `speak` | dynamique | message |  |  |
+| 614 | `speak` | template | Commande de {produit} ajoutée | `produit` |  |
+| 623 | `speak` | dynamique | message |  |  |
+| 664 | `speak` | literal | Toutes les commandes |  |  |
+| 673 | `speak` | literal | Commandes urgentes |  |  |
+| 682 | `speak` | literal | Mes revenus |  |  |
+| 691 | `speak` | literal | Commandes livrées |  |  |
+| 789 | `speak` | template | Demande pour {produit} | `produit` |  |
+| 1560 | `speak` | literal | Commande marquée comme livrée |  |  |
+| 1565 | `speak` | dynamique | message |  |  |
+| 1664 | `speak` | literal | Commande annulée |  |  |
+| 1670 | `speak` | dynamique | message |  |  |
+| 1687 | `speak` | literal | Commande annulée |  |  |
+| 1693 | `speak` | dynamique | message |  |  |
+| 2451 | `speak` | literal | Paiement encaissé ! L'argent est dans ton Keiwa. |  | € |
 
 ### `components/producteur/CreerPlantationModal.tsx` — producteur
 
@@ -624,7 +633,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 259 | `speak` | template | {produit}, {toLocaleString} kg | `produit` `toLocaleString` |  |
+| 261 | `speak` | template | {produit}, {toLocaleString} kg | `produit` `toLocaleString` |  |
 
 ### `components/producteur/ModifierPublicationModal.tsx` — producteur
 
@@ -846,7 +855,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 752 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
 | 752 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
 | 955 | `speak` | literal | Export en cours |  |  |
-| 1094 | `speak` | literal | Déconnexion en cours |  |  |
+| 1099 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 
@@ -910,6 +919,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 176 | `speak` | literal | Retour au choix du service |  |  |
 | 181 | `speak` | literal | Retour au choix du montant |  | € |
 | 199 | `speak` | literal | Retrait confirmé ! Ton solde a été mis à jour. |  | € |
+| 207 | `speak` | literal | Retrait refusé. Le montant est revenu sur ton solde Keiwa. |  | € |
 
 ### `contexts/AppContext.tsx` — contexte
 
@@ -922,8 +932,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 356 | `speakMessage` | relais | id |  |  |
-| 473 | `direMessage` | dynamique | annonce.cle |  |  |
+| 359 | `speakMessage` | relais | id |  |  |
+| 476 | `direMessage` | dynamique | annonce.cle |  |  |
 
 ### `contexts/ObjectifContext.tsx` — marchand_autre
 
@@ -938,24 +948,24 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 273 | `speakClipOrText` | dynamique | { clipUrl: choice.mode === "clip" ? clipUrl : undefined, text } |  |  |
-| 293 | `speakClipOrText` | relais | fallback |  |  |
-| 566 | `ttsSpeak` | relais | text |  |  |
-| 659 | `ttsSpeak` | dynamique | data.response |  |  |
-| 659 | `ttsSpeak` | dynamique | ack |  |  |
-| 714 | `ttsSpeak` | dynamique | m |  |  |
-| 755 | `ttsSpeak` | dynamique | data.response |  |  |
-| 788 | `ttsSpeak` | literal | J'ai compris |  |  |
-| 799 | `ttsSpeak` | literal | D'accord, j'annule. Pas de souci. |  |  |
-| 833 | `ttsSpeak` | dynamique | phrase |  |  |
-| 884 | `ttsSpeak` | literal | Je prépare ta voix, un petit instant. |  |  |
-| 906 | `ttsSpeak` | literal | Dis oui pour valider, ou non pour annuler. |  | € |
-| 909 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
-| 925 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 926 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
-| 962 | `ttsSpeak` | dynamique | msg |  |  |
-| 994 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 998 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
+| 276 | `speakClipOrText` | dynamique | { clipUrl: choice.mode === "clip" ? clipUrl : undefined, text } |  |  |
+| 296 | `speakClipOrText` | relais | fallback |  |  |
+| 578 | `ttsSpeak` | relais | text |  |  |
+| 677 | `ttsSpeak` | dynamique | data.response |  |  |
+| 677 | `ttsSpeak` | dynamique | ack |  |  |
+| 732 | `ttsSpeak` | dynamique | m |  |  |
+| 773 | `ttsSpeak` | dynamique | data.response |  |  |
+| 806 | `ttsSpeak` | literal | J'ai compris |  |  |
+| 817 | `ttsSpeak` | literal | D'accord, j'annule. Pas de souci. |  |  |
+| 851 | `ttsSpeak` | dynamique | phrase |  |  |
+| 902 | `ttsSpeak` | literal | Je prépare ta voix, un petit instant. |  |  |
+| 924 | `ttsSpeak` | literal | Dis oui pour valider, ou non pour annuler. |  | € |
+| 927 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
+| 943 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 944 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
+| 980 | `ttsSpeak` | dynamique | msg |  |  |
+| 1012 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 1016 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
 
 ### `pages/CollecteVoix.tsx` — pages
 
@@ -987,9 +997,9 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 275 | `speak` | dynamique | refusDeuxFormes.texteParle |  |  |
-| 332 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
-| 344 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
+| 277 | `speak` | dynamique | refusDeuxFormes.texteParle |  |  |
+| 340 | `speak` | dynamique | phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }) |  |  |
+| 352 | `speak` | cle_i18n | TATA_PRODUIT_INCONNU_AJOUTER |  |  |
 
 ## 5. Corpus fixes (phrases qui ne sont pas à un site d'appel)
 
@@ -1417,63 +1427,67 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 128 | literal | Chiffres isolés (0 à 9) |  |
 | 129 | literal | Pipeline vocal — attentes et accusés fréquents |  |
 
-### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (53)
+### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (57)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 145 | literal | Je réfléchis... |  |
-| 146 | literal | Un instant... |  |
-| 147 | literal | Je vois ça... |  |
-| 148 | literal | Je m'en occupe... |  |
-| 149 | literal | Laisse-moi voir... |  |
-| 150 | literal | Je traite ça... |  |
-| 151 | literal | Attends un moment... |  |
-| 155 | literal | Je calcule ça... |  |
-| 156 | literal | Je note ta vente... |  |
-| 157 | literal | Un instant, j'enregistre... |  |
-| 158 | literal | Je m'en occupe... |  |
-| 162 | literal | Excuse-moi, je recommence... |  |
-| 163 | literal | Un instant, je réessaie... |  |
-| 164 | literal | Je réfléchis encore... |  |
-| 165 | literal | Laisse-moi réessayer... |  |
-| 169 | literal | C'est fait ! |  |
-| 170 | literal | Bien reçu ! |  |
-| 171 | literal | D'accord ! |  |
-| 172 | literal | Je note ça ! |  |
-| 173 | literal | C'est noté ! |  |
-| 174 | literal | Voilà ! |  |
-| 175 | literal | Ça marche ! |  |
-| 176 | literal | Top ! |  |
-| 177 | literal | C'est enregistré ! |  |
-| 181 | literal | Bravo, continue comme ça ! |  |
-| 182 | literal | Super, tu travailles bien ! |  |
-| 183 | literal | Excellent ! |  |
-| 184 | literal | Tu gères bien ! |  |
-| 185 | literal | C'est du bon travail ! |  |
-| 242 | literal | voix-desactivee (julaba_voice_disabled) |  |
-| 409 | template | Le pack vocal {lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet. | `lang` |
-| 539 | literal | Analyse en cours... |  |
-| 711 | literal | Enregistrement impossible. |  |
-| 788 | literal | J'ai compris |  |
-| 799 | literal | D'accord, j'annule. Pas de souci. |  |
-| 808 | literal | ma chère |  |
-| 844 | literal | J'écoute... |  |
-| 883 | literal | Je prépare ta voix… |  |
-| 884 | literal | Je prépare ta voix, un petit instant. |  |
-| 906 | literal | Dis oui pour valider, ou non pour annuler. |  |
-| 909 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
-| 925 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 926 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
-| 936 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
-| 957 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
-| 959 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
-| 960 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
-| 994 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 998 | literal | Je n'ai pas réussi, réessaie. |  |
-| 1025 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
-| 1061 | literal | Microphone inaccessible. Vérifie les permissions. |  |
-| 1064 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
-| 1066 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
+| 148 | literal | Je réfléchis... |  |
+| 149 | literal | Un instant... |  |
+| 150 | literal | Je vois ça... |  |
+| 151 | literal | Je m'en occupe... |  |
+| 152 | literal | Laisse-moi voir... |  |
+| 153 | literal | Je traite ça... |  |
+| 154 | literal | Attends un moment... |  |
+| 158 | literal | Je calcule ça... |  |
+| 159 | literal | Je note ta vente... |  |
+| 160 | literal | Un instant, j'enregistre... |  |
+| 161 | literal | Je m'en occupe... |  |
+| 165 | literal | Excuse-moi, je recommence... |  |
+| 166 | literal | Un instant, je réessaie... |  |
+| 167 | literal | Je réfléchis encore... |  |
+| 168 | literal | Laisse-moi réessayer... |  |
+| 172 | literal | C'est fait ! |  |
+| 173 | literal | Bien reçu ! |  |
+| 174 | literal | D'accord ! |  |
+| 175 | literal | Je note ça ! |  |
+| 176 | literal | C'est noté ! |  |
+| 177 | literal | Voilà ! |  |
+| 178 | literal | Ça marche ! |  |
+| 179 | literal | Top ! |  |
+| 180 | literal | C'est enregistré ! |  |
+| 184 | literal | Bravo, continue comme ça ! |  |
+| 185 | literal | Super, tu travailles bien ! |  |
+| 186 | literal | Excellent ! |  |
+| 187 | literal | Tu gères bien ! |  |
+| 188 | literal | C'est du bon travail ! |  |
+| 245 | literal | voix-desactivee (julaba_voice_disabled) |  |
+| 412 | template | Le pack vocal {lang} n’est pas encore installé. Le texte reste disponible, sans utiliser Internet. | `lang` |
+| 543 | literal | Analyse en cours... |  |
+| 729 | literal | Enregistrement impossible. |  |
+| 806 | literal | J'ai compris |  |
+| 817 | literal | D'accord, j'annule. Pas de souci. |  |
+| 826 | literal | ma chère |  |
+| 862 | literal | J'écoute... |  |
+| 901 | literal | Je prépare ta voix… |  |
+| 902 | literal | Je prépare ta voix, un petit instant. |  |
+| 924 | literal | Dis oui pour valider, ou non pour annuler. |  |
+| 927 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
+| 943 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 944 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
+| 954 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
+| 975 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
+| 977 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
+| 978 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
+| 1012 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 1016 | literal | Je n'ai pas réussi, réessaie. |  |
+| 1053 | literal | Analyse en cours... |  |
+| 1061 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba puis réessaie. |  |
+| 1063 | literal | La voix sur le navigateur a besoin d'internet. Réessaie connectée, ou touche les produits. |  |
+| 1064 | literal | Je n'ai pas réussi à t'écouter. Réessaie. |  |
+| 1091 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
+| 1127 | literal | Microphone inaccessible. Vérifie les permissions. |  |
+| 1130 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
+| 1132 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
 
 ### `services/dialoguesTata.ts` — dialogues purs de la vente guidée (0)
 
@@ -1490,11 +1504,12 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
 
-### `services/vendreVocalUnifie.ts` — refus de prix, produit inconnu (1)
+### `services/vendreVocalUnifie.ts` — refus de prix, produit inconnu (2)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
-| 320 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
+| 325 | template | C'est dans le panier : {qte} × {nom} | `qte` `nom` |
+| 327 | template | J'ai compris : {qte} × {nom}. Vérifie avant d'ajouter. | `qte` `nom` |
 
 ### `services/intentionsCaisse.ts` — réponses aux questions « chiffres du jour » (0)
 
@@ -1652,7 +1667,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (314)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (318)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
