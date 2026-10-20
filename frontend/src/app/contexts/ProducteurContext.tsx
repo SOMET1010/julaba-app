@@ -70,6 +70,8 @@ export interface Recolte {
   photoUrl?: string;
   stockDisponible: number;
   stockVendu: number;
+  // PROD-03 — « effectivement livré » (distinct de vendu : livré ⊆ vendu).
+  stockLivre?: number;
   createdAt?: string;
   // Variantes héritées de l'API (snake_case / anciens noms) encore lues par
   // certains écrans — optionnelles, à résorber écran par écran.
@@ -353,6 +355,7 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
         createdAt: r.createdAt || r.created_at,
         stockDisponible: Number(r.stockDisponible || r.stock_disponible) || Number(r.quantite) || 0,
         stockVendu: Number(r.stockVendu || r.stock_vendu) || 0,
+        stockLivre: Number(r.stockLivre ?? r.stock_livre) || 0,
       })));
     } catch (e: any) { if (e?.message !== NOT_AUTHENTICATED) console.warn('[ProducteurContext] fetchRecoltes failed:', e?.message); }
   };
