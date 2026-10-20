@@ -194,6 +194,13 @@ export class User {
   @Column({ name: 'zone_id', nullable: true })
   zoneId: string;
 
+  // DGE-05 — le marché d'affectation d'un identificateur : une CLÉ structurée
+  // (uuid vers marches), distincte du texte libre users.market hérité des
+  // fiches. Les « identificateurs par zone puis par marché » du docx en ont
+  // besoin pour être requêtables.
+  @Column({ name: 'marche_id', type: 'uuid', nullable: true })
+  marcheId: string | null;
+
   @Column({
     type: 'enum',
     enum: UserStatus,

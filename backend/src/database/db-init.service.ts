@@ -358,6 +358,21 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS stock_livre numeric(10,2) NOT NULL DEFAULT 0;`,
       );
+      // DGE-04/05 — les 4 listes jointes de la DGE : liens coopérative↔marchés
+      // et identificateur↔marché (users.market était un texte libre, pas une
+      // clé). Miroir de la migration 1782300000020-DgeLiensGroupes.
+      await this.dataSource.query(
+        `ALTER TABLE marches ADD COLUMN IF NOT EXISTS cooperative_id uuid;`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_marches_cooperative ON marches (cooperative_id);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS marche_id uuid;`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_users_marche ON users (marche_id);`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );
