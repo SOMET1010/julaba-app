@@ -274,3 +274,15 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `
 
 1. `docs(audit): catalogue produits — ce qui bloque encore le marchand (caisse tactile)` — `.ai/AUDITS/AUDIT-CATALOGUE-PRODUITS-2026-10-19.md` (preuves fichier:ligne, 4 catalogues cartographiés, C-A1/C-A2/C-A3/C-C1, recette).
 2. `fix(caisse): le marchand crée son produit au nom libre depuis « Autre article »` — POSCaisse.tsx (creerProduitDepuisFeuille, bouton 3 états, sortie d'adoption, ligne « Créer X ») + CaisseContext.tsx (addProduct renvoie le produit créé). Gates : tsc -b ✅, 5 tests unitaires purs ✅.
+
+## 2026-10-20 — lot « Continue les corrections » : dictée du nom dans le parcours guidé + gardes héritées (agent Z.ai Code)
+
+1. `82c7471` — `fix(voix): la dictée web préserve le nom libre comme l'APK (STK-25)` : BoutonDireProduit chemin web — le repli nomLibreDicte n'existait que sur Sherpa ; « ajoute dix kassos » était jeté sur web, gardé sur APK. Même règle aux deux oreilles.
+2. `2ba6c01` — `fix(voix): le nom du produit se dicte dans le parcours guidé (audit 20/10 §5.3)` : BoutonDireNom.tsx (nouveau) + AjoutProduitGuide — bloc dictée à l'étape « nom », orthographe de son étal, unité/prix dits en même temps conservés, relecture vocale du nom transcrit (STOCK_059), refus dits (STOCK_060/061, une seule source), STOCK_046 migre. Correction d'une non-lectrice par l'oreille : redire REMPLACE + champ mot à mot.
+3. `f3d42a7` — `fix(i18n): les phrases restées en dur rejoignent le catalogue (couverture)` : STOCK_062 (dictée web 821cc12) + WALLET_009 (retrait Keiwa, C-01 ef419c4) inscrites ; INVENTAIRE-VOIX régénéré (430 sites / 241 phrases) — 3 échecs hérités de test:i18n-source fermés.
+4. `ab6da32` — `test(voix): gardes recalées sur le code actuel — rouges hérités du 19/10` : vente-sans-prix (bouton 3 états e3e3a63), caisse-micro + CAT-01 vente-au-catalogue (renommage venteBase 821cc12, gardes RENFORCÉES : le nom libre n'écrase jamais un nom de son catalogue).
+5. (ce commit) — `docs(audit)`: AUDIT-VENTE-SAISIE-VOIX §5.3 FERMÉ + §5.4 rouges hérités hors périmètre + worklog 47.
+
+Batteries : tsc -b front EXIT 0 (--force, code réel) ; 15 suites audit + produit-dit/premier-produit/montant-dit/i18n-argent ✅ ; gardes bouton-dire-produit/parcours-guide-parle/refus-parle/charte-marchande/vente-sans-prix/caisse-micro/vente-au-catalogue/i18n-locales/i18n-source EXIT 0 ; verify complet 146 vert / 6 rouge / 152 — 0 rouge nouveau dû au lot, 5 rouges hérités fermés ; eslint 0 erreur ; gels ci/ intacts.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`) ; messages via `git commit -F`.

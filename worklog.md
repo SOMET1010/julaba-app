@@ -995,3 +995,21 @@ Stage Summary:
 - ecosystem.config.cjs + docs/DEPLOIEMENT-PM2.md poussés sur origin/dev (2 commits atomiques : artefacts + registres) — variante hôte PM2 : julaba-dev.ansut.ci, backend :3004, statique :8080
 - La prod docker existante (deploy.yml, port 3001) reste le mode de référence ; PM2 = variante documentée sans Docker pour le backend
 - Prochain Task ID = 40 ; chantiers P1 toujours en file : C-02 comptabilisation coopérative, C-07 webhooks HMAC + unicité pay_token
+
+---
+Task ID: 47
+Agent: Z.ai Code (sandbox)
+Task: « Assure-toi que la saisie des produits fonctionne. Et aussi, la vente de produits à la voix — et avons-nous fait un audit complet de cette fonctionnalité ? » puis « Continue les corrections » — lot dictée du nom dans le parcours guidé + réparation des gardes héritées
+
+Work Log:
+- Constat d'entrée : le résumé de contexte annonçait le Task 47 « non commencé » — PÉRIMÉ (leçon Task 38). L'audit consolidé était déjà sur dev (9225682) avec les fixes e3e3a63 (création tactile au nom libre) et 0fea799 (reprise de ligne confirmée). Le seul point code ouvert de l'audit §5 était la dictée du nom dans AjoutProduitGuide.
+- Découverte en audit de première main : BoutonDireProduit — le chemin web (demarrerRecoWeb) n'avait PAS le repli nomLibreDicte (STK-25) : « ajoute dix kassos » était entendu sur APK et jeté sur web. Corrigé (82c7471).
+- Correctif §5.3 (2ba6c01) : BoutonDireNom.tsx — bloc dictée à l'étape « nom » du parcours guidé ; mêmes primitives (Sherpa APK, reco web, produitDit → nomLibreDicte) ; ce qu'elle dit en même temps que le nom (unité, prix) est conservé, rien n'avance seul ; relecture vocale du nom transcrit (STOCK_059) = correction par l'oreille (redire REMPLACE) + champ éditable (mot à mot) ; refus dits depuis le catalogue (STOCK_060/061 affichés et dits, une seule source).
+- Rougeurs héritées constatées et fermées : test:vente-sans-prix (e3e3a63 bouton 3 états — garde recalée, intention intacte) ; test:i18n-source ×3 (STOCK_062 dictée-web 821cc12 + WALLET_009 Keiwa ef419c4 inscrites au catalogue + inventaire régénéré 430/241 — f3d42a7) ; test:caisse-micro + test:vente-au-catalogue CAT-01 (821cc12 renommage vente→venteBase — gardes recalées ET renforcées : le nom libre ne comble qu'une absence, n'écrase jamais un nom de SON catalogue — ab6da32).
+- verify complet joué 3 fois (avant/pendant/après) pour séparer mes rouges des hérités : état final 146 vert / 6 rouge / 152 — 0 rouge nouveau dû au lot ; 4 rouges hérités hors périmètre documentés dans l'audit §5.4 (refus-hors-ligne-commande = artefact de banc eval, accueil-honnete, voix-connexion-lot-a, modules-pilote) + test:prix-de-la-marchande (dette C-C1, hors maillons) ; test:i18n-empreintes-argent REDEVENU VERT (à retirer de CONNUS).
+- Piège outil consigné : le pipeline d'affichage avalait « [m » dans les sorties (rendu ANSI) — une ligne POSCaisse semblait syntaxiquement cassée ; od -c a tranché (fichier sain). Et $? après un pipe capture l'exit de tail, pas du test — gates rejouées avec codes réels.
+
+Stage Summary:
+- Le couple saisie/vente à la voix est CONFORME et complet : trois portes de saisie (dictée caisse, Mon stock nom dit ou tapé, caisse tactile nom libre), prix jamais inventé, ligne provisoire reprise après coupure, catalogue maître = suggestion jamais une porte.
+- origin/dev : 82c7471 (dictée web STK-25) + 2ba6c01 (BoutonDireNom) + f3d42a7 (couverture i18n) + ab6da32 (gardes recalées) + registres ; verify 146/152, 0 rouge nouveau.
+- Reste §5 : recette appareil (P3), dette C-C1 (arbitrage Patrick), 4 rouges hérités hors périmètre, correction vocale mot à mot (si Patrick la veut).
