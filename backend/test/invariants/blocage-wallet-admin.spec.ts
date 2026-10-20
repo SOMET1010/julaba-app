@@ -90,7 +90,7 @@ describe("Invariant B3 — blocage réel d'un wallet (bloquer/débloquer)", () =
 
     const acheteur: any = await repo.save(repo.create({
       phone: '+2250700058002', firstName: 'Acheteur', lastName: 'Blocage', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     acheteurId = acheteur.id;
     acheteurToken = await jwt.signAsync({ sub: acheteur.id, phone: acheteur.phone, role: acheteur.role }, { secret: process.env.JWT_SECRET });
