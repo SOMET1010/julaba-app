@@ -97,15 +97,29 @@ for (const c of CAS) {
      `${c.auth} : le catalogue dit ce texte`, `obtenu : ${dansCat?.[1]}`);
 }
 
-console.log('\n[5] effacer ne dit JAMAIS ce qui a été tapé');
-// Le commentaire d'origine de `handleKeyDelete` pose la règle : « Effacer est
-// un AUTRE geste : motif distinct, et un mot — "Effacé" ne révèle aucun
-// chiffre, contrairement au numéro lui-même. » Le clip doit la respecter.
+console.log('\n[5] effacer : le CODE ne nomme rien, le NUMÉRO se nomme (décision du 20/10)');
+// Le commentaire d'origine de `handleKeyDelete` posait la règle : « Effacer
+// est un AUTRE geste : motif distinct, et un mot — "Effacé" ne révèle aucun
+// chiffre, contrairement au numéro lui-même. » AUTH_24 la respecte encore :
+// c'est la voix de l'effacement du CODE. Pour le NUMÉRO, Patrick a tranché
+// le 20/10 — « faut qu'il le prononce pour chaque suppression » : le geste
+// se NOMME à chaque effacement, surprise ivoirienne comprise (AUTH_41). La
+// règle est détendue LÀ, et là seulement, par une décision datée.
 {
   const t = norm(ENTREE_VOICE_CLIPS.effacement.texte);
   ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
-     'le clip d\'effacement ne nomme ni chiffre, ni numéro, ni code',
+     'AUTH_24 (effacement du code) ne nomme ni chiffre, ni numéro, ni code',
      `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
+  const attends = 'Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !';
+  ok(norm(ENTREE_VOICE_CLIPS.effacementNumero.texte) === norm(attends),
+     'AUTH_41 : l\'effacement du numéro dit EXACTEMENT la décision du 20/10',
+     `obtenu : « ${ENTREE_VOICE_CLIPS.effacementNumero.texte} »`);
+  ok(!/[0-9]/.test(ENTREE_VOICE_CLIPS.effacementNumero.texte),
+     'AUTH_41 n\'écrit AUCUN chiffre : ce qui a été tapé reste secret');
+  const zone = ecran.slice(ecran.indexOf("rendreALaMain('numero', 'effacement')"));
+  ok(zone.includes("parle('Mmmh…"),
+     'l\'écran parle le clip à CHAQUE effacement du numéro (le parle vit dans le geste)',
+     'un mot d\'écart et direEntreeTexte ne trouve plus la clé');
 }
 
 console.log('\n[4bis] le clip composé porte bien le GESTE, pas seulement le défaut');

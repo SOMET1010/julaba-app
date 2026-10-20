@@ -12,6 +12,8 @@ export type EntreeVoiceKey =
   | 'pinImages'
   | 'pinChiffres'
   | 'effacement'
+  // Décision Patrick 20/10 : l'effacement du NUMÉRO nomme le geste (AUTH_41).
+  | 'effacementNumero'
   | 'numeroIncomplet'
   | 'reconnaissanceEchouee'
   | 'tropDEssais'
@@ -146,6 +148,24 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   effacement: {
     file: '/voix/tata/login-24.mp3',
     texte: 'C\'est effacé net.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── EFFACER UN CHIFFRE DU NUMÉRO — AUTH_41, DÉCISION PATRICK 20/10 ───────
+  //
+  // Patrick : « faut qu'il le prononce pour chaque suppression ». À chaque
+  // effacement d'un chiffre du numéro, l'écran NOMME le geste, surprise
+  // ivoirienne comprise. La règle du lot A (« un effacement ne nomme pas le
+  // numéro ») est détendue ICI SEULEMENT par cette décision datée —
+  // l'effacement du CODE garde `effacement` (AUTH_24), qui ne nomme rien.
+  //
+  // Clip synthétisé le 20/10 (voix de travail, « Mmmh… » tenu ~1 s) —
+  // `atteste: false` : personne ne l'a écoutée ; une locutrice pourra la
+  // refaire au studio. Dioula à enregistrer (règle lot B).
+  effacementNumero: {
+    file: '/voix/tata/login-41.mp3',
+    texte: 'Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !',
     atteste: false,
     lotA: true,
   },

@@ -276,6 +276,9 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-35.mp3", text: "D'accord, c'est calé comme ça." },
   { file: "/voix/tata/login-36.mp3", text: "D'accord, on continue comme d'habitude." },
   { file: "/voix/tata/login-37.mp3", text: "Voilà, ma fille. Allons-y !" },
+  // AUTH_41 — décision Patrick 20/10 : chaque effacement du numéro nomme le
+  // geste (clip TTS du 20/10, atteste:false — voix de travail).
+  { file: "/voix/tata/login-41.mp3", text: "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !" },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

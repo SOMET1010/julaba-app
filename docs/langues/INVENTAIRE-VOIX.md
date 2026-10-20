@@ -8,17 +8,17 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **432** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 449 |
-| — littéraux (phrase fixe en dur) | 200 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **433** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 450 |
+| — littéraux (phrase fixe en dur) | 201 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 73 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 91 |
 | — relais (`dire = (t) => speak(t)`) | 23 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **243** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **244** |
 | Dont dynamiques (avec variables) | 73 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **57** |
-| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **473** |
+| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **475** |
 | Fichiers avec au moins un site d'appel | 83 |
 | Attributs `aria-label` (lecteur d'écran uniquement) | 318 — **hors parcours vocal**, voir §8 |
 
@@ -34,7 +34,7 @@
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
-| `components/auth/LoginPassword.tsx` | auth | 12 | 7 | 1 | 6 | 0 | 0 | 0 |
+| `components/auth/LoginPassword.tsx` | auth | 13 | 8 | 1 | 6 | 0 | 0 | 0 |
 | `components/marchand/GestionStock.tsx` | stock | 12 | 7 | 4 | 1 | 1 | 0 | 2 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
@@ -121,8 +121,8 @@
 | caisse | 36 | 0 | 0 |
 | wallet | 36 | 37 | 19 |
 | vente | 28 | 0 | 0 |
+| auth | 25 | 18 | 0 |
 | autre | 24 | 3 | 0 |
-| auth | 24 | 17 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
@@ -182,9 +182,10 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 820 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
 | 844 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
 | 845 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
-| 1048 | `parle` | literal | C'est effacé net. |  |  |
-| 1346 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
-| 1535 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
+| 1048 | `parle` | literal | Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! |  |  |
+| 1060 | `parle` | literal | C'est effacé net. |  |  |
+| 1350 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 1539 | `parle` | template | Version {__APP_VERSION__}, {__BUILD_ID__} | `__APP_VERSION__` `__BUILD_ID__` |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
@@ -965,9 +966,9 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 927 | `ttsSpeak` | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |  |
 | 943 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
 | 944 | `ttsSpeak` | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |  |
-| 980 | `ttsSpeak` | dynamique | msg |  |  |
-| 1012 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
-| 1016 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
+| 991 | `ttsSpeak` | dynamique | msg |  |  |
+| 1023 | `ttsSpeak` | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |  |
+| 1027 | `ttsSpeak` | literal | Je n'ai pas réussi, réessaie. |  |  |
 
 ### `pages/CollecteVoix.tsx` — pages
 
@@ -1241,7 +1242,7 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 85 | literal | Pour que je puisse t'écouter et te parler partout, même sans réseau : ta voix est déjà dans l'application, je la vérifie, c'est tout. Rien à télécharger. |  |
 | 92 | literal | Bravo ! Nous sommes prêtes. Ouvrons ta boutique. |  |
 
-### `services/loginVoiceScript.ts` — script de connexion / chiffres / pipeline (à enregistrer ; ids AUTH_*, NUM_*, CORE_*) (183)
+### `services/loginVoiceScript.ts` — script de connexion / chiffres / pipeline (à enregistrer ; ids AUTH_*, NUM_*, CORE_*) (185)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
@@ -1355,79 +1356,81 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 88 | literal | Ça n'a pas marché comme il faut. Reprends depuis le début. |  |
 | 89 | literal | Numéro d'ailleurs |  |
 | 89 | literal | Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début. |  |
-| 92 | literal | Chiffre 0 |  |
-| 93 | literal | Chiffre 1 |  |
-| 94 | literal | Chiffre 2 |  |
-| 95 | literal | Chiffre 3 |  |
-| 96 | literal | Chiffre 4 |  |
-| 97 | literal | Chiffre 5 |  |
-| 98 | literal | Chiffre 6 |  |
-| 99 | literal | Chiffre 7 |  |
-| 100 | literal | Chiffre 8 |  |
-| 101 | literal | Chiffre 9 |  |
-| 104 | literal | Phrase d'attente |  |
-| 104 | literal | Je réfléchis... |  |
-| 104 | literal | N'b'a kɔlɔsi dɔɔnin... |  |
-| 105 | literal | Phrase d'attente |  |
-| 105 | literal | Un instant... |  |
-| 105 | literal | Sabali dɔɔnin... |  |
-| 106 | literal | Phrase d'attente |  |
-| 106 | literal | Je vois ça... |  |
-| 106 | literal | N'b'a lajɛra... |  |
-| 107 | literal | Phrase d'attente |  |
-| 107 | literal | Je m'en occupe... |  |
-| 107 | literal | N'bɛ baara kɛ a la... |  |
-| 108 | literal | Phrase d'attente calcul |  |
-| 108 | literal | Je calcule ça... |  |
-| 108 | literal | N'b'a jatebɔ la... |  |
-| 109 | literal | Phrase d'attente vente |  |
-| 109 | literal | Je note ta vente... |  |
-| 109 | literal | N'bɛ i ka feere sɛbɛn... |  |
-| 110 | literal | Phrase d'attente réessai |  |
-| 110 | literal | Laisse-moi réessayer... |  |
-| 110 | literal | A to n'ka kɔsegi a la... |  |
-| 111 | literal | Accusé réception |  |
-| 111 | literal | C'est fait ! |  |
-| 111 | literal | A banna ! |  |
-| 112 | literal | Accusé réception |  |
-| 112 | literal | Bien reçu ! |  |
-| 112 | literal | A mɛnna ka ɲa ! |  |
-| 113 | literal | Accusé réception |  |
-| 113 | literal | Je note ça ! |  |
-| 113 | literal | N'b'a sɛbɛn ! |  |
-| 114 | literal | Accusé réception |  |
-| 114 | literal | C'est noté ! |  |
-| 114 | literal | A sɛbɛnna ! |  |
-| 115 | literal | Accusé réception |  |
-| 115 | literal | C'est enregistré ! |  |
-| 115 | literal | A bilala ka ɲa ! |  |
-| 116 | literal | Validation vente finale |  |
-| 116 | literal | C'est noté, ta vente est bien enregistrée. |  |
-| 116 | literal | A banna, i ka feere bilala ka ɲa. |  |
-| 117 | literal | Annulation vente |  |
-| 117 | literal | D'accord, j'annule. Pas de souci. |  |
-| 117 | literal | Ayiwa, n'b'a to yen. Gɛlɛya t'a la. |  |
-| 118 | literal | Non compris |  |
-| 118 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 118 | literal | N'ma a faamu ka ɲa. A fɔ n'ye kokura, sabali. |  |
-| 119 | literal | Rien entendu |  |
-| 119 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
-| 119 | literal | N'ma foyi mɛn. Kɔsegi a la, i kan kɔrɔta dɔɔnin. |  |
-| 120 | literal | Choix confirmation ambigu |  |
-| 120 | literal | Dis oui pour valider, ou non pour annuler. |  |
-| 120 | literal | A fɔ 'Awo' walasa k'a sɔn, walima 'Ayi' walasa k'a dabila. |  |
-| 121 | literal | Rappel écran |  |
-| 121 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
-| 121 | literal | A digi 'Awo' walima 'Ayi' kan ekran na, sabali. |  |
-| 122 | literal | Préparation moteur |  |
-| 122 | literal | Je prépare ta voix, un petit instant. |  |
-| 122 | literal | N'bɛ kan labɛnna, makɔnni dɔɔnin. |  |
-| 123 | literal | Erreur réseau moteur |  |
-| 123 | literal | Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. |  |
-| 123 | literal | N'ma se ka kan labɛn. Reso lajɛ ka kɔsegi a la. |  |
-| 127 | literal | Connexion (accueil, numéro, code) |  |
-| 128 | literal | Chiffres isolés (0 à 9) |  |
-| 129 | literal | Pipeline vocal — attentes et accusés fréquents |  |
+| 99 | literal | Effacement du numéro |  |
+| 99 | literal | Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! |  |
+| 102 | literal | Chiffre 0 |  |
+| 103 | literal | Chiffre 1 |  |
+| 104 | literal | Chiffre 2 |  |
+| 105 | literal | Chiffre 3 |  |
+| 106 | literal | Chiffre 4 |  |
+| 107 | literal | Chiffre 5 |  |
+| 108 | literal | Chiffre 6 |  |
+| 109 | literal | Chiffre 7 |  |
+| 110 | literal | Chiffre 8 |  |
+| 111 | literal | Chiffre 9 |  |
+| 114 | literal | Phrase d'attente |  |
+| 114 | literal | Je réfléchis... |  |
+| 114 | literal | N'b'a kɔlɔsi dɔɔnin... |  |
+| 115 | literal | Phrase d'attente |  |
+| 115 | literal | Un instant... |  |
+| 115 | literal | Sabali dɔɔnin... |  |
+| 116 | literal | Phrase d'attente |  |
+| 116 | literal | Je vois ça... |  |
+| 116 | literal | N'b'a lajɛra... |  |
+| 117 | literal | Phrase d'attente |  |
+| 117 | literal | Je m'en occupe... |  |
+| 117 | literal | N'bɛ baara kɛ a la... |  |
+| 118 | literal | Phrase d'attente calcul |  |
+| 118 | literal | Je calcule ça... |  |
+| 118 | literal | N'b'a jatebɔ la... |  |
+| 119 | literal | Phrase d'attente vente |  |
+| 119 | literal | Je note ta vente... |  |
+| 119 | literal | N'bɛ i ka feere sɛbɛn... |  |
+| 120 | literal | Phrase d'attente réessai |  |
+| 120 | literal | Laisse-moi réessayer... |  |
+| 120 | literal | A to n'ka kɔsegi a la... |  |
+| 121 | literal | Accusé réception |  |
+| 121 | literal | C'est fait ! |  |
+| 121 | literal | A banna ! |  |
+| 122 | literal | Accusé réception |  |
+| 122 | literal | Bien reçu ! |  |
+| 122 | literal | A mɛnna ka ɲa ! |  |
+| 123 | literal | Accusé réception |  |
+| 123 | literal | Je note ça ! |  |
+| 123 | literal | N'b'a sɛbɛn ! |  |
+| 124 | literal | Accusé réception |  |
+| 124 | literal | C'est noté ! |  |
+| 124 | literal | A sɛbɛnna ! |  |
+| 125 | literal | Accusé réception |  |
+| 125 | literal | C'est enregistré ! |  |
+| 125 | literal | A bilala ka ɲa ! |  |
+| 126 | literal | Validation vente finale |  |
+| 126 | literal | C'est noté, ta vente est bien enregistrée. |  |
+| 126 | literal | A banna, i ka feere bilala ka ɲa. |  |
+| 127 | literal | Annulation vente |  |
+| 127 | literal | D'accord, j'annule. Pas de souci. |  |
+| 127 | literal | Ayiwa, n'b'a to yen. Gɛlɛya t'a la. |  |
+| 128 | literal | Non compris |  |
+| 128 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 128 | literal | N'ma a faamu ka ɲa. A fɔ n'ye kokura, sabali. |  |
+| 129 | literal | Rien entendu |  |
+| 129 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
+| 129 | literal | N'ma foyi mɛn. Kɔsegi a la, i kan kɔrɔta dɔɔnin. |  |
+| 130 | literal | Choix confirmation ambigu |  |
+| 130 | literal | Dis oui pour valider, ou non pour annuler. |  |
+| 130 | literal | A fɔ 'Awo' walasa k'a sɔn, walima 'Ayi' walasa k'a dabila. |  |
+| 131 | literal | Rappel écran |  |
+| 131 | literal | Touche Oui ou Non à l'écran, s'il te plaît. |  |
+| 131 | literal | A digi 'Awo' walima 'Ayi' kan ekran na, sabali. |  |
+| 132 | literal | Préparation moteur |  |
+| 132 | literal | Je prépare ta voix, un petit instant. |  |
+| 132 | literal | N'bɛ kan labɛnna, makɔnni dɔɔnin. |  |
+| 133 | literal | Erreur réseau moteur |  |
+| 133 | literal | Je n'ai pas réussi à préparer ta voix. Vérifie le réseau et réessaie. |  |
+| 133 | literal | N'ma se ka kan labɛn. Reso lajɛ ka kɔsegi a la. |  |
+| 137 | literal | Connexion (accueil, numéro, code) |  |
+| 138 | literal | Chiffres isolés (0 à 9) |  |
+| 139 | literal | Pipeline vocal — attentes et accusés fréquents |  |
 
 ### `hooks/useVoiceCore.ts` — moteur vocal : attentes, accusés, erreurs, confirmations locales (57)
 
@@ -1477,19 +1480,19 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 943 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
 | 944 | literal | Je n'ai rien entendu. Réessaie, parle un peu plus fort. |  |
 | 954 | literal | moteur voix indisponible ou transcription échouée (ensureOfflineModel / transcribeWav) |  |
-| 975 | literal | La dictée n'est disponible que dans l'application. Ici, touche les produits. |  |
-| 977 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
-| 978 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
-| 1012 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
-| 1016 | literal | Je n'ai pas réussi, réessaie. |  |
-| 1053 | literal | Analyse en cours... |  |
-| 1061 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba puis réessaie. |  |
-| 1063 | literal | La voix sur le navigateur a besoin d'internet. Réessaie connectée, ou touche les produits. |  |
-| 1064 | literal | Je n'ai pas réussi à t'écouter. Réessaie. |  |
-| 1091 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
-| 1127 | literal | Microphone inaccessible. Vérifie les permissions. |  |
-| 1130 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
-| 1132 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
+| 986 | literal | Ton navigateur ne sait pas écouter la voix. Ouvre Jùlaba dans Chrome, ou touche les produits. |  |
+| 988 | literal | Je n'ai pas réussi à préparer ta voix. Réessaie. |  |
+| 989 | literal | Je n'ai pas réussi à t'écouter, réessaie. |  |
+| 1023 | literal | Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît. |  |
+| 1027 | literal | Je n'ai pas réussi, réessaie. |  |
+| 1064 | literal | Analyse en cours... |  |
+| 1072 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba puis réessaie. |  |
+| 1074 | literal | La voix sur le navigateur a besoin d'internet. Réessaie connectée, ou touche les produits. |  |
+| 1075 | literal | Je n'ai pas réussi à t'écouter. Réessaie. |  |
+| 1102 | literal | Micro non accessible dans cette application. Ouvre Jùlaba dans Safari ou Chrome pour utiliser la voix. |  |
+| 1138 | literal | Microphone inaccessible. Vérifie les permissions. |  |
+| 1141 | literal | Accès au micro refusé. Autorise le micro pour Jùlaba dans les réglages de ton téléphone. |  |
+| 1143 | literal | Micro introuvable ou déjà utilisé par une autre application. Vérifie ton micro et réessaie. |  |
 
 ### `services/dialoguesTata.ts` — dialogues purs de la vente guidée (0)
 
