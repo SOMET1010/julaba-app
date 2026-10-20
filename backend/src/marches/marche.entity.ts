@@ -49,6 +49,11 @@ export class Marche {
   @Column({ default: true })
   actif: boolean;
 
+  // DGE-04 — lien coopérative↔marché (les « marchés d'une coopérative » du
+  // docx) : uuid nue nullable, sans FK, même convention que users.zone_id.
+  @Column({ name: 'cooperative_id', type: 'uuid', nullable: true })
+  cooperativeId: string | null;
+
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
