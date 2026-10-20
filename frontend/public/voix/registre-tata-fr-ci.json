@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 220,
-    "clips_mappes": 212,
+    "fichiers_mp3": 221,
+    "clips_mappes": 213,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -2622,6 +2622,19 @@
       "sha256": "64dae65c04aae9e9a764510492b3e274097106a58aaee435650942d70e8fe160",
       "octets": 34317,
       "duree_ms": 2832
+    },
+    {
+      "id": "login-41",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !",
+      "fichier": "/voix/tata/login-41.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "7119aaa1ceaa381e1a0d8a9e77c707b14744d71921c724eee655e86827b6832b",
+      "octets": 47276,
+      "duree_ms": 5880
     },
     {
       "id": "stk-02",

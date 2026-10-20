@@ -88,6 +88,16 @@ export const SCRIPT_TATA: PhraseScript[] = [
   { id: 'AUTH_39', categorie: 'CONNEXION', moment: "Compte introuvable", texteFr: "Ça n'a pas marché comme il faut. Reprends depuis le début." },
   { id: 'AUTH_40', categorie: 'CONNEXION', moment: "Numéro d'ailleurs", texteFr: "Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début." },
 
+  // ── DÉCISION PATRICK, 20/10 — LE GESTE D'EFFACEMENT SE DIT ──────────────
+  //
+  // À CHAQUE effacement d'un chiffre du numéro : « Mmmh… Tu es en train
+  // d'effacer le numéro, un ? Hein ! » — clip AUTH_41 (login-41.mp3, TTS du
+  // 20/10). La règle du lot A est détendue pour LUI seul ; l'effacement du
+  // code garde AUTH_24 (« C'est effacé net. »), qui ne nomme rien.
+  // `texteDyu` reste vide (règle lot B : une traduction de travail non
+  // validée vaudrait moins que rien sur un écran d'entrée).
+  { id: 'AUTH_41', categorie: 'CONNEXION', moment: 'Effacement du numéro', texteFr: "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !" },
+
   // ── CHIFFRES (0 à 9), lecture neutre ─────────────────────────────────────
   { id: 'NUM_0', categorie: 'CHIFFRES', moment: 'Chiffre 0', texteFr: 'Zéro', texteDyu: 'Foyi' },
   { id: 'NUM_1', categorie: 'CHIFFRES', moment: 'Chiffre 1', texteFr: 'Un', texteDyu: 'Kelen' },

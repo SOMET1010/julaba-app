@@ -52,6 +52,9 @@ const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
   pinImages: 'AUTH_21',
   pinChiffres: 'AUTH_22',
   effacement: 'AUTH_24',
+  // Décision Patrick 20/10 : l'effacement du numéro nomme le geste (clip
+  // login-41) — le repli texte ne sert jamais, la clé garde la table pleine.
+  effacementNumero: 'AUTH_41',
   numeroIncomplet: 'AUTH_11',
   reconnaissanceEchouee: 'AUTH_26',
   tropDEssais: 'AUTH_30',
@@ -1029,19 +1032,19 @@ export function LoginPassword() {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       const next = phone.slice(0, -1);
       setPhone(next);
-      // Effacer est un AUTRE geste : motif distinct, et un mot — « Effacé » ne
-      // révèle aucun chiffre, contrairement au numéro lui-même.
+      // Effacer est un AUTRE geste : motif distinct, annoncé à chaque tape.
       rendreALaMain('numero', 'effacement');
-      // Chaque effacement réel est annoncé par la porte vocale de l'entrée :
-      // MOT POUR MOT le clip login-24 (AUTH_24, « A josila. » en dioula) —
-      // un mot d'écart et `direEntreeTexte` ne retrouve plus la clé, l'écran
-      // redevient muet sans erreur. La phrase longue dite ici (« Tu es en
-      // train d'effacer le numéro… ») nommait le numéro : aucun clip ne la
-      // porte, et la règle du lot A est qu'un effacement ne nomme ni chiffre,
-      // ni numéro, ni code. `parle()` est la porte canonique — clip exact,
-      // aucune voix machine en repli.
+      // DÉCISION PATRICK, 20/10 (« faut qu'il le prononce pour chaque
+      // suppression ») : à CHAQUE effacement d'un chiffre du numéro, l'écran
+      // NOMME le geste, surprise ivoirienne comprise — clip AUTH_41
+      // (login-41.mp3), MOT POUR MOT ce texte : un mot d'écart et
+      // `direEntreeTexte` ne retrouve plus la clé, l'écran redevient muet
+      // sans erreur. La règle du lot A (« un effacement ne nomme pas le
+      // numéro ») est détendue ICI SEULEMENT par cette décision datée ;
+      // l'effacement du CODE garde AUTH_24, qui ne nomme rien. `parle()` est
+      // la porte canonique — clip exact, zéro voix machine en repli.
       if (phone.length > 0) {
-        void parle('C\'est effacé net.');
+        void parle('Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !');
       }
     } else {
       if (pinInput.length === 0) {
@@ -1050,6 +1053,10 @@ export function LoginPassword() {
         const next = pinInput.slice(0, -1);
         setPinInput(next);
         rendreALaMain('code', 'effacement');
+        // L'effacement du CODE ne nomme RIEN (règle du lot A intacte pour
+        // lui) : le clip générique AUTH_24. Il était muet avant le 20/10 —
+        // écart noté dans AUDIT-CORRECTIONS-ROUGES-2026-10-20 §3.5, fermé ici.
+        void parle('C\'est effacé net.');
       }
     }
     setError('');
