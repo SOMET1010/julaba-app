@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
-import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check } from 'lucide-react';
+import { CheckCircle, Fingerprint, Mic, Volume2, KeyRound, Users, UserRound, Eye, Keyboard, Check, Play } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useUser } from '../../contexts/UserContext';
 import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
@@ -119,7 +119,7 @@ import { PaveSaisie } from './PaveSaisie';
  *   · components/auth/BanniereErreur.tsx — la bannière ×3 → ×1 ;
  *   · components/auth/PaveSaisie.tsx     — le pavé ×2 → ×1.
  */
-import { vlog, vlogStart } from '../../utils/voiceDebug';
+import { vlog, vlogStart, vlogPartager } from '../../utils/voiceDebug';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 // AUTH-06 / ADR-002 — unique écrivain des clés jetons : pose les jetons en APK
@@ -1510,6 +1510,50 @@ export function LoginPassword() {
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Pied de page OUTILS — MODE DÉVELOPPEUR uniquement (5 tapes coin haut-gauche).
+          Masqué pour la marchande : l'écran ne montre que Tata + champ + micro + clavier.
+          Restauré verbatim de main@24b40b3 (c7d23c1) — arbitrage Patrick « corrige tout »,
+          20/10 : les outils de diagnostic reviennent avec l'écran refait. */}
+      {devMode && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4 }}
+        style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', gap: 8, padding: '14px 0 18px' }}
+      >
+        <button
+          type="button"
+          onClick={() => { localStorage.removeItem('julaba_completed_onboarding'); window.location.href = '/'; }}
+          style={{ border: '1px solid rgba(124,98,80,0.3)', borderRadius: 22, padding: '10px 22px', minHeight: 44, color: '#7C6250', fontSize: 12, fontWeight: 600, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+        >
+          <Play aria-hidden="true" size={10} strokeWidth={2.5} color="#7C6250" />
+          Revoir le tutoriel
+        </button>
+        <p style={{ fontSize: 10, color: 'var(--encre-4)', letterSpacing: '0.15em', textTransform: 'uppercase', margin: '2px 0 0' }}>By Icône Solution</p>
+        <p
+          onClick={() => parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)}
+          title="Version de l'application"
+          style={{ fontSize: 9, color: 'var(--encre-4)', letterSpacing: '0.05em', margin: 0, cursor: 'pointer' }}
+        >
+          v{__APP_VERSION__} · {__BUILD_ID__}
+        </p>
+        {/* Rapport de test : copie le journal de la dernière dictée pour l'envoyer
+            à Claude et déboguer précisément (phase de test). */}
+        <button
+          type="button"
+          onClick={async () => {
+            const r = await vlogPartager();
+            if (r.methode === 'copie') window.alert('Rapport copié ✅\nColle-le dans la conversation avec Claude.');
+            else if (r.methode === 'aucune') window.alert('Rapport :\n\n' + r.texte);
+          }}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 56, fontSize: 18, lineHeight: '24px', fontWeight: 800, color: '#7A4A24', background: 'var(--commerce-apricot)', border: '2px solid #D9A87A', borderRadius: 14, padding: '12px 22px', cursor: 'pointer' }}
+        >
+          <span aria-hidden="true" style={{ fontSize: 24 }}>🐞</span>
+          Rapport de test
+        </button>
+      </motion.div>
+      )}
 
     </div>
   );
