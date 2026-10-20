@@ -146,13 +146,17 @@ console.log("\n[PILOTE] SEPT PORTES, PAS VINGT-SIX");
   const accueil = lire('./MarchandAccueilVoice.tsx');
   const roles = lire('../../config/roleConfig.ts');
 
-  // KEIWA — un produit financier entier logé dans la caisse d'une marchande,
-  // 6 des 26 destinations à lui seul. C'est par la tuile « Mon argent » qu'on
-  // tombait sur « Keiwa verrouillé · Entre ton code PIN » : un écran de
-  // sécurité, devant une femme qui ne lit pas, avec ZÉRO parole.
-  ok(!/\/marchand\/keiwa/.test(accueil),
-     "l'accueil n'ouvre plus Keiwa — l'écran de code PIN n'est plus atteignable");
-  ok(!/Mon argent/.test(accueil), "et la tuile « Mon argent » a disparu de l'accueil");
+  // KEIWA — HISTORIQUE DES DÉCISIONS. Le 24/09 (CIBLE-UX-MARCHANDE-PILOTE.md),
+  // la tuile « Mon argent » avait été retirée : elle tombait sur « Keiwa
+  // verrouillé · Entre ton code PIN », un écran de sécurité muet devant une
+  // femme qui ne lit pas. Le 06/10 (arbitrage §8.3 d'AUDIT-UX-ROLES-2026-10-06,
+  // sur délégation explicite — commit UX-6/M-P1-2), la tuile est RESTAURÉE :
+  // le défaut racine a été traité à la source (Tata parle aux trois rôles,
+  // UX-2/T1) et keiwa n'avait PLUS AUCUNE porte pour la marchande. La garde
+  // est recalée sur la décision actuelle : PORTE UNIQUE, visible, sur l'accueil.
+  ok(/\/marchand\/keiwa/.test(accueil),
+     "l'accueil ouvre Keiwa par la tuile « Mon argent » — porte UNIQUE (arbitrage §8.3 du 06/10)");
+  ok(/Mon argent/.test(accueil), "et la tuile « Mon argent » est bien sur l'accueil");
 
   // LE MARCHÉ VIRTUEL — s'approvisionner est un autre métier que vendre.
   const barreMarchand = roles.match(/marchand:\s*\{[\s\S]*?bottomBar:\s*\{[\s\S]*?\]/)?.[0] ?? '';
