@@ -225,6 +225,26 @@ console.log('\n[7-bis] DGE-11 : les modules institution viennent du serveur, la 
     'InstitutionLayout : navItems alignés sur les clés serveur (dashboard/acteurs/audit)');
 }
 
+console.log('\n[7-ter] IDENT-03 : l\u2019état « complement » est visible sur le Suivi, avec son action');
+{
+  // IDENT-03 (20/10/2026) : SuiviIdentifications collapssait « complement » →
+  // « submitted » (badge « En cours ») — le 4ᵉ état du workflow était
+  // invisible ici alors que l'écran Acteurs le distingue correctement.
+  // La garde verrouille les QUATRE pièces : état distinct, badge, KPI+filtre,
+  // action « Compléter » branchée sur le mode complément existant de la
+  // fiche (aucun nouveau flux inventé).
+  const suivi = lire('../components/identificateur/SuiviIdentifications.tsx');
+  const suiviCode = suivi.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/case 'complement':\s*\n\s*return 'submitted';/.test(suiviCode),
+    'SuiviIdentifications : « complement » n\u2019est plus collapsé en « submitted » (IDENT-03)');
+  ok(/case 'complement':\s*\n\s*return 'complement';/.test(suiviCode),
+    'SuiviIdentifications : « complement » est un état à part entière');
+  ok(/Complément demandé/.test(suivi),
+    'SuiviIdentifications : badge « Complément demandé » affiché (IDENT-03)');
+  ok(/handleCompleter[\s\S]*mode:\s*'complement'/.test(suiviCode),
+    'SuiviIdentifications : action « Compléter » branchée sur le mode complément de la fiche');
+}
+
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
