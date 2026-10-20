@@ -1782,7 +1782,28 @@ export function FicheIdentificationDynamique() {
       // Branche création neuve - utilise endpoint transactionnel
       const acteurNom = `${data.prenoms} ${safeNom}`.trim();
 
+      // IDENT-09 (20/10/2026) — UNE CLÉ PAR SOUMISSION. Générée UNE fois,
+      // conservée en session jusqu'à la confirmation du serveur : si le
+      // réseau coupe et que l'identificateur reprend la fiche, le POST est
+      // REJOUÉ avec la MÊME clé et le serveur renvoie le dossier déjà créé
+      // (ni doublon d'acteur, ni faux « numéro déjà utilisé »). Sans
+      // sessionStorage, clé volatile : mieux que rien.
+      const CLE_IDEM_STORAGE = 'julaba_idem_soumission';
+      let cleIdempotence = '';
+      try {
+        cleIdempotence = sessionStorage.getItem(CLE_IDEM_STORAGE) || '';
+        if (!cleIdempotence) {
+          cleIdempotence = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          sessionStorage.setItem(CLE_IDEM_STORAGE, cleIdempotence);
+        }
+      } catch {
+        cleIdempotence = `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      }
+
       const payload = {
+        idempotencyKey: cleIdempotence,
         acteur: {
           phone: safePhone,
           firstName: data.prenoms,
@@ -1870,6 +1891,17 @@ export function FicheIdentificationDynamique() {
         }
 
         if (!isMountedRef.current) return;
+
+        // IDENT-09 — la soumission est CONFIRMÉE : la clé a été consommée.
+        // Le rejeu éventuel d'un nouveau dossier partira avec une clé NEUVE.
+        try { sessionStorage.removeItem(CLE_IDEM_STORAGE); } catch { /* noop */ }
+        // Un rejeu d'APRÈS coupure retombe ici : le serveur renvoie le dossier
+        // existant — on le dit clairement, au lieu d'un doublon silencieux.
+        if (createData?.dejaSoumis) {
+          toast.info('Dossier déjà enregistré', {
+            description: 'La première soumission avait réussi : aucun doublon créé.',
+          });
+        }
 
         acteurId = (createData?.user?.id && typeof createData.user.id === 'string') ? createData.user.id : '';
         // P0.0 (ADR-002) : le compte naît en_attente_activation, non-loginable.

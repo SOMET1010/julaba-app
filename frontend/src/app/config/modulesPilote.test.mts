@@ -267,6 +267,29 @@ console.log('\n[7-quater] IDENT-08 : l\u2019Academy identificateur enseigne le V
     'Academy : PII masquée + activation P0.0 enseignées');
 }
 
+console.log('\n[7-quinquies] IDENT-09 : la soumission est idempotente (une clé, un dossier)');
+{
+  // IDENT-09 (20/10/2026) : la coupure réseau pendant la soumission créait
+  // soit un doublon complet, soit un faux « numéro déjà utilisé ». La garde
+  // verrouille le contrat client : UNE clé générée, PERSISTÉE en session
+  // (reprise après coupure = MÊME clé), envoyée au serveur, consommée après
+  // confirmation, et le flag dejaSoumis annoncé honnêtement à
+  // l'identificateur. Le contrat serveur est verrouillé par
+  // ident-09-idempotence-soumission.spec.ts.
+  const fiche = lire('../components/identificateur/FicheIdentificationDynamique.tsx');
+  const ficheCode = fiche.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/idempotencyKey:\s*cleIdempotence/.test(ficheCode),
+    'Fiche : le POST de soumission porte idempotencyKey (IDENT-09)');
+  ok(/julaba_idem_soumission/.test(ficheCode) && /sessionStorage\.getItem/.test(ficheCode),
+    'Fiche : la clé PERSISTE en session — la reprise rejoue la MÊME clé');
+  ok(/randomUUID/.test(ficheCode),
+    'Fiche : clé cryptographique (randomUUID), pas un compteur prévisible');
+  ok(/dejaSoumis/.test(ficheCode),
+    'Fiche : un rejeu qui retombe sur le dossier existant est ANNONCÉ (« déjà enregistré »), pas un doublon silencieux');
+  ok(/removeItem\(CLE_IDEM_STORAGE\)/.test(ficheCode),
+    'Fiche : la clé est consommée après confirmation — un NOUVEAU dossier part avec une clé NEUVE');
+}
+
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');

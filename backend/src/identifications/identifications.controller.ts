@@ -326,6 +326,32 @@ export class IdentificationsController {
       throw new BadRequestException('Body invalide: acteur et identification requis');
     }
 
+    // IDENT-09 (20/10/2026) — IDEMPOTENCE DE LA SOUMISSION. Le client génère
+    // UNE clé par soumission (persistée avec le brouillon) et la rejoue telle
+    // quelle après une coupure réseau. Si la clé existe déjà, la première
+    // soumission a RÉUSSI : on renvoie le dossier EXISTANT (même id, même
+    // acteur, ni doublon ni SMS ni notification) avec le flag `dejaSoumis`.
+    // La réponse ressemble à un succès — parce que c'en est un. Sans clé :
+    // comportement inchangé (rétrocompatibilité).
+    const idempotencyKey =
+      typeof body?.idempotencyKey === 'string' && body.idempotencyKey.trim()
+        ? body.idempotencyKey.trim()
+        : (typeof body?.idempotency_key === 'string' && body.idempotency_key.trim()
+            ? body.idempotency_key.trim()
+            : null);
+    if (idempotencyKey) {
+      const existant = await this.repo.findOne({ where: { idempotency_key: idempotencyKey } as any });
+      if (existant) {
+        return {
+          success: true,
+          dejaSoumis: true,
+          user: existant.acteur_id ? { id: existant.acteur_id } : undefined,
+          identification: existant,
+          activationCode: null,
+        };
+      }
+    }
+
     const acteurData: CreateActeurDto & Record<string, any> = { ...body.acteur };
     const identificationData = { ...body.identification };
 
@@ -397,6 +423,10 @@ export class IdentificationsController {
         latitude: identificationData.latitude || null,
         longitude: identificationData.longitude || null,
         documents: identificationData.documents || null,
+        // IDENT-09 : la clé est posée DANS la transaction — si la création
+        // réussit, la clé est définitivement consommée ; un rejeu plus tard
+        // est un rejeu qui trouve le dossier existant.
+        idempotency_key: idempotencyKey,
         commission_payee: false,
         date_identification: new Date(),
       };
