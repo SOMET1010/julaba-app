@@ -20,7 +20,7 @@ Connexion → ouverture de caisse → consultation du stock commun → consolida
 |---|---|---|---|
 | COO-01 | Le parcours mélange parfois la coopérative (organisation) et le coopérateur (compte utilisateur). Les exigences prévoient une coopérative avec responsable, membres, stock et transactions. | P1 | Définir l'identité de l'organisation, les comptes membres et les autorisations propres à chaque action. |
 | COO-02 | La consolidation des besoins des membres est décrite sans règle d'approbation, de quota, de priorité ou de gestion d'un membre qui se retire. | P1 | Définir qui peut proposer, valider et annuler un besoin ; conserver la trace et le motif. |
-| COO-03 | Le parcours affirme que les achats se font auprès des producteurs via le marché virtuel. C'est cohérent avec le circuit attendu, mais les états commande, négociation, paiement, livraison et litige doivent être détaillés. | P1 | Formaliser les statuts et les transitions ; une demande de besoin ne doit pas valoir commande ni paiement. |
+| COO-03 | **Correction engagée sur `dev`** : le marché de l'acteur `cooperateur` expose désormais uniquement les offres du canal producteur dont le vendeur est `producteur`, et la création de commande vérifie aussi ce circuit côté serveur. Les transitions commande/paiement/livraison/litige restent à recetter. | P1 | Formaliser et tester les statuts et transitions ; une demande de besoin ne doit pas valoir commande ni paiement. |
 | COO-04 | La dette documentée signale deux modèles de stock : `produits` côté marchand et `stocks` côté producteur/coopérateur. Elle signale aussi des écarts de règles de survente entre ces modèles. | P1 | Définir le modèle canonique ou les différences métier assumées ; garantir mouvements traçables, quantités cohérentes et règle explicite de survente. |
 | COO-05 | Le parcours ne précise pas si le stock commun est séparé par lot, qualité, unité, propriétaire ou membre. | P1 | Définir les dimensions nécessaires à la traçabilité, la distribution aux membres et la gestion des pertes/retours. |
 | COO-06 | Le compte `cooperateur` a des opérations de trésorerie qui, selon l'audit acteur, doivent être en attente puis validées/annulées ; les permissions président-only sont un point de contrôle. | P1 | Préciser les rôles président/trésorier/membre, les seuils d'approbation, le double contrôle et les journaux d'annulation. |
@@ -70,3 +70,10 @@ Connexion → ouverture de caisse → consultation du stock commun → consolida
 Le parcours coopérative doit être distingué du parcours d'un compte `cooperateur`. Les risques majeurs portent sur l'autorité de décision, le stock commun, les commandes aux producteurs, la séparation des fonds et la traçabilité des opérations. Le circuit producteurs → coopérative est cohérent avec le descriptif, mais doit être validé par des tests de bout en bout et des preuves d'intégration.
 
 **Statut : À ARBITRER / À RECETTER — audit fonctionnel statique.**
+
+
+## Mise à jour technique du 20/10/2026
+
+- `GET /publications/marche` limite l'approvisionnement du compte coopérateur aux offres des producteurs.
+- `POST /commandes` refuse un circuit hors profil avant réservation.
+- Les commandes groupées et la distribution restent des fonctionnalités documentées comme non persistées ; elles ne sont pas présentées comme corrigées par ce lot.
