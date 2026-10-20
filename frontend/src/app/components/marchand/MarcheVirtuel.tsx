@@ -188,15 +188,20 @@ export function MarcheVirtuel() {
   }, [apiProducts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
+    let cancelled = false;
+    // Ne jamais conserver les offres du compte précédent pendant le changement
+    // de session/profil. Une réponse vide du serveur est aussi une vraie réponse :
+    // elle doit vider la liste, pas laisser afficher des offres périmées.
+    setApiProducts([]);
     apiRequest<{ publications?: any[] } | null>(API_URL, '/publications/marche', { method: 'GET' })
-    .then(data => {
-      if (!data) return;
-      const pubs = data.publications || [];
-      if (pubs.length > 0) {
+      .then(data => {
+        if (cancelled) return;
+        const pubs = data?.publications || [];
         const mapped: Product[] = pubs.map((p: any) => ({
           id: p.id, name: p.produit, emoji: '', image: p.photo_url || getImageByNom(p.produit),
           sellerType: (p.type_marche === 'cooperative' ? 'cooperative' : 'producteur') as 'producteur' | 'cooperative',
-          sellerName: `${p.producteur_prenom || ''} ${p.producteur_nom || ''}`.trim() || 'Producteur',
+          sellerName: `${p.producteur_prenom || ''} ${p.producteur_nom || ''}`.trim()
+            || (p.user_role === 'marchand' ? 'Grossiste' : p.user_role === 'cooperateur' ? 'Coopérative' : 'Producteur'),
           sellerId: p.user_id,
           location: p.localisation || p.producteur_commune || "Côte d'Ivoire",
           price: Number(p.prix_unitaire), unit: p.unite,
@@ -211,9 +216,11 @@ export function MarcheVirtuel() {
           status: 'available' as const, description: p.description || '',
         }));
         setApiProducts(mapped);
-      }
-    })
-    .catch((e: any) => console.warn('[MarcheVirtuel] publications/marche failed:', e?.message));
+      })
+      .catch((e: any) => {
+        if (!cancelled) console.warn('[MarcheVirtuel] publications/marche failed:', e?.message);
+      });
+    return () => { cancelled = true; };
   }, [accessToken]);
 
   // Message de bienvenue
