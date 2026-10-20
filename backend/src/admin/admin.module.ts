@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminController } from './admin.controller';
 import { AdminAnalyticsController } from './admin-analytics.controller';
+import { AdminGroupesController } from './admin-groupes.controller';
 import { AdminWalletsController } from './admin-wallets.controller';
 import { AdminService } from './admin.service';
 import { AdminWalletsService } from './admin-wallets.service';
@@ -19,7 +20,7 @@ import { VoiceModule } from '../voice/voice.module';
     FeedbakSmsModule,
     VoiceModule,
   ],
-  controllers: [AdminController, AdminAnalyticsController, AdminWalletsController],
+  controllers: [AdminController, AdminAnalyticsController, AdminGroupesController, AdminWalletsController],
   providers: [AdminService, AdminWalletsService],
 })
 export class AdminModule {}
