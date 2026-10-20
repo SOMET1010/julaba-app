@@ -1,5 +1,7 @@
 import { ModifierPublicationModal } from './ModifierPublicationModal';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { API_URL } from '../../utils/api';
+import { apiRequest } from '../../services/api/api-client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -43,7 +45,28 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
   const { commandes } = useProducteur();
   const { speak } = useApp();
   const [showEditModal, setShowEditModal] = useState(false);
+  // PROD-02 — les quantités COMMANDÉES deviennent visibles : les réservations
+  // de la récolte sont fetchées à l'ouverture (GET /recoltes/:id/reservations,
+  // fail-honest : en cas d'erreur la barre retombe sur les états connus).
+  const [reserveActive, setReserveActive] = useState<number>(0);
+  const [reserveNbCommandes, setReserveNbCommandes] = useState<number>(0);
   const recolteStatus = recolte.statut ?? recolte.status ?? '';
+
+  useEffect(() => {
+    let annule = false;
+    (async () => {
+      try {
+        const data = await apiRequest<any>(API_URL, `/recoltes/${recolte.id}/reservations`, { method: 'GET' });
+        if (!annule && data?.meta) {
+          setReserveActive(Number(data.meta.reserveActive) || 0);
+          setReserveNbCommandes((data.data || []).filter((l: any) => l.statut === 'active').length);
+        }
+      } catch {
+        // Fail-honest : sans réponse, on n'invente pas de réservation.
+      }
+    })();
+    return () => { annule = true; };
+  }, [recolte.id]);
 
   const commandesLiees = commandes.filter(c => c.recolteId === recolte.id);
   const commandesEnCours = commandesLiees.filter(c => ['en_attente', 'confirmee', 'en_cours'].includes(c.statut));
@@ -55,12 +78,17 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
   const quantite        = Number((recolte as any).quantite || recolte.quantiteReelle || 0);
   const prix            = Number(recolte.prixUnitaire || (recolte as any).prix_unitaire || 0);
   const stockVendu      = Number((recolte as any).stockVendu || 0);
-  const stockReserve    = Number((recolte as any).stockReserve || 0);
+  // PROD-03 — l'état LIVRÉ existe maintenant en quantité (recoltes.stock_livre).
+  const stockLivre      = Number((recolte as any).stockLivre ?? (recolte as any).stock_livre ?? 0);
+  // PROD-02 — le Réservé vient du journal des réservations (plus le champ fantôme).
+  const stockReserve    = reserveActive;
   const stockDispo      = Number((recolte as any).stockDisponible ?? quantite);
+  const stockVenduNonLivre = Math.max(0, stockVendu - stockLivre);
   const valeurStock     = stockDispo * prix;
   const valeurTotal     = quantite * prix;
   const revenuActuel    = stockVendu * prix;
-  const pctVendu        = quantite > 0 ? (stockVendu / quantite) * 100 : 0;
+  const pctLivre        = quantite > 0 ? (stockLivre / quantite) * 100 : 0;
+  const pctVenduNonLivre   = quantite > 0 ? (stockVenduNonLivre / quantite) * 100 : 0;
   const pctReserve      = quantite > 0 ? (stockReserve / quantite) * 100 : 0;
   const pctDisponible   = quantite > 0 ? (stockDispo / quantite) * 100 : 100;
   const isLowStock      = stockDispo < quantite * 0.2;
@@ -169,14 +197,21 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
                 <p className="font-black text-gray-900">Répartition du stock</p>
               </div>
 
-              {/* Barre empilée */}
+              {/* Barre empilée — 4 états du docx : livré, vendu non livré, réservé, disponible */}
               <div className="h-5 rounded-full overflow-hidden flex mb-3">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${pctVendu}%` }}
+                  animate={{ width: `${pctLivre}%` }}
                   transition={{ duration: 0.8, delay: 0.1 }}
-                  className="bg-green-500 h-full"
-                  title={`Vendu: ${pctVendu.toFixed(0)}%`}
+                  className="bg-green-700 h-full"
+                  title={`Livré: ${pctLivre.toFixed(0)}%`}
+                />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${pctVenduNonLivre}%` }}
+                  transition={{ duration: 0.8, delay: 0.15 }}
+                  className="bg-green-400 h-full"
+                  title={`Vendu non livré: ${pctVenduNonLivre.toFixed(0)}%`}
                 />
                 <motion.div
                   initial={{ width: 0 }}
@@ -195,11 +230,12 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
               </div>
 
               {/* Légende */}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Vendu',      value: stockVendu,   pct: pctVendu,      color: '#16a34a', bg: '#dcfce7' },
-                  { label: 'Réservé',    value: stockReserve, pct: pctReserve,    color: '#d97706', bg: '#fef3c7' },
-                  { label: 'Disponible', value: stockDispo,   pct: pctDisponible, color: '#3b82f6', bg: '#dbeafe' },
+                  { label: 'Livré',      value: stockLivre,        pct: pctLivre,        color: '#166534', bg: '#dcfce7' },
+                  { label: 'Vendu',      value: stockVendu,        pct: pctLivre + pctVenduNonLivre, color: '#16a34a', bg: '#f0fdf4' },
+                  { label: 'Réservé',    value: stockReserve,      pct: pctReserve,      color: '#d97706', bg: '#fef3c7' },
+                  { label: 'Disponible', value: stockDispo,        pct: pctDisponible,   color: '#3b82f6', bg: '#dbeafe' },
                 ].map((s) => (
                   <div key={s.label} className="rounded-xl p-3 text-center" style={{ backgroundColor: s.bg }}>
                     <p className="text-lg font-black" style={{ color: s.color }}>{(s.value || 0).toLocaleString()}</p>
@@ -208,6 +244,13 @@ export function RecolteDetailModal({ recolte, cycle, onClose, onPublish }: Props
                   </div>
                 ))}
               </div>
+
+              {/* PROD-02 — d'où vient le Réservé : le nombre de commandes actives */}
+              {reserveNbCommandes > 0 && (
+                <p className="text-[11px] text-gray-500 mt-2">
+                  {reserveNbCommandes} commande{reserveNbCommandes > 1 ? 's' : ''} en cours {reserveNbCommandes > 1 ? 'réservent' : 'réserve'} ce volume.
+                </p>
+              )}
             </div>
 
             {/* ── Revenus ── */}
