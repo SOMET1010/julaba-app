@@ -484,9 +484,9 @@ Chaque nom passé au peigne fin (`rg -w -F`, tous canaux : process.env direct, p
 - **Statut** : ⚠️ CORRECTIONS POUSSÉES — validation CI à confirmer
 - **Correctifs appliqués** :
   - `publicationId` est désormais obligatoire pour toute négociation d'approvisionnement du marché ; l'ancien contournement sans publication est supprimé.
-  - Ajout de tests d'intégration pour l'absence de publication, une publication appartenant à un autre vendeur, une publication inactive, et les circuits détaillant → producteur, demi-grossiste → producteur et coopérative → grossiste.
+  - Ajout de tests d'intégration pour l'absence de publication, une publication appartenant à un autre vendeur, une publication inactive, et les circuits détaillant → producteur, demi-grossiste → producteur, coopérative → grossiste et grossiste → détaillant.
 - **Limites restantes** :
   - Les tests doivent être exécutés dans l'environnement CI ; aucun résultat vert n'est affirmé ici.
   - La politique de circuit est encore exprimée dans le contrôleur et peut être extraite dans un service commun ultérieurement.
-- **Commits correctifs** : `9e86f53`, `9184480`, `580db20`
+- **Commits correctifs** : `9e86f53`, `9184480`, `580db20`, `81e4376`
 - **Date de validation finale** : en attente des résultats CI
