@@ -84,14 +84,14 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
 
     const marchand: any = await repo.save(repo.create({
       phone: '+2250700059002', firstName: 'Marchand', lastName: 'Neg', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchandId = marchand.id;
     marchandToken = await signFor(marchand);
 
     const marchand2: any = await repo.save(repo.create({
       phone: '+2250700059003', firstName: 'Marchand2', lastName: 'Neg', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchand2Id = marchand2.id;
     marchand2Token = await signFor(marchand2);
