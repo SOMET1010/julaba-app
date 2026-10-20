@@ -207,7 +207,7 @@ function composer(
  * parcours : une marchande qui se trompe annule, une marchande qui nomme un
  * vrai produit ne peut plus se heurter à un « je n'ai pas entendu ».
  */
-export function nomLibreDicte(cequelleADit: string): EcouteProduit | null {
+export function nomLibreDicte(cequelleADit: string, nomRefute?: string): EcouteProduit | null {
   const texte = (cequelleADit ?? '').trim();
   if (!texte) return null;
 
@@ -219,10 +219,41 @@ export function nomLibreDicte(cequelleADit: string): EcouteProduit | null {
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
 
+  // LA CORRECTION MOT À MOT (arbitrage de Patrick, 20/10) — le chantier que
+  // l'audit 20/10 §5.3 laissait « à part si Patrick la veut ». Elle a relu le
+  // nom transcrit (STOCK_059) et il est faux : elle appuie et dit
+  // « non, pas kasso, gombo ». Ce qu'elle corrige, ON LE CONNAÎT — c'est le
+  // nom affiché. Trois gestes, une seule règle : REMPLACER.
+  //   · Les mots qui RÉFUTENT ne nomment jamais un produit — ils sortent
+  //     TOUJOURS (pas seulement quand `nomRefute` est fourni : « non,
+  //     gombo » doit marcher dès la première dictée ratée).
+  //   · Le nom réfuté sort SI ET SEULEMENT SI la phrase le réfute — sinon
+  //     redire « kasso » pour confirmer resterait possible, et un produit
+  //     homonyme d'un autre ne serait plus dictable.
+  // Aucune autre correction : ni orthographe, ni pluriel — le parcours pose
+  // le nom sous SA forme.
+  const refutPresent = mots.some((m) => MOTS_REFUTATION.has(m));
+  const refutes = refutPresent
+    ? new Set((nomRefute ?? '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/['’]/g, ' ')
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean))
+    : new Set<string>();
+
   const utiles = mots.filter((m) =>
+    // Une lettre seule n'est jamais un produit parlé : elle est le reste
+    // d'une elision que la tokenisation a ouverte (« c'est » → c + est —
+    // l'apostrophe devient espace AVANT le découpage, les clés composées
+    // de `MOTS_DISCOURS` ne peuvent plus la rattraper).
+    m.length > 1 &&
     !motOutil(m) &&
     !MOTS_PAS_UNE_VENTE.includes(m) &&
-    !MOTS_DISCOURS.has(m));
+    !MOTS_DISCOURS.has(m) &&
+    !MOTS_REFUTATION.has(m) &&
+    !refutes.has(m));
 
   const nom = utiles.join(' ').trim();
   if (nom.length < NOM_PRODUIT_MINIMUM) return null;
@@ -245,4 +276,12 @@ const MOTS_DISCOURS = new Set([
   'mon', 'ma', 'mes', 'notre', 'nos', 'leur', 'leurs',
   'ce', 'cette', 'ces', "c'est", 'cest', 'que', 'qui', 'pour', 'avec',
   'dans', 'sur', 'au', 'aux', 'un', 'une', 'et', 'ou', 'est', 'sont', 'en', 'y',
+]);
+
+/** Les mots qui réfutent — la correction mot à mot ne nomme RIEN. « non,
+ *  pas kasso, gombo » : « non » et « pas » conduisent la phrase, ils ne sont
+ *  pas son produit. « n'est » arrive de « c'est n'est pas ça » des moteurs. */
+const MOTS_REFUTATION = new Set([
+  'non', 'pas', 'ne', 'nest', 'n', 'jamais', 'faux', 'erreur', 'erree',
+  'pardon', 'desole', 'faute', 'trompe', 'trompee',
 ]);
