@@ -42,14 +42,16 @@ eq(
   // l'objet, et c'est justement ce qui l'a fait rougir quand le champ est
   // apparu. Aucun test n'est ajouté à cette suite gelée : on met à jour deux
   // attentes existantes pour qu'elles décrivent la forme réelle.
-  [{ id: "1", type: "vente", qty: -7, qtyAffichee: 7, horsStock: false, name: "Tomate", unit: "kg", uniteConnue: true, day: "aujourd'hui" }],
+  // STK-04/A-05 (20/10) : `fournisseur` et `coutTotal` s'ajoutent à leur tour
+  // — vides/`null` hors achat (jamais de valeur inventée).
+  [{ id: "1", type: "vente", qty: -7, qtyAffichee: 7, horsStock: false, name: "Tomate", unit: "kg", uniteConnue: true, fournisseur: "", coutTotal: null, day: "aujourd'hui" }],
   "vente : signe conservé, unité/nom mappés",
 );
 eq(
   mapApiMouvements([
     { id: "2", type: "annulation", quantite: 5, produit_nom: null, unite: null, date: "2026-08-15T10:00:00" },
   ], now),
-  [{ id: "2", type: "annulation", qty: 5, qtyAffichee: 5, horsStock: false, name: "", unit: "", uniteConnue: false, day: "hier" }],
+  [{ id: "2", type: "annulation", qty: 5, qtyAffichee: 5, horsStock: false, name: "", unit: "", uniteConnue: false, fournisseur: "", coutTotal: null, day: "hier" }],
   "annulation : nom/unité nuls → défauts vides",
 );
 eq(
