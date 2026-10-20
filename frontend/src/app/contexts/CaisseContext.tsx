@@ -271,7 +271,10 @@ interface CaisseContextType {
   clearCartAndStorage: () => void;
 
   // Products
-  addProduct: (product: Omit<CaisseProduct, 'id'>) => Promise<void>;
+  /** C-01 (audit catalogue 19/10) — renvoie le produit CRÉÉ (réponse serveur,
+   *  avec son identifiant) : la caisse doit pouvoir poser la ligne au panier
+   *  avec le VRAI produit, sans relire un état React pas encore à jour. */
+  addProduct: (product: Omit<CaisseProduct, 'id'>) => Promise<CaisseProduct>;
   updateProduct: (id: string, updates: Partial<CaisseProduct>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   refreshProducts: () => Promise<void>;
@@ -951,31 +954,31 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       };
       const data = await caisseApi.creerProduitCaisse(produitData);
       eventBus.emit(EVENTS.PRODUCT_CREATED, produitData, { priority: 'medium' });
-      {
-        const p = data.produit;
-        // UN PRODUIT SANS IDENTIFIANT N'EST PAS UN PRODUIT. Le typage de la
-        // réponse (axe 4) a montré que ce bloc l'acceptait : la ligne entrait
-        // dans le catalogue avec `id: undefined`, et la première vente de cet
-        // article partait donc sans produit — invendable, sans message.
-        // Même défaut nommé qu'au chargement du catalogue, même retenue : le
-        // refuser ferait échouer une création qui « passait » avant.
-        setProducts(prev => {
-          const suivant = [...prev, {
-            id: p.id as string,
-            nom: p.nom ?? product.nom,
-            prix: Number(p.prix),
-            prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
-            categorie: p.categorie ?? product.categorie,
-            stock: Number(p.stock),
-            unite: p.unite ?? product.unite,
-            image: p.image || getImageByNom(p.nom ?? product.nom),
-            prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
-            promo_fin: p.promo_fin || null,
-          }];
-          ecrireCacheProduits(suivant);
-          return suivant;
-        });
-      }
+      const p = data.produit;
+      // UN PRODUIT SANS IDENTIFIANT N'EST PAS UN PRODUIT. Le typage de la
+      // réponse (axe 4) a montré que ce bloc l'acceptait : la ligne entrait
+      // dans le catalogue avec `id: undefined`, et la première vente de cet
+      // article partait donc sans produit — invendable, sans message.
+      // Même défaut nommé qu'au chargement du catalogue, même retenue : le
+      // refuser ferait échouer une création qui « passait » avant.
+      const cree: CaisseProduct = {
+        id: p.id as string,
+        nom: p.nom ?? product.nom,
+        prix: Number(p.prix),
+        prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
+        categorie: p.categorie ?? product.categorie,
+        stock: Number(p.stock),
+        unite: p.unite ?? product.unite,
+        image: p.image || getImageByNom(p.nom ?? product.nom),
+        prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,
+        promo_fin: p.promo_fin || null,
+      };
+      setProducts(prev => {
+        const suivant = [...prev, cree];
+        ecrireCacheProduits(suivant);
+        return suivant;
+      });
+      return cree;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la création du produit';
       throw new Error(message);
