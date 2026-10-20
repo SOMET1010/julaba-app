@@ -106,7 +106,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
   // Detection du role courant : BO (liste globale) vs acteur (mes-tickets).
   // BackOfficeContext ne peuple son user que pour les roles BO ; AppContext
   // porte le role de l'acteur connecte. isBO route loadTickets.
-  const { user: appUser } = useApp();
+  const { user: appUser, loading: appAuthLoading } = useApp();
   const bo = useBackOfficeOptional();
   const isBO = !!bo?.user || isBORole((appUser?.role as string) ?? null);
 
@@ -114,10 +114,10 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
   // toujours de la derniere valeur de isBO et de la liste courante.
   const isBORef = useRef(isBO);
   useEffect(() => { isBORef.current = isBO; }, [isBO]);
-  const authenticatedRef = useRef(!!appUser || !!bo?.user);
+  const authenticatedRef = useRef((!appAuthLoading && !!appUser) || (!!bo?.user && !bo?.isAuthLoading));
   useEffect(() => {
-    authenticatedRef.current = !!appUser || !!bo?.user;
-  }, [appUser?.id, bo?.user?.id]);
+    authenticatedRef.current = (!appAuthLoading && !!appUser) || (!!bo?.user && !bo?.isAuthLoading);
+  }, [appAuthLoading, appUser?.id, bo?.isAuthLoading, bo?.user?.id]);
   const ticketsRef = useRef<Ticket[]>(tickets);
   useEffect(() => { ticketsRef.current = tickets; }, [tickets]);
 
@@ -155,7 +155,7 @@ export function TicketsProvider({ children }: { children: ReactNode }) {
     // Chargement initial + rechargement quand le role detecte change
     // (resolution differee de l'utilisateur BO apres julaba:bo-login).
     void loadTickets();
-  }, [isBO, appUser?.id, bo?.user?.id, loadTickets]);
+  }, [isBO, appAuthLoading, appUser?.id, bo?.isAuthLoading, bo?.user?.id, loadTickets]);
 
   useEffect(() => {
     // Écoute login app ET login BO
