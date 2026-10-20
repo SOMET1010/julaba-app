@@ -77,3 +77,33 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-account-placeholder{width:96px;height:96px;display:grid;place-items:center;border-radius:50%;background:var(--commerce-apricot);color:var(--encre)}
 @media(max-height:700px){.login-welcome-body{padding:20px 0}.login-tata-welcome>img{width:150px}.login-page h1{margin:12px 0 8px;font-size:25px}.login-guide>img{width:56px;height:56px}.login-market-message{top:14%}.login-market-message h1{font-size:36px}.login-market-sheet{padding:10px}.login-tata-inline{min-height:70px}.login-tata-inline>img{height:64px}.login-market-primary{min-height:60px}.login-market-partners{display:none}}
 @media(min-width:768px){.login-market-sheet{left:auto;right:6vw;bottom:6vh;width:430px}.login-market-message{left:7vw;top:24%}.login-market-scene img{object-position:center 45%}}
+
+
+/* Vue « Bonjour [prénom] » — aligner l'icône et le libellé du changement de compte. */
+.login-change-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  align-self: center;
+  margin: 2px auto 0;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--encre-3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: underline;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.login-change-account svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.login-change-account span {
+  display: block;
+}
