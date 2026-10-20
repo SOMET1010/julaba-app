@@ -164,8 +164,23 @@ export class InstitutionDashboardController {
     const acteurs = (await this.acteursDuPerimetre(user, scope))
       .filter(u => ACTEUR_ROLES.includes(u.role as string));
 
-    // Répartition réelle par rôle (même source que le dashboard).
-    const roles = ACTEUR_ROLES.map((role) => ({ role, count: acteurs.filter(u => u.role === role).length }));
+    // Répartition réelle par rôle (même source que le dashboard) : total,
+    // actifs et nouveaux du mois sont des COMPTES réels sur les acteurs du
+    // périmètre — jamais des zéros décoratifs.
+    const estActif = (u: any) => u.status === 'actif' || (u as any).validated === true;
+    const dansLeMois = (u: User) => {
+      const d = new Date(u.createdAt);
+      return d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear();
+    };
+    const roles = ACTEUR_ROLES.map((role) => {
+      const duRole = acteurs.filter(u => u.role === role);
+      return {
+        role,
+        count: duRole.length,
+        actifs: duRole.filter(estActif).length,
+        nouveauxCeMois: duRole.filter(dansLeMois).length,
+      };
+    });
 
     // Inscriptions réelles par jour — 7 derniers jours du périmètre (le filtre
     // vit dans le JOIN pour que les jours sans inscription restent à zéro).
