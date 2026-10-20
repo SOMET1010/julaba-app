@@ -68,7 +68,7 @@ function POSCaisseInner() {
   // convention déjà en place dans JULABA (voir RoleDashboard, LoginPassword…),
   // donc lisible, testable, et vide quand on arrive autrement.
   const produitPreselectionne = ((location.state as { produitPreselectionne?: ProduitPreselectionne } | null)?.produitPreselectionne) ?? null;
-  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions, etatCatalogue } = useCaisse();
+  const { products, cart, addToCart, removeFromCart, updateCartItemQuantity, updateCartItemPrice, clearCart, getTotalCart, enregistrerVente, refreshProducts, transactions, etatCatalogue, addProduct } = useCaisse();
   const { speak, reloadTransactions, user, isOnline } = useApp();
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Ma boutique';
   // La caisse SUIT le sous-profil (docs/SOUS_PROFILS_MARCHAND.md) : en négoce
@@ -105,6 +105,9 @@ function POSCaisseInner() {
   const [showLibre, setShowLibre] = useState(false);
   const [libreMontant, setLibreMontant] = useState('');
   const [libreDesc, setLibreDesc] = useState('');
+  // C-01 (audit catalogue 19/10) — la création d'un VRAI produit depuis la
+  // feuille « Autre article » est async : l'écran le DIT pendant l'attente.
+  const [creationLibreEnCours, setCreationLibreEnCours] = useState(false);
   // COMBIEN, AU DOIGT — 25/09/2026. La quantité existait déjà quand la vente
   // était DICTÉE (`quantiteDictee`) ; ouverte au doigt, la feuille restait à 1.
   // L'agent de test : « une marchande risque d'entrer directement 2 000 F comme
@@ -388,6 +391,59 @@ function POSCaisseInner() {
     // L'unité revient au défaut : sinon le « tas » de la vente précédente
     // collerait, en silence, à l'article libre suivant.
     setLibreMontant(''); setLibreDesc(''); setLibreUnite('unité'); setLibreQte(1); setShowLibre(false); setVenteDictee(null); setPrixDitAArbitrer(null); arbitrageDemandeRef.current = false;
+  };
+
+  /**
+   * C-01 (audit catalogue 19/10) — CRÉER SON PRODUIT DEPUIS LA CAISSE.
+   *
+   * LE MUR. La dictée sait déjà poser un produit au nom libre
+   * (`MicroVenteCaisse.accepterCreation` → `addProduct`) ; le tactile,
+   * lui, n'offrait que la ligne synthétique `libre-*` — un montant sans
+   * produit : jamais dans Mon stock, marge fausse (0 F d'achat),
+   * introuvable demain. Un catalogue pré-enregistré ne doit pas être la
+   * SEULE porte vers un article nommé : elle nomme SON produit, l'app
+   * le crée tel quel — le back n'a jamais consulté aucun catalogue
+   * (`POST /caisse/produits` → `nomDeProduitSaisi`).
+   *
+   * GARDE ANTI-DOUBLON : le nom tapé existe déjà sur son étal → c'est LUI
+   * qui part au panier, au prix qu'elle vient de poser (règle `produitDit` :
+   * l'appariement sert à ne pas la dédoubler). Sinon, création réelle
+   * (stock 0), puis entrée directe au panier — comme l'adoption : elle est
+   * en train d'encaisser, on ne la fait pas chercher son propre produit.
+   */
+  const creerProduitDepuisFeuille = async () => {
+    const nom = libreDesc.trim();
+    const montant = Number(libreMontant);
+    if (!nom || !montant || montant <= 0 || creationLibreEnCours) return;
+    // La quantité DITE compte, même règle que partout ici : le montant posé
+    // est celui d'UNE unité, le total de la ligne est ce prix multiplié.
+    const qte = venteDictee?.quantite && venteDictee.quantite > 0 ? venteDictee.quantite : Math.max(1, libreQte);
+    setCreationLibreEnCours(true);
+    try {
+      const dejaLa = products.find(p => p.nom.trim().toLowerCase() === nom.toLowerCase());
+      const produit = dejaLa ?? await addProduct({ nom, prix: montant, categorie: 'Autre', stock: 0, unite: libreUnite });
+      await refreshProducts();
+      addToCart({ ...produit, prix: montant, prix_promo: null, promo_fin: null } as any, qte);
+      vibrerSucces();
+      direMessage('TATA_PRODUIT_AJOUTE_BOUTIQUE', { produit: produit.nom });
+      fermerAutreArticle();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Impossible d'ajouter ce produit.";
+      setAdoptionMessage(message);
+      dire(message);
+      vibrerErreur();
+    } finally {
+      setCreationLibreEnCours(false);
+    }
+  };
+
+  /** Le geste unique du bouton final : trois portes, une seule phrase.
+   *  Référence choisie → adoption ; nom saisi → création réelle ;
+   *  sans nom → montant libre (la vente ponctuelle sans produit). */
+  const validerFeuilleAutreArticle = () => {
+    if (refChoisie) { void adopterReference(); return; }
+    if (libreDesc.trim().length > 0) { void creerProduitDepuisFeuille(); return; }
+    ajouterMontantLibre();
   };
 
   const total = getTotalCart();
@@ -1554,15 +1610,13 @@ function POSCaisseInner() {
                   />
                   {refRecherche.trim().length > 0 && (() => {
                     const trouves = catalogueMaitre.rechercher(refRecherche);
-                    if (trouves.length === 0) {
-                      return (
-                        <div style={{ fontSize:13, color:'var(--encre-3)', marginBottom:12, lineHeight:1.5 }}>
-                          Rien trouvé sous ce nom. Tu peux quand même vendre un montant libre ci-dessous.
-                        </div>
-                      );
-                    }
+                    // C-A3 (audit catalogue 19/10) — LA SORTIE EXISTE, AVANT
+                    // MÊME LA LISTE. Le catalogue maître est une SUGGESTION,
+                    // jamais une porte à sens unique : ce qu'elle a tapé peut
+                    // devenir SON produit, ici, qu'il y ait des références ou
+                    // non. (Avant : « Rien trouvé → vendez un montant libre ».)
                     return (
-                      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12, maxHeight:210, overflowY:'auto' }}>
+                      <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:12, maxHeight:260, overflowY:'auto' }}>
                         {trouves.map(r => {
                           const deja = catalogueMaitre.estAdoptee(r.default_code);
                           return (
@@ -1579,6 +1633,14 @@ function POSCaisseInner() {
                             </button>
                           );
                         })}
+                        <button
+                          type="button"
+                          onClick={() => { setRefChoisie(null); setLibreDesc(refRecherche.trim()); setAdoptionMessage(null); }}
+                          style={{ textAlign:'left', border:'1.5px dashed var(--caisse-vert)', borderRadius:'var(--caisse-rayon-3)', padding:'var(--caisse-esp-3)', minHeight:'var(--caisse-cible-tactile)', background:'var(--caisse-succes)', cursor:'pointer', fontFamily:'inherit' }}
+                        >
+                          <div style={{ fontSize:15, fontWeight:800, color:'var(--caisse-vert-fonce)' }}>Créer « {refRecherche.trim()} » comme nouveau produit</div>
+                          <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>Ton produit, ton prix — pas dans la liste</div>
+                        </button>
                       </div>
                     );
                   })()}
@@ -1610,10 +1672,23 @@ function POSCaisseInner() {
                       <div style={{ fontSize:15, fontWeight:800, color:'var(--encre)' }}>{refChoisie.nom}</div>
                       <div style={{ fontSize:11, color:'var(--encre-3)', marginTop:2 }}>{refChoisie.categorie || 'Catalogue JULABA'}</div>
                     </div>
-                    <button type="button" onClick={() => { setRefChoisie(null); setLibreDesc(''); setAdoptionMessage(null); }}
-                      style={{ background:'none', border:'none', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }}>
-                      Changer
-                    </button>
+                    <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+                      <button type="button" onClick={() => { setRefChoisie(null); setLibreDesc(''); setAdoptionMessage(null); }}
+                        style={{ background:'none', border:'none', color:'var(--caisse-vert)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }}>
+                        Changer
+                      </button>
+                      {/* C-A1 (audit catalogue 19/10) — LA RÉFÉRENCE EST UNE
+                          SUGGESTION, PAS UNE DÉCISION. Le code la choisissait
+                          « pour elle » et la carte n'offrait que « Changer » —
+                          qui rouvre le MÊME catalogue. Un produit homonyme du
+                          sien, ou simplement l'envie de garder SON nom, est un
+                          droit : ce geste rend la main en gardant le nom
+                          pré-rempli, la feuille passe en création réelle. */}
+                      <button type="button" onClick={() => { const nom = libreDesc; setRefChoisie(null); setLibreDesc(nom); setAdoptionMessage(null); }}
+                        style={{ background:'none', border:'none', color:'var(--encre-3)', font:'var(--caisse-font-texte)', fontWeight:600, cursor:'pointer', fontFamily:'inherit', padding:'var(--caisse-esp-2)', minHeight:'var(--caisse-cible-tactile)' }}>
+                        Non — je crée mon produit
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1813,11 +1888,21 @@ function POSCaisseInner() {
               {!arbitrageSansClavier && (
               <button
                 type="button"
-                onClick={refChoisie ? adopterReference : ajouterMontantLibre}
-                disabled={!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours}
-                style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours) ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}
+                onClick={validerFeuilleAutreArticle}
+                disabled={!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours || creationLibreEnCours}
+                style={{ width:'100%', padding:'var(--caisse-esp-4)', minHeight:56, borderRadius:'var(--caisse-rayon-4)', border:'none', color:'white', font:'var(--caisse-font-bouton)', cursor:'pointer', fontFamily:'inherit', background: (!libreMontant || Number(libreMontant) <= 0 || adoptionEnCours || creationLibreEnCours) ? 'var(--caisse-gris-texte)' : 'var(--caisse-vert)' }}
               >
-                {adoptionEnCours ? 'Ajout…' : refChoisie ? 'Ajouter à mon catalogue' : 'Ajouter'}
+                {/* C-01/C-A2 (audit catalogue 19/10) — LE LIBELLÉ DIT CE QUI
+                    VA ARRIVER. Avec un nom saisi, ce n'est plus un montant
+                    jeté dans un panier : c'est SON produit qui naît, ici et
+                    maintenant — le même contrat que la dictée lui offre. */}
+                {adoptionEnCours || creationLibreEnCours
+                  ? 'Ajout…'
+                  : refChoisie
+                    ? 'Ajouter à mon catalogue'
+                    : libreDesc.trim().length > 0
+                      ? 'Ajouter à ma boutique'
+                      : 'Ajouter'}
               </button>
               )}
             </motion.div>

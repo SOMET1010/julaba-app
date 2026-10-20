@@ -5,6 +5,19 @@
 
 
 
+### Modifié — Le marchand crée son produit au nom libre depuis la caisse (2026-10-19)
+
+Demande Patrick : « le marchand doit pouvoir ajouter ses produits sans aucun
+catalogue prédéfini ». Audit `.ai/AUDITS/AUDIT-CATALOGUE-PRODUITS-2026-10-19.md`
+: la dictée savait déjà créer un produit réel au nom libre ; le TACTILE de la
+caisse n'offrait qu'une ligne synthétique `libre-*` (jamais persistée) et
+imposait la référence du catalogue maître homonyme. Corrigé dans `POSCaisse` :
+création réelle via `addProduct` (le back n'a jamais consulté de catalogue),
+bouton à trois états, la référence maître devient une suggestion avec sortie
+« Non — je crée mon produit », et la recherche de références propose toujours
+« Créer « X » comme nouveau produit ». `addProduct` renvoie désormais le
+produit créé (CaisseContext) pour poser la vraie ligne au panier.
+
 ### Ajouté — Micro de dictée au bout de la ligne numéro (2026-10-12, 7ᵉ session)
 
 Demande du 12/10 sur la maquette validée : un bouton micro en FIN de la

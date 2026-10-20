@@ -269,3 +269,8 @@ docs: registres session — déploiement PM2 (tâche 39)                        
 - Batteries : eslint sur ecosystem.config.cjs exit 0 ; 0 fichier TypeScript modifié (aucune gate tsc requise) ; doc vérifiée de première main (dotenv + typeorm hoistés, PORT lu à main.ts:270/:277, health /api/v1/health du compose).
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 2026-10-19 — audit catalogue produits + correctif caisse tactile
+
+1. `docs(audit): catalogue produits — ce qui bloque encore le marchand (caisse tactile)` — `.ai/AUDITS/AUDIT-CATALOGUE-PRODUITS-2026-10-19.md` (preuves fichier:ligne, 4 catalogues cartographiés, C-A1/C-A2/C-A3/C-C1, recette).
+2. `fix(caisse): le marchand crée son produit au nom libre depuis « Autre article »` — POSCaisse.tsx (creerProduitDepuisFeuille, bouton 3 états, sortie d'adoption, ligne « Créer X ») + CaisseContext.tsx (addProduct renvoie le produit créé). Gates : tsc -b ✅, 5 tests unitaires purs ✅.
