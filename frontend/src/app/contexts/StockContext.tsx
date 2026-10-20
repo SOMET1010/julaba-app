@@ -24,6 +24,8 @@ export interface StockItem {
   userId?: string;
   produit: string;
   quantite: number;
+  /** false si la quantité n'a pas été renseignée ; true si elle est suivie. */
+  suiviStock: boolean;
   unite: string;
   prixUnitaire: number;
   prixAchat?: number;   // alias prixUnitaire
@@ -61,6 +63,7 @@ function normalize(s: StockServeur): StockItem {
     marchandId: s.proprietaire_id || '',
     produit: s.produit || '',
     quantite: parseFloat(String(s.quantite ?? '')) || 0,
+    suiviStock: s.suivi_stock !== false && s.quantite != null && s.quantite !== '',
     unite: s.unite || 'unité',
     prixUnitaire: parseFloat(String(s.prix_unitaire ?? s.prix ?? '')) || 0,
     seuilAlerte: s.seuil_alerte != null ? (parseFloat(String(s.seuil_alerte)) || 0) : undefined,
