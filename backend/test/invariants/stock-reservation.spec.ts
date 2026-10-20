@@ -59,7 +59,7 @@ describe('Invariant B2 — reservation de stock sur commande', () => {
     );
     const acheteur: any = await repo.save(repo.create({
       phone: '+2250700020002', firstName: 'Acheteur', lastName: 'March', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     acheteurToken = await jwt.signAsync(
       { sub: acheteur.id, phone: acheteur.phone, role: acheteur.role },
