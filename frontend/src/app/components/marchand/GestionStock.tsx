@@ -37,7 +37,7 @@ interface Stock {
   id: string; name: string; image: string;
   quantity: number; unit: string;
   /** false = quantité non suivie/inconnue, et non rupture de stock. */
-  stockTracked: boolean;
+  stockTracked?: boolean;
   purchasePrice: number; salePrice: number;
   threshold: number; category: string;
   promoPrice?: number | null; promoFin?: string | null;
