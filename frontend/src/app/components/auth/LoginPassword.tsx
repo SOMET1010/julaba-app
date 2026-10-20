@@ -1044,7 +1044,7 @@ export function LoginPassword() {
       // l'effacement du CODE garde AUTH_24, qui ne nomme rien. `parle()` est
       // la porte canonique — clip exact, zéro voix machine en repli.
       if (phone.length > 0) {
-        void parle('Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !');
+        void parle('Tu es en train d\'effacer le numéro !');
       }
     } else {
       if (pinInput.length === 0) {
