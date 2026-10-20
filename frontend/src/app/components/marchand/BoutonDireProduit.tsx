@@ -85,7 +85,14 @@ export function BoutonDireProduit({ sesProduits, onProduit, dire }: Props) {
         const web = demarrerRecoWeb({
           interim: () => {},
           conclure: (texte) => {
-            const lu = produitDit(texte || '', sesProduits);
+            // STK-25 AUX DEUX OREILLES — le nom libre était préservé sur le
+            // chemin Sherpa (APK) et JETÉ sur le chemin web : « ajoute dix
+            // kassos » dicté dans Chrome répondait « Je n'ai pas entendu de
+            // produit » alors que la même phrase sur l'APK ouvrait le
+            // parcours avec « Kassos ». Le repli `nomLibreDicte` est la même
+            // règle, pas une seconde : dictée web (19/10) et APK entendent
+            // désormais de la même façon.
+            const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '');
             void fermer();
             if (!lu) { dire?.("Je n'ai pas entendu de produit. Dis-moi ce que tu vends."); return; }
             onProduit(lu);
