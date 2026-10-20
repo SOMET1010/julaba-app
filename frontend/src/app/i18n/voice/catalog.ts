@@ -693,7 +693,7 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'CLIP_UI_137', type: 'tts', domaine: 'moteur_vocal', critiqueArgent: false, frActuel: 'À bientôt sur Jùlaba', frMarche: null, variables: [], audioMode: 'clip', statut: 'a_migrer', owner: 'manus', source: 'services/tataUiClips.ts (ui-137.mp3) ; components/layout/Sidebar.tsx:64' },
   { id: 'GUIDAGE_001', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères me parler. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:100' },
   { id: 'GUIDAGE_002', type: 'tts', domaine: 'guidage', critiqueArgent: false, frActuel: 'J\'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s\'adapte ?', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'manus', source: 'utils/accessMode.ts:97' },
-  { id: 'STOCK_046', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Je n\'ai pas entendu de produit. Dis-moi ce que tu vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'a_migrer', owner: 'claude', source: 'components/marchand/BoutonDireProduit.tsx', note: 'STK-05 — rien compris au micro du stock. On le DIT, on n\'ouvre pas un formulaire vide en faisant comme si on avait entendu.' },
+  { id: 'STOCK_046', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Je n\'ai pas entendu de produit. Dis-moi ce que tu vends.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/BoutonDireProduit.tsx', note: 'STK-05 — rien compris au micro du stock. On le DIT, on n\'ouvre pas un formulaire vide en faisant comme si on avait entendu. Lu par clé depuis BoutonDireNom (audit 20/10 §5.3) ; BoutonDireProduit passe encore la phrase en dur, même texte.' },
 
   // ── LES TROIS QUESTIONS DU PARCOURS GUIDÉ — STK-23, 26/09/2026 ───────────
   //
@@ -719,6 +719,18 @@ export const MESSAGES_TTS: readonly EntreeTts[] = [
   { id: 'STOCK_056', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{produit} complété. Tu en as {stock} {unite}.', frMarche: null, variables: ['produit', 'stock', 'unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — le stock du produit existant est complete (meme chemin que « + Ajouter »). Complete, pas cree.' },
   { id: 'STOCK_057', type: 'tts', domaine: 'caisse', critiqueArgent: true, frActuel: '{produit} complété. Tu en as {stock} {unite}. Ton prix reste {montant} {devise} le {unite}.', frMarche: null, variables: ['produit', 'stock', 'montant', 'unite'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — complete, ET elle avait dit un autre prix : le prix existant est CONSERVE, et on le lui dit dans la meme phrase (une phrase dite ne se reprend pas).' },
   { id: 'STOCK_058', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Dis combien tu en ajoutes. Je n\'ai rien changé.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'A1 — quantite inconnue sur un produit existant : on n ecrit rien, et on le dit.' },
+
+  // ── LE NOM DICTÉ DANS LE PARCOURS GUIDÉ — audit 20/10 §5.3 ───────────────
+  // L'étape « nom » d'AjoutProduitGuide n'acceptait que le TACTILE : la
+  // dictée du nom ne passait que par la caisse (porte 1) ou le gros bouton du
+  // stock (STK-05). Un bloc dictée ouvre l'oreille DANS le parcours — et la
+  // correction d'une non-lectrice passe par l'oreille : le nom transcrit est
+  // RELU à voix haute (STOCK_059), elle redit si c'est faux, ou corrige au
+  // clavier mot à mot. STOCK_060/061 : les refus du bloc, affichés ET dits
+  // depuis la même clé.
+  { id: 'STOCK_059', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: '{produit}. C\'est noté.', frMarche: null, variables: ['produit'], audioMode: 'dynamic', statut: 'migre', owner: 'claude', source: 'components/marchand/AjoutProduitGuide.tsx', note: 'Audit 20/10 §5.3 — le nom transcrit est relu a voix haute : elle entend ce qui a ete ecrit, et le refait dire si c est faux. Rien n avance seul : c est elle qui appuie sur « C est bon ».' },
+  { id: 'STOCK_060', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'Le micro ne répond pas. Tape son nom.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/BoutonDireNom.tsx', note: 'Audit 20/10 §5.3 — meme honnêteté que STK-22 (STOCK_046) : la panne du micro se DIT, et elle nomme le geste du PARCOURS (tape dans le champ), pas celui d un autre écran.' },
+  { id: 'STOCK_061', type: 'tts', domaine: 'caisse', critiqueArgent: false, frActuel: 'La dictée web n\'a pas répondu. Tape son nom.', frMarche: null, variables: [], audioMode: 'none', statut: 'migre', owner: 'claude', source: 'components/marchand/BoutonDireNom.tsx', note: 'Audit 20/10 §5.3 — l erreur non-micro de la reconnaissance navigateur (reseau/technique) dit sa cause et le geste de repli. Le mot « web » est voulu : la dictée web (19/10) a ses pannes propres, distinctes du micro.' },
 
   // ── POURQUOI ELLE NE PEUT PAS AVANCER — STK-24, 27/09/2026 ──────────────
   //
