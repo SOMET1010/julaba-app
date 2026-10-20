@@ -130,14 +130,18 @@ console.log('\n[4] LES TROIS CHEMINS DE L\'ÉCRAN PASSENT PAR LA RÈGLE');
      'la liste de suggestions n\'affiche plus un prix comme si c\'était le sien');
 }
 
-console.log('\n[5] LE CATALOGUE GARDE SES PRIX — ON CESSE SEULEMENT DE LES LIRE');
+console.log('\n[5] LE CATALOGUE NE PORTE PLUS AUCUN PRIX — DÉCISION DU 20/10');
 {
-  // On NE vide PAS `catalogue-produits.ts`. Ces chiffres sont un ordre de
-  // grandeur utile ailleurs (suggestion d'achat, statistiques). Ce qui est
-  // interdit, c'est de les poser comme étant les SIENS.
+  // DÉCISION DE PATRICK, 20/10 (répondant à la dette C-C1) : les prix
+  // inventés du catalogue statique sont VIDÉS. Le 24/09 on les avait gardés
+  // « comme ordre de grandeur utile ailleurs » — mais personne ne les lit
+  // depuis STK-02, et un chiffre plausible qui traîne ne sert qu'à tromper
+  // le prochain lecteur. La garde verrouille désormais l'ABSENCE : le
+  // catalogue sait ce qu'est un produit (nom, photo, unité, famille), pas
+  // ce qu'ELLE le vend.
   const cat = source('data', 'catalogue-produits.ts');
-  ok(/prixVente:\s*\d+/.test(cat),
-     'le catalogue porte toujours ses ordres de grandeur — on n\'efface pas une donnée, on cesse de la prendre pour une autre');
+  ok(!/prixVente\s*:|prixAchat\s*:/.test(cat),
+     'le catalogue ne porte plus aucun prix — ni dans l\'interface, ni dans ses entrées');
 }
 
 console.log(echecs === 0

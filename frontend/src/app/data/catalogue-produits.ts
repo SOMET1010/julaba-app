@@ -13,12 +13,18 @@ export interface ProduitCatalogue {
   nom: string;
   categorie: string;
   unite: string;
-  prixAchat: number;
-  prixVente: number;
   image: string;
   mots_cles: string[];
 }
 
+// C-C1 — DÉCISION DE PATRICK, 20/10 : LES PRIX SONT VIDÉS. Ils étaient
+// inventés (Tomate 300/400, Aubergine 700/800…), jamais énoncés par une
+// marchande. Depuis STK-02 plus personne ne les lit (prixDeLaMarchande :
+// « Le prix ne se déduit jamais d'un catalogue : il vient d'elle, ou il
+// n'existe pas encore ») — ils ne servaient plus qu'à tromper un futur
+// lecteur. Un catalogue sait ce qu'est un produit : nom, photo, unité,
+// famille. Ce qu'ELLE le vend, lui seul le sait.
+//
 // Vignette LOCALE à partir d'un emoji (pictogramme reconnaissable, marche
 // HORS-LIGNE, aucune image distante). Pour les produits vivriers sans vraie photo
 // dans le catalogue : bien mieux qu'un panier générique pour une non-lectrice.
@@ -26,44 +32,44 @@ export interface ProduitCatalogue {
 // s'en servent aussi).
 
 export const CATALOGUE_PRODUITS: ProduitCatalogue[] = [
-  { nom: 'Riz', categorie: 'cereales', unite: 'kg', prixAchat: 400, prixVente: 500, image: IMG_PRODUIT_RIZ, mots_cles: ['riz', 'rice'] },
-  { nom: 'Tomate', categorie: 'legumes', unite: 'kg', prixAchat: 300, prixVente: 400, image: IMG_PRODUIT_TOMATE, mots_cles: ['tomate', 'tomato'] },
-  { nom: 'Aubergine', categorie: 'legumes', unite: 'kg', prixAchat: 700, prixVente: 800, image: IMG_PRODUIT_AUBERGINE, mots_cles: ['aubergine', 'eggplant'] },
-  { nom: 'Piment', categorie: 'legumes', unite: 'tas', prixAchat: 100, prixVente: 150, image: IMG_PRODUIT_PIMENT, mots_cles: ['piment', 'pepper', 'pili pili'] },
-  { nom: 'Gombo', categorie: 'legumes', unite: 'tas', prixAchat: 120, prixVente: 150, image: IMG_PRODUIT_GOMBO, mots_cles: ['gombo', 'okra'] },
-  { nom: 'Manioc', categorie: 'tubercules', unite: 'kg', prixAchat: 150, prixVente: 200, image: IMG_PRODUIT_MANIOC, mots_cles: ['manioc', 'cassava'] },
-  { nom: 'Igname', categorie: 'tubercules', unite: 'kg', prixAchat: 350, prixVente: 400, image: IMG_PRODUIT_IGNAME, mots_cles: ['igname', 'yam'] },
-  { nom: 'Maïs', categorie: 'cereales', unite: 'kg', prixAchat: 200, prixVente: 250, image: IMG_PRODUIT_MAIS, mots_cles: ['mais', 'maïs', 'corn'] },
-  { nom: 'Banane', categorie: 'fruits', unite: 'régime', prixAchat: 500, prixVente: 700, image: IMG_PRODUIT_BANANE, mots_cles: ['banane', 'banana'] },
-  { nom: 'Plantain', categorie: 'fruits', unite: 'régime', prixAchat: 600, prixVente: 800, image: IMG_PRODUIT_PLANTAIN, mots_cles: ['plantain', 'alloco', 'banane plantain'] },
-  { nom: 'Oignon', categorie: 'legumes', unite: 'kg', prixAchat: 300, prixVente: 400, image: IMG_PRODUIT_OIGNON, mots_cles: ['oignon', 'onion'] },
-  { nom: 'Avocat', categorie: 'fruits', unite: 'pièce', prixAchat: 100, prixVente: 150, image: IMG_PRODUIT_AVOCAT, mots_cles: ['avocat', 'avocado'] },
-  { nom: 'Huile de palme', categorie: 'condiments', unite: 'L', prixAchat: 1400, prixVente: 1500, image: IMG_PRODUIT_HUILE, mots_cles: ['huile', 'huile de palme', 'palm oil'] },
-  { nom: 'Mangue', categorie: 'fruits', unite: 'kg', prixAchat: 200, prixVente: 300, image: IMG_PRODUIT_MANGUE, mots_cles: ['mangue', 'mango'] },
-  { nom: 'Ananas', categorie: 'fruits', unite: 'pièce', prixAchat: 300, prixVente: 400, image: IMG_PRODUIT_ANANAS, mots_cles: ['ananas', 'pineapple'] },
-  { nom: 'Arachide', categorie: 'cereales', unite: 'kg', prixAchat: 600, prixVente: 700, image: IMG_PRODUIT_ARACHIDE, mots_cles: ['arachide', 'cacahuete', 'peanut'] },
+  { nom: 'Riz', categorie: 'cereales', unite: 'kg',  image: IMG_PRODUIT_RIZ, mots_cles: ['riz', 'rice'] },
+  { nom: 'Tomate', categorie: 'legumes', unite: 'kg',  image: IMG_PRODUIT_TOMATE, mots_cles: ['tomate', 'tomato'] },
+  { nom: 'Aubergine', categorie: 'legumes', unite: 'kg',  image: IMG_PRODUIT_AUBERGINE, mots_cles: ['aubergine', 'eggplant'] },
+  { nom: 'Piment', categorie: 'legumes', unite: 'tas',  image: IMG_PRODUIT_PIMENT, mots_cles: ['piment', 'pepper', 'pili pili'] },
+  { nom: 'Gombo', categorie: 'legumes', unite: 'tas',  image: IMG_PRODUIT_GOMBO, mots_cles: ['gombo', 'okra'] },
+  { nom: 'Manioc', categorie: 'tubercules', unite: 'kg',  image: IMG_PRODUIT_MANIOC, mots_cles: ['manioc', 'cassava'] },
+  { nom: 'Igname', categorie: 'tubercules', unite: 'kg',  image: IMG_PRODUIT_IGNAME, mots_cles: ['igname', 'yam'] },
+  { nom: 'Maïs', categorie: 'cereales', unite: 'kg',  image: IMG_PRODUIT_MAIS, mots_cles: ['mais', 'maïs', 'corn'] },
+  { nom: 'Banane', categorie: 'fruits', unite: 'régime',  image: IMG_PRODUIT_BANANE, mots_cles: ['banane', 'banana'] },
+  { nom: 'Plantain', categorie: 'fruits', unite: 'régime',  image: IMG_PRODUIT_PLANTAIN, mots_cles: ['plantain', 'alloco', 'banane plantain'] },
+  { nom: 'Oignon', categorie: 'legumes', unite: 'kg',  image: IMG_PRODUIT_OIGNON, mots_cles: ['oignon', 'onion'] },
+  { nom: 'Avocat', categorie: 'fruits', unite: 'pièce',  image: IMG_PRODUIT_AVOCAT, mots_cles: ['avocat', 'avocado'] },
+  { nom: 'Huile de palme', categorie: 'condiments', unite: 'L',  image: IMG_PRODUIT_HUILE, mots_cles: ['huile', 'huile de palme', 'palm oil'] },
+  { nom: 'Mangue', categorie: 'fruits', unite: 'kg',  image: IMG_PRODUIT_MANGUE, mots_cles: ['mangue', 'mango'] },
+  { nom: 'Ananas', categorie: 'fruits', unite: 'pièce',  image: IMG_PRODUIT_ANANAS, mots_cles: ['ananas', 'pineapple'] },
+  { nom: 'Arachide', categorie: 'cereales', unite: 'kg',  image: IMG_PRODUIT_ARACHIDE, mots_cles: ['arachide', 'cacahuete', 'peanut'] },
   // ── Produits vivriers courants (pictogrammes emoji, hors-ligne) ──────────────
-  { nom: 'Carotte', categorie: 'legumes', unite: 'kg', prixAchat: 300, prixVente: 400, image: emojiTile('🥕'), mots_cles: ['carotte', 'carrot'] },
-  { nom: 'Concombre', categorie: 'legumes', unite: 'kg', prixAchat: 200, prixVente: 300, image: emojiTile('🥒'), mots_cles: ['concombre', 'cucumber'] },
-  { nom: 'Courgette', categorie: 'legumes', unite: 'kg', prixAchat: 250, prixVente: 350, image: emojiTile('🥒'), mots_cles: ['courgette', 'zucchini'] },
-  { nom: 'Chou', categorie: 'legumes', unite: 'pièce', prixAchat: 300, prixVente: 500, image: emojiTile('🥬'), mots_cles: ['chou', 'cabbage'] },
-  { nom: 'Laitue', categorie: 'legumes', unite: 'pièce', prixAchat: 150, prixVente: 250, image: emojiTile('🥬'), mots_cles: ['laitue', 'salade', 'lettuce'] },
-  { nom: 'Brocoli', categorie: 'legumes', unite: 'kg', prixAchat: 500, prixVente: 700, image: emojiTile('🥦'), mots_cles: ['brocoli', 'broccoli'] },
-  { nom: 'Patate douce', categorie: 'tubercules', unite: 'kg', prixAchat: 200, prixVente: 300, image: emojiTile('🍠'), mots_cles: ['patate', 'patate douce', 'sweet potato'] },
-  { nom: 'Pomme de terre', categorie: 'tubercules', unite: 'kg', prixAchat: 350, prixVente: 450, image: emojiTile('🥔'), mots_cles: ['pomme de terre', 'patate irlandaise', 'potato'] },
-  { nom: 'Haricot', categorie: 'cereales', unite: 'kg', prixAchat: 500, prixVente: 700, image: emojiTile('🫘'), mots_cles: ['haricot', 'niebe', 'bean'] },
-  { nom: 'Citron', categorie: 'fruits', unite: 'pièce', prixAchat: 25, prixVente: 50, image: emojiTile('🍋'), mots_cles: ['citron', 'lemon', 'lime'] },
-  { nom: 'Orange', categorie: 'fruits', unite: 'pièce', prixAchat: 50, prixVente: 100, image: emojiTile('🍊'), mots_cles: ['orange'] },
-  { nom: 'Pastèque', categorie: 'fruits', unite: 'pièce', prixAchat: 500, prixVente: 800, image: emojiTile('🍉'), mots_cles: ['pasteque', 'pastèque', 'watermelon'] },
-  { nom: 'Papaye', categorie: 'fruits', unite: 'pièce', prixAchat: 200, prixVente: 300, image: emojiTile('🍈'), mots_cles: ['papaye', 'papaya'] },
-  { nom: 'Fraise', categorie: 'fruits', unite: 'kg', prixAchat: 800, prixVente: 1200, image: emojiTile('🍓'), mots_cles: ['fraise', 'strawberry'] },
-  { nom: 'Noix de coco', categorie: 'fruits', unite: 'pièce', prixAchat: 150, prixVente: 250, image: emojiTile('🥥'), mots_cles: ['coco', 'noix de coco', 'coconut'] },
-  { nom: 'Café', categorie: 'autre', unite: 'kg', prixAchat: 1500, prixVente: 2000, image: emojiTile('☕'), mots_cles: ['cafe', 'café', 'coffee'] },
-  { nom: 'Poisson', categorie: 'autre', unite: 'kg', prixAchat: 1000, prixVente: 1500, image: emojiTile('🐟'), mots_cles: ['poisson', 'fish'] },
-  { nom: 'Poulet', categorie: 'autre', unite: 'pièce', prixAchat: 2000, prixVente: 2800, image: emojiTile('🍗'), mots_cles: ['poulet', 'poule', 'chicken'] },
-  { nom: 'Œuf', categorie: 'autre', unite: 'plateau', prixAchat: 2000, prixVente: 2500, image: emojiTile('🥚'), mots_cles: ['oeuf', 'œuf', 'egg'] },
-  { nom: 'Pain', categorie: 'autre', unite: 'pièce', prixAchat: 125, prixVente: 150, image: emojiTile('🍞'), mots_cles: ['pain', 'bread', 'baguette'] },
-  { nom: 'Autre', categorie: 'autre', unite: 'unité', prixAchat: 0, prixVente: 0, image: IMG_PRODUIT_AUTRE, mots_cles: ['autre', 'divers'] },
+  { nom: 'Carotte', categorie: 'legumes', unite: 'kg',  image: emojiTile('🥕'), mots_cles: ['carotte', 'carrot'] },
+  { nom: 'Concombre', categorie: 'legumes', unite: 'kg',  image: emojiTile('🥒'), mots_cles: ['concombre', 'cucumber'] },
+  { nom: 'Courgette', categorie: 'legumes', unite: 'kg',  image: emojiTile('🥒'), mots_cles: ['courgette', 'zucchini'] },
+  { nom: 'Chou', categorie: 'legumes', unite: 'pièce',  image: emojiTile('🥬'), mots_cles: ['chou', 'cabbage'] },
+  { nom: 'Laitue', categorie: 'legumes', unite: 'pièce',  image: emojiTile('🥬'), mots_cles: ['laitue', 'salade', 'lettuce'] },
+  { nom: 'Brocoli', categorie: 'legumes', unite: 'kg',  image: emojiTile('🥦'), mots_cles: ['brocoli', 'broccoli'] },
+  { nom: 'Patate douce', categorie: 'tubercules', unite: 'kg',  image: emojiTile('🍠'), mots_cles: ['patate', 'patate douce', 'sweet potato'] },
+  { nom: 'Pomme de terre', categorie: 'tubercules', unite: 'kg',  image: emojiTile('🥔'), mots_cles: ['pomme de terre', 'patate irlandaise', 'potato'] },
+  { nom: 'Haricot', categorie: 'cereales', unite: 'kg',  image: emojiTile('🫘'), mots_cles: ['haricot', 'niebe', 'bean'] },
+  { nom: 'Citron', categorie: 'fruits', unite: 'pièce',  image: emojiTile('🍋'), mots_cles: ['citron', 'lemon', 'lime'] },
+  { nom: 'Orange', categorie: 'fruits', unite: 'pièce',  image: emojiTile('🍊'), mots_cles: ['orange'] },
+  { nom: 'Pastèque', categorie: 'fruits', unite: 'pièce',  image: emojiTile('🍉'), mots_cles: ['pasteque', 'pastèque', 'watermelon'] },
+  { nom: 'Papaye', categorie: 'fruits', unite: 'pièce',  image: emojiTile('🍈'), mots_cles: ['papaye', 'papaya'] },
+  { nom: 'Fraise', categorie: 'fruits', unite: 'kg',  image: emojiTile('🍓'), mots_cles: ['fraise', 'strawberry'] },
+  { nom: 'Noix de coco', categorie: 'fruits', unite: 'pièce',  image: emojiTile('🥥'), mots_cles: ['coco', 'noix de coco', 'coconut'] },
+  { nom: 'Café', categorie: 'autre', unite: 'kg',  image: emojiTile('☕'), mots_cles: ['cafe', 'café', 'coffee'] },
+  { nom: 'Poisson', categorie: 'autre', unite: 'kg',  image: emojiTile('🐟'), mots_cles: ['poisson', 'fish'] },
+  { nom: 'Poulet', categorie: 'autre', unite: 'pièce',  image: emojiTile('🍗'), mots_cles: ['poulet', 'poule', 'chicken'] },
+  { nom: 'Œuf', categorie: 'autre', unite: 'plateau',  image: emojiTile('🥚'), mots_cles: ['oeuf', 'œuf', 'egg'] },
+  { nom: 'Pain', categorie: 'autre', unite: 'pièce',  image: emojiTile('🍞'), mots_cles: ['pain', 'bread', 'baguette'] },
+  { nom: 'Autre', categorie: 'autre', unite: 'unité',  image: IMG_PRODUIT_AUTRE, mots_cles: ['autre', 'divers'] },
 ];
 
 /** L'image d'un produit nommé librement — SEULE correspondance nom → image
