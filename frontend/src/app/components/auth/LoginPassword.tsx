@@ -1062,13 +1062,12 @@ export function LoginPassword() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      // Défilement vertical autorisé : quand le clavier s'ouvre, l'écran devient
-      // plus haut que le téléphone → il faut pouvoir descendre jusqu'aux touches
-      // (sinon le clavier était coupé sous la barre du téléphone).
+      // Auth compacte : privilégier une vue entière sans défilement.
+      // Le scroll reste disponible uniquement sur les très petits écrans.
       overflowY: 'auto',
       overflowX: 'hidden',
       // On garde de la place sous le clavier pour la barre de navigation Android.
-      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+      paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 6px)',
       position: 'relative',
     }}>
       {import.meta.env.DEV && showDevButton && (
@@ -1093,7 +1092,7 @@ export function LoginPassword() {
           alignItems: 'center',
           width: '100%',
           boxSizing: 'border-box',
-          padding: '22px 24px 4px',
+          padding: 'max(8px, env(safe-area-inset-top, 0px)) 16px 0',
         }}
       >
         <div className="login-brand">
@@ -1118,7 +1117,7 @@ export function LoginPassword() {
         style={{
           width: '100%',
           maxWidth: 420,
-          padding: '0 24px',
+          padding: '0 16px',
           margin: '0 auto',
           flex: 1,
           boxSizing: 'border-box',
@@ -1128,7 +1127,7 @@ export function LoginPassword() {
           // Centré quand il n'y a que le micro ; aligné en haut quand le clavier
           // est ouvert (sinon le haut sortait de l'écran, non atteignable).
           justifyContent: 'flex-start',
-          paddingTop: clavierVisible ? 12 : 0,
+          paddingTop: clavierVisible ? 4 : 0,
         }}
       >
         <AnimatePresence mode="wait">
@@ -1139,7 +1138,7 @@ export function LoginPassword() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.25 }}
-              style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}
+              style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
             >
               {/* « Tata me reconnaît » (lot 1) : elle se VOIT (photo) et lit UN mot
                   (son prénom) — confirmation immédiate que c'est bien son compte.
@@ -1159,7 +1158,7 @@ export function LoginPassword() {
                   onClick={handleBiometric}
                   disabled={isLoading}
                   style={{
-                    width: '100%', height: 96,
+                    width: '100%', height: 68,
                     borderRadius: 14, border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
                     background: 'var(--commerce-action)',
                     boxShadow: '0 2px 8px #3325330C',
