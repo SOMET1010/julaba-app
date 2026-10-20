@@ -55,6 +55,8 @@
 
 **SEC-BESOIN-01 (P1)** — `POST /cooperatives/besoins/consolider` accepte `body.cooperative_id` fourni par le client (`cooperatives-rest.controller.ts:480`), en contradiction avec `createBesoin` qui force la coopérative résolue serveur (:405-409). Un président de coopérative peut consolider les besoins d'une AUTRE coopérative. **Action :** résoudre la coopérative côté serveur comme dans `createBesoin`, ajouter un test d'invariant.
 
+> **✅ FERMÉ le 20/10/2026** — `consoliderBesoins` résout désormais la coopérative côté serveur (`const cooperativeId = coop.id`, `body.cooperative_id` ignoré, même contrat que `createBesoin`). Invariant exécuté sur Postgres jetable : `backend/test/invariants/sec-besoin-01-consolidation-scopee.spec.ts` (SEC-BESOIN-1 attaque avec id étranger → coop A intacte ; SEC-BESOIN-2 consolidation légitime scopée ; SEC-BESOIN-3 `createBesoin` ignore l'id étranger) — 3/3 verts, et prouvé ROUGE sur le code non corrigé (2/3 en échec avant fix).
+
 ## 5. Plan d'action priorisé (consolidation des P1 de tous les audits)
 
 1. **IDENT-01 / DGE-12** — débloquer `gestionnaire_zone` (listes isAdmin de `identifications.controller.ts`) : c'est le rôle DGE de terrain, aujourd'hui incapable de valider.
@@ -66,7 +68,7 @@
 7. **PROD-01 / T-01** — arbitrer la caisse producteur (dedicated vs amendement du docx).
 8. **PROD-04** — router la page cotisations pour l'espace producteur.
 9. **PROD-05 (BUG-010)** — aligner `revenusTotal` serveur sur `statut_paiement='paye'`.
-10. **SEC-BESOIN-01** — verrouiller `POST /cooperatives/besoins/consolider` sur la coopérative serveur.
+10. ~~**SEC-BESOIN-01** — verrouiller `POST /cooperatives/besoins/consolider` sur la coopérative serveur.~~ **✅ FERMÉ 20/10** (fix + invariant `sec-besoin-01-consolidation-scopee.spec.ts`, 3/3 verts).
 11. **IDENT-05** — PIN serveur sur les écritures PII de l'identificateur.
 12. **DGE-03/06/07/08** — réparer l'espace institution (endpoints morts, faux boutons, no-op silencieux, données artificielles).
 
@@ -83,6 +85,8 @@
 
 ## 7. Décisions produit à arbitrer avec le métier
 
+> **⚡ ARBITRÉ le 20/10/2026** — Patrick a délégué l'arbitrage (« Prends les meilleures décisions en arbitrant »). Les 7 arbitrages sont consignés dans `docs/DECISIONS.md` (entrées **A-01** à **A-07**, datées, révocables par écrit) et résumés en §7.1 ci-dessous.
+
 | # | Question | Options |
 |---|---|---|
 | A-01 | Le producteur a-t-il une caisse (ouverture/clôture/récap trésorerie) comme le dit le docx, ou « Revenus du jour » suffit-il ? | Caisse dédiée / amendement docx |
@@ -92,6 +96,18 @@
 | A-05 | Les réassorts du détaillant doivent-ils être déclarés comme ACHATS (prix, fournisseur, entrée dans le ledger) ou un ajustement de stock suffit-il ? | NB du docx / STK-04 |
 | A-06 | La fidélisation doit-elle être déclenchée automatiquement par la vente ? | DET-08 |
 | A-07 | Le financement est-il un MVP (demande + éligibilité) ou une simple vitrine d'orientation ? | PROD-10, DET-05 |
+
+### 7.1 Arbitrage du 20/10/2026 (délégation Patrick — révocable par écrit)
+
+| # | Arbitrage retenu | Portée immédiate |
+|---|---|---|
+| A-01 | **Amendement docx au stade pilote** : « Revenus du jour » = vue trésorerie du producteur ; la caisse producteur dédiée est POST-pilote, sur les invariants caisse marchande. | Rien à coder aujourd'hui ; le libellé « caisse » ne doit jamais être affiché côté producteur (PROD-01). |
+| A-02 | **Amendement docx** : l'identificateur reste MONÉTIQUEMENT NEUTRE (IDENTIFICATEUR-16 tenue) ; pas de réintégration KEIWA. | Aucun code ; docx amendé pour la cotisation identificateur (hors espace). |
+| A-03 | **La DGE valide via les comptes back-office** (C-12, `enrolement.validate`) ; rôle `institution` HORS validation au pilote ; déblocage `gestionnaire_zone` = chantier P1 prioritaire (IDENT-01/DGE-12). | Prochain lot : débloquer `gestionnaire_zone` dans les listes isAdmin de `identifications.controller.ts`. |
+| A-04 | **Hors plateforme au stade pilote** : canal in-app = offres + négociation ; la consolidation des besoins reste un module COOPÉRATIVE ; extension semi-grossiste/grossiste = POST-pilote (T-09). | Aucun code ; docx amendé (processus hors app au pilote). |
+| A-05 | **Principe adopté : un réassort est un ACHAT** (cible ledger type achat + dépense marchandise + fournisseur optionnel — STK-04 « cible actée ») ; déclaration a posteriori = voie officielle du pilote (le docx la décrit déjà). | Prochain lot : entrée ledger d'achat liée à la dépense caisse (STK-04). |
+| A-06 | **Oui au principe** : crédit de points à l'encaissement confirmé, idempotent (une vente = une accréditation) ; implémentation POST-pilote après recette caisse. | Aucun code aujourd'hui (le flux de vente est en recette terrain). |
+| A-07 | **Vitrine d'orientation au pilote** (pas de flux de demande) ; MVP financement POST-pilote sur le socle score financier + ApiKeyGuard ; remplacer/retirer les placeholders SIB/SG/NSIA ; I4-I6 tenus. | Petit lot UI honnêteté : partenaires du docx à l'écran ou retrait des placeholders. |
 
 ---
 
