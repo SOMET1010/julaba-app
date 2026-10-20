@@ -341,6 +341,16 @@ export class DbInitService {
       await this.dataSource.query(
         `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS unite varchar;`,
       );
+      // STK-04 / A-05 — le réassort est un ACHAT : le ledger porte le
+      // fournisseur et le coût. NULLABLE : une entrée peut arriver sans coût
+      // connu, on ne l'invente pas. Miroir de la migration
+      // 1782300000000-AchatLedgerFournisseurCout (règle « DbInit ⊆ migrations »).
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS fournisseur varchar;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS cout_total numeric(14,2);`,
+      );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
       );

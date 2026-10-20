@@ -43,7 +43,7 @@ interface StockContextType {
   stock: StockItem[];
   loading: boolean;
   addStock: (data: Omit<StockItem, 'id' | 'derniereModification'>) => Promise<void>;
-  updateStock: (id: string, data: Partial<StockItem>) => Promise<void>;
+  updateStock: (id: string, data: Partial<StockItem> & { fournisseur?: string; coutTotal?: number }) => Promise<void>;
   deleteStock: (id: string) => Promise<void>;
   getStockByProduit: (produit: string) => StockItem | undefined;
   getStockTotal: () => number;
@@ -126,12 +126,17 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     await refreshStocks();
   };
 
-  const updateStock = async (id: string, data: Partial<StockItem>) => {
+  const updateStock = async (id: string, data: Partial<StockItem> & { fournisseur?: string; coutTotal?: number }) => {
     const payload = {
       quantite: data.quantite, prix_unitaire: data.prixUnitaire,
       ...(data.seuilAlerte !== undefined ? { seuil_alerte: data.seuilAlerte } : {}),
       ...(data.categorie !== undefined ? { categorie: data.categorie } : {}),
       ...(data.datePeremption !== undefined ? { date_peremption: data.datePeremption } : {}),
+      // STK-04 / A-05 — trace d'achat du réassort : le serveur écrit la ligne
+      // 'achat' du ledger avec ces deux champs OPTIONNELS (coût inconnu = pas
+      // de coût inventé).
+      ...(data.fournisseur !== undefined ? { fournisseur: data.fournisseur } : {}),
+      ...(data.coutTotal !== undefined ? { cout_total: data.coutTotal } : {}),
       idempotency_key: genererCleStock(),
     };
     const applyLocal = () => setStocks((current) => current.map((stock) => stock.id === id ? { ...stock, ...data, derniereModification: new Date().toISOString() } : stock));

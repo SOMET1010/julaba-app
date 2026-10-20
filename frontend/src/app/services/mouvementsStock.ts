@@ -20,6 +20,9 @@ export interface MouvementApi {
   /** Vrai quand le stock ne couvrait pas la sortie. */
   hors_stock?: boolean;
   produit_nom: string | null;
+  /** STK-04 / A-05 — trace de l'achat (lignes type 'achat' uniquement). */
+  fournisseur?: string | null;
+  cout_total?: number | string | null;
   unite: string | null;
   date: string;
 }
@@ -54,6 +57,10 @@ export interface MouvementUI {
    * Faux ⇒ l'écran doit le DIRE, et la voix aussi. Ne jamais combler le blanc.
    */
   uniteConnue: boolean;
+  /** STK-04 / A-05 — fournisseur déclaré à l'achat, ou `''` si inconnu. */
+  fournisseur: string;
+  /** Coût total FCFA déclaré à l'achat, ou `null` (on ne l'invente pas). */
+  coutTotal: number | null;
   day: string;
 }
 
@@ -83,6 +90,10 @@ export function mapApiMouvements(rows: MouvementApi[] | null | undefined, now: D
     name: m.produit_nom || '',
     unit: m.unite || '',
     uniteConnue: typeof m.unite === 'string' && m.unite.trim() !== '',
+    fournisseur: typeof (m as any).fournisseur === 'string' ? (m as any).fournisseur : '',
+    coutTotal: (m as any).cout_total != null && !Number.isNaN(Number((m as any).cout_total))
+      ? Number((m as any).cout_total)
+      : null,
     day: jourLabel(m.date, now),
   }));
 }
