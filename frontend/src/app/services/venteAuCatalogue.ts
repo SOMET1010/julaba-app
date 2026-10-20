@@ -358,6 +358,17 @@ export function aNommeUnInconnu(texte: string): boolean {
 }
 
 /**
+ * Extrait le nom d'un produit absent du vocabulaire statique.
+ * Le catalogue de la marchande reste la source d'appariement ; cette fonction
+ * ne valide aucun produit et sert uniquement à préserver le nom libre pour la
+ * saisie/prix et la proposition d'ajout à la boutique.
+ */
+export function nomProduitLibre(texte: string): string | null {
+  const nom = mots(texte).filter((m) => m.length >= 3 && !motOutil(m)).join(' ').trim();
+  return nom || null;
+}
+
+/**
  * CAT-03 — UNE UNITÉ PRONONCÉE COMPTE, ELLE AUSSI.
  *
  * Arbitrage de Patrick, 30/09, sur la question que je lui avais posée :
