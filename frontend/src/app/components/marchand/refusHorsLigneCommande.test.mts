@@ -101,6 +101,7 @@ function chargerGestionnaire(nom: string) {
 /** Environnement complet d'un gestionnaire, avec tous les espions. */
 function environnement(erreurApi: (() => never) | null) {
   const dits: Dits = [];
+  const ecrits: Dits = [];
   const espion: Espion = { appels: [], etats: [] };
   const api = (nom: string) => async (...a: unknown[]) => {
     espion.appels.push(nom);
@@ -108,9 +109,13 @@ function environnement(erreurApi: (() => never) | null) {
     return (nom === 'fetchNegociations' ? { negociations: [] } : undefined) as never;
   };
   return {
-    dits, espion,
+    dits, ecrits, espion,
     deps: {
       speak: (t: unknown) => { dits.push(String(t)); },
+      // T7 : l'écran ÉCRIT en même temps qu'il DIT (sonner). Le banc extrait
+      // le VRAI source : si `toast` manquait au scope, chaque refus planterait
+      // en ReferenceError — pire que le défaut d'origine (silence).
+      toast: { error: (m: unknown) => { ecrits.push(String(m)); } },
       t: (cle: string) => texteCatalogue(cle),
       annulerCommande: api('annulerCommande'),
       updateCommande: api('updateCommande'),
@@ -156,6 +161,10 @@ for (const g of GESTIONNAIRES) {
     `B4-1 ${g.nom} : hors ligne, aucun état local modifié (${env.espion.etats.join(', ') || 'aucun'})`);
   ok(env.dits.length > 0 && env.dits.every(parleHumain),
     `B4-1 ${g.nom} : ce qui est dit est compréhensible (${JSON.stringify(env.dits)})`);
+  ok(env.ecrits.length > 0 && env.ecrits.every(parleHumain),
+    `B4-1 ${g.nom} : ce qui est écrit est compréhensible (${JSON.stringify(env.ecrits)})`);
+  ok(env.ecrits.every((m) => env.dits.includes(m)),
+    `B4-1 ${g.nom} : l'écran écrit la même phrase qu'il dit (T7) (${JSON.stringify(env.ecrits)})`);
 }
 
 console.log('\n[2] LE CAS TRAÎTRE — le téléphone se croit en ligne, l’envoi tombe');
@@ -168,6 +177,8 @@ for (const g of GESTIONNAIRES) {
   ok(env.espion.appels.length > 0, `B4-2 ${g.nom} : en ligne, l’action tente bien sa chance`);
   ok(env.dits.length > 0 && env.dits.every(parleHumain),
     `B4-2 ${g.nom} : l’échec de transport est dit sans jargon (${JSON.stringify(env.dits)})`);
+  ok(env.ecrits.every(parleHumain) && env.ecrits.every((m) => env.dits.includes(m)),
+    `B4-2 ${g.nom} : l’échec de transport est écrit comme il est dit (T7) (${JSON.stringify(env.ecrits)})`);
   ok(env.espion.etats.length === 0, `B4-2 ${g.nom} : un envoi tombé ne modifie aucun état local`);
 }
 
@@ -181,6 +192,8 @@ console.log('\n[3] UN REFUS MÉTIER DU SERVEUR GARDE SON MESSAGE');
     await fn(g.arg);
     ok(env.dits.some((d) => d.includes(METIER)),
       `B4-3 ${g.nom} : le message du serveur est redit tel quel (${JSON.stringify(env.dits)})`);
+    ok(env.ecrits.some((m) => m.includes(METIER)),
+      `B4-3 ${g.nom} : le message du serveur est écrit tel quel (${JSON.stringify(env.ecrits)})`);
   }
 }
 
