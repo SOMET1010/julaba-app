@@ -19,7 +19,7 @@ Connexion → ouverture de caisse → contrôle du stock → consolidation des b
 | ID | Constat | Priorité | Action requise |
 |---|---|---|---|
 | GRO-01 | Le document décrit des besoins des demi-grossistes centralisés par le grossiste, mais ne définit pas si ces besoins sont des demandes indicatives, des commandes fermes ou des engagements de prix. | P1 | Distinguer demande, devis, commande confirmée et vente ; obtenir l'acceptation du client avant de créer une dette ou un engagement. |
-| GRO-02 | Le parcours dit que les achats peuvent se faire auprès des coopératives ou producteurs. La documentation actuelle décrit un marché producteur global pour le grossiste et des publications/récoltes prévues ; il faut confirmer le circuit exact et les types d'offres commandables. | P1 | Cartographier les sources autorisées, les statuts et les règles de réservation/livraison par type d'offre. |
+| GRO-02 | **Correction engagée sur `dev`** : le marché grossiste ne renvoie que les offres du canal producteur dont le vendeur est un producteur ou un coopérateur. `POST /commandes` revalide le canal et le propriétaire de l'offre avant réservation. | P1 | Recetter offres producteur/coopérative, disponibilité, réception et livraisons partielles. |
 | GRO-03 | Le cycle « expression des besoins → commande → paiement → livraison » n'indique pas les preuves de réception, les livraisons partielles, les litiges ni le traitement des écarts. | P1 | Formaliser ces transitions avant de considérer le stock acheté comme disponible. |
 | GRO-04 | Le dépôt documente un prix convenu modifiable par ligne pour les flux de négoce. Les unités de gros et conversions sac/carton/cuvette sont signalées comme restant à faire. | P1 | Ajouter une politique d'unités et conversions validée, ainsi que les prix par volume si le métier les exige. |
 | GRO-05 | Le modèle de stock marchand `produits` diffère du modèle `stocks` utilisé pour producteurs/coopérateurs. La dette STK-03/STK-05 signale une divergence de modèles et de politique de survente. | P1 | Établir un contrat métier commun ou documenter explicitement les différences par acteur ; chaque mouvement doit être traçable. |
@@ -67,3 +67,10 @@ Connexion → ouverture de caisse → contrôle du stock → consolidation des b
 Le parcours grossiste est le plus complexe des trois sous-profils marchands car il agrège besoins clients, achats amont, offres prévisionnelles, négoce, stocks et paiements. La recette doit confirmer chaque transition métier et ne pas assimiler demande, commande, paiement, réception et disponibilité. Les intégrations financières et sociales doivent être prouvées séparément.
 
 **Statut : À RECETTER — audit fonctionnel statique.**
+
+
+## Mise à jour technique du 20/10/2026
+
+- `GET /publications/marche` filtre le grossiste sur les offres `type_marche=producteur` publiées par `producteur` ou `cooperateur`.
+- `POST /commandes` exige `publication_id` pour les commandes du marché et vérifie l'offre, son vendeur et le circuit autorisé avant réservation.
+- Build et tests E2E restent à confirmer ; le cycle réception/livraison partielle n'est pas entièrement couvert par ces changements.
