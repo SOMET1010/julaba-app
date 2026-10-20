@@ -176,13 +176,17 @@ export function StockProviderInner({ children }: { children: ReactNode }) {
     getStockTotal: () => stocks.reduce((sum, s) => sum + s.quantite, 0),
     // Stock faible = sous le SEUIL DU PRODUIT (seuil_alerte configuré), ou à
     // défaut le seuil global passé (5). Base des alertes de rupture marchand.
-    getStockFaible: (seuil = 5) => stocks.filter(s => s.quantite <= (s.seuilAlerte ?? seuil)),
+    getStockFaible: (seuil = 5) => stocks.filter(s => s.suiviStock !== false && s.quantite <= (s.seuilAlerte ?? seuil)),
     getValeurTotaleStock: () => stocks.reduce((sum, s) => sum + s.quantite * s.prixUnitaire, 0),
     getStock: () => stocks,
     addProduct: addStock,
     recordSale: async (produit, quantite) => {
       const item = stocks.find(s => s.produit === produit);
-      if (item) await updateStock(item.id, { quantite: Math.max(0, item.quantite - quantite) });
+      // Un stock inconnu ne doit pas devenir artificiellement nul après une
+      // vente locale : le serveur/ledger reste seul arbitre de cette situation.
+      if (item && item.suiviStock !== false) {
+        await updateStock(item.id, { quantite: Math.max(0, item.quantite - quantite) });
+      }
     },
   };
 
