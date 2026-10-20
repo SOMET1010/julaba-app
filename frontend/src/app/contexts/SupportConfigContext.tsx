@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { API_URL } from '../utils/api';
 import { toast } from 'sonner';
+import { useApp } from './AppContext';
+import { useBackOfficeOptional } from './BackOfficeContext';
 
 export interface ContactChannel {
   id: string;
@@ -93,22 +95,27 @@ const SupportConfigContext = createContext<SupportConfigContextType | undefined>
 export function SupportConfigProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<SupportConfig>(DEFAULT_CONFIG);
   const [isSaving, setIsSaving] = useState(false);
+  const { user: appUser } = useApp();
+  const bo = useBackOfficeOptional();
 
-  // Charger depuis l'API au mount
+  // La route est protégée côté API : utiliser la configuration locale par défaut
+  // sur l'écran de connexion et ne la demander qu'après authentification.
   useEffect(() => {
+    if (!appUser?.id && !bo?.user?.id) return;
+    let cancelled = false;
     fetch(`${API_URL}/support/config`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.config) {
-          setConfig({
-            ...DEFAULT_CONFIG,
-            ...data.config,
-            derniereMaj: data.config?.derniereMaj || data.updatedAt || new Date().toISOString(),
-          });
-        }
+        if (cancelled || !data?.config) return;
+        setConfig({
+          ...DEFAULT_CONFIG,
+          ...data.config,
+          derniereMaj: data.config?.derniereMaj || data.updatedAt || new Date().toISOString(),
+        });
       })
       .catch(() => {});
-  }, []);
+    return () => { cancelled = true; };
+  }, [appUser?.id, bo?.user?.id]);
 
   // Persister sur l'API
   const persist = useCallback(async (newConfig: SupportConfig) => {
