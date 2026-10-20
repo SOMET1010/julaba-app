@@ -203,18 +203,21 @@ export class StockReservationService {
    * quantité commandée. Livré ⊆ vendu : on ne touche NI stock_disponible NI
    * stock_vendu (invariant I-C du spec stock-reservation reste vrai).
    *
-   * Idempotence portée par l'APPELANT (garde atomique sur le statut de la
-   * commande : UPDATE ... WHERE statut <> 'livree' RETURNING). L'effet n'a
-   * lieu que si une réservation existe (commande confirmée rattachée à une
-   * récolte, directe ou via publication). Verrou récolte FOR UPDATE.
+   * Idempotent PAR LE LEDGER (convention du service : une fois par
+   * commande_id), pas seulement par le garde de l'appelant — un rejeu est
+   * sans effet même si le garde est contourné. Verrou récolte FOR UPDATE.
    */
   async compterLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    // Idempotent PAR LE LEDGER (convention du service) : la ligne de
+    // réservation porte la transition convertie -> livree ; un rejeu voit
+    // déjà 'livree' et sort sans effet, quel que soit le garde de l'appelant.
     const res = await manager.query(
-      `SELECT quantite, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      `SELECT quantite, statut, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
       [commandeId],
     );
     if (res.length === 0) return;
     const row = res[0];
+    if (row.statut !== 'convertie') return; // active (pas confirmée), liberee, ou déjà livree
     const q = Number(row.quantite);
     if (!(q > 0)) return;
 
@@ -234,6 +237,10 @@ export class StockReservationService {
       [recolteId],
     );
     await manager.query(
+      `UPDATE stock_reservations SET statut = 'livree', updated_at = NOW() WHERE commande_id = $1`,
+      [commandeId],
+    );
+    await manager.query(
       `UPDATE recoltes
          SET stock_livre = stock_livre + $1, updated_at = NOW()
        WHERE id = $2`,
@@ -244,15 +251,19 @@ export class StockReservationService {
   /**
    * PROD-03 — Restitue la livraison : si une commande DÉJÀ LIVRÉE retombe en
    * `annulee` ou `litige`, le volume livré est retiré de stock_livre (borné à
-   * 0). Idempotence portée par l'appelant, comme pour compterLivraison.
+   * 0). Idempotent par le ledger, comme compterLivraison.
    */
   async annulerLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    // Idempotent PAR LE LEDGER : n'agit que sur une réservation 'livree' (la
+    // restitution remet 'convertie' — la vente reste ferme, seul le LIVRÉ
+    // revient). Un rejeu voit 'convertie' et sort sans effet.
     const res = await manager.query(
-      `SELECT quantite, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      `SELECT quantite, statut, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
       [commandeId],
     );
     if (res.length === 0) return;
     const row = res[0];
+    if (row.statut !== 'livree') return;
     const q = Number(row.quantite);
     if (!(q > 0)) return;
 
@@ -269,6 +280,10 @@ export class StockReservationService {
     await manager.query(
       `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
       [recolteId],
+    );
+    await manager.query(
+      `UPDATE stock_reservations SET statut = 'convertie', updated_at = NOW() WHERE commande_id = $1`,
+      [commandeId],
     );
     await manager.query(
       `UPDATE recoltes
