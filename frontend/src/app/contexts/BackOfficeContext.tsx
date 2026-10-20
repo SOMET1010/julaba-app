@@ -32,6 +32,7 @@ import {
   boGetNotifications,
   boSoftDeleteActeur,
   setBoAccessToken,
+  getBoAccessToken,
   type BOUser,
   type Acteur,
   type RoleCounts,
@@ -283,9 +284,18 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   }, [zones]);
 
   const loadUser = useCallback(async (): Promise<boolean> => {
+    // Le back-office stocke son jeton dans sessionStorage. Sans ce jeton,
+    // aucun login BO n'a eu lieu : éviter un /auth/me inutile à chaque ouverture
+    // de l'application (l'AppContext vérifie séparément la session acteur).
+    if (!getBoAccessToken()) {
+      sessionStorage.removeItem('julaba_user');
+      setUser(null);
+      return false;
+    }
     try {
       let res = await fetch(`${API_URL}/auth/me`, {
         credentials: 'include',
+        headers: { Authorization: `Bearer ${getBoAccessToken()}` },
       });
       if (!res.ok) {
         sessionStorage.removeItem('julaba_user');
@@ -524,6 +534,8 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
   }, [missionsLoaded]);
 
   const refreshAuditLogs = useCallback(async (force = false) => {
+    // L'audit est réservé au back-office authentifié.
+    if (!user?.id) return;
     if (auditLoaded && !force) return;
     setLectureAuditLogs(enAttente());
     try {
@@ -533,7 +545,7 @@ export function BackOfficeProvider({ children }: { children: React.ReactNode }) 
       setLectureAuditLogs(lue(a));
     }
     catch (e: unknown) { setLectureAuditLogs(indisponible(e)); }
-  }, [auditLoaded]);
+  }, [auditLoaded, user?.id]);
 
   const refreshBOUsers = useCallback(async (force = false) => {
     if (boUsersLoaded && !force) return;
