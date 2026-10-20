@@ -195,6 +195,36 @@ console.log('\n[7] Les entrées de menu suivent le drapeau');
     'UniversalParametres : aucune navigation vers /identificateur/keiwa (route morte)');
 }
 
+console.log('\n[7-bis] DGE-11 : les modules institution viennent du serveur, la config BO persiste');
+{
+  // DGE-11 (20/10/2026) : la liste en dur des modules institution et le
+  // bouton « Enregistrer » condamné (isBackendReady=false) étaient les deux
+  // moitiés du même mensonge — le front inventait des accès que l'API
+  // renvoyait en 403, et le BO croyait configurer sans écrire un octet.
+  // La source de vérité est institutions.modules, appliquée fail-closed par
+  // InstitutionScopeGuard ; le contrat serveur est verrouillé par
+  // dge-11-modules-persistes.spec.ts. Ici on verrouille le front.
+  const accesInst = lire('../contexts/InstitutionAccessContext.tsx');
+  const accesInstCode = accesInst.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/useState[^;]*\(\s*\[\s*'dashboard'/.test(accesInstCode),
+    'InstitutionAccessContext : plus AUCUNE liste de modules en dur (DGE-11)');
+  ok(/['"]\/institutions['"]/.test(accesInstCode),
+    'InstitutionAccessContext : modules lus sur GET /institutions (fiche auto-scopée)');
+  ok(!/grantAccess/.test(accesInstCode),
+    'InstitutionAccessContext : fin des grant/revoke locaux qui n\u2019écrivaient nulle part');
+  ok(/niveau !== 'aucun'/.test(accesInstCode),
+    'InstitutionAccessContext : même règle que le guard (présent et ≠ aucun)');
+  const boCfg = lire('../components/backoffice/BOConfigInstitution.tsx');
+  const boCfgCode = boCfg.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/\/institutions\/\$\{/.test(boCfgCode) && /method:\s*'PATCH'/.test(boCfgCode),
+    'BOConfigInstitution : la configuration persiste par PATCH /institutions/:id (DGE-11)');
+  ok(!/isBackendReady/.test(boCfgCode) && !/admin\/config/.test(boCfgCode),
+    'BOConfigInstitution : fin du bouton condamné et du /admin/config fantôme');
+  const layoutInst = lire('../components/institution/InstitutionLayout.tsx');
+  ok(!/module:\s*'supervision'|module:\s*'analytics'/.test(layoutInst),
+    'InstitutionLayout : navItems alignés sur les clés serveur (dashboard/acteurs/audit)');
+}
+
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
