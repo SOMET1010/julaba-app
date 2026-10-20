@@ -68,7 +68,7 @@ describe("Invariant K1 — paiement Keiwa d'une commande (bout-en-bout, atomique
     vendeurToken = await jwt.signAsync({ sub: vendeur.id, phone: vendeur.phone, role: vendeur.role }, { secret: process.env.JWT_SECRET });
     const acheteur: any = await repo.save(repo.create({
       phone: '+2250700040002', firstName: 'Acheteur', lastName: 'Keiwa', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     acheteurId = acheteur.id;
     acheteurToken = await jwt.signAsync({ sub: acheteur.id, phone: acheteur.phone, role: acheteur.role }, { secret: process.env.JWT_SECRET });
