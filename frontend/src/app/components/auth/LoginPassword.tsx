@@ -1203,10 +1203,13 @@ export function LoginPassword() {
                 </button>
               )}
               {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
-              <button type="button"
+              <button
+                type="button"
+                className="login-change-account"
                 onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
-                style={{ marginTop: 2, minHeight: 44, background: 'none', border: 'none', color: 'var(--encre-3)', fontSize: 13, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: '8px 12px' }}>
-                <Users aria-hidden="true" size={22} /> Changer de compte
+              >
+                <Users aria-hidden="true" size={20} />
+                <span>Changer de compte</span>
               </button>
             </motion.div>
           ) : step === 'phone' ? (
