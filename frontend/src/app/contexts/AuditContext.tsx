@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AuditEvent, AuditAction, AuditEntityType } from '../types/julaba.types';
 import * as auditApi from '../services/api/audit-api';
 import { NOT_AUTHENTICATED } from '../services/api/api-client';
+import { useApp } from './AppContext';
 
 interface AuditContextType {
   events: AuditEvent[];
@@ -32,11 +33,18 @@ interface AuditContextType {
 const AuditContext = createContext<AuditContextType | undefined>(undefined);
 
 export function AuditProvider({ children }: { children: ReactNode }) {
+  const { user, accessToken, loading: authLoading } = useApp();
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Charger les logs d'audit depuis Supabase
+  // L'audit est une ressource protégée : attendre la fin de la vérification
+  // de session et ne rien demander si l'utilisateur est déconnecté.
   const loadAuditLogs = async () => {
+    if (authLoading || !user?.id || !accessToken) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
     try {
       if (!events?.length) setLoading(true);
       const { logs } = await auditApi.fetchAuditLogs(1, 50);
@@ -64,8 +72,14 @@ export function AuditProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    loadAuditLogs();
-  }, []);
+    if (authLoading) return;
+    if (!user?.id || !accessToken) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+    void loadAuditLogs();
+  }, [authLoading, user?.id, accessToken]);
 
   const refreshAuditLogs = async () => {
     await loadAuditLogs();
