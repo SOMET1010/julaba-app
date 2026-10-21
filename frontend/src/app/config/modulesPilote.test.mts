@@ -402,6 +402,24 @@ console.log('\n[8-quinquies] PROD-07 : le producteur voit QUOI et COMBIEN réuni
     'Commandes : somme des quantités + compte des demandes par produit (PROD-07)');
 }
 
+console.log('\n[8-sexies] PROD-08 : « Mes stocks » n\'est plus un mensonge — inventaire boutique découplé du marché');
+{
+  // PROD-08 (20/10/2026) : double modèle de stock — l'écran « Mes stocks »
+  // du producteur lit la table stocks (le carnet boutique du détaillant)
+  // PENDANT que le marché porte recoltes.stock_disponible. Le libellé laissait
+  // croire qu'il pilote les offres du marché. Arbitrage minimal assumé
+  // (fusion des modèles = chantier PRODUCTEUR-11/COO-04, hors lot) :
+  // RENOMMER + DÉCOUPLER explicitement dans l'écran.
+  const wrapper = lire('../components/producteur/StocksWrapper.tsx');
+  const wrapperCode = wrapper.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/title="Mes stocks"/.test(wrapperCode) && /Mon inventaire boutique/.test(wrapperCode),
+    'Stocks : l\'écran s\'appelle « Mon inventaire boutique » (plus « Mes stocks », PROD-08)');
+  ok(/Inventaire boutique ≠ stock du marché/.test(wrapperCode),
+    'Stocks : la bannière découple inventaire boutique et stock du marché (PROD-08)');
+  ok(/récoltes déclarées/.test(wrapperCode) && /Production/.test(wrapperCode),
+    'Stocks : renvoie vers Production pour le stock vu par les acheteurs (PROD-08)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
