@@ -21,6 +21,10 @@ export function PublierRecolteModal({ recolte, cycle, isOpen, onClose }: Publier
   const [quantite, setQuantite] = useState(stockMax);
   const [prixUnitaire, setPrixUnitaire] = useState(Number(recolte.prixUnitaire || 0));
   const [dureeJours, setDureeJours] = useState(7);
+  // PROD-06 : les conditions de vente de l'offre (docx étape 5 « Publier ») —
+  // la colonne existait en base mais JAMAIS saisie : elle est désormais
+  // persistée et exposée au marché (optionnelle, honnêteté : rien d'inventé).
+  const [conditionsVente, setConditionsVente] = useState('');
   const [localisation] = useState(recolte.parcelle || cycle?.parcelle || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -54,6 +58,7 @@ export function PublierRecolteModal({ recolte, cycle, isOpen, onClose }: Publier
         qualite: recolte.qualite || 'standard',
         localisation: localisation || '',
         photo_url: recolte.photoUrl || undefined,
+        conditions_vente: conditionsVente.trim() || undefined,
         date_expiration: new Date(Date.now() + dureeJours * 86400000).toISOString().split('T')[0],
       });
       void speak('Récolte publiée avec succès !');
@@ -152,6 +157,23 @@ export function PublierRecolteModal({ recolte, cycle, isOpen, onClose }: Publier
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   Prix initial : {recolte.prixUnitaire} FCFA/{unite}
+                </p>
+              </div>
+
+              {/* Conditions de vente - OPTIONNEL (PROD-06) */}
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-2">
+                  Conditions de vente <span className="font-normal text-gray-500">(optionnel)</span>
+                </label>
+                <textarea
+                  value={conditionsVente}
+                  onChange={(e) => setConditionsVente(e.target.value)}
+                  rows={2}
+                  placeholder="Ex : paiement à la livraison, minimum 5 kg, emballage inclus…"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-green-500 focus:outline-none text-gray-900 bg-white resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Vos conditions seront affichées aux acheteurs sur le marché.
                 </p>
               </div>
 
