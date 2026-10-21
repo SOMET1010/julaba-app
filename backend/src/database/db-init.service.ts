@@ -56,6 +56,16 @@ export class DbInitService {
         ALTER TABLE identifications
         ADD COLUMN IF NOT EXISTS form_data JSONB;
       `);
+      // IDENT-09 (20/10/2026) : clé d'idempotence de la soumission
+      // (create-with-acteur) — rejeu du client = renvoi du dossier existant.
+      await this.dataSource.query(`
+        ALTER TABLE identifications
+        ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+      `);
+      await this.dataSource.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_identifications_idempotency_key
+        ON identifications (idempotency_key) WHERE idempotency_key IS NOT NULL;
+      `);
       this.logger.log('Colonnes current_step et form_data verifiees sur identifications');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -238,51 +248,21 @@ export class DbInitService {
         `CREATE INDEX IF NOT EXISTS idx_caisse_produits_categorie ON caisse_produits (categorie);`,
       );
 
-      // SEED initial : si la table est vide, on y injecte les 21 produits
-      // vivriers historiques (riz, tomate, manioc, etc.) extraits à l'identique
-      // de l'ancien tableau `CATALOGUE` hardcodé. Idempotent : ne réinjecte
-      // rien si la table contient déjà au moins une ligne (la donnée peut être
-      // éditée/maintenue en base sans être écrasée au redémarrage).
+      // SEED initial : SANS seed automatique.
+      //
+      // Le référentiel `caisse_produits` sert d'AIDE-MÉMOIRE à la saisie guidée,
+      // pas de liste fermée. L'ajout d'un produit doit TOUJOURS rester libre
+      // (le bouton « Ajouter en parlant » + le parcours guidé acceptent n'importe
+      // quel nom). Si la table est vide au démarrage, on la laisse VIDE — la
+      // marchande construit son propre catalogue au fur et à mesure.
+      //
+      // (Les 21 produits historiques ont été retirés du seed automatique le
+      // 20/10/2026 pour ne pas donner l'impression que seuls eux sont autorisés.)
       const [{ count: nbProduits }] = await this.dataSource.query(
         `SELECT count(*)::int AS count FROM caisse_produits`,
       );
       if (Number(nbProduits) === 0) {
-        // Liste extraite à l'identique de l'ancien `CATALOGUE` (21 produits).
-        // `prix_achat`/`prix_vente` en XOF, `mots_cles` en tableau text[] natif.
-        const produits: ReadonlyArray<{
-          nom: string; categorie: string; unite: string;
-          prixAchat: number; prixVente: number; mots_cles: ReadonlyArray<string>;
-        }> = [
-          { nom: 'Riz',            categorie: 'cereales',       unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['riz', 'rice'] },
-          { nom: 'Tomate',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['tomate', 'tomato'] },
-          { nom: 'Aubergine',      categorie: 'legumes',        unite: 'kg',     prixAchat: 700,  prixVente: 800,  mots_cles: ['aubergine', 'eggplant'] },
-          { nom: 'Piment',         categorie: 'legumes',        unite: 'tas',    prixAchat: 100,  prixVente: 150,  mots_cles: ['piment', 'pepper'] },
-          { nom: 'Gombo',          categorie: 'legumes',        unite: 'tas',    prixAchat: 120,  prixVente: 150,  mots_cles: ['gombo', 'okra'] },
-          { nom: 'Manioc',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 150,  prixVente: 200,  mots_cles: ['manioc', 'cassava'] },
-          { nom: 'Igname',         categorie: 'tubercules',     unite: 'kg',     prixAchat: 350,  prixVente: 400,  mots_cles: ['igname', 'yam'] },
-          { nom: 'Maïs',           categorie: 'cereales',       unite: 'kg',     prixAchat: 200,  prixVente: 250,  mots_cles: ['mais', 'maïs', 'corn'] },
-          { nom: 'Banane',         categorie: 'fruits',         unite: 'régime', prixAchat: 500,  prixVente: 700,  mots_cles: ['banane', 'banana'] },
-          { nom: 'Plantain',       categorie: 'fruits',         unite: 'régime', prixAchat: 600,  prixVente: 800,  mots_cles: ['plantain', 'alloco'] },
-          { nom: 'Oignon',         categorie: 'legumes',        unite: 'kg',     prixAchat: 300,  prixVente: 400,  mots_cles: ['oignon', 'onion'] },
-          { nom: 'Avocat',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 100,  prixVente: 150,  mots_cles: ['avocat', 'avocado'] },
-          { nom: 'Huile de palme', categorie: 'condiments',     unite: 'L',      prixAchat: 1400, prixVente: 1500, mots_cles: ['huile', 'palm oil'] },
-          { nom: 'Mangue',         categorie: 'fruits',         unite: 'kg',     prixAchat: 200,  prixVente: 300,  mots_cles: ['mangue', 'mango'] },
-          { nom: 'Ananas',         categorie: 'fruits',         unite: 'pièce',  prixAchat: 300,  prixVente: 400,  mots_cles: ['ananas', 'pineapple'] },
-          { nom: 'Arachide',       categorie: 'cereales',       unite: 'kg',     prixAchat: 600,  prixVente: 700,  mots_cles: ['arachide', 'peanut'] },
-          { nom: 'Cacao',          categorie: 'agriculture',    unite: 'kg',     prixAchat: 1100, prixVente: 1200, mots_cles: ['cacao', 'cocoa'] },
-          { nom: 'Café robusta',   categorie: 'agriculture',    unite: 'kg',     prixAchat: 800,  prixVente: 900,  mots_cles: ['cafe', 'café', 'robusta'] },
-          { nom: 'Anacarde',       categorie: 'agriculture',    unite: 'kg',     prixAchat: 600,  prixVente: 650,  mots_cles: ['anacarde', 'cajou', 'cashew'] },
-          { nom: 'Attiéké',        categorie: 'transformation', unite: 'kg',     prixAchat: 400,  prixVente: 500,  mots_cles: ['attieke', 'attiéké'] },
-          { nom: 'Gari',           categorie: 'transformation', unite: 'kg',     prixAchat: 350,  prixVente: 450,  mots_cles: ['gari'] },
-        ];
-        for (const p of produits) {
-          await this.dataSource.query(
-            `INSERT INTO caisse_produits (nom, categorie, unite, prix_achat, prix_vente, mots_cles, actif)
-             VALUES ($1, $2, $3, $4, $5, $6::text[], true)`,
-            [p.nom, p.categorie, p.unite, p.prixAchat, p.prixVente, p.mots_cles],
-          );
-        }
-        this.logger.log(`Table caisse_produits seedée avec ${produits.length} produits vivriers`);
+        this.logger.log('Table caisse_produits créée vide — aucun seed automatique (référentiel = aide, jamais une porte)');
       } else {
         this.logger.log(`Table caisse_produits déjà peuplée (${nbProduits} lignes) — seed ignoré`);
       }
@@ -370,6 +350,38 @@ export class DbInitService {
       // le problème. Miroir de la migration 1780500000000-LedgerUniteFigee.
       await this.dataSource.query(
         `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS unite varchar;`,
+      );
+      // STK-04 / A-05 — le réassort est un ACHAT : le ledger porte le
+      // fournisseur et le coût. NULLABLE : une entrée peut arriver sans coût
+      // connu, on ne l'invente pas. Miroir de la migration
+      // 1782300000000-AchatLedgerFournisseurCout (règle « DbInit ⊆ migrations »).
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS fournisseur varchar;`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE stock_mouvements ADD COLUMN IF NOT EXISTS cout_total numeric(14,2);`,
+      );
+      // PROD-03 — distinguer LIVRÉ de VENDU en quantités : l'état « effectivement
+      // livré » d'une récolte. Incrémenté à la transition livree d'une commande,
+      // restitué si annulée/litige. Miroir de la migration
+      // 1782300000010-RecolteStockLivre (règle « DbInit ⊆ migrations »).
+      await this.dataSource.query(
+        `ALTER TABLE recoltes ADD COLUMN IF NOT EXISTS stock_livre numeric(10,2) NOT NULL DEFAULT 0;`,
+      );
+      // DGE-04/05 — les 4 listes jointes de la DGE : liens coopérative↔marchés
+      // et identificateur↔marché (users.market était un texte libre, pas une
+      // clé). Miroir de la migration 1782300000020-DgeLiensGroupes.
+      await this.dataSource.query(
+        `ALTER TABLE marches ADD COLUMN IF NOT EXISTS cooperative_id uuid;`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_marches_cooperative ON marches (cooperative_id);`,
+      );
+      await this.dataSource.query(
+        `ALTER TABLE users ADD COLUMN IF NOT EXISTS marche_id uuid;`,
+      );
+      await this.dataSource.query(
+        `CREATE INDEX IF NOT EXISTS idx_users_marche ON users (marche_id);`,
       );
       await this.dataSource.query(
         `CREATE INDEX IF NOT EXISTS idx_stock_mouvements_tx ON stock_mouvements (transaction_id);`,
@@ -713,6 +725,35 @@ export class DbInitService {
       this.logger.warn('Erreur table bpay_transactions: ' + message);
     }
 
+    // bpay_transactions — C-07 (audit comptable 12/10 §6) : unicité
+    // d'intégrité des webhooks B-Pay AU NIVEAU BASE. Le double-crédit ne
+    // devait sa protection qu'au `UPDATE ... WHERE status='PENDING'`
+    // applicatif ; ce sont maintenant la base (et la migration miroir
+    // 1782200000000-BpayTransactionsIntegrite) qui refusent un second
+    // `pay_token` / `merchant_tx_id`. Index uniques PARTIELS : les colonnes
+    // restent nullables, les lignes sans token ne participent pas (même
+    // motif que ux_wallet_tx_idempotency_key). Sur une base VIERGE la chaîne
+    // de migrations ne tourne PAS — DbInit est le seul chemin garanti
+    // (schema-ledger-sans-migration.spec.ts) ; sur une base existante
+    // polluée par des doublons, la création échoue et le WARN ci-dessous la
+    // nomme (le dédoublonnage non destructif vit dans la migration).
+    try {
+      for (const [index, colonne] of [
+        ['ux_bpay_transactions_pay_token', 'pay_token'],
+        ['ux_bpay_transactions_merchant_tx_id', 'merchant_tx_id'],
+      ] as const) {
+        await this.dataSource.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS ${index}
+          ON bpay_transactions (${colonne})
+          WHERE ${colonne} IS NOT NULL;
+        `);
+      }
+      this.logger.log('Index unicité bpay_transactions (pay_token, merchant_tx_id) vérifiés');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur index unicité bpay_transactions (C-07, doublons préexistants ?): ' + message);
+    }
+
     // ── Carnet de CRÉDIT (vendre à crédit) ────────────────────────────────
     // Ces tables/vue étaient absentes du pipeline → tout /caisse/credits* plantait
     // en 500. On les crée ici, idempotent (IF NOT EXISTS / OR REPLACE).
@@ -845,6 +886,57 @@ export class DbInitService {
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       this.logger.warn('Erreur table boutique_mouvements: ' + message);
+    }
+
+    // Backfill des wallets manquants : seuls les comptes créés par
+    // auth.service.signup ont un wallet (createForUser). Les comptes insérés
+    // directement (seed démo, comptes admin/back-office) n'en avaient pas —
+    // GET /wallets/me répondait alors 404 « Wallet introuvable » en boucle.
+    // Idempotent : ON CONFLICT (user_id unique) DO NOTHING, solde 0 — aucun
+    // mouvement d'argent n'est inventé. getByUserId (wallets.service) fait la
+    // même création paresseuse pour les comptes créés APRÈS ce passage.
+    try {
+      const result = await this.dataSource.query(`
+        INSERT INTO wallets (user_id, solde, solde_bloque, currency)
+        SELECT u.id, 0, 0, 'XOF'
+        FROM users u
+        WHERE NOT EXISTS (SELECT 1 FROM wallets w WHERE w.user_id = u.id)
+        ON CONFLICT (user_id) DO NOTHING;
+      `);
+      if (result?.rowCount > 0) {
+        this.logger.log(`Wallets backfillés pour ${result.rowCount} compte(s) sans wallet.`);
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur backfill wallets: ' + message);
+    }
+
+    // ── Régularisation des statuts LEGACY des dossiers (DGE-09 / IDENT-07) ───
+    // L'ancienne route fantôme POST/PATCH /dossiers écrivait des statuts hors
+    // machine à états C-12 : `en_cours` (création), `validee` / `rejetee`
+    // (décisions). Ces lignes étaient immuables (409 à la première transition)
+    // et invisibles pour l'écran Suivi (fail-closed assumé). On les ramène aux
+    // équivalents canoniques — idempotent : après le premier passage, plus
+    // aucune ligne ne correspond. Aucun dossier n'est ni créé ni supprimé :
+    // seules les valeurs hors mappe retrouvent leur sens métier.
+    try {
+      const legacy = await this.dataSource.query(`
+        UPDATE identifications SET statut = 'en_attente' WHERE statut = 'en_cours';
+        UPDATE identifications SET statut = 'approuve'  WHERE statut = 'validee';
+        UPDATE identifications SET statut = 'rejete'    WHERE statut = 'rejetee';
+      `);
+      const touched = (legacy ?? []).reduce(
+        (n: number, r: any) => n + (Number(r?.rowCount) || 0),
+        0,
+      );
+      if (touched > 0) {
+        this.logger.log(
+          `Statuts LEGACY régularisés (en_cours→en_attente, validee→approuve, rejetee→rejete) : ${touched} dossier(s).`,
+        );
+      }
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.logger.warn('Erreur régularisation statuts legacy: ' + message);
     }
   }
 }

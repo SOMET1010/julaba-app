@@ -20,6 +20,13 @@ export class Identification {
   @Column({ type: 'float', nullable: true }) longitude: number;
   @Column({ type: 'integer', nullable: true, default: 0 }) current_step: number;
   @Column({ type: 'jsonb', nullable: true }) form_data: any;
+  // IDENT-09 (20/10/2026) — clé d'idempotence de la soumission : générée par
+  // le client AVANT le POST, persistée avec le brouillon, REJOUÉE telle quelle
+  // à la reprise après coupure réseau. UNIQUE (les NULL multiples restent
+  // licites : les dossiers sans clé — back-office, ancien client — coexistent).
+  // Le rejeu d'une clé déjà posée renvoie le dossier EXISTANT : ni doublon
+  // d'acteur, ni faux « numéro déjà utilisé ».
+  @Column({ nullable: true }) idempotency_key: string;
   @Column({
     type: 'enum',
     enum: ['terrain', 'admin_bo'],

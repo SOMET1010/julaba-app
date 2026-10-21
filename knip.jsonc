@@ -20,7 +20,7 @@
       "entry": ["ci/*.mjs", "scripts/*.mjs"],
       "project": ["ci/**/*.mjs", "scripts/**/*.mjs"]
     },
-    "frontend_src": {
+    "frontend": {
       // Les bancs `*.test.mts` sont aussi des points d'entrée : `verify` les
       // exécute un par un. Un banc n'est jamais importé.
       "entry": [

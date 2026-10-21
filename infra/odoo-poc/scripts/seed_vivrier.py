@@ -38,7 +38,7 @@ DEVISE_DEFAUT = "XOF"
 # 200, Banane 100, Riz (sac) 15000, avec leurs stocks. Ce sont elles qui font
 # foi, et le smoke test les verifie au franc pres.
 #
-# Les suivantes viennent de frontend_src/src/app/data/catalogue-produits.ts,
+# Les suivantes viennent de frontend/src/app/data/catalogue-produits.ts,
 # champ `prixVente`. ATTENTION : ces deux sources JULABA ne s'accordent pas sur
 # tous les produits (`catalogue-produits.ts` donne Tomate a 400 et Banane a 700,
 # la ou le seed backend donne 200 et 100). On suit ici l'instruction explicite —

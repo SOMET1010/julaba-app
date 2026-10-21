@@ -64,7 +64,8 @@ export class StocksRestController {
       // disait ce qu'elle avait écoulé. `quantite_demandee` et `manquant`
       // remontent désormais pour que l'écran puisse le dire.
       `SELECT sm.id, sm.produit_nom, sm.quantite_demandee, sm.quantite_retranchee,
-              sm.manquant, sm.type, sm.created_at, sm.unite
+              sm.manquant, sm.type, sm.created_at, sm.unite,
+              sm.fournisseur, sm.cout_total
          FROM stock_mouvements sm
         WHERE sm.marchand_id = $1
           ${filtreProduit}
@@ -99,7 +100,11 @@ export class StocksRestController {
           id: p.id,
           produit: p.nom,
           nom: p.nom,
+          // `stock` NULL signifie « non suivi/inconnu », pas « stock épuisé ».
+          // Garder `quantite` numérique pour compatibilité, mais exposer
+          // un booléen explicite afin que l'interface distingue les deux.
           quantite: Number(p.stock) || 0,
+          suivi_stock: p.stock !== null && p.stock !== undefined,
           prix: Number(p.prix) || 0,
           prix_achat: Number(p.prix_achat) || 0,
           unite: p.unite || 'unite',
@@ -131,6 +136,7 @@ export class StocksRestController {
         nom: s.produit,
         quantite: Number(s.quantite) || 0,
         quantity: Number(s.quantite) || 0,
+        suivi_stock: true,
         prix: Number(s.prix_vente) || 0,
         prix_achat: Number(s.prix_achat) || 0,
         prix_vente: Number(s.prix_vente) || 0,
@@ -185,6 +191,27 @@ export class StocksRestController {
            body.image||null, id, user.id]
         );
       } else {
+        // STK-04 / A-05 (20/10/2026) — LE RÉASSORT EST UN ACHAT.
+        // Jusqu'ici ce PATCH écrivait le stock en direct sans UNE ligne dans
+        // le ledger : aucune trace du réassort, ni prix d'achat, ni
+        // fournisseur (la marge réelle du détaillant était fausse). On lit
+        // l'ancien stock SOUS VERROU, dans la MÊME transaction que l'UPDATE et
+        // la ligne de ledger ; toute HAUSSE de stock déclarée (delta > 0)
+        // écrit un mouvement type 'achat' — retranchée NÉGATIVE (convention
+        // du mapper : négatif = rentré), fournisseur et coût OPTIONNELS.
+        // Cas sans ligne : produit non suivi (stock NULL — on ne peut pas
+        // inventer le delta, on ne prétend rien) ; baisse manuelle (hors
+        // périmètre de l'arbitrage A-05, reste à tracer séparément) ;
+        // PATCH sans quantité (édition prix/unité — pas un mouvement).
+        const q = quantiteAEcrire(body.quantite);
+        let avant: { nom: string; stock: number | null; unite: string | null } | null = null;
+        if (q !== null) {
+          const cur = await manager.query(
+            `SELECT nom, stock, unite FROM produits WHERE id=$1 AND marchand_id=$2 FOR UPDATE`,
+            [id, user.id],
+          );
+          avant = cur[0] ?? null;
+        }
         await manager.query(
           `UPDATE produits SET nom=COALESCE($1,nom), stock=COALESCE($2,stock), prix=COALESCE($3,prix),
            prix_achat=COALESCE($4,prix_achat), unite=COALESCE($5,unite), categorie=COALESCE($6,categorie),
@@ -192,7 +219,7 @@ export class StocksRestController {
            prix_promo=CASE WHEN $11::boolean THEN $9 ELSE prix_promo END,
            promo_fin=CASE WHEN $11::boolean THEN $10 ELSE promo_fin END, updated_at=now()
            WHERE id=$12 AND marchand_id=$13`,
-          [body.nom||body.produit||null, quantiteAEcrire(body.quantite),
+          [body.nom||body.produit||null, q,
            body.prix!=null?Number(body.prix):null,
            body.prix_achat!=null?Number(body.prix_achat):null,
            body.unite||null, body.categorie||null,
@@ -202,6 +229,23 @@ export class StocksRestController {
            body.promo_fin || null,
            Object.prototype.hasOwnProperty.call(body, 'prix_promo'), id, user.id]
         );
+        if (q !== null && avant && avant.stock != null && Number(q) > Number(avant.stock)) {
+          const delta = Number(q) - Number(avant.stock);
+          const fournisseur = typeof body.fournisseur === 'string' && body.fournisseur.trim() !== ''
+            ? body.fournisseur.trim()
+            : null;
+          const cout = body.cout_total != null && body.cout_total !== '' && !Number.isNaN(Number(body.cout_total))
+            ? Number(body.cout_total)
+            : null;
+          await manager.query(
+            `INSERT INTO stock_mouvements
+               (marchand_id, produit_id, produit_nom, stock_avant, quantite_demandee,
+                quantite_retranchee, manquant, type, unite, fournisseur, cout_total)
+             VALUES ($1::text, $2, $3, $4, $5, $6, 0, 'achat', $7, $8, $9)`,
+            [user.id, id, avant.nom, Number(avant.stock), delta, -delta,
+             avant.unite ?? null, fournisseur, cout],
+          );
+        }
       }
     };
     if (key) {
@@ -218,7 +262,10 @@ export class StocksRestController {
       });
       return { success: true, replayed: !applied };
     }
-    await execute(this.repo.manager);
+    // STK-04 : la lecture delta + UPDATE + ligne de ledger doivent être un
+    // seul bloc cohérent — transaction aussi quand aucune clé d'idempotence
+    // n'est fournie (FOR UPDATE l'exige de toute façon).
+    await this.repo.manager.transaction(async (manager) => { await execute(manager); });
     return { success: true };
     /*
     if (user.role === 'cooperateur' || user.role === 'producteur') {

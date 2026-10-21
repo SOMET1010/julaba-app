@@ -145,7 +145,7 @@ jobs:
       - name: Construire le front
         env:
           VITE_API_URL: ${{ inputs.api_url }}
-        run: npm run build -w frontend_src
+        run: npm run build -w frontend
 
       - name: Copier le front dans le projet Android
         run: npx cap sync android

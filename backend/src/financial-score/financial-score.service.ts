@@ -32,7 +32,22 @@ export interface FinancialScoreResult {
   calculéLe: string;
 }
 
-const ADMIN_SCORE_ROLES = new Set(['super_admin', 'admin']);
+// Rôles pouvant consulter le score financier D'UN TIERS (et administrer les
+// clés API partenaires via partner.controller.assertBoAdmin).
+// M-01 / ADMINGEN-03 : le littéral fantôme 'admin' (inexistant dans UserRole,
+// users/entities/user.entity.ts:18-29) rendait la consultation impossible pour
+// les vrais administrateurs BO (fail-closed mais faux). Sémantique retenue :
+//  • super_admin        — accès total ;
+//  • admin_general      — responsable back-office ;
+//  • admin_national     — supervision nationale du score / éligibilité crédit.
+// gestionnaire_zone et operateur_terrain volontairement EXCLUS : le score
+// n'applique aucun filtre territorial (C-10/C-11) — l'ouvrir à un rôle
+// territorial élargirait la fuite; le score alimente l'éligibilité au crédit.
+const ADMIN_SCORE_ROLES = new Set<string>([
+  'super_admin',
+  'admin_general',
+  'admin_national',
+]);
 
 @Injectable()
 export class FinancialScoreService {

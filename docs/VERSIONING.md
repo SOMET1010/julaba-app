@@ -5,7 +5,7 @@ au format `MAJEUR.MINEUR.CORRECTIF.LIVRAISON`, à partir de **v5.0.0.1**.
 
 ## Où vit la version
 
-- `frontend_src/package.json` → champ **`appVersion`** (ex. `"5.0.0.1"`).
+- `frontend/package.json` → champ **`appVersion`** (ex. `"5.0.0.1"`).
   C'est LA source de vérité : Vite l'injecte dans `__APP_VERSION__`, affichée
   à la connexion (mode développeur) et dans Paramètres (« Jùlaba Marchand
   v5.0.0.1 »).

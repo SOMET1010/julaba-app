@@ -53,7 +53,10 @@
 | CODE-NEW-3 | `CronJobsModule` non branché dans `AppModule` (module mort) | P3 | S | OUVERT (audit) |
 | CODE-NEW-4 | `Sentry.expressErrorHandler` commenté (`// app.use(Sentry.expressErrorHandler());`) | P3 | S | OUVERT (audit) |
 | CODE-NEW-5 | `node_modules` dans l'historique git (>24 000 fichiers) | P3 | XL | OUVERT (registre) |
-| CODE-NEW-6 | `frontend_src/src/imports/` mélange code + prompts obsolètes | P3 | M | OUVERT (registre) |
+| CODE-NEW-6 | `frontend/src/imports/` mélange code + prompts obsolètes | P3 | M | OUVERT (registre) |
+
+| CODE-NEW-8 | `PinConfirmModal.tsx` = 4ᵉ copie du geste PIN (feuille custom sans Radix/AUTH-05, erreurs parlées seules, « verrou » 5 essais côté client) — porte l'encaissement keiwa des commandes via `ReceptionPaiementModal.tsx:107,413-419` ; migration `RelectureArgent`+`PinArgent` = lot à part (décision Patrick, UX-9/UX-8) | P2 | M | OUVERT (audit voix 07/10, N-2) |
+| CODE-NEW-9 | `RecolteForm.tsx:228-234` : photo en base64 NON compressée (payload multi-Mo en 2G) — les patterns de compression canvas existent déjà (`PublierRecolte.tsx:94-105`, `CommandesProducteurPage.tsx:526-541`) | P2 | S-M | OUVERT (re-état 07/10, P-P1-1 résiduel) || CODE-NEW-7 | Écrans orphelins `IdentificateurStats.tsx` + `IdentificateurDashboard.tsx` (0 route, 0 import — morts en source depuis la fusion §8.5, non bundlés car routes lazy ; supprimer à la fusion définitive) | P3 | S | OUVERT (REVIEW-002/R2-1, vérifié orphelin le 07/10) |
 
 ### TYPAGE (2 dettes)
 | ID | Description | Priorité | Effort | Statut |
@@ -102,7 +105,7 @@
 | FRONT-NEW-6 | Tests sans framework standard (74 fichiers via tsx + helpers ad-hoc) — pas de coverage, pas de watch, pas de snapshot | P2 | L | OUVERT (audit) |
 | FRONT-NEW-7 | 878 `console.*` dans 162 fichiers, pas de logger structuré | P2 | M | OUVERT (audit) |
 | FRONT-NEW-8 | 7 fichiers CSS avec override OKLCH->hex workarounds pour Motion | P3 | M | OUVERT (audit) |
-| FRONT-NEW-9 | `@nestjs/core` 11.1.28 dans `frontend_src/package.json` (fuite backend, ~5+ MB) | P3 | S | OUVERT (audit) |
+| FRONT-NEW-9 | `@nestjs/core` 11.1.28 dans `frontend/package.json` (fuite backend, ~5+ MB) | P3 | S | OUVERT (audit) |
 | FRONT-NEW-10 | Radix UI en version `*` (24 packages) — instabilité potentielle | P3 | S | OUVERT (audit) |
 
 ### DEVOPS (nouvelles dettes)

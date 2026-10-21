@@ -1,6 +1,6 @@
 # Audit UI Julàba — version vérifiée sur le code
 
-Date : 2026-08-17 · Périmètre : `frontend_src/src/app/*` sur `main`.
+Date : 2026-08-17 · Périmètre : `frontend/src/app/*` sur `main`.
 Complémentaire de `docs/AUDIT_UX.md` (gouvernance parcours) : ce document-ci
 porte sur le **système visuel, la santé du code UI et la dette de refactoring**,
 avec **preuves réelles** (`fichier:ligne`, comptages), et sépare franchement :
@@ -51,7 +51,7 @@ avec **preuves réelles** (`fichier:ligne`, comptages), et sépare franchement :
 ## C. Constats par axe
 
 ### Axe 4 — Système visuel · [CODE-VÉRIFIÉ] · gravité HAUTE
-- **4468 hex littéraux / 487 tokens** (tout `frontend_src`). `#1D9E75` ×22.
+- **4468 hex littéraux / 487 tokens** (tout `frontend`). `#1D9E75` ×22.
 - Styles inline systémiques : `GestionStock.tsx` = 251 `style={{}}` ; idem
   `VentesPassees` (couleurs en dur `P='#AF5B23'`, `'#F0FAF5'`, `'#1D9E75'`…).
 - Tokens existants sous-exploités (`--encre`, `--trait`, `--papier` présents mais

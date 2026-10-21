@@ -21,7 +21,7 @@ Ce système, défini dans le prompt utilisateur, instaure 13 rôles d'agents (Te
 
 Nous décidons d'adopter le système multi-agents autonome sur julaba-app avec les adaptations suivantes :
 
-1. **Conservation de la gouvernance existante** : `CONSTITUTION.md`, `JULABA_DECISIONS.md`, `docs/adr/` (5 ADR existants), `docs/dette/REGISTRE-MAITRE.md` (révision 20), `docs/invariants/TABLEAU_DE_BORD.md` (I1-I7), `coordination/` restent les sources de vérité produit/architecture.
+1. **Conservation de la gouvernance existante** : `CONSTITUTION.md`, `JULABA_DECISIONS.md`, `docs/adr/` (5 ADR existants), `docs/dette/REGISTRE-MAITRE.md` (révision 20), `docs/invariants/TABLEAU_DE_BORD.md` (I1-I7), `coordination/` (supprimé le 06/10/2026) restent les sources de vérité produit/architecture.
 2. **Ajout du dossier `.ai/`** comme cockpit de pilotage du système multi-agents, en miroir et complément des fichiers existants.
 3. **Mapping des rôles** :
    - Agent 1 (Tech Lead) ↔ Alex Degny (CEO / lead dev)
@@ -114,7 +114,7 @@ Aucun module de code n'est impacté directement. Cette décision concerne unique
 - `docs/adr/ADR-001` (source unique argent), `ADR-002` (P0.0 activation), `ADR-0001` (décrément stock), `ADR-0002` (convergence schéma), `ADR-0003` (unités/devise/stockabilité)
 - `docs/dette/REGISTRE-MAITRE.md` — Registre dette (révision 20)
 - `docs/invariants/TABLEAU_DE_BORD.md` — Invariants I1-I7
-- `coordination/README.md` — Bus IA↔humain
+- ~~`coordination/README.md`~~ — Bus IA↔humain (dossier supprimé le 06/10/2026)
 - `.ai/PROJECT_CONTEXT.md` — Vision produit + stack + équipe
 - `.ai/ARCHITECTURE.md` — Architecture globale
 - `.ai/AUDIT_REPORT.md` — Score global 73/100

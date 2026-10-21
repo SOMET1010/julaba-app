@@ -71,6 +71,11 @@ export class Recolte {
   @Column({ name: 'stock_vendu', type: 'decimal', precision: 10, scale: 2, default: 0 })
   stockVendu: number;
 
+  // PROD-03 — « effectivement livré » en quantité, distinct de vendu (confirmé).
+  // Incrémenté à la transition livree d'une commande, restitué si litige/annulée.
+  @Column({ name: 'stock_livre', type: 'decimal', precision: 10, scale: 2, default: 0 })
+  stockLivre: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

@@ -59,7 +59,7 @@
 - **ADR** : 6 existants (`ADR-001`, `ADR-002`, `ADR-0001`, `ADR-0002`, `ADR-0003`, `ADR-0004`) dans `docs/adr/`. ADR-0004 tranche la cible de production (Render).
 - **Registre de dette** : `docs/dette/REGISTRE-MAITRE.md` (révision 20, 33 FERME / 5 HORS PERIMETRE / 48 OUVERT, **0 P0 OUVERT**).
 - **Invariants business** : `docs/invariants/TABLEAU_DE_BORD.md` (I1-I7, 4 en `it.failing`).
-- **Coordination IA<->Humain** : `coordination/` (règle « un fichier = un écrivain », 3 types d'arrêt formalisés).
+- **Coordination IA<->Humain** : ~~`coordination/`~~ **supprimé le 06/10/2026** (règle « un fichier = un écrivain », 3 types d'arrêt — rien de scripté ne dépendait du dossier).
 
 ## 7. Équipe virtuelle multi-agents (rôles)
 
@@ -134,5 +134,4 @@
 - `docs/adr/` — 6 ADR (ADR-0004 = cible de production Render).
 - `docs/dette/REGISTRE-MAITRE.md` — registre dette (révision 20).
 - `docs/invariants/TABLEAU_DE_BORD.md` — invariants I1-I7.
-- `coordination/` — bus IA<->humain.
 - `.audit_ui_*.md` / `.audit_ui_*.txt` — 4 audits UI existants.

@@ -10,7 +10,7 @@ import { User } from './entities/user.entity';
 import { MarchandSousProfilHistorique } from './entities/marchand-sous-profil-historique.entity';
 import { Identification } from '../identifications/identification.entity';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
-import { AuditModule } from '../audit/audit.module';
+import { AuditModule } from '../audit-log/audit-log.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 // ActivationModule (et non AuthModule) : AuthModule dépend de WalletsModule qui
 // dépend lui-même de UsersModule → importer AuthModule ici créerait un cycle.

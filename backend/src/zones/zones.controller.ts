@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ZonesService } from './zones.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 @Controller('zones')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -11,7 +13,17 @@ export class ZonesController {
 
   @Get()
   @Roles('ADMIN', 'super_admin', 'identificateur')
-  getAll() {
+  async getAll(@CurrentUser() user: User) {
+    // C-11 / GESTZONE-04 : le CA caisse (volumeTotal) ne quitte pas le
+    // territoire du gestionnaire_zone — liste restreinte à SA zone
+    // (users.zone_id, lien posé à la création des comptes BO). Fail-closed :
+    // sans zone attribuée, refus (jamais de vue nationale silencieuse).
+    if (user?.role === 'gestionnaire_zone') {
+      if (!user.zoneId) {
+        throw new ForbiddenException("Votre compte n'est associé à aucune zone : accès refusé");
+      }
+      return this.zonesService.getZonesWithStats(user.zoneId);
+    }
     return this.zonesService.getZonesWithStats();
   }
 

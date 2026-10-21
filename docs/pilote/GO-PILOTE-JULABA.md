@@ -69,7 +69,7 @@ tous sur l'écriture**, et aucun chemin d'écriture n'est atteignable.
 
 ### Garde automatique
 
-`frontend_src/src/app/services/creditHorsPilote.test.mts`, maillon
+`frontend/src/app/services/creditHorsPilote.test.mts`, maillon
 **`test:credit-hors-pilote`** de `verify` (jamais dans `test:ci`, figé à 44).
 
 Elle tombe si quelqu'un repasse le flag à `true`, démonte un conditionnement, ou

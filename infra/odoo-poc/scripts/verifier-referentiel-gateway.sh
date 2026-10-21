@@ -17,7 +17,7 @@
 # verrait, avant qu'une marchande ne le voie.
 #
 # CE QU'IL NE REMPLACE PAS : la recette PILOTE-3 complete
-# (frontend_src/e2e/run-recette-pilote3.sh), qui monte le backend, le
+# (frontend/e2e/run-recette-pilote3.sh), qui monte le backend, le
 # navigateur et une base JULABA pour prouver l'adoption, la vente sans Odoo et
 # le cache local. Celle-la exige Node, psql et Chromium — absents du VPS.
 # Ici : curl et python3, comme smoke-test.sh.
@@ -115,6 +115,6 @@ lecture sans perte ni doublon, et aucun prix n'est demande a Odoo.
 
 Ce qui ne l'est PAS, et reste a jouer ailleurs : l'adoption, la vente sans
 Odoo, le cache du telephone — c'est la recette PILOTE-3 complete
-(frontend_src/e2e/run-recette-pilote3.sh), qui exige Node, psql et Chromium.
+(frontend/e2e/run-recette-pilote3.sh), qui exige Node, psql et Chromium.
 --------------------------------------------------------------------
 EOF

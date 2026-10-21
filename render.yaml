@@ -68,9 +68,6 @@ services:
         value: /opt/render/project/src/backend/.piper/piper/piper
       - key: PIPER_VOICE
         value: /opt/render/project/src/backend/.piper/voice.onnx
-      # Coupe le TTS cloud payant : Piper (ou la voix navigateur) suffit.
-      - key: TTS_DISABLE_CLOUD
-        value: "true"
       # Base de données (câblée automatiquement depuis julaba-db)
       - key: DB_HOST
         fromDatabase: { name: julaba-db, property: host }
@@ -180,7 +177,7 @@ services:
     # Déploiement AUTOMATIQUE à chaque push sur la branche suivie (plus besoin de
     # cliquer « Manual Deploy » après chaque correction).
     autoDeploy: true
-    buildCommand: cd frontend_src && npm ci --include=dev && npm run build
+    buildCommand: cd frontend && npm ci --include=dev && npm run build
     staticPublishPath: frontend/dist
     envVars:
       # URL du backend (utilisée au BUILD du frontend)

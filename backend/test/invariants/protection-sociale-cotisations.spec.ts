@@ -40,9 +40,12 @@ describe('Invariant PS1 — cotisations sociales CNPS/CNAM (persistance réelle,
   let userAToken: string;
   let userBId: string;
   let userBToken: string;
+  let userCId: string;
+  let userCToken: string;
   const api = () => request(app.getHttpServer());
 
   const SOLDE_INITIAL_A = 20_000;
+  const SOLDE_INITIAL_C = 15_000;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] })
@@ -79,6 +82,20 @@ describe('Invariant PS1 — cotisations sociales CNPS/CNAM (persistance réelle,
     await ds.query(
       `INSERT INTO wallets (user_id, solde, solde_bloque) VALUES ($1,$3,0),($2,0,0)`,
       [userAId, userBId, SOLDE_INITIAL_A],
+    );
+
+    // PROD-04 — le producteur cotise LUI AUSSI (le backend est role-agnostique,
+    // l'UI est maintenant routée sous /producteur/protection-sociale) : on
+    // verrouille le scénario producteur côté API.
+    const userC: any = await repo.save(repo.create({
+      phone: '+2250700090003', firstName: 'Sékou', lastName: 'CotisantProd', genre: 'homme',
+      role: UserRole.PRODUCTEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    userCId = userC.id;
+    userCToken = await jwt.signAsync({ sub: userC.id, phone: userC.phone, role: userC.role }, { secret: process.env.JWT_SECRET });
+    await ds.query(
+      `INSERT INTO wallets (user_id, solde, solde_bloque) VALUES ($1,$2,0)`,
+      [userCId, SOLDE_INITIAL_C],
     );
   }, 60000);
 
@@ -219,5 +236,33 @@ describe('Invariant PS1 — cotisations sociales CNPS/CNAM (persistance réelle,
     const listeB2 = await lister(userBToken);
     expect(listeB2.body.cotisations).toHaveLength(1);
     expect(listeB2.body.cotisations[0].id).toBe(creationB.body.cotisation.id);
+  }, 30000);
+
+  it('PS1e — PRODUCTEUR : page routée chez lui, débit keiwa exact et cotisation tracée (PROD-04)', async () => {
+    // Le producteur paie sa CNPS en keiwa — même contrat que PS1b.
+    const res = await enregistrer(userCToken, {
+      organisme: 'CNPS', montant: 5_000, periode: '2026-10', mode: 'keiwa',
+    });
+    expect([200, 201]).toContain(res.status);
+    const cotisation = res.body.cotisation;
+    expect(cotisation.mode).toBe('keiwa');
+    expect(cotisation.walletTransactionId).toBeTruthy();
+
+    // Débit EXACT de SON wallet.
+    expect(await soldeDe(userCId)).toBe(SOLDE_INITIAL_C - 5_000);
+
+    // Une seule écriture wallet, tracée à CETTE cotisation.
+    const tx = await txPourCotisation(cotisation.id);
+    expect(tx).toHaveLength(1);
+    expect(tx[0].user_id).toBe(userCId);
+    expect(tx[0].type).toBe('debit');
+    expect(Number(tx[0].montant)).toBe(5_000);
+
+    // Son historique contient la cotisation ; il ne voit pas celles de la marchande.
+    const historique = await lister(userCToken);
+    expect(historique.status).toBe(200);
+    const ids = historique.body.cotisations.map((c: any) => c.id);
+    expect(ids).toContain(cotisation.id);
+    expect(ids).not.toContain((await lister(userAToken)).body.cotisations[0]?.id);
   }, 30000);
 });

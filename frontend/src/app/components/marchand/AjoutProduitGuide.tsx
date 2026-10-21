@@ -1,0 +1,497 @@
+/**
+ * POSER UN PRODUIT SUR SON ÉTAL — trois questions, STK-03 §2.
+ *
+ *   1. Quel produit tu veux ajouter ? → son nom, dit ou touché
+ *   2. Tu le vends comment ?      → son unité
+ *   3. À combien ?                → SON prix
+ *
+ * ET RIEN D'AUTRE. Pas de catégorie, pas de stock, pas de seuil d'alerte, pas
+ * de prix d'achat, pas de date de péremption. L'écran d'avant les réclamait
+ * tous : une marchande ne décrit pas son produit, elle le vend. Chaque champ
+ * en plus est une occasion d'abandonner — et pour une non-lectrice, une
+ * occasion de plus de se tromper.
+ *
+ * AUCUNE TAXONOMIE. Ni famille, ni sous-famille, ni référence. Le rattachement
+ * au référentiel est notre travail, fait ailleurs, sans elle.
+ *
+ * UNE SEULE ÉCRITURE : `addProduct` de la caisse — la primitive qui alimente
+ * `products`, donc son étal. Une donnée écrite à deux endroits finit par
+ * diverger ; il n'y a donc pas d'autre chemin ici.
+ *
+ * LES DÉCISIONS VIVENT DANS `services/premierProduit` : quelle question poser,
+ * quelles unités proposer, si le produit est prêt. Cet écran ne décide rien,
+ * il montre et il parle.
+ */
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Check } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
+import { useCaisse } from '../../contexts/CaisseContext';
+import { guidageVocal } from '../../utils/accessMode';
+import { toast } from 'sonner';
+import { resoudreMessage } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
+import {
+  etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante, raisonDuRefus,
+  produitDejaSurEtal, stockComplete,
+  type BrouillonProduit, type EtapeAjout, type RaisonRefus,
+} from '../../services/premierProduit';
+import type { CaisseProduct } from '../../contexts/CaisseContext';
+import { BoutonDirePrix } from './BoutonDirePrix';
+import { BoutonDireNom } from './BoutonDireNom';
+import { ClavierQuantite } from './ClavierQuantite';
+import { ComplementEtal } from './ComplementEtal';
+
+const ORANGE = 'var(--commerce-action)';
+const VERT = 'var(--color-green-700)';
+/** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
+const CIBLE = 44;
+
+const CHIFFRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+interface Props {
+  /** Ses unités déjà employées : elles passent devant celles du marché. */
+  sesUnites: readonly string[];
+  /**
+   * CE QU'ELLE A DÉJÀ DIT — STK-05.
+   *
+   * Quand elle a nommé son produit à voix haute (« ajoute 10 piments à
+   * 500 »), il serait absurde de le lui redemander. Le parcours démarre sur
+   * ce qu'elle a donné et `etapeCourante` l'amène directement à la seule
+   * question qui reste. Ce qui n'est pas là n'est JAMAIS inventé : c'est
+   * précisément ce qu'on lui demande.
+   */
+  depart?: { nom?: string; unite?: string; prix?: number | null };
+  /** Le produit est sur son étal. Le parent referme et rafraîchit. */
+  onPose: () => void;
+  onAnnuler: () => void;
+}
+
+/**
+ * CE QU'ON DIT POUR CHAQUE REFUS — STK-24.
+ *
+ * `raisonDuRefus` sait ce qui manque ; cette table sait comment le dire. Le
+ * `Record` n'est pas décoratif : ajouter une raison sans lui donner de phrase
+ * ne compile pas. C'est la seule façon qu'un refus ne puisse pas redevenir
+ * muet par oubli — et c'est exactement par un oubli qu'il l'était.
+ *
+ * Chaque phrase nomme le GESTE, pas seulement le défaut : un refus qui dit
+ * seulement ce qui cloche laisse deviner la suite (leçon AUTH_12).
+ */
+const PHRASE_DU_REFUS: Record<RaisonRefus, string> = {
+  'nom-absent': 'STOCK_050',
+  'nom-trop-court': 'STOCK_051',
+  'unite-absente': 'STOCK_052',
+  'prix-absent': 'STOCK_053',
+};
+
+export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Props) {
+  const { speak } = useApp();
+  const { addProduct, updateProduct, refreshProducts, products } = useCaisse();
+  const [nom, setNom] = useState(depart?.nom ?? '');
+  const [unite, setUnite] = useState(depart?.unite ?? '');
+  const [prix, setPrix] = useState(
+    typeof depart?.prix === 'number' && depart.prix > 0 ? String(depart.prix) : '');
+  const [uniteLibre, setUniteLibre] = useState(false);
+  const [valide, setValide] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+
+  const dire = (t: string) => { if (guidageVocal()) speak(t); };
+  /** Une CLÉ du catalogue, résolue dans la langue active, PUIS rendue par le
+   *  contrat audio — qui choisit la forme PARLÉE. Passer par le catalogue ne
+   *  suffit pas : `.texte` est la forme ÉCRAN, avec son espace fine, et la
+   *  synthèse l'épelle chiffre par chiffre. */
+  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+    // LA FORME PARLÉE, PAS LA FORME ÉCRAN — terrain du 24/09.
+    //
+    // Ici on faisait `dire(resoudreMessage(id, vars).texte)`. Or un message du
+    // catalogue porte DEUX formes : `.texte` pour l'ŒIL (« 2 000 francs »,
+    // avec son espace fine qui le rend lisible) et la forme PARLÉE pour
+    // l'OREILLE (« deux mille francs »). En envoyant la première au moteur de
+    // voix, la synthèse recevait un nombre coupé et l'épelait : « 2 zéro zéro
+    // zéro ». Passer par le catalogue ne suffit pas — il faut passer par le
+    // RENDU, qui choisit la bonne forme. C'est ce que font déjà SaisieGuidee,
+    // ConfirmationLigne et speakMessage.
+    const m = resoudreMessage(id, vars);
+    void rendreMessage(m, dire);
+  };
+
+  /** STK-04 — ce qu'elle a répondu à « Tu en as combien ? ». Vide = pas dit. */
+  const [quantite, setQuantite] = useState('');
+  const brouillon: BrouillonProduit = {
+    nom, unite,
+    // `undefined` tant qu'elle n'a rien tapé : le stock restera INCONNU, et
+    // c'est tout l'objet de STK-04 — jamais un zéro qui voudrait dire deux
+    // choses.
+    quantite: quantite === '' ? null : Number(quantite),
+    // Le champ est vide tant qu'elle n'a rien tapé : `null`, pas zéro. Un
+    // zéro se laisserait enregistrer.
+    prix: prix === '' ? null : Number(prix),
+  };
+  /**
+   * OÙ ELLE EN EST — recette DTDI du 24/09.
+   *
+   * L'étape affichée était `etapeCourante(brouillon)`, donc recalculée À CHAQUE
+   * TOUCHE. Dès la première lettre du nom, l'étape passait à « unite » et
+   * l'input était démonté sous ses doigts : son produit s'appelait « T ». Le
+   * champ d'unité libre avait le même défaut.
+   *
+   * L'étape affichée est maintenant un ÉTAT, qui n'avance que sur un geste
+   * explicite. `etapeCourante` reste la règle de complétude — elle sert ici à
+   * DÉMARRER au bon endroit quand elle a déjà parlé (STK-05).
+   */
+  const [etapeVue, setEtapeVue] = useState<EtapeAjout>(() => etapeCourante({
+    nom: depart?.nom ?? '', unite: depart?.unite ?? '',
+    prix: typeof depart?.prix === 'number' && depart.prix > 0 ? depart.prix : null,
+  }));
+  /**
+   * A1 — LE PRODUIT QU'ELLE A DÉJÀ (retour terrain PIE, 07/10). Trouvé dès
+   * qu'elle l'a nommé : on ne lui fait pas reposer un produit qui est sur son
+   * étal, on lui demande combien elle en AJOUTE.
+   */
+  const [existant, setExistant] = useState<CaisseProduct | null>(() => (depart?.nom
+    ? produitDejaSurEtal({ nom: depart.nom, unite: depart.unite ?? '' }, products) : null));
+  const aCreer = produitACreer(brouillon);
+  const peutAvancer = peutValider(etapeVue, brouillon);
+  /**
+   * Avancer est un GESTE : le grand bouton, ou la touche OK du clavier.
+   *
+   * ET LE REFUS EST UN MOMENT DE PAROLE — STK-24. Ici on ne faisait rien
+   * quand elle ne pouvait pas avancer, et le bouton était `disabled` : elle
+   * appuyait, rien ne bougeait, rien ne le lui disait. Le bouton grisé est
+   * une information PUREMENT VISUELLE dans un parcours fait pour l'oreille.
+   */
+  const avancer = () => {
+    if (peutAvancer && etapeVue === 'nom') {
+      const deja = produitDejaSurEtal({ nom, unite: '' }, products);
+      if (deja) { setExistant(deja); return; }
+    }
+    if (peutAvancer) { setEtapeVue(etapeSuivante(etapeVue)); return; }
+    const refus = raisonDuRefus(etapeVue, brouillon);
+    if (refus) direMessage(PHRASE_DU_REFUS[refus]);
+  };
+
+  /**
+   * LA QUESTION DE CHAQUE ÉTAPE EST DITE — STK-23, 26/09/2026.
+   *
+   * Retour terrain : « elle ne parle pas à toutes les étapes ». Mesuré : le
+   * parcours n'émettait que des ACCUSÉS de réception — l'unité choisie, le
+   * montant tapé, le produit posé. Les trois QUESTIONS restaient à l'écran.
+   *
+   * Une marchande qui ne lit pas entendait donc seulement qu'on avait pris
+   * note de ce qu'elle venait de faire, jamais ce qu'on attendait d'elle.
+   * Elle savait qu'on l'écoutait ; elle ne savait pas quoi dire.
+   *
+   * On passe par `direMessage`, donc par le RENDU : à l'étape du prix la
+   * forme parlée compte, et c'est déjà la raison d'être de cette fonction.
+   */
+  useEffect(() => {
+    if (etapeVue === 'nom') direMessage('STOCK_047');
+    else if (etapeVue === 'unite') direMessage('STOCK_048', { nom });
+    else if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
+    else if (etapeVue === 'quantite') direMessage('STOCK_054');
+    // On ne redit pas la question à chaque frappe : seul le changement
+    // d'ÉTAPE la déclenche.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etapeVue]);
+
+  useEffect(() => {
+    if (existant) direMessage('STOCK_055', { produit: existant.nom, unite: existant.unite });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existant]);
+
+  /**
+   * A1 — COMPLÉTER, PAS CRÉER. Même chemin que « + Ajouter » du stock
+   * (`updateProduct(id, { stock })`). Son PRIX reste le sien : s'il en a dit
+   * un autre, on le lui dit, on ne l'écrit pas. Quantité non dite : rien
+   * n'est écrit, et on le dit.
+   */
+  const completer = async (deja: CaisseProduct, ajout: unknown, prixDit: number | null) => {
+    const stock = stockComplete(deja, ajout);
+    if (stock == null) { direMessage('STOCK_058'); return; }
+    setEnCours(true);
+    try {
+      await updateProduct(deja.id, { stock: stock });
+      await refreshProducts();
+      const dit = { produit: deja.nom, stock, unite: deja.unite };
+      if (prixDit != null && prixDit !== deja.prix) direMessage('STOCK_057', { ...dit, montant: deja.prix });
+      else direMessage('STOCK_056', dit);
+      setValide(true);
+      setTimeout(() => onPose(), 650);
+    } catch {
+      direMessage('TATA_VENTE_ECHEC');
+      setEnCours(false);
+    }
+  };
+
+  /**
+   * `quantiteForcee` — STK-04. « Je ne sais pas » doit poser le produit avec un
+   * stock INCONNU, même si elle avait déjà tapé un chiffre avant de changer
+   * d'avis. Un `setQuantite('')` suivi d'un `poser()` ne suffirait pas : React
+   * ne remet pas l'état à jour avant la fin du gestionnaire, et on
+   * enregistrerait le chiffre qu'elle vient justement de renier. On passe donc
+   * la valeur, on ne la relit pas.
+   */
+  const poser = async (quantiteForcee?: null) => {
+    if (enCours) return;
+    const aPoser = quantiteForcee === null
+      ? produitACreer({ ...brouillon, quantite: null })
+      : aCreer;
+    // STK-24 — le bouton final n'est plus `disabled` : il reçoit le clic pour
+    // pouvoir DIRE ce qui manque. `enCours` reste un verrou dur : sur
+    // l'argent, un double-clic poserait deux fois le même produit.
+    if (!aPoser) {
+      const refus = raisonDuRefus(etapeVue, brouillon);
+      if (refus) direMessage(PHRASE_DU_REFUS[refus]);
+      return;
+    }
+    const deja = produitDejaSurEtal(aPoser, products);
+    if (deja) { await completer(deja, aPoser.stock, aPoser.prix); return; }
+    setEnCours(true);
+    try {
+      await addProduct(aPoser as never);
+      // Son étal se relit : la tuile doit être là TOUT DE SUITE, sinon elle
+      // croit que ça n'a pas marché et recommence.
+      await refreshProducts();
+      direMessage('TATA_PRODUIT_POSE', { produit: aPoser.nom, montant: aPoser.prix, unite: aPoser.unite });
+      setValide(true);
+      setTimeout(() => onPose(), 650);
+    } catch {
+      // T7 : l'échec s'écrit aussi (même phrase que le catalogue dit).
+      toast.error("La vente n'a pas pu être enregistrée. Réessaie.");
+      direMessage('TATA_VENTE_ECHEC');
+      setEnCours(false);
+    }
+  };
+
+  const taperChiffre = (d: string) => {
+    const v = (prix === '0' ? d : prix + d).slice(0, 7);
+    setPrix(v);
+    direMessage('TATA_MONTANT_DEVISE', { montant: Number(v) });
+  };
+
+  return (
+    <div style={{ background: 'var(--commerce-surface)', border: '1.5px solid var(--commerce-gray-100)', borderRadius: 20, padding: 16, display: 'flex', flexDirection: 'column', gap: 14, position: 'relative', overflow: 'hidden' }}>
+      <AnimatePresence>
+        {valide && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+            style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.92)', zIndex: 10 }}
+          >
+            <motion.div
+              initial={{ scale: 0.4, rotate: -20 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 22 }}
+              style={{ width: 92, height: 92, borderRadius: '50%', background: VERT, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 18px 40px rgba(47, 138, 70, 0.25)' }}
+            >
+              <Check size={48} color="white" strokeWidth={3} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── A1. ELLE L'A DÉJÀ : COMBIEN ELLE EN AJOUTE ─────────────── */}
+      {existant && (
+        <ComplementEtal existant={existant} enCours={enCours}
+          onValider={(ajout) => { void completer(existant, ajout, brouillon.prix); }}
+          onAutre={() => { setExistant(null); setEtapeVue('unite'); }} />
+      )}
+
+      {/* ─── 1. SON NOM ─────────────────────────────────────────────── */}
+      {!existant && etapeVue === 'nom' && (
+        <>
+          <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
+            Quel produit tu veux ajouter ?
+          </p>
+          <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
+            aria-label="Quel produit tu veux ajouter ?" placeholder="Son nom"
+            style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+          {/* DIRE LE NOM — audit 20/10 §5.3. L'étape du nom était la SEULE du
+              parcours sans micro : venue par le tactile, ou après une dictée
+              manquée, une non-lectrice devait TAPER un nom. Le bloc dictée
+              écoute ici, reprend SON orthographe (son étal est passé à la
+              lecture), et ce qu'elle a donné en même temps (unité, prix) est
+              conservé — jamais jeté (STK-25), jamais suffisant pour avancer
+              seul : c'est toujours elle qui appuie sur « C'est bon ».
+
+              LA CORRECTION PASSE PAR L'OREILLE : le nom transcrit est relu
+              (STOCK_059). Si c'est faux, TROIS gestes, une seule règle :
+              REMPLACER — redire (le micro reste là), corriger À LA VOIX
+              mot à mot (« non, pas kasso, gombo » — le nom affiché est passé
+              au micro via nomActuel : la réfutation et le mot réfuté sortent,
+              ce qui reste est son produit), ou corriger mot à mot au clavier
+              dans le champ ci-dessus, qui reste éditable. */}
+          <BoutonDireNom
+            sesProduits={(products || []).map(p => ({ nom: p.nom }))}
+            dire={dire}
+            nomActuel={nom}
+            onNom={(lu) => {
+              setNom(lu.brouillon.nom);
+              // Ce qu'elle a donné EN MÊME TEMPS que le nom n'est pas jeté :
+              // « piment au kilo à 500 » remplit les trois champs D'ELLE. Les
+              // étapes suivantes les relisent chacun — rien ne se pose sans
+              // son geste.
+              if (lu.brouillon.unite) setUnite(lu.brouillon.unite);
+              if (lu.brouillon.prix) setPrix(String(lu.brouillon.prix));
+              direMessage('STOCK_059', { produit: lu.brouillon.nom });
+            }}
+          />
+          {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
+              Le grand bouton pour elle : c'est le geste qu'elle sait faire.
+              La touche OK du clavier pour qui va vite. Rien n'avance tout
+              seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          {/* STK-24 — PAS `disabled` : un bouton désactivé ne reçoit pas le clic,
+              donc le code n'a nulle part où dire ce qui manque. Il reste gris
+              pour l'œil et `aria-disabled` pour le lecteur d'écran, mais il
+              répond : c'est le seul moyen qu'elle apprenne ce qui bloque. */}
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
+            aria-disabled={!peutAvancer} aria-label="C'est bon, continue"
+            style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
+              background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
+              cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Check size={24} /> C'est bon
+          </motion.button>
+
+        </>
+      )}
+
+      {/* ─── 2. SON UNITÉ ───────────────────────────────────────────── */}
+      {!existant && etapeVue === 'unite' && (
+        <>
+          <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
+            {nom}, tu le vends comment ?
+          </p>
+          {!uniteLibre ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                {unitesProposees(sesUnites).map(u => (
+                  <motion.button key={u} type="button" whileTap={{ scale: 0.95 }}
+                    onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+                    style={{ minHeight: CIBLE + 8, borderRadius: 14, border: '2px solid var(--trait)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {u}
+                  </motion.button>
+                ))}
+              </div>
+              {/* « Autre » n'est pas une unité : c'est le geste par lequel elle
+                  dit SON mot. Une liste, si longue soit-elle, en oublie un. */}
+              <button type="button" onClick={() => setUniteLibre(true)}
+                style={{ minHeight: CIBLE, background: 'none', border: 'none', color: ORANGE, fontSize: 14, fontWeight: 800, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+                Autre
+              </button>
+            </>
+          ) : (
+            <>
+              <input autoFocus value={unite} onChange={e => setUnite(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
+                aria-label="Tu le vends comment ?" placeholder="Comment tu le vends"
+                style={{ width: '100%', boxSizing: 'border-box', minHeight: CIBLE, border: '1.5px solid var(--commerce-gray-100)', borderRadius: 12, padding: '12px 14px', fontSize: 18, fontWeight: 700, color: 'var(--encre)', outline: 'none', fontFamily: 'inherit', background: 'white' }} />
+          {/* LES DEUX GESTES — arbitrage de Patrick, 24/09, option C.
+              Le grand bouton pour elle : c'est le geste qu'elle sait faire.
+              La touche OK du clavier pour qui va vite. Rien n'avance tout
+              seul : c'est ce qui effaçait son nom a chaque lettre. */}
+          {/* STK-24 — PAS `disabled` : un bouton désactivé ne reçoit pas le clic,
+              donc le code n'a nulle part où dire ce qui manque. Il reste gris
+              pour l'œil et `aria-disabled` pour le lecteur d'écran, mais il
+              répond : c'est le seul moyen qu'elle apprenne ce qui bloque. */}
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={avancer}
+            aria-disabled={!peutAvancer} aria-label="C'est bon, continue"
+            style={{ width: '100%', minHeight: CIBLE + 12, borderRadius: 16, border: 'none',
+              background: peutAvancer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 18, fontWeight: 800,
+              cursor: peutAvancer ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <Check size={24} /> C'est bon
+          </motion.button>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ─── 3. SON PRIX ────────────────────────────────────────────── */}
+      {!existant && etapeVue === 'prix' && (
+        <>
+          <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
+            Le {unite}, à combien ?
+          </p>
+          {/* JAMAIS PRÉREMPLI. C'est STK-02 : un prix qu'elle n'a pas donné
+              n'existe pas, et il ne se devine pas à partir d'un catalogue. */}
+          <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${prix ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
+            {prix ? `${Number(prix).toLocaleString('fr-FR')} F` : '—'}
+          </div>
+          {/* VOX-03 — LE GESTE PAR DÉFAUT EST CELUI QU'ELLE SAIT FAIRE.
+              Ici vivait une icône `aria-hidden` sous « ou dis-le à Tantie » :
+              une image qui promettait la voix sans la donner. Le micro s'ouvre
+              maintenant tout seul, Tantie pose la question, et le clavier reste
+              juste dessous pour qui préfère taper. */}
+          <BoutonDirePrix
+            ouvrirToutSeul
+            question={`Le ${unite}, à combien ?`}
+            dire={dire}
+            onMontant={(m) => setPrix(String(m))}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {CHIFFRES.map(d => (
+              <button key={d} type="button" onClick={() => taperChiffre(d)}
+                style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>{d}</button>
+            ))}
+            <button type="button" onClick={() => setPrix(prix.slice(0, -1))} aria-label="Effacer un chiffre"
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: ORANGE, cursor: 'pointer', fontFamily: 'inherit' }}>⌫</button>
+            <button type="button" onClick={() => taperChiffre('0')}
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: '1.5px solid var(--trait)', background: 'white', fontSize: 20, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>0</button>
+            {/* Gris tant qu'elle n'a pas donné son prix — mais il RÉPOND, et dit
+                ce qui manque (STK-24). `enCours` reste un vrai verrou : sur
+                l'argent, un double-clic poserait deux fois le même produit. */}
+            {/* STK-04 — LE ✓ NE POSE PLUS, IL AVANCE. Le produit est déjà
+                complet ici ; l'étape suivante ne conditionne rien, elle
+                PROPOSE la quantité — et elle se saute d'un geste. */}
+            <button type="button" onClick={() => { if (aCreer) setEtapeVue('quantite'); else avancer(); }} disabled={enCours}
+              aria-disabled={!aCreer} aria-label="C'est bon"
+              style={{ minHeight: CIBLE + 8, borderRadius: 12, border: 'none', background: aCreer ? VERT : 'var(--commerce-line)', color: 'white', fontSize: 20, fontWeight: 800, cursor: aCreer ? 'pointer' : 'not-allowed', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Check size={22} />
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* ── STK-04 — TU EN AS COMBIEN ? ────────────────────────────────────
+          Arbitrage de Patrick, 29/09 : « quatrième question facultative […]
+          si elle passe, on conserve un stock inconnu, et il faut alors
+          empêcher toute alerte rupture ».
+
+          DEUX SORTIES AUSSI VISIBLES L'UNE QUE L'AUTRE, et c'est la moitié du
+          correctif : si « Enregistrer » était mis en avant et « Je ne sais
+          pas » relégué en petit, la question redeviendrait obligatoire dans
+          les faits pour celle qui ne lit pas. STK-03 §2 tient — le parcours
+          obligatoire reste à trois questions.
+
+          ET SON ZÉRO EST UNE RÉPONSE. Si elle tape 0, le stock vaut zéro : elle
+          a dit qu'elle n'en avait plus. C'est « passer » qui laisse inconnu. */}
+      {!existant && etapeVue === 'quantite' && (
+        <>
+          <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
+            Tu en as combien ?
+          </p>
+          <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${quantite ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
+            {quantite ? `${Number(quantite).toLocaleString('fr-FR')} ${unite}` : '—'}
+          </div>
+          <ClavierQuantite valeur={quantite} onChange={setQuantite}
+            onValider={() => { void poser(); }} enCours={enCours} />
+          <button type="button" onClick={() => { void poser(null); }} disabled={enCours}
+            aria-label="Je ne sais pas combien j'en ai"
+            style={{ minHeight: CIBLE + 8, borderRadius: 14, border: `2px solid ${ORANGE}`, background: 'white', color: ORANGE, fontSize: 17, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Je ne sais pas
+          </button>
+        </>
+      )}
+
+      <button type="button" onClick={onAnnuler}
+        style={{ minHeight: CIBLE, background: 'none', border: 'none', color: 'var(--encre-4)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+        Laisser pour l'instant
+      </button>
+    </div>
+  );
+}

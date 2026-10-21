@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, ForbiddenException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -65,10 +65,12 @@ export class PublicationsRestController {
 
     const role = String(user?.role || '').toLowerCase();
 
-    // Coopérateur : comportement inchangé (vue marché actuelle)
+    // Coopérative : le parcours métier prévoit un approvisionnement auprès
+    // des producteurs uniquement. Les offres d'autres coopératives ne doivent
+    // pas être proposées comme achats amont.
     if (role === 'cooperateur') {
       const publications = await this.dataSource.query(
-        `${baseSelect} AND u.role IN ('producteur', 'cooperateur')${orderBy}`,
+        `${baseSelect} AND p.type_marche = 'producteur' AND u.role = 'producteur'${orderBy}`,
       );
       return { publications };
     }
@@ -80,18 +82,22 @@ export class PublicationsRestController {
       // Grossiste : marché producteur global (aucune jointure coopérative)
       if (sousProfil === 'grossiste') {
         const publications = await this.dataSource.query(
-          `${baseSelect} AND p.type_marche = 'producteur'${orderBy}`,
+          `${baseSelect} AND p.type_marche = 'producteur'
+             AND u.role IN ('producteur', 'cooperateur')${orderBy}`,
         );
         return { publications };
       }
 
-      // Demi-grossiste : marché coopératif scopé sur sa coopérative active
+      // Demi-grossiste : s'approvisionne auprès des grossistes via le marché.
+      // Les offres de grossistes sont publiées sur le canal coopératif par
+      // /publications/republier ; le vendeur doit être un marchand sous-profil
+      // grossiste. Le cloisonnement est appliqué ici côté serveur, pas seulement
+      // dans l'interface. Le parcours métier ne limite pas l'achat à la seule
+      // coopérative active du demi-grossiste.
       if (sousProfil === 'demi_grossiste') {
-        const coopId = await this.coopResolver.getActiveCooperativeId(user.id);
-        if (!coopId) return { publications: [] };
         const publications = await this.dataSource.query(
-          `${baseSelect} AND p.type_marche = 'cooperative' AND p.cooperative_id = $1${orderBy}`,
-          [coopId],
+          `${baseSelect} AND p.type_marche = 'cooperative'
+             AND u.role = 'marchand' AND u.sous_profil_marchand = 'grossiste'${orderBy}`,
         );
         return { publications };
       }
@@ -119,9 +125,48 @@ export class PublicationsRestController {
         'Publication sur le marché producteur réservée aux producteurs et coopérateurs',
       );
     }
+
+    // PROD-09 (20/10/2026) — l'offre du marché producteur vient de la
+    // production DÉCLARÉE (docx, PRODUCTEUR-04) : elle ne peut plus vendre
+    // plus que ce que le producteur a récolté.
+    //   1. recolte_id OBLIGATOIRE : le seul écran de publication vivant
+    //      (PublierRecolteModal) envoie toujours la récolte liée ; une offre
+    //      sans récolte = une quantité inventée (fail-closed 400).
+    //   2. plafond serveur DUR : quantite_disponible ≤ recolte.stock_disponible
+    //      — la bornée du modal était CLIENT ; un curl se moquait de l'UI.
+    //   3. ownership : la récolte doit appartenir à l'auteur de l'offre.
+    const quantite = Number(body.quantite_disponible);
+    if (!Number.isFinite(quantite) || quantite <= 0) {
+      throw new BadRequestException('quantite_disponible doit être un nombre positif');
+    }
+    if (!body.recolte_id) {
+      throw new BadRequestException(
+        'Une offre du marché producteur doit être liée à une récolte (recolte_id requis)',
+      );
+    }
+    const recoltes = await this.dataSource.query(
+      `SELECT id, user_id, produit, stock_disponible FROM recoltes WHERE id::text = $1`,
+      [String(body.recolte_id)],
+    );
+    const recolte = recoltes[0];
+    if (!recolte || String(recolte.user_id) !== String(user.id)) {
+      throw new BadRequestException('Récolte introuvable ou non autorisée pour cet auteur');
+    }
+    const stockDispo = Number(recolte.stock_disponible || 0);
+    if (quantite > stockDispo) {
+      throw new BadRequestException(
+        `La quantité offerte (${quantite}) dépasse le stock disponible de la récolte (${stockDispo})`,
+      );
+    }
+
+    // PROD-06 (20/10/2026) : conditions_vente était une colonne ORPHELINE
+    // (jamais envoyée par l'UI, jamais lue). Le docx (étape 5 « Publier »)
+    // demande les conditions de vente de l'offre : le modal vivant les saisit
+    // désormais, le serveur les persiste, et SELECT p.* les expose au marché.
+    const conditionsVente = String(body.conditions_vente ?? body.conditionsVente ?? '').trim() || null;
     const result = await this.dataSource.query(
-      `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, date_publication)
-       VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,NOW())
+      `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, conditions_vente, date_publication)
+       VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,$12,NOW())
        ON CONFLICT (user_id, LOWER(TRIM(produit)))
        DO UPDATE SET
          quantite_disponible = EXCLUDED.quantite_disponible,
@@ -130,6 +175,7 @@ export class PublicationsRestController {
          localisation        = EXCLUDED.localisation,
          description         = EXCLUDED.description,
          photo_url           = EXCLUDED.photo_url,
+         conditions_vente    = EXCLUDED.conditions_vente,
          date_recolte        = EXCLUDED.date_recolte,
          statut              = 'disponible',
          active              = true,
@@ -137,7 +183,7 @@ export class PublicationsRestController {
        RETURNING *`,
       [user.id, body.produit, body.culture || body.produit, body.quantite_disponible,
        body.unite, body.prix_unitaire, body.qualite || 'standard', body.localisation || '',
-       body.date_recolte || null, body.description || '', body.photo_url || null]
+       body.date_recolte || null, body.description || '', body.photo_url || null, conditionsVente]
     );
     // Passer la récolte en 'validee' si recolte_id fourni
     if (body.recolte_id) {

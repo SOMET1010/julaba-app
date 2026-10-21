@@ -1,9 +1,12 @@
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { timingSafeEqual } from 'node:crypto';
+import { attenteApresEchecs, attenteEnClair, essaisAvantAttente } from '../auth/verrou-pin';
+import { PinCryptoService } from '../auth/pin-crypto.service';
 import { exigerAutoriteSur, exigerPermissionBO } from '../auth/bo-autorisation';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { buildMeta } from '../common/paginate';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Controller, Get, Patch, Delete, UseGuards, Param, Body, Query, Request, ForbiddenException, NotFoundException, BadRequestException, Post, UploadedFile, UseInterceptors, HttpCode, HttpStatus, Logger, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, UseGuards, Param, Body, Query, Request, ForbiddenException, NotFoundException, BadRequestException, UnauthorizedException, Post, UploadedFile, UseInterceptors, HttpCode, HttpStatus, Logger, ParseUUIDPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UsersService } from './users.service';
@@ -11,6 +14,8 @@ import { DuplicatesService } from './duplicates.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from './entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { UsersBoListQueryDto } from './dto/users-bo-list-query.dto';
 import { AdminUsersService } from './admin-users.service';
@@ -33,7 +38,66 @@ export class UsersController {
     private readonly adminUsersService: AdminUsersService,
     private readonly backofficeUsersService: BackofficeUsersService,
     private readonly feedbakSmsService: FeedbakSmsService,
+    private readonly pinCrypto: PinCryptoService,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
   ) {}
+
+  // ── IDENT-05 — LE PIN SERVEUR SUR LES ÉCRITURES PII ───────────────────────
+  //
+  // L'identificateur modifie la PII des acteurs de sa zone (numCNPS, numCMU,
+  // dateNaissance, photo…) via PATCH /users/:id. Jusqu'ici la re-vérification
+  // du PIN ne vivait que dans l'ÉCRAN (POST /auth/identificateur/me/verify-pin)
+  // : un attaquant avec la session ouverte (téléphone volé) appelait le PATCH
+  // directement, sans PIN — IDENTIFICATEUR-02 du 19/10 restait valable.
+  //
+  // Désormais la vérification est SERVEUR, sur chaque écriture PII hors self,
+  // avec la MÊME échelle de verrou (verrou-pin.ts : 3 échecs → 5 min, 6 → 15
+  // min, 9+ → 1 h, jamais définitif) et SES colonnes dédiées. L'arbitrage « 4
+  // chiffres, alphabet 2-9 » (pin-identificateur.ts) tient PARCE QUE ce chemin
+  // est verrouillé.
+  private async exigerPinIdentificateurActeur(requerant: User, pin: unknown): Promise<void> {
+    if (!/^\d{4}$/.test(String(pin || ''))) {
+      throw new UnauthorizedException(
+        'PIN requis (4 chiffres) pour modifier la fiche d\'un acteur de votre zone',
+      );
+    }
+    const jusqua = (requerant as any).identificateurPinLockedUntil as Date | null;
+    if (jusqua && jusqua.getTime() > Date.now()) {
+      throw new UnauthorizedException(
+        `Verrou PIN : attendez ${attenteEnClair(jusqua.getTime() - Date.now())}`,
+      );
+    }
+    if (!(requerant as any).pinCodeEncryptedIdentificateur) {
+      throw new UnauthorizedException('Aucun PIN défini — réinitialisez votre code auprès de la DGE');
+    }
+    let valide = false;
+    try {
+      const secret = this.pinCrypto.decrypt((requerant as any).pinCodeEncryptedIdentificateur);
+      const a = Buffer.from(String(secret).trim().padEnd(4, '\0'));
+      const b = Buffer.from(String(pin).trim().padEnd(4, '\0'));
+      valide = timingSafeEqual(a, b);
+    } catch {
+      valide = false;
+    }
+    if (valide) {
+      // Seul un PIN JUSTE remet le compteur à zéro (même règle que le verify-pin).
+      await this.usersRepo.update(requerant.id, {
+        failedIdentificateurPinAttempts: 0,
+        identificateurPinLockedUntil: null,
+      } as any);
+      return;
+    }
+    const essais = (((requerant as any).failedIdentificateurPinAttempts ?? 0) as number) + 1;
+    const attente = attenteApresEchecs(essais);
+    const patch: Record<string, unknown> = { failedIdentificateurPinAttempts: essais };
+    if (attente > 0) patch.identificateurPinLockedUntil = new Date(Date.now() + attente);
+    await this.usersRepo.update(requerant.id, patch as any);
+    throw new UnauthorizedException(
+      attente > 0
+        ? `PIN incorrect — ${attenteEnClair(attente)} d\'attente avant de réessayer`
+        : `PIN incorrect — ${essaisAvantAttente(essais)} essai(s) avant la prochaine pause`,
+    );
+  }
 
   @Get('me')
   async getProfile(@CurrentUser() user: User) {
@@ -44,7 +108,24 @@ export class UsersController {
   @UseGuards(RolesGuard)
   @Get()
   async findAll(@Query() query: UsersBoListQueryDto, @Request() req: any) {
-    const result = await this.usersService.findAll(query, req.user?.role);
+    // GESTZONE-05 (fail-closed) : un gestionnaire_zone sans zone attribuée ne
+    // doit JAMAIS recevoir une vue nationale silencieuse — on refuse net.
+    if (req.user?.role === 'gestionnaire_zone' && !req.user?.zoneId) {
+      throw new ForbiddenException("Votre compte n'est associé à aucune zone : accès refusé");
+    }
+    // ADMINNAT-02 (P1, audit 19/10) : l'annuaire des comptes back-office
+    // (scope=bo : prénoms, noms, téléphones, rôles, statuts de tous les comptes
+    // BO) n'est pas un liste d'acteurs comme les autres. La route ne portait
+    // aucune garde au-delà du jeton 'ADMIN' générique : on exige ici la
+    // permission 'utilisateurs.read' (registre bo-autorisation, résolution
+    // identique au front) — super_admin OK par hiérarchie, admin_general et
+    // admin_national OK par défaut de rôle, gestionnaire_zone et
+    // operateur_terrain refusés, et tout compte portant boPermissions={}
+    // explicite est refusé (fail-closed, pas de repli sur le défaut).
+    if (query.scope === 'bo') {
+      exigerPermissionBO(req.user, 'utilisateurs.read');
+    }
+    const result = await this.usersService.findAll(query, req.user?.role, req.user?.zoneId);
     return {
       data: result.users,
       meta: buildMeta(result.page, query.limit ?? 50, result.total),
@@ -58,6 +139,14 @@ export class UsersController {
       throw new ForbiddenException('Accès refusé');
     }
     const user = await this.usersService.findByPhone(phone);
+    // GESTZONE-02 (IDOR) : /users/by-phone/:phone était un annuaire national
+    // énumérable pour le gestionnaire_zone. Fail-closed : il ne peut résoudre
+    // que les téléphones rattachés à SA zone (comparaison users.zone_id).
+    if (req.user.role === 'gestionnaire_zone') {
+      if (!req.user.zoneId || !user?.zoneId || user.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     if (req.user.role === 'identificateur') {
       const memeZone = user.zoneId && req.user.zoneId && user.zoneId === req.user.zoneId;
       return {
@@ -233,6 +322,15 @@ export class UsersController {
         };
       }
     }
+    // GESTZONE-02 (IDOR) : l'historique d'un compte tiers contient ses traces
+    // d'audit ; le gestionnaire_zone ne peut lire que celui des acteurs de SA
+    // zone (fail-closed : sans zone attribuée ou sans zone cible, refus).
+    if (req.user.role === 'gestionnaire_zone') {
+      const cible = await this.usersService.findOne(id);
+      if (!req.user.zoneId || !cible?.zoneId || cible.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     const historique = await this.usersService.getHistorique(id);
     return { historique, total: historique.length };
   }
@@ -247,6 +345,14 @@ export class UsersController {
       throw new ForbiddenException('Accès refusé');
     }
     const target = await this.usersService.findOne(id);
+    // GESTZONE-02 (IDOR) : le détail d'un acteur (PII complète) est réservé au
+    // territoire du gestionnaire_zone — fail-closed : sans zone attribuée, ou
+    // cible sans zone / hors zone, refus sans fuite.
+    if (req.user.role === 'gestionnaire_zone') {
+      if (!req.user.zoneId || !target?.zoneId || target.zoneId !== req.user.zoneId) {
+        throw new ForbiddenException("Cet acteur n'est pas dans votre zone");
+      }
+    }
     if (isIdentificateur) {
       const memeZone = target.zoneId && req.user.zoneId && target.zoneId === req.user.zoneId;
       return {
@@ -299,6 +405,13 @@ export class UsersController {
       if (!memeZone) {
         throw new ForbiddenException('Cet acteur n\'est pas dans votre zone');
       }
+      // IDENT-05 — le PIN est vérifié ICI, côté serveur, à chaque écriture PII
+      // d'un acteur de la zone (le check écran ne suffit jamais). Lecture BRUTE
+      // via le repo : findOne du service passe par la sanitisation
+      // (stripSensitiveUserFields) qui retire le PIN chiffré — ici la matière
+      // sert à la VÉRIFICATION, elle ne repart jamais vers le client.
+      const requerant = await this.usersRepo.findOne({ where: { id: req.user.id } });
+      await this.exigerPinIdentificateurActeur(requerant, body.pin);
     }
 
     const actorId = req.user?.id;

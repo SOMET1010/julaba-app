@@ -243,9 +243,18 @@ export class CaisseRestController {
   }
 
   @Post('transactions')
-  create(@Body() body: any, @CurrentUser() user: User) {
+  async create(@Body() body: any, @CurrentUser() user: User) {
+    // C-05 — LE SENS DE L'ARGENT AVANT LA NATURE. Un ajustement est la seule
+    // nature SIGNÉE de cette route (+ = argent entré, − = argent retiré) :
+    // interdire le négatif ici aurait rendu la correction de caisse à sens
+    // unique, et l'écart du soir impossible à rattraper par écriture. Pour les
+    // deux autres natures, la règle ne bouge pas : une dépense ou un
+    // remboursement SORT de la caisse, on l'écrit en montant positif.
     const montant = parseFloat(body.montant) || 0;
-    if (montant <= 0) throw new BadRequestException('montant invalide');
+    const estAjustement = body.type === 'ajustement';
+    if (!Number.isFinite(montant) || (estAjustement ? montant === 0 : montant <= 0)) {
+      throw new BadRequestException('montant invalide');
+    }
     // 'vente' EST EXCLU D'ICI, ET C'EST LE CORRECTIF — audit du 18/09/2026.
     //
     // Cette route faisait un `repo.save()` NU : ni clé d'idempotence, ni
@@ -266,24 +275,74 @@ export class CaisseRestController {
     if (!body.type || !TYPES_AUTORISES.includes(body.type)) {
       throw new BadRequestException(`type invalide - valeurs acceptées : ${TYPES_AUTORISES.join(', ')}`);
     }
-    return this.repo.save(this.repo.create({
-      user_id: user.id,
-      marchand_id: user.id,
-      type: body.type,
-      montant,
-      description: body.description || '',
-      session_id: body.session_id || '',
-      produit: body.produit || '',
-      quantite: parseFloat(body.quantite) || 1,
-      mode_paiement: body.mode_paiement || 'especes',
-      source: body.source || 'kassa',
-      category: body.category || '',
-      prix_achat: parseFloat(body.prix_achat) || 0,
-      prix_vente: parseFloat(body.prix_vente) || 0,
-      marge: parseFloat(body.marge) || 0,
-      benefice: parseFloat(body.benefice) || 0,
-      details: body.details || null,
-    }));
+
+    // C-05 — IDEMPOTENCE OBLIGATOIRE, LES TROIS NATURES. Cette route acceptait
+    // un `repo.save()` nu : un simple rejeu réseau comptait la même dépense
+    // deux fois, sans rien qui le voie. Même motif que la vente : la clé est
+    // exigée, l'unicité est portée par l'index unique partiel d'
+    // `caisse_transactions.idempotency_key`, et une requête concurrente qui
+    // perd la course est RATTRAPÉE (23505) au lieu de casser — voir le
+    // `catch` plus bas. Message aligné sur le refus ARGENT-4b des acomptes.
+    const idemKey = typeof body.idempotency_key === 'string' ? body.idempotency_key.trim() : '';
+    if (!idemKey) {
+      throw new BadRequestException(
+        'idempotency_key requise : sans elle, une même écriture peut être comptée deux fois',
+      );
+    }
+
+    // Rattrapage du rejeu hors connexion : la clé a déjà été traitée →
+    // renvoyer l'écriture existante SANS rien réécrire (motif de la vente,
+    // `transactionExistante`). Le rejeu n'est pas une nouvelle écriture : il
+    // passe même si la journée a fermé entre-temps.
+    const deja = await this.transactionExistante(idemKey, user.id);
+    if (deja) return { transaction: deja };
+
+    // C-05 — TRANSACTION UNIQUE : la garde de journée (CAI-02/CAI-09) et
+    // l'écriture partagent la même transaction SQL. Avant : le `repo.save()`
+    // nu n'offrait ni l'une ni l'autre — ni garde de journée fermée, ni
+    // atomicité. Variante QueryRunner de `journee-ouverte.ts`, même code 409,
+    // même message : seul le moment du contrôle change (plus de fenêtre où une
+    // clôture concurrente passe entre le contrôle et l'INSERT — MARCHAND-13).
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
+    try {
+      await exigerJourneeOuverte(qr, user.id);
+      const txRepo = qr.manager.getRepository(CaisseTransaction);
+      const result = await txRepo.save(txRepo.create({
+        user_id: user.id,
+        marchand_id: user.id,
+        type: body.type,
+        montant,
+        description: body.description || '',
+        session_id: body.session_id || '',
+        produit: body.produit || '',
+        quantite: parseFloat(body.quantite) || 1,
+        mode_paiement: body.mode_paiement || 'especes',
+        source: body.source || 'kassa',
+        category: body.category || '',
+        prix_achat: parseFloat(body.prix_achat) || 0,
+        prix_vente: parseFloat(body.prix_vente) || 0,
+        marge: parseFloat(body.marge) || 0,
+        benefice: parseFloat(body.benefice) || 0,
+        details: body.details || null,
+        idempotency_key: idemKey,
+      } as any));
+      await qr.commitTransaction();
+      return { transaction: result };
+    } catch (e: any) {
+      await qr.rollbackTransaction();
+      // Deux requêtes concurrentes, même clé : la 2ᵉ viole l'unicité partielle
+      // → renvoyer l'écriture déjà enregistrée au lieu de propager l'erreur
+      // (motif de la vente, 23505-safe).
+      if (this.estViolationUnicite(e)) {
+        const existante = await this.transactionExistante(idemKey, user.id);
+        if (existante) return { transaction: existante };
+      }
+      throw e;
+    } finally {
+      await qr.release();
+    }
   }
 
   @Get('session/:date')
@@ -428,6 +487,23 @@ export class CaisseRestController {
     }
 
     const session = existing[0];
+
+    // C-06 — UNE JOURNÉE FERMÉE N'ACCEPTE PLUS DE CORRECTION DE FOND.
+    //
+    // La fermeture GRAVE trois nombres (caisse_theorique, fond_final, ecart).
+    // Cette route les laissait derrière elle : un `fond_initial` corrigé après
+    // coup rendait la caisse théorique du soir fausse en silence — le constat
+    // était déjà écrit, personne ne le recalculait. Le mouvement « correction »
+    // sur journée OUVERTE reste inchangé ; sur journée fermée, le seul chemin
+    // est le geste explicite qui invalide le comptage : rouvrir (POST
+    // /session/ouvrir). Même style que les autres refus CAI-02 : on nomme le
+    // geste, on ne bloque pas la vendeuse sans lui dire quoi faire.
+    if (session.ouvert === false || session.heure_fermeture) {
+      throw new ConflictException(
+        'Ta journée de caisse est fermée : son fond ne se corrige plus. Rouvre-la d’abord.',
+      );
+    }
+
     const maj = await this.dataSource.query(
       `UPDATE caisse_sessions
           SET fond_initial = $1, fond_declare_at = COALESCE(fond_declare_at, NOW()), updated_at = NOW()
@@ -459,7 +535,9 @@ export class CaisseRestController {
          COALESCE(SUM(CASE WHEN type = 'vente'          THEN montant ELSE 0 END), 0) AS ventes,
          COALESCE(SUM(CASE WHEN type IN ('acompte_credit', 'reglement_credit')
                            THEN montant ELSE 0 END), 0) AS encaissements_credit,
-         COALESCE(SUM(CASE WHEN type = 'depense'        THEN montant ELSE 0 END), 0) AS depenses
+         COALESCE(SUM(CASE WHEN type IN ('depense', 'remboursement')
+                           THEN montant ELSE 0 END), 0) AS sorties,
+         COALESCE(SUM(CASE WHEN type = 'ajustement'     THEN montant ELSE 0 END), 0) AS ajustements
        FROM caisse_transactions
       WHERE marchand_id = $1 AND statut <> 'annulee' AND created_at::date = $2::date`,
       [marchandId, date],
@@ -485,10 +563,27 @@ export class CaisseRestController {
     // Ce n'est PAS de la recette (elle a été comptée à la vente à crédit) —
     // c'est de l'encaissement, et la caisse théorique est un compte d'espèces,
     // pas un compte de résultat.
+    //
+    // TROISIÈME CORRECTIF, C-05 — LES DEUX NATURES QUE LA ROUTE HÉRITÉE ÉCRIVAIT
+    // DANS LE VIDE. `POST /caisse/transactions` accepte `remboursement` et
+    // `ajustement` ; la clôture ne les lisait pas : un remboursement de 2 000 F
+    // sortait physiquement de la boîte et la caisse théorique restait la même —
+    // écart fantôme du soir, du montant exact de l'écriture invisible. La
+    // cohérence est tenue des DEUX côtés du livre :
+    //
+    //   • `remboursement` : SORT d'argent (écrit en montant positif par la
+    //     route) → compté avec `depense` dans `sorties`, soustrait ;
+    //   • `ajustement` : SIGNÉ (+ = entré, − = retiré) → additionné tel quel.
+    //
+    // La trace de dette `type = 'credit'` (I6, création d'un crédit) reste
+    // VOLONTAIREMENT hors de ce compte : noter une dette ne déplace aucun
+    // franc d'espèce — elle est écrite à montant 0 et ne doit ni gonfler ni
+    // creuser la caisse.
     return fondInitial
       + Number(somme?.ventes ?? 0)
       + Number(somme?.encaissements_credit ?? 0)
-      - Number(somme?.depenses ?? 0);
+      - Number(somme?.sorties ?? 0)
+      + Number(somme?.ajustements ?? 0);
   }
 
   // Fermer la journée = déclarer ce qu'on a RÉELLEMENT en main, et confronter.
@@ -694,7 +789,13 @@ export class CaisseRestController {
       : (prixAchat > 0 ? prixVente - prixAchat : 0);
 
     // Journée toujours ouverte (vente jamais bloquée, argent rattaché au jour).
-    await this.exigerJourneeOuverte(user.id);
+    // MARCHAND-13 (CAI-09) : la création d'une journée ABSENTE reste ici
+    // (`ensureSessionOuverte` est idempotent, `ON CONFLICT DO NOTHING`, et ne
+    // ressuscite plus une journée fermée depuis CAI-02). Le CONTRÔLE, lui, a
+    // déménagé DANS la transaction qui écrit — voir plus bas. Avant, il était
+    // lu sur une AUTRE connexion que l'INSERT : une clôture concurrente
+    // tombait entre le contrôle et l'écriture, et la vente passait dans une
+    // journée déjà gravée.
     await this.ensureSessionOuverte(user.id);
 
     // Lignes vendues (produits appariés). Vente libre/voix : aucune ligne stock.
@@ -732,6 +833,12 @@ export class CaisseRestController {
     await qr.startTransaction();
     let result: CaisseTransaction;
     try {
+      // CAI-09 — LE CONTRÔLE VIT DANS LA TRANSACTION QUI ÉCRIT (MARCHAND-13).
+      // Variante QueryRunner de `journee-ouverte.ts` : même code (409), même
+      // message — seul le moment change. Le contrôleur des crédits applique la
+      // même règle depuis ARGENT-4 : une fenêtre entre le contrôle et
+      // l'écriture est une fenêtre où l'argent passe dans une journée fermée.
+      await exigerJourneeOuverte(qr, user.id);
       const txRepo = qr.manager.getRepository(CaisseTransaction);
       const created = txRepo.create({
         user_id: user.id, marchand_id: user.id,
@@ -835,7 +942,9 @@ export class CaisseRestController {
 
     if (!body.montant || parseFloat(body.montant) <= 0) throw new BadRequestException('Le montant doit être positif');
     // Journée toujours ouverte (dépense rattachée au jour, comme la vente).
-    await this.exigerJourneeOuverte(user.id);
+    // MARCHAND-13 (CAI-09) : la création de la journée absente reste ici ; le
+    // CONTRÔLE a déménagé DANS la transaction qui écrit (voir plus bas), même
+    // motif que la vente et les crédits.
     await this.ensureSessionOuverte(user.id);
     // LA DÉPENSE APPARTIENT AU JOUR OÙ ELLE A ÉTÉ FAITE — ARGENT-1, 19/09/2026.
     //
@@ -855,9 +964,22 @@ export class CaisseRestController {
     // l'horloge d'un téléphone.
     const dateDepense = dateOperationValide(body.date_operation);
 
+    // MARCHAND-13 (CAI-09) — LE CONTRÔLE ET L'ÉCRITURE PARTAGENT LA MÊME
+    // TRANSACTION. Avant : le contrôle de journée était lu sur la DataSource
+    // puis le `repo.save()` nu écrivait HORS transaction — une clôture
+    // concurrente passait entre les deux, et la dépense entrait dans une
+    // journée déjà gravée. La garde de journée ferme la transaction (409,
+    // message inchangé) avant toute écriture.
+    const qr = this.dataSource.createQueryRunner();
+    await qr.connect();
+    await qr.startTransaction();
     let result;
     try {
-      result = await this.repo.save(this.repo.create({
+      // CAI-09 — même règle, même place que la vente et les crédits : DANS la
+      // transaction. Même code (409), même message.
+      await exigerJourneeOuverte(qr, user.id);
+      const txRepo = qr.manager.getRepository(CaisseTransaction);
+      result = await txRepo.save(txRepo.create({
         user_id: user.id, marchand_id: user.id,
         session_id: body.session_id || '', montant: body.montant,
         // DEP-01 : le motif saisi par la marchande DOIT arriver ici. Le
@@ -877,12 +999,18 @@ export class CaisseRestController {
         mode_paiement: body.mode_paiement || 'especes', idempotency_key: idemKey,
         ...(dateDepense ? { created_at: dateDepense } : {}),
       } as any));
+      await qr.commitTransaction();
     } catch (e: any) {
+      await qr.rollbackTransaction();
+      // Rejeu concurrent (même clé) : renvoyer la dépense déjà enregistrée au
+      // lieu de propager l'erreur (motif de la vente, 23505-safe) — inchangé.
       if (this.estViolationUnicite(e)) {
         const existante = await this.transactionExistante(idemKey, user.id);
         if (existante) return { transaction: existante };
       }
       throw e;
+    } finally {
+      await qr.release();
     }
     this.eventsGateway?.emitTransactionCreated({ ...result, type: 'depense', userId: user.id });
     return { transaction: result };

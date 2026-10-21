@@ -109,6 +109,15 @@ export class CreateBackofficeUserDto {
   @IsUUID()
   zoneIdOptional?: string;
 
+  // DGE-05 — le marché d'affectation de l'identificateur : une CLÉ structurée
+  // (uuid marches) créable par les comptes BO autorisés (la DGE opère via les
+  // comptes BO, arbitrage A-03). Optionnel : la zone reste obligatoire,
+  // l'affectation marché peut venir plus tard (PATCH profil).
+  @ValidateIf((dto: CreateBackofficeUserDto) => dto.role === UserRole.IDENTIFICATEUR)
+  @IsOptional()
+  @IsUUID(undefined, { message: 'marcheId doit être un uuid de marché' })
+  marcheId?: string;
+
   @ValidateIf((dto: CreateBackofficeUserDto) =>
     ADMIN_ROLES_SET.includes(dto.role),
   )

@@ -12,7 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Identification } from '../identifications/identification.entity';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBackofficeUserDto } from './dto/create-backoffice-user.dto';
 import { UpdateSousProfilMarchandDto } from './dto/update-sous-profil-marchand.dto';
@@ -234,6 +234,9 @@ export class BackofficeUsersService {
       role: dto.role,
       sousProfilMarchand: dto.sousProfilMarchand ?? null,
       zoneId: zoneIdFinal ?? undefined,
+      // DGE-05 — affectation marché de l'identificateur (clé structurée,
+      // distincte du texte libre users.market).
+      marcheId: (dto as { marcheId?: string }).marcheId ?? null,
       passwordHash,
       mustChangePassword: targetIsAdmin ? false : true,
       status: userStatus,

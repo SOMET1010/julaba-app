@@ -30,7 +30,7 @@ caméra, pas les marchés, pas Express, pas les majeurs de dépendances, pas #29
 Une commande, rejouable à chaque SHA, sur base neuve :
 
 ```sh
-bash frontend_src/e2e/run-recette-voix.sh
+bash frontend/e2e/run-recette-voix.sh
 ```
 
 | Geste | Prouvé par la machine | Mesure |

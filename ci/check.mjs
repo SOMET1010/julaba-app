@@ -72,7 +72,7 @@ function etape({ nom, cwd = RACINE, commande, args, outil, lent = false, obligat
 console.log('\n══ CHECK ══════════════════════════════════════════════════════\n');
 
 // ── Typage ────────────────────────────────────────────────────────────────
-etape({ nom: 'typecheck · frontend_src', cwd: join(RACINE, 'frontend_src'),
+etape({ nom: 'typecheck · frontend', cwd: join(RACINE, 'frontend'),
         commande: 'npx', args: ['tsc', '--noEmit'] });
 etape({ nom: 'typecheck · backend', cwd: join(RACINE, 'backend'),
         commande: 'npx', args: ['tsc', '--noEmit', '-p', 'tsconfig.json'] });

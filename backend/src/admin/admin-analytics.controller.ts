@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, UseGuards, Param, Body, Logger } from '@nestjs/common';
+import { Controller, Get, Patch, UseGuards, Param, Body, Query, Logger } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +20,65 @@ export class AdminAnalyticsController {
     private dataSource: DataSource,
     private voiceMetrics: VoiceMetricsService,
   ) {}
+
+  // DGE-02 — HISTORIQUE DES VENTES PAR ACTEUR, buckets journalier / mensuel /
+  // annuel. Demande explicite du docx officiel (« ventes J/M/A par acteur »),
+  // restée sans réponse : aucun GROUP BY date_trunc n'existait côté backend
+  // (audit DGE 20/10), le sélecteur de période côté institution était
+  // décoratif. L'agrégat distingue volume_total / volume_encaissé (payé) /
+  // volume_en_attente — un chiffre montré à la DGE ne ment pas sur l'argent
+  // réellement encaissé (même règle que PROD-05). Les commandes annulées et
+  // en litige sont hors périmètre. Whitelist serveur du bucket (pas
+  // d'injection dans date_trunc). Rôles : comptes BO (la DGE valide via les
+  // comptes BO, arbitrage A-03).
+  @Get('analytics/ventes-par-acteur')
+  async ventesParActeur(
+    @Query('bucket') bucketRaw?: string,
+    @Query('date_from') dateFrom?: string,
+    @Query('date_to') dateTo?: string,
+    @Query('role') role?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    try {
+      const map: Record<string, string> = {
+        jour: 'day', mois: 'month', annee: 'year',
+        day: 'day', month: 'month', year: 'year',
+      };
+      const field = map[String(bucketRaw || 'mois').toLowerCase()] || 'month';
+      const limit = Math.min(Number(limitRaw) || 200, 1000);
+
+      const conditions: string[] = ["c.statut NOT IN ('annulee', 'litige')"];
+      const params: unknown[] = [];
+      let p = 1;
+      if (dateFrom) { conditions.push(`c.created_at >= $${p}`); params.push(dateFrom); p += 1; }
+      if (dateTo) { conditions.push(`c.created_at <= $${p}`); params.push(dateTo); p += 1; }
+      if (role) { conditions.push(`u.role = $${p}`); params.push(role); p += 1; }
+      params.push(limit);
+      const pLimit = `$${p}`;
+
+      const sql = `
+        SELECT
+          date_trunc('${field}', c.created_at)                          AS periode,
+          u.id::text                                                    AS acteur_id,
+          TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS acteur_nom,
+          u.role                                                        AS acteur_role,
+          COUNT(*)                                                      AS ventes,
+          COALESCE(SUM(c.total), 0)::float                              AS volume_total,
+          COALESCE(SUM(c.total) FILTER (WHERE c.statut_paiement = 'paye'), 0)::float    AS volume_encaisse,
+          COALESCE(SUM(c.total) FILTER (WHERE c.statut_paiement <> 'paye'), 0)::float   AS volume_en_attente
+        FROM commandes c
+        JOIN users u ON u.id::text = c.vendeur_id::text
+        WHERE ${conditions.join(' AND ')}
+        GROUP BY periode, u.id, u.first_name, u.last_name, u.role
+        ORDER BY periode DESC, volume_total DESC
+        LIMIT ${pLimit}`;
+      const rows = await this.dataSource.query(sql, params);
+      return { data: rows, total: rows.length, bucket: field };
+    } catch (e) {
+      this.logger.error(`ventesParActeur a echoue: ${(e as Error)?.message}`, (e as Error)?.stack);
+      return { data: [], total: 0, bucket: 'month' };
+    }
+  }
 
   @Get('analytics')
   async getAnalytics() {

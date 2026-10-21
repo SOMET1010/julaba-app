@@ -27,7 +27,7 @@
   "reporters": ["consoleFull"],
   "absolute": false,
   "gitignore": true,
-  "path": ["frontend_src/src", "backend/src"],
+  "path": ["frontend/src", "backend/src"],
   "ignore": [
     "**/node_modules/**",
     "**/dist/**",

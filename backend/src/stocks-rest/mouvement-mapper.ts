@@ -11,6 +11,9 @@ export interface LedgerRow {
   type: string | null;
   created_at: string | Date;
   unite?: string | null;
+  /** STK-04 / A-05 — renseignés pour les lignes 'achat' uniquement. */
+  fournisseur?: string | null;
+  cout_total?: number | string | null;
 }
 
 export interface MouvementStock {
@@ -34,6 +37,12 @@ export interface MouvementStock {
   /** Vrai quand le stock ne couvrait pas la sortie. L'écran doit le DIRE. */
   hors_stock: boolean;
   produit_nom: string | null;
+  /**
+   * STK-04 / A-05 — trace de l'achat : fournisseur déclaré et coût total
+   * FCFA, ou `null`. Renseignés UNIQUEMENT pour les lignes type 'achat'.
+   */
+  fournisseur: string | null;
+  cout_total: number | null;
   /**
    * Unité FIGÉE au mouvement, ou `null`.
    *
@@ -75,6 +84,10 @@ export function mapLedgerRow(row: LedgerRow): MouvementStock {
     manquant,
     hors_stock: manquant > 0,
     produit_nom: row.produit_nom ?? null,
+    fournisseur: typeof row.fournisseur === 'string' && row.fournisseur.trim() !== '' ? row.fournisseur : null,
+    cout_total: row.cout_total != null && row.cout_total !== '' && !Number.isNaN(Number(row.cout_total))
+      ? Number(row.cout_total)
+      : null,
     unite: row.unite ?? null,
     date: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
   };
