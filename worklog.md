@@ -1244,3 +1244,24 @@ Stage Summary:
 - Les 2 rouges hors `CONNUS` sont FERMÉS PAR CORRECTION, pas masqués : `verify` passe de 144 vert / 8 rouge à **150 vert / 2 rouge**, les 2 restants étant les 🟠 connus.
 - Le commit mensonger `2ed08e62` a quitté l'historique ; rien de distant n'a été perdu (base distante conservée).
 - Reste ouvert, à arbitrer : les 2 suites unitaires backend (préexistantes, gardées d'argent), le refreeze du garde-argent (réservé au propriétaire), l'absence de preview (inchangé).
+
+---
+Task ID: maquette-fidelite-21-10
+Agent: Z.ai Code (session principale)
+Task: « Je veux que tu sois fidèle au maquette que je t'ai transmis » — remettre l'écran de connexion en conformité avec la maquette du 12/10 (upload/pasted_image_1791823944767.png)
+
+Work Log:
+- Lecture de la maquette transmise (186×164) : pastille « Aide vocale » (haut-gauche, icône haut-parleur orange) + bouton rond sombre `<>` (haut-droite) + menu ouvert Identificateur / BackOffice / Espace coopérative
+- Archéologie git : MenuRolesTest.tsx (Task 32 du 12/10, a6a9eff6) n'a jamais quitté le dépôt — sa BRANCHEMENT dans LoginPassword avait été démonté par 04ae6525 (15/10, « demande du 15/10 ») ; « Aide vocale », lui, n'a JAMAIS existé dans l'historique (git log -S vide) : seul élément de la maquette jamais implémenté
+- Sandbox reset complet constaté (PG, backend, frontend, .zscripts morts) : stack reconstruite — cluster PG 17.5 depuis les binaires embarqués @embedded-postgres (LD_LIBRARY_PATH + symlinks libicuuc/libicui18n/libicudata .60), base julaba_dev :5432, backend dist rebuildé depuis dev (backend/.env sandbox réécrit), frontend Vite :3000 relancés en double-fork
+- restauration : re-import + rendu + callback de MenuRolesTest À L'IDENTIQUE de a6a9eff6 (numéros de recette préremplis, /backoffice/login, DEV gate) ; nouveau bouton « Aide vocale » (pastille 44 px, tokens --commerce-surface/apricot/ink/action — ZÉRO hex nouveau, budget charte 26 intact) appelant ecouterTata, la MÊME fonction que le bouton de relecture — aucun appel de parole nouveau
+- Arbitrage écrit dans le commit : « Aide vocale » en portée PRODUIT (pas de garde DEV) — l'aide vocale est pour la marchande, pas pour le testeur ; révocable par écrit
+- Gardes : tsc -b 0 ; eslint 0 erreur ; authCharte vert ; cible-tactile vert ; entree-unique vert ; verrou-connexion vert ; voix-trace 34/34
+- Preuves navigateur (390 px) : pastille + `<>` visibles sur l'étape numéro ; menu ouvert = 3 items, icônes et couleurs conformes à la maquette ; Identificateur → 0710101010 prérempli → « C'est mon numéro » → PIN 1234 → connexion « Mon Territoire » (1 en attente, 3 validées) — parcours E2E complet ; « Aide vocale » cliquée sans erreur ni crash (headless sans moteur audio, repli silencieux identique au bouton de relecture) ; scrollWidth 390, 0 élément hors viewport
+- Incidents sandbox : HEAD re-flippé main×3 pendant le lot (main local brièvement déplacé par un reset --hard mal ciblé — restauré à origin/main 24b40b3f) ; commit et push passés en chaînes atomiques, worktree .wt-dev pour le journal
+- 1 commit : 6b00e063 fix(auth) — push origin/dev 510c240b..6b00e063, sync vérifiée (0 d'avance)
+
+Stage Summary:
+- L'écran de connexion rend à nouveau CE QUE LA MAQUETTE MONTRE : « Aide vocale » (produit) + `<>` menu rôles (DEV) — la fidélité est prouvée par captures et par le parcours des trois rôles, pas déclarée
+- Le P3 reste FERMÉ (lot p3-lot-20-10 : IDENT-11, PROD-06 à 12) ; origin/dev = 6b00e063
+- Stack preview vivant : PG :5432 (binaires embarqués + symlinks ICU), backend :3001, frontend :3000 — recette de reconstruction consignée (LD_LIBRARY_PATH, symlinks .60, double-fork)
