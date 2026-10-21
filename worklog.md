@@ -1221,3 +1221,26 @@ Stage Summary:
 - 8 commits poussés (1 préoccupation = 1 commit) : b90b3559, 1e5c6f15, 1351014b, a09a1b87, e6b02c40, eba61f76, 1b3cc8ba, 04e6e73c — push origin/dev 78364f88..04e6e73c
 - Le fil conducteur de l'audit est honoré : « des informations journalisées mais non exposées » (KPIs, agrégat, conditions) sont restituées depuis la source serveur ; ce qui mentait (KPI « En stock », /revenus) est corrigé ou supprimé ; ce qui était fail-open (offres sans récolte) est fail-closed
 - Chaque fermeture porte SA preuve : invariant ROUGE→VERT sur l'ancien code + garde front ROUGE→VERT — la doctrine preuve-avant-croyance tenue de bout en bout
+
+---
+Task ID: session-21-10-dev-historique
+Agent: opencode (session principale)
+Task: « dev ne reçoit plus rien » — remettre l'historique de `dev` en état, fermer les 2 rouges hors `CONNUS`, pousser sur `dev` sans PR ni merge `main`
+
+Work Log:
+- Blocage constaté : `git pull` refusé (arbre sale : 3 modifs de travail + 3 commits locaux jamais poussés). Le journal de `dev` contenait en plus `2ed08e62` « effacement en TTS français » dont le diff ne changeait AUCUN comportement (texte `AUTH_41` conservé à l'identique) : un commit qui ment sur ce qu'il fait.
+- Preuve : `git show 2ed08e62` = 0 ligne de comportement ; `npm run test:voix-connexion-lot-a` rouge dessus, vert sur `d6da2966`.
+- Décision : réécrire l'arbre sur `origin/dev` (`d6da2966`) en conservant les 3 modifs de travail, retirer le commit mensonger, repartir en 5 commits lisibles. Base distante intacte, push fast-forward, aucune PR, aucun merge `main`.
+- Rouge n°1 `test:enum-check-phone` : le `.env` LOCAL n'avait pas `AUTH_TELEPHONES_TEST` → liste alignée sur le MIROIR (les 6 numéros de recette sont déjà publics dans le dépôt ; ils ne sont recopiés dans aucun fichier commité). Règle écrite dans `backend/.env.example` (`adc66a99`), sans numéro.
+- Rouge n°2 `test:i18n-source` : « Le montant du coût n'est pas valide » (`GestionStock.tsx:511`, introduite par `964697ce` 20/10 STK-04) absente du catalogue → entrée `STOCK_COUT_INVALIDE` ajoutée (`critiqueArgent: true` — un coût de réassort est de l'argent), inventaire régénéré (433 sites / 244 phrases), CSV Manus ré-exporté (74 lignes de catalogue en retard) (`de4229f8`). Aucun rouge n'est mis en `CONNUS`.
+- `Sidebar.tsx` : pour un `cooperateur`, le bloc d'identité affichait le nom de la COOPÉRATIVE à côté du téléphone de la PERSONNE — deux sujets pour une donnée. Nom retiré ; initiales, téléphone et rôle conservés ; le nom reste affiché là où on lui parle à elle (« Bonjour {prénom} », `RoleDashboard.tsx:255`). Décision : `docs/DECISIONS.md` 2026-10-21 (`a3aeda50`).
+- `LoginPassword.tsx` : le numéro confirmé est centré sur toute la carte, l'icône de validation reste à gauche, « Modifier » à droite (`fb1a1c33`).
+- `.ai/CHANGELOG.md` réorganisé : les 3 entrées de la session 19/10 replacées dans leur section (elles annonçaient des changements de comportement qui n'existaient pas), une section « Navigation et identité » ajoutée, un entry « les deux rouges hors `CONNUS` sont fermés » sous « Non publié ».
+- Preuves : `npm run verify` → **150 vert / 2 rouge sur 152** (les 2 rouges = les 🟠 connus `test:voix-trace-source` + `test:garde-argent`), **0 rouge nouveau** ; `npm run typecheck` 0 ; `npm run check` → 1 rouge : 2 suites unitaires backend rouges **à l'HEAD sans ce lot** (prouvé par `git stash` puis `git stash pop`) — `telephones-tests-uniques.spec.ts` (12 numéros de recette inscrits par deux suites d'invariants à la fois) et `stocks-rest.idempotency.spec.ts` (le PATCH de stock fait 3 requêtes et non 2 depuis STK-04). **Non touchés** : gardes d'argent à empreintes gelées → lot à arbitrer à part.
+- `git diff --check` : `docs/langues/JULABA-LANG-CATALOG.csv` sort en CRLF (format de l'exporteur) → les lignes ajoutées sont signalées ; le fichier commité est DÉJÀ en CRLF, on n'a pas changé le format. Le reste du lot sort propre.
+
+Stage Summary:
+- `dev` repart de `origin/dev` (`d6da2966`) + 5 commits : centrage du numéro (`fb1a1c33`), identité hors navigation + décision (`a3aeda50`), catalogue vocal (`de4229f8`), règle `.env.example` (`adc66a99`), journal + STATUS + worklog. Push fast-forward, sans PR, sans merge `main`.
+- Les 2 rouges hors `CONNUS` sont FERMÉS PAR CORRECTION, pas masqués : `verify` passe de 144 vert / 8 rouge à **150 vert / 2 rouge**, les 2 restants étant les 🟠 connus.
+- Le commit mensonger `2ed08e62` a quitté l'historique ; rien de distant n'a été perdu (base distante conservée).
+- Reste ouvert, à arbitrer : les 2 suites unitaires backend (préexistantes, gardées d'argent), le refreeze du garde-argent (réservé au propriétaire), l'absence de preview (inchangé).
