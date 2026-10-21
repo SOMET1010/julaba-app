@@ -315,7 +315,35 @@ console.log('\n[7-sexies] IDENT-11 : le suivi identificateur n\'est plus un N+1 
     `Serveur : le JOIN acteur est présent dans les DEUX branches de la liste (trouvé : ${joinsActeur}, IDENT-11)`);
 }
 
-console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
+console.log('\n[8-bis] PROD-09 : l\'offre du marché producteur vient de la récolte (plafond serveur)');
+{
+  // PROD-09 (20/10/2026) : POST /publications acceptait une offre SANS
+  // recolte_id ni plafond — on pouvait offrir 10 000 kg d'igname sans AUCUNE
+  // récolte derrière (PRODUCTEUR-04 du docx). Désormais fail-closed serveur
+  // (recolte_id requis, quantité ≤ stock_disponible, ownership — preuve :
+  // backend/test/invariants/prod-09-publication-plafond-recolte.spec.ts, rouge
+  // prouvé sur l'ancien code). Le SEUL écran de publication vivant
+  // (PublierRecolteModal) envoie déjà la récolte liée ; l'écran libre
+  // PublierRecolte.tsx est orphelin (importé nulle part) — la garde verrouille
+  // ces deux faits.
+  const ctrl = readFileSync(new URL('../../../../backend/src/publications-rest/publications-rest.controller.ts', import.meta.url), 'utf8');
+  ok(/recolte_id requis/.test(ctrl),
+    'Serveur : une offre sans récolte est refusée (recolte_id requis, PROD-09)');
+  ok(/dépasse le stock disponible de la récolte/.test(ctrl),
+    'Serveur : plafond DUR quantité ≤ stock_disponible de la récolte (PROD-09)');
+  ok(/Récolte introuvable ou non autorisée/.test(ctrl),
+    'Serveur : ownership — la récolte appartient à l\'auteur de l\'offre (PROD-09)');
+  const modal = lire('../components/producteur/PublierRecolteModal.tsx');
+  const modalCode = modal.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/recolte_id:\s*recolte\.id/.test(modalCode),
+    'Modal : le seul écran de publication vivant envoie la récolte liée (PROD-09)');
+  const producteur = lire('../components/producteur/ProducteurProduction.tsx');
+  const producteurCode = producteur.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/PublierRecolteModal/.test(producteurCode) && !/import\s+\{\s*PublierRecolte\s*[,\}]/.test(producteurCode),
+    'Production : l\'écran vivant n\'importe que le MODAL lié à la récolte (PROD-09)');
+}
+
+console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
   const render = readFileSync(new URL('../../../../render.yaml', import.meta.url), 'utf8');

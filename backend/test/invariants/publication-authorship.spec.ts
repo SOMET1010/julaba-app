@@ -94,29 +94,46 @@ describe('Invariant B1 — autorite de publication (POST /publications)', () => 
     description: 'offre de test',
   });
 
+  // PROD-09 (20/10/2026) : une offre du marché producteur DOIT être liée à une
+  // récolte de son auteur (plafond serveur). Le seed de ce spec s'adapte :
+  // chaque auteur reçoit une récolte déclarée AVANT de publier.
+  const seedRecolte = async (userId: string, produit: string, stockDisponible: number): Promise<string> => {
+    const rows = await ds.query(
+      `INSERT INTO recoltes (user_id, produit, quantite, unite, qualite, date_recolte, statut, prix_unitaire, stock_disponible)
+       VALUES ($1, $2, $3, 'kg', 'standard', CURRENT_DATE, 'declaree', 500, $3)
+       RETURNING id`,
+      [userId, produit, stockDisponible],
+    );
+    return rows[0].id;
+  };
+
   const nbPublications = async (userId: string): Promise<number> =>
     (await ds.query('SELECT count(*)::int n FROM publications WHERE user_id = $1', [userId]))[0].n;
 
   const idDe = async (phone: string): Promise<string> =>
     (await ds.query('SELECT id FROM users WHERE phone = $1', [phone]))[0].id;
 
-  it('producteur : POST /publications autorise (201)', async () => {
+  it('producteur : POST /publications autorise (201) — offre liée à sa récolte', async () => {
     const token = await seed(UserRole.PRODUCTEUR, '+2250700010001');
+    const uid = await idDe('+2250700010001');
+    const recolteId = await seedRecolte(uid, 'Tomate', 100);
     const res = await api()
       .post('/api/v1/publications')
       .set('Authorization', `Bearer ${token}`)
-      .send(offre('Tomate'));
+      .send({ ...offre('Tomate'), recolte_id: recolteId });
     expect([200, 201]).toContain(res.status);
     expect(res.body?.publication?.produit).toBe('Tomate');
-    expect(await nbPublications(await idDe('+2250700010001'))).toBe(1);
+    expect(await nbPublications(uid)).toBe(1);
   });
 
-  it('cooperateur : POST /publications autorise (201)', async () => {
+  it('cooperateur : POST /publications autorise (201) — offre liée à sa récolte', async () => {
     const token = await seed(UserRole.COOPERATEUR, '+2250700010002');
+    const uid = await idDe('+2250700010002');
+    const recolteId = await seedRecolte(uid, 'Manioc', 100);
     const res = await api()
       .post('/api/v1/publications')
       .set('Authorization', `Bearer ${token}`)
-      .send(offre('Manioc'));
+      .send({ ...offre('Manioc'), recolte_id: recolteId });
     expect([200, 201]).toContain(res.status);
     expect(res.body?.publication?.produit).toBe('Manioc');
   });
