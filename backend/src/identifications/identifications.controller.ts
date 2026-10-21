@@ -114,12 +114,22 @@ export class IdentificationsController {
     const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role) || !!zoneGZ;
     if (isAdmin) {
       const filtreZone = zoneGZ ? `WHERE i.zone_id::text = $3::text` : '';
+      // IDENT-11 (20/10/2026) : JOIN sur l'ACTEUR (l'utilisateur enrôlé) — la
+      // liste embarque téléphone/photo/activité/marché du dossier. Avant : le
+      // front re-consultait GET /users/:id pour CHAQUE dossier (N+1 rejoué par
+      // son polling 30 s). Une page de 50 dossiers = 51 requêtes ; désormais 1.
       const rows = await this.dataSource.query(`
         SELECT i.*,
           TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS identificateur_nom,
+          TRIM(CONCAT(COALESCE(a.first_name,''), ' ', COALESCE(a.last_name,''))) AS acteur_nom_user,
+          COALESCE(a.phone, '') AS acteur_telephone,
+          a.photo_url AS acteur_photo,
+          COALESCE(a.activity, '') AS acteur_activite,
+          COALESCE(a.market, '') AS acteur_marche,
           COUNT(*) OVER() AS total_count
         FROM identifications i
         LEFT JOIN users u ON u.id::text = i.identificateur_id
+        LEFT JOIN users a ON a.id::text = i.acteur_id
         ${filtreZone}
         ORDER BY i.created_at DESC
         LIMIT $1 OFFSET $2
@@ -131,9 +141,15 @@ export class IdentificationsController {
     const rows = await this.dataSource.query(`
       SELECT i.*,
         TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS identificateur_nom,
+        TRIM(CONCAT(COALESCE(a.first_name,''), ' ', COALESCE(a.last_name,''))) AS acteur_nom_user,
+        COALESCE(a.phone, '') AS acteur_telephone,
+        a.photo_url AS acteur_photo,
+        COALESCE(a.activity, '') AS acteur_activite,
+        COALESCE(a.market, '') AS acteur_marche,
         COUNT(*) OVER() AS total_count
       FROM identifications i
       LEFT JOIN users u ON u.id::text = i.identificateur_id
+      LEFT JOIN users a ON a.id::text = i.acteur_id
       WHERE i.identificateur_id = $1
       ORDER BY i.created_at DESC
       LIMIT $2 OFFSET $3
