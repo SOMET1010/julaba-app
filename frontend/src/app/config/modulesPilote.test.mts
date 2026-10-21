@@ -343,6 +343,26 @@ console.log('\n[8-bis] PROD-09 : l\'offre du marché producteur vient de la réc
     'Production : l\'écran vivant n\'importe que le MODAL lié à la récolte (PROD-09)');
 }
 
+console.log('\n[8-ter] PROD-11 : les KPIs de production viennent du serveur (récolté / disponible / vendu)');
+{
+  // PROD-11 (20/10/2026) : ProductionKPIBar sommait r.quantite et l'affichait
+  // comme « En stock » — sommer la quantité n'est NI le stock disponible NI le
+  // stock vendu : l'écran mentait, pendant que /producteur/stats calculait les
+  // trois chiffres justes en base (recoltesKgTotal / stockDisponibleKg /
+  // stockVenduKg) sans être jamais affiché. La garde verrouille : les KPIs
+  // consomment la source serveur, le faux calcul local est mort.
+  const kpi = lire('../components/producteur/ProductionKPIBar.tsx');
+  const kpiCode = kpi.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/stats\?\.recoltesKgTotal/.test(kpiCode),
+    'KPI : « Récolté » vient du serveur (stats.recoltesKgTotal, PROD-11)');
+  ok(/stats\?\.stockDisponibleKg/.test(kpiCode),
+    'KPI : « Disponible » vient du serveur (stats.stockDisponibleKg, PROD-11)');
+  ok(/stats\?\.stockVenduKg/.test(kpiCode),
+    'KPI : « Vendu » vient du serveur (stats.stockVenduKg, PROD-11)');
+  ok(!/Number\(r\.quantite\)\s*\|\|\s*Number\(r\.stockDisponible\)/.test(kpiCode),
+    'KPI : le faux calcul local « quantité affichée comme stock » est mort (PROD-11)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
