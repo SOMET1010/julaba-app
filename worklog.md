@@ -1197,3 +1197,27 @@ Stage Summary:
 - 2 fixes poussés sur dev : garde-fou postcss front + proxy WS dev ; .zscripts/dev.sh (local) répare le boot des prochains resets
 - Découverte à garder : double-fork obligatoire pour tout process persistant de ce sandbox ; le flux boot générique du sandbox reste cassé pour ce monorepo tant que .zscripts/dev.sh n'est pas repris par /start.sh au prochain boot
 - Ouvert (P3, non bloquant pour la preview) : IDENT-11 (perf N+1), PROD-06 à PROD-12 ; warning bénin « Wallet introuvable » (compte démo sans wallet Keiwa)
+
+---
+Task ID: p3-lot-20-10
+Agent: Z.ai Code (session principale)
+Task: « continues avec les P3 » — les 8 écarts P3 restants des audits 20/10 : IDENT-11 + PROD-06 à PROD-12 (PROD-10 verrouillé par A-07)
+
+Work Log:
+- Synchronisation : dev == origin/dev (78364f88) avant lot ; travail intégral dans le worktree .wt-dev (HEAD principal re-flippé main ×2 pendant le lot, sans impact)
+- IDENT-11 (b90b3559) : le N+1 du suivi identificateur est MORT — GET /identifications JOIN l'acteur (users a ON a.id::text = i.acteur_id, DEUX branches : identificateur + admin/gestionnaire_zone scopée) et embarque acteur_telephone/acteur_photo/acteur_activite/acteur_marche/acteur_nom_user ; le front a supprimé TOUT l'enrichissement GET /users/:id par dossier (50 dossiers + polling 30 s = jusqu'à 100 req/min → 1 requête/cycle). Détail : la liste vient de /identifications, PAS /dossiers (endpoint orphelin) — le 1er fix a été reverté proprement. Invariant ident-11-liste-dossiers-batch-acteur.spec.ts 3/3, ROUGE prouvé (2/3 : aucun champ acteur dans la liste) ; non-régression ident-01 + ident-09 10/10 ; garde [7-sexies] 4 règles, ROUGE prouvé front (3 échecs)
+- PROD-09 (1e5c6f15) : l'offre du marché producteur vient de la RÉCOLTE — fail-closed serveur : recolte_id REQUIS, plafond DUR quantite_disponible ≤ recolte.stock_disponible (400), ownership. PublierRecolteModal (seul écran vivant) envoie déjà la récolte ; PublierRecolte.tsx orphelin (importé nulle part). Invariant prod-09-publication-plafond-recolte.spec.ts 5/5, ROUGE 4/5 (sur-offre 201, sans récolte 201, récolte d'autrui 201) ; publication-authorship adapté au nouveau contrat (récoltes seedées) 4/4 + prod-02-03 6/6 ; garde [8-bis] 5 règles
+- PROD-11 (1351014b) : les KPIs de production affichent les chiffres du SERVEUR — Récolté / Disponible / Vendu depuis /producteur/stats (recoltesKgTotal, stockDisponibleKg, stockVenduKg) ; le faux calcul local (somme quantite affichée « En stock ») est mort ; « Offres actives » = publicationsActives serveur. Garde [8-ter] 4 règles, ROUGE prouvé
+- PROD-06 (a09a1b87) : conditions_vente la colonne ORPHELINE vit enfin — saisie optionnelle au modal vivant, persistée au POST (upsert inclus), affichée dans le détail produit du marché. Invariant prod-06-conditions-vente.spec.ts 3/3, ROUGE 2/3 ; garde [8-quater] 4 règles
+- PROD-07 (e6b02c40) : bloc « À réunir pour ces demandes » — agrégat des demandes en attente par produit (somme quantités + compte, tri décroissant) au-dessus de la liste unitaire. Restitution pure (données déjà là). Garde [8-quinquies] 3 règles, ROUGE prouvé
+- PROD-08 (eba61f76) : « Mes stocks » → « Mon inventaire boutique » + bannière découplant les DEUX modèles (carnet boutique ≠ stock marché venu des récoltes, à gérer dans Production) ; l'écran est de toute façon hors navigation producteur. La fusion des modèles reste le chantier PRODUCTEUR-11/COO-04 (assumé hors lot). Garde [8-sexies] 3 règles, ROUGE prouvé
+- PROD-12 (1b3cc8ba) : l'endpoint mensonger GET /revenus (somme prix×qté de TOUTES les récoltes, contredit /producteur/stats, ZÉRO consommateur front) SUPPRIMÉ — RevenusModule retiré, GET /revenus = 404, /producteur/stats reste la source (encaissé uniquement). Invariant prod-12-revenus-orphelin-supprime.spec.ts 2/2, ROUGE prouvé (ancien code : 200) ; garde [8-septies]
+- PROD-10 (04e6e73c) : déjà FERMÉ par l'arbitrage A-07 (vitrine au pilote, lot précédent) — verrouillage : garde [8-huities] 3 règles (partenaires du docx, plus AUCUN placeholder SIB/SG/NSIA/BICICI, bannière honnête) ; tableaux d'audit producteur + identificateur mis à jour avec les preuves de fermeture des 8 écarts
+- Bilan final groupé : 37/37 invariants verts (4 nouveaux specs + 5 voisins : prod-02-03, publication-authorship, ident-09, ident-01, prod-05) ; modulesPilote tout vert ([7-sexies], [8-bis] à [8-huities]) ; backend tsc 0 + nest build 0 à chaque étape ; frontend tsc -b 0
+- Preview remise à niveau : backend rebuildé depuis le dist du worktree (le dist du principal était sur main — flip n°5) et relancé (health OK, page 200)
+
+Stage Summary:
+- LES 8 P3 DU LOT SONT FERMÉS : IDENT-11, PROD-06, PROD-07, PROD-08, PROD-09, PROD-10 (A-07), PROD-11, PROD-12 — ZÉRO écart ouvert dans les audits 20/10 (hors chantier produit assumé : fusion des modèles de stock PRODUCTEUR-11/COO-04)
+- 8 commits poussés (1 préoccupation = 1 commit) : b90b3559, 1e5c6f15, 1351014b, a09a1b87, e6b02c40, eba61f76, 1b3cc8ba, 04e6e73c — push origin/dev 78364f88..04e6e73c
+- Le fil conducteur de l'audit est honoré : « des informations journalisées mais non exposées » (KPIs, agrégat, conditions) sont restituées depuis la source serveur ; ce qui mentait (KPI « En stock », /revenus) est corrigé ou supprimé ; ce qui était fail-open (offres sans récolte) est fail-closed
+- Chaque fermeture porte SA preuve : invariant ROUGE→VERT sur l'ancien code + garde front ROUGE→VERT — la doctrine preuve-avant-croyance tenue de bout en bout
