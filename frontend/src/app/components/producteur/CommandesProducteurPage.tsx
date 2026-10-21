@@ -280,6 +280,24 @@ export function ProducteurCommandes() {
   );
   const demandesEnAttente = demandesRecues.filter(c => c.statut === 'en_attente');
 
+  // ── PROD-07 (20/10/2026) : agrégat « à fournir par produit » ─────────────
+  // Les demandes restent une liste unitaire : impossible de voir d'un coup
+  // d'œil QUOI et COMBIEN le producteur doit réunir. On consolide les
+  // demandes en attente par produit (somme des quantités, nombre de
+  // demandes) — la consolidation demandée par l'audit (étape 6 du docx),
+  // sans toucher au serveur : les données sont déjà là.
+  const aFournirParProduit = useMemo(() => {
+    const map = new Map<string, { produit: string; quantite: number; unite: string; nb: number }>();
+    for (const c of demandesEnAttente) {
+      const cle = String(c.produit || '').trim() || 'Non précisé';
+      const ex = map.get(cle);
+      const q = Number(c.quantite) || 0;
+      if (ex) { ex.quantite += q; ex.nb += 1; }
+      else map.set(cle, { produit: cle, quantite: q, unite: String(c.unite || 'kg'), nb: 1 });
+    }
+    return Array.from(map.values()).sort((a, b) => b.quantite - a.quantite);
+  }, [demandesEnAttente]);
+
   // ── Helpers affichage statut contexte ─────────────────────────────────────
   const getCtxStatutLabel = (statut: string) => {
     const map: Record<string, { label: string; color: string; bg: string }> = {
@@ -770,6 +788,25 @@ export function ProducteurCommandes() {
                   {demandesEnAttente.length} à traiter
                 </span>
               </div>
+
+              {/* PROD-07 : à fournir par produit — l'agrégat d'un coup d'œil */}
+              {aFournirParProduit.length > 0 && (
+                <div className="mb-3 rounded-2xl border-2 border-dashed p-3" style={{ borderColor: '#f9731666', background: 'var(--commerce-surface)' }}>
+                  <p className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-1.5">
+                    <Package className="w-4 h-4" style={{ color: '#f97316' }} />
+                    À réunir pour ces demandes
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {aFournirParProduit.map((a) => (
+                      <div key={a.produit} className="px-3 py-2 rounded-xl bg-white border border-gray-200 shadow-sm">
+                        <span className="text-sm font-black text-gray-900">{a.produit}</span>
+                        <span className="text-sm font-bold" style={{ color: '#f97316' }}> · {a.quantite.toLocaleString('fr-FR')} {a.unite}</span>
+                        <span className="text-xs text-gray-500"> ({a.nb} demande{a.nb > 1 ? 's' : ''})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-3">
                 <AnimatePresence>
