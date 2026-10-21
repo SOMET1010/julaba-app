@@ -1172,3 +1172,28 @@ Stage Summary:
 - LES 5 DERNIERS P2 SONT FERMÉS : 9 commits (2 DGE-11, 1 IDENT-02, 1 IDENT-03, 1 IDENT-08, 2 IDENT-09, 1 docs à venir), 3 nouveaux invariants serveur verts (dge-11 5/5, ident-02 3/3, ident-09 4/4), 21 nouvelles règles de garde front (7+4+5+5)
 - Il ne reste OUVERT que du P3 : IDENT-11 (perf N+1 suivi), PROD-06 à 12 — et les items hors-pilote documentés (IDENT-04 arbitrage déjà écrit A-02)
 - La doctrine tient sur toute la ligne : neutralité monétique SERVEUR (IDENT-02), fail-closed partout, preuve rouge avant chaque vert, 1 préoccupation = 1 commit
+
+---
+Task ID: preview-20-10
+Agent: Z.ai Code (session principale)
+Task: « Lance la preview d'abord » — remettre le stack Jùlaba debout dans le sandbox après reset (PostgreSQL, backend :3001, frontend :3000) et prouver le parcours utilisateur de bout en bout
+
+Work Log:
+- Diagnostic boot : /start.sh (tini) exécute le flux générique bun — `bun run db:push` (script ABSENT du package.json racine Julaba) échoue et tue la sous-shell d'init AVANT `bun run dev` → le serveur de dev n'a jamais été lancé par le sandbox ; la passerelle (:81) renvoie 502 sur :3000
+- PostgreSQL : le @embedded-postgres v17 du dépôt (mini-services/postgres-service) exige libicuuc.so.60, absente du sandbox → cluster dédié DEV reconstruit avec les binaires zonky PG 16.4 (/home/z/pg/jar/jar-extract/bin) sur :5432, user julaba (trust), base julaba_dev — isolé du cluster de tests invariants (55432). NB : la session parallèle (worklog main, Task 41) a posé ICU 60 dans /home/z/.icu60 et lancé le stack via `bun run dev` détaché spawn — deux voies validées au 20/10
+- Découverte clef sandbox : TOUT process lancé par le tool Bash meurt à la fin de la commande (nohup, setsid, double nohup = morts) — SEUL le double-fork `( ( setsid … & ) & )` survit (validé par test sleep 600). PG démarré via pg_ctl (daemon natif), backend/front via double-fork
+- backend/.env sandbox écrit (PORT=3001, DB :5432/julaba_dev, secrets dev ; git-ignoré) ; dist/main.js buildé puis lancé avec cwd backend (sinon .env non lu → JWT_SECRET manquant) : BOOT OK, migrations/DbInit + seed démo (Awa Koné +2250700000009 marchande, PIN 1234, scénario Hervé→Bénito→COOP→Michelle→DG)
+- FIX frontend/postcss.config.mjs : Vite remontait au postcss.config.mjs racine (template : @tailwindcss/postcss ABSENT) → « Invalid PostCSS Plugin found at: plugins[0] » sur chaque CSS ; config neutre qui court-circuite l'héritage (Tailwind 4 passe par @tailwindcss/vite)
+- FIX frontend/vite.config.ts : route proxy /socket.io → :3001 ws:true — le client socket.io parle depuis l'origine courante, sans proxy le WS bouclait en timeout
+- .zscripts/dev.sh écrit (idempotent, exécuté au PROCHAIN boot par /start.sh : PG zonky → julaba_dev → backend dist → frontend) ; dossier git-ignoré par convention template (ligne 72) — à recréer si un reset le perd
+- Preuve Agent Browser (golden path complet) : accueil « Ton commerce, dans ta main » → Écouter et entrer → guide Tantie → pavé numéro 0700000009 (bouton activé aux 10 chiffres) → POST /auth/check-phone 200 → PIN 1234 → POST /auth/login 200 + /auth/me 200 → accueil marchande « Bonjour Awa · MA CAISSE AUJOURD'HUI 1 500 F » → Résumé du jour (ventes 2 500 F/2 ventes, cahier 1 000 F, marge +1 500 F, caisse théorique 1 500 F — données seedées réelles) → mobile 390px impeccable
+- Après fix WS : reload, session préservée, ZÉRO warning WS, ZÉRO erreur page ; handshake socket.io HTTP 200 via :3000
+- Incident sandbox : HEAD re-flippé dev→main (4e fois au total) — le commit worklog initial est tombé sur main (5c6dfeb3) par le flip → ré-appliqué ici sur le fil dev
+- Sync : les 2 fixes code (411378b9 postcss + 2bb1bb5a proxy WS) sont déjà poussés et vérifiés (origin/dev = 2bb1bb5a)
+
+Stage Summary:
+- LA PREVIEW VIT : frontend :3000 (Vite, proxy /api + /socket.io), backend :3001 (dist/main.js), PostgreSQL :5432 (cluster zonky dev) — tous en double-fork, ils survivent entre les commandes
+- Parcours marchande prouvé E2E dans le navigateur : entrée vocale → numéro → check-phone → PIN → login → accueil avec données réelles seedées
+- 2 fixes poussés sur dev : garde-fou postcss front + proxy WS dev ; .zscripts/dev.sh (local) répare le boot des prochains resets
+- Découverte à garder : double-fork obligatoire pour tout process persistant de ce sandbox ; le flux boot générique du sandbox reste cassé pour ce monorepo tant que .zscripts/dev.sh n'est pas repris par /start.sh au prochain boot
+- Ouvert (P3, non bloquant pour la preview) : IDENT-11 (perf N+1), PROD-06 à PROD-12 ; warning bénin « Wallet introuvable » (compte démo sans wallet Keiwa)
