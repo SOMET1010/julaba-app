@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, ForbiddenException, ConflictException, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, ForbiddenException, BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -125,6 +125,40 @@ export class PublicationsRestController {
         'Publication sur le marché producteur réservée aux producteurs et coopérateurs',
       );
     }
+
+    // PROD-09 (20/10/2026) — l'offre du marché producteur vient de la
+    // production DÉCLARÉE (docx, PRODUCTEUR-04) : elle ne peut plus vendre
+    // plus que ce que le producteur a récolté.
+    //   1. recolte_id OBLIGATOIRE : le seul écran de publication vivant
+    //      (PublierRecolteModal) envoie toujours la récolte liée ; une offre
+    //      sans récolte = une quantité inventée (fail-closed 400).
+    //   2. plafond serveur DUR : quantite_disponible ≤ recolte.stock_disponible
+    //      — la bornée du modal était CLIENT ; un curl se moquait de l'UI.
+    //   3. ownership : la récolte doit appartenir à l'auteur de l'offre.
+    const quantite = Number(body.quantite_disponible);
+    if (!Number.isFinite(quantite) || quantite <= 0) {
+      throw new BadRequestException('quantite_disponible doit être un nombre positif');
+    }
+    if (!body.recolte_id) {
+      throw new BadRequestException(
+        'Une offre du marché producteur doit être liée à une récolte (recolte_id requis)',
+      );
+    }
+    const recoltes = await this.dataSource.query(
+      `SELECT id, user_id, produit, stock_disponible FROM recoltes WHERE id::text = $1`,
+      [String(body.recolte_id)],
+    );
+    const recolte = recoltes[0];
+    if (!recolte || String(recolte.user_id) !== String(user.id)) {
+      throw new BadRequestException('Récolte introuvable ou non autorisée pour cet auteur');
+    }
+    const stockDispo = Number(recolte.stock_disponible || 0);
+    if (quantite > stockDispo) {
+      throw new BadRequestException(
+        `La quantité offerte (${quantite}) dépasse le stock disponible de la récolte (${stockDispo})`,
+      );
+    }
+
     const result = await this.dataSource.query(
       `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, date_publication)
        VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,NOW())
