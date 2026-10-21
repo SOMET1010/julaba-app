@@ -439,6 +439,24 @@ console.log('\n[8-septies] PROD-12 : l\'endpoint mensonger /revenus est SUPPRIM�
     'Serveur : RevenusModule retiré de l\'application (PROD-12)');
 }
 
+console.log('\n[8-huities] PROD-10 : le financement est une vitrine HONNÊTE (A-07), pas un faux flux');
+{
+  // PROD-10 (20/10/2026, fermé par A-07 du lot vitrine financement) : la page
+  // Banque montrait des banques génériques (SIB, SG, NSIA) et une fausse
+  // carte « BICICI connectée ». Arbitrage A-07 (révocable par écrit) : vitrine
+  // d'orientation au pilote — partenaires du docx (Celpaid, Orange Bank,
+  // UNACOOPEC), ZÉRO flux de demande annoncé, bannière honnête ; le socle
+  // d'éligibilité réel est /partner/financial-score sous ApiKeyGuard.
+  const banque = lire('../components/wallet/BanquePage.tsx');
+  const banqueCode = banque.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/Celpaid/.test(banqueCode) && /Orange Bank/.test(banqueCode) && /UNACOOPEC/.test(banqueCode),
+    'Banque : les partenaires affichés sont ceux du workflow (A-07/PROD-10)');
+  ok(!/SIB|NSIA|BICICI/.test(banqueCode),
+    'Banque : plus AUCUN placeholder bancaire générique (PROD-10)');
+  ok(/aucune demande de crédit n'est possible pour l'instant/.test(banqueCode),
+    'Banque : la bannière annonce honnêtement l\'absence de flux de demande (PROD-10)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
