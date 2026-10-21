@@ -170,9 +170,10 @@ export default defineConfig({
         target: "http://localhost:3001",
         changeOrigin: true,
       },
-      // Socket.IO (EventsGateway, namespace /ws) : sans ce route, le client
-      // frappe le serveur Vite lui-même sur /socket.io → timeout en boucle
-      // ([WS] Erreur connexion: timeout). `ws: true` relaie le upgrade.
+      // Temps réel : le gateway socket.io NestJS (namespace /ws) est porté par
+      // le backend :3001. Le client socket.io du front parle sur le chemin
+      // /socket.io/ DEPUIS L'ORIGINE COURANTE (même origine → pas de CORS).
+      // ws:true laisse passer la poignée de main WebSocket upgrade.
       "/socket.io": {
         target: "http://localhost:3001",
         changeOrigin: true,
