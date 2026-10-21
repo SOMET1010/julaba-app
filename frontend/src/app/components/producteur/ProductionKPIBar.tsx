@@ -41,11 +41,11 @@ export function ProductionKPIBar({ activeTab, historiqueTab = 'ventes', onKPICli
   }).length;
   const cyclesTermines = cycles.filter(c => c.status === 'completed').length;
 
-  // KPIs Mes Recoltes
-  const totalRecolte = recoltes.reduce((s: number, r: any) => s + (Number(r.quantite) || Number(r.quantiteReelle) || 0), 0);
-  const totalDispo = recoltes.reduce((s: number, r: any) => s + (Number(r.quantite) || Number(r.stockDisponible) || 0), 0);
-  const valeurStock = recoltes.reduce((s: number, r: any) => s + (Number(r.quantite) || 0) * (Number(r.prixUnitaire) || 0), 0);
-  const nbPubliees = recoltes.filter((r: any) => r.statut === 'declaree' || r.statut === 'validee' || r.status === 'published').length;
+  // KPIs Mes Recoltes — PROD-11 (20/10/2026) : les TROIS chiffres de
+  // production viennent du serveur (/producteur/stats, calcul en base) :
+  // récolté / disponible / vendu. Avant : le front sommait r.quantite et
+  // l'affichait comme « En stock » — l'écran mentait (l'audit : sommer la
+  // quantité n'est ni le stock disponible ni le stock vendu).
 
   // KPIs Mon Marche
   const cmdActives = commandes.filter((c: any) => ['en_attente', 'confirmee', 'en_cours'].includes(c.statut)).length;
@@ -63,10 +63,10 @@ export function ProductionKPIBar({ activeTab, historiqueTab = 'ventes', onKPICli
       { label: 'Plantations terminées', animatedTarget: cyclesTermines, icon: CheckCircle, color: '#10b981', iconAnimation: 'float' as const },
     ],
     recoltes: [
-      { label: 'Total récolte', value: fmt(totalRecolte), suffix: 'kg', icon: Layers, color: '#2E8B57', iconAnimation: 'float' as const },
-      { label: 'En stock', value: fmt(totalDispo), suffix: 'kg', icon: Package, color: '#3b82f6', iconAnimation: 'bounce' as const },
-      { label: 'Valeur stock', value: fmt(valeurStock), suffix: 'FCFA', icon: Banknote, color: '#8b5cf6', iconAnimation: 'float' as const },
-      { label: 'Publiées', animatedTarget: nbPubliees, icon: TrendingUp, color: '#f59e0b', iconAnimation: 'spin' as const },
+      { label: 'Récolté', value: fmt(stats?.recoltesKgTotal ?? 0), suffix: 'kg', icon: Layers, color: '#2E8B57', iconAnimation: 'float' as const },
+      { label: 'Disponible', value: fmt(stats?.stockDisponibleKg ?? 0), suffix: 'kg', icon: Package, color: '#3b82f6', iconAnimation: 'bounce' as const },
+      { label: 'Vendu', value: fmt(stats?.stockVenduKg ?? 0), suffix: 'kg', icon: TrendingUp, color: '#8b5cf6', iconAnimation: 'float' as const },
+      { label: 'Offres actives', animatedTarget: stats?.publicationsActives ?? 0, icon: ShoppingBag, color: '#f59e0b', iconAnimation: 'spin' as const },
     ],
     publications: [
       { label: 'Commandes', animatedTarget: cmdActives, icon: ShoppingBag, color: '#3b82f6', iconAnimation: 'bounce' as const },
