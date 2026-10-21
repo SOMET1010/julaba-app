@@ -80,6 +80,11 @@ Sur demande utilisateur (« améliorer l'UX marchand et producteur, meilleur UX 
 - Vérifications : `tsc -b` front 0, `tsc --noEmit` back 0, `test:charte-marchande` EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = EXACTEMENT les 4 rouges héritées connues (0 nouveau — AppContext reste verte), garde-argent = EXACTEMENT les 3 refus attendus (re-gel humain Patrick en attente)
 ## [Non publié]
 
+### Corrigé — Les deux rouges hors `CONNUS` sont fermés (2026-10-21)
+
+- **Phrase du coût absente du catalogue** — `frontend/src/app/components/marchand/GestionStock.tsx:511` dit « Le montant du coût n'est pas valide » en dur ; la phrase n'était pas au catalogue vocal, et `docs/langues/INVENTAIRE-VOIX.md` comptait 432 sites d'appel pour 433 en source (la phrase et le décalage viennent de `964697ce`, 20/10, STK-04). Correction : la phrase entre au catalogue (`STOCK_COUT_INVALIDE`, `statut: a_migrer`, `critiqueArgent: true` — un coût de réapprovisionnement est de l'argent), l'inventaire est régénéré (433 sites, 244 phrases distinctes), et le CSV remis à Manus est ré-exporté (il était en retard de 74 lignes de catalogue). Preuves : `npm run test:i18n-source`, `npm run test:i18n-locales`, `npm run test:i18n-argent`, `npm run test:niveau-voix`, `npm run test:i18n-empreintes-argent` — EXIT 0.
+- **Liste de recette non déclarée en local** — un `backend/.env` présent doit porter `AUTH_TELEPHONES_TEST` aligné sur le miroir (garde `test:enum-check-phone`) ; sans elle, le serveur journalise un numéro que l'écran n'accepte pas. Les numéros ne sont pas recopiés dans un fichier du dépôt : `.env.example` explique la règle, le `.env` local porte la liste. Preuve : `npm run test:enum-check-phone` — EXIT 0.
+
 ### Ajouté — Primitives d'argent maison T8 (2026-10-07)
 Suite des corrections de l'audit UX (REVIEW-001, actions R1-2..R1-5) — les deux primitives obligatoires pour tout mouvement d'argent existent désormais UNE fois et sont inévitables pour les nouveaux parcours :
 - **`RelectureArgent`** (`components/argent/`) : l'écran de relecture sur Radix Dialog (focus trap, ESC, AUTH-05) — relecture **dite et affichée depuis la même source** (montant nombre → « FCFA » à l'écran, « francs » à la voix, ARG-17), **vibration d'attente** (90 ms, motif maison POSCaisse) pendant l'envoi, fermeture refusée tant que l'irréversible est en vol, verrou synchrone conservé chez l'appelant. Migrée dans TransfertPage (transfert keiwa) et MaCooperative (cotisation)
@@ -184,8 +189,13 @@ d'exécution, pas comme corrections de code.
 
 - **Éléments retirés de l'écran de connexion** — `frontend/src/app/components/auth/LoginPassword.tsx` : suppression de « Rapport de test », de la version, de « By Icône Solution » et de « Revoir le tutoriel ». Imports et commentaires obsolètes nettoyés.
 - **Annonce du code incorrect restaurée** — même composant : le fallback silencieux `codeErreur` (clip prototype) est remplacé par les clips livrés `mauvaisCodeAttention` et `dernierEssai`, selon le nombre d'essais restant. Preuves : `npm run typecheck`, `npm run test:verrou-connexion`.
-- **Effacement du numéro annoncé** — même composant : chaque suppression réelle déclenche l'annonce « Mmmh ! Tu es en train d'effacer le numéro un, hein ! » via la porte vocale de connexion. Une suppression sur champ vide ne parle pas. Preuve : `npm run typecheck`.
+- **Effacement du numéro annoncé** — même composant : chaque suppression réelle d'un chiffre du numéro déclenche l'annonce « Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! » — le texte EXACT du clip certifié `AUTH_41` (`login-41.mp3`), mot pour mot : `direEntreeTexte` retrouve le clip par le texte, un mot d'écart et l'écran redevient muet. Aucune voix machine en repli : pas de clé, pas de parole. Une suppression sur champ vide ne parle pas. Preuves : `npm run typecheck`, `npm run test:voix-connexion-lot-a`.
+- **Numéro centré dans la vue du code secret** — même composant : le numéro confirmé est centré sur toute la carte ; l'icône de validation reste ancrée à gauche et le bouton « Modifier » à droite. Preuves : `npm run typecheck`, `git diff --check`.
 - **Proposition de reconnaissance audible** — `frontend/src/app/services/accueilMarchandVoix.ts` : le clip existant `tata-reconnaissance-proposition.mp3` est marqué `lotA` et devient disponible hors mode preview, sans activer les autres prototypes. Preuves : `npm run typecheck`, `accueilVoixUneSeuleSortie`.
+
+### Navigation et identité (2026-10-21)
+
+- **Identité retirée de la navigation** — `frontend/src/app/components/layout/Sidebar.tsx` n'affiche plus le nom complet dans le bloc utilisateur ; les initiales, le téléphone, le rôle et les actions de navigation restent disponibles. Pour un `cooperateur`, ce bloc affichait le nom de la **coopérative** à côté du téléphone de la **personne** : deux sujets pour une seule identité. Le nom de la personne reste affiché là où on lui parle à elle (« Bonjour {prénom} » sur l'accueil, `RoleDashboard.tsx:255`). Décision : `docs/DECISIONS.md` (2026-10-21). Preuve : `npm run typecheck`.
 
 ### Dictée de vente sur le web
 
@@ -214,6 +224,11 @@ d'exécution, pas comme corrections de code.
   désormais `demarrerRecoWeb` quand `SpeechRecognition` est disponible et
   conserve Sherpa sur Capacitor. Preuves : `npm run typecheck`,
   `npm run test:web-reco`, `git diff --check`.
+- **Catalogue vocal non limitatif** — `venteAuCatalogue.ts` expose désormais
+  `nomProduitLibre` pour conserver le nom d'un article absent du vocabulaire
+  statique ; `MicroVenteCaisse` le transmet à la ligne libre/proposition de
+  catalogue au lieu de rejeter la phrase. Le vocabulaire codé en dur reste un
+  secours d'interprétation, pas une liste autorisée de produits.
 
 ### Incidents d'exécution locaux
 

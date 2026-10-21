@@ -8,10 +8,10 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **19/10/2026** |
+| relevé | **21/10/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `725caf7e` — fix(wallets) : création automatique des wallets manquants |
+| dernier commit | `adc66a99` — docs(backend) : la règle `AUTH_TELEPHONES_TEST` est écrite dans `.env.example` (lot du 21/10 : 2 rouges hors `CONNUS` fermés) |
 | dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
@@ -53,8 +53,41 @@ l'aperçu local**, pas sur une URL de preview.
 
 ## Livrable en cours
 
-**Session 19/10 — dictée vocale sur le WEB + corrections de session** (branche
-`dev`, commit `55a8e0c0`, poussé — antérieur : `725caf7e` fix wallets).
+### Session 21/10 — l'historique de `dev` rendu véridique, les 2 rouges hors `CONNUS` fermés
+
+**Le blocage** : `dev` ne pouvait plus rien recevoir (`pull` bloqué sur un
+arbre sale) et son journal contenait un commit qui ne disait pas ce qu'il
+faisait (`2ed08e62`, « effacement en TTS français » : le code ne changeait
+rien). L'arbre a été réécrit sur `origin/dev` (`d6da2966`), le faux commit
+retiré, et les **3 modifications de travail** restées en suspens ont été
+reprises, une par une, dans des commits qui disent ce qu'ils font.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| `dev` reçoit de nouveau des commits (fast-forward) | ✅ | `git push origin dev` — base distante conservée, aucun commit perdu |
+| Le commit mensonger `2ed08e62` n'est plus dans l'historique | ✅ | `git log --oneline` : absent ; `LoginPassword.tsx` identique à `origin/dev` (texte `AUTH_41` conservé) |
+| Les 3 modifs de travail sont commitées, une par une | ✅ | `fb1a1c33` centrage du numéro · `a3aeda50` identité hors navigation · `de4229f8` catalogue |
+| Le journal `.ai/CHANGELOG.md` dit ce qui est VRAI | ✅ | les 3 entrées de la session 19/10 sont replacées dans leur section ; la décision est écrite |
+| **Les 2 rouges hors `CONNUS` sont FERMÉS (pas documentés)** | ✅ | `verify` : **150 vert / 2 rouge sur 152** — les 2 rouges restants sont les 🟠 connus ; **0 rouge nouveau** |
+| `npm run check` | ❌ rouge **préexistant** | 2 suites unitaires backend rouges **à l'HEAD sans mon lot** (prouvé par stash) — voir « Cassé / rouge » |
+
+**Les 2 rouges fermés, cause réelle (pas de whitelist)** :
+- `test:enum-check-phone` — le `.env` local n'avait pas `AUTH_TELEPHONES_TEST`.
+  Corrigé **localement** (jamais commité : `.env` est gitignoré) ; la règle
+  est écrite dans `backend/.env.example` (`adc66a99`), sans aucun numéro.
+- `test:i18n-source` — « Le montant du coût n'est pas valide »
+  (`GestionStock.tsx:511`, introduite par `964697ce` 20/10 STK-04) n'était
+  pas au catalogue. Entrée `STOCK_COUT_INVALIDE` ajoutée (`critiqueArgent:
+  true` — un coût de réassort est de l'argent), inventaire et CSV
+  Manus régénérés (`de4229f8`).
+
+**Signalé, non touché** : 2 suites unitaires backend rouges à l'HEAD
+(`telephones-tests-uniques.spec.ts`, `stocks-rest.idempotency.spec.ts`) —
+gardes d'argent à empreintes gelées, hors du périmètre de ce lot.
+
+### Session 19/10 — dictée vocale sur le WEB + corrections de session
+
+(branche `dev`, commit `55a8e0c0`, poussé — antérieur : `725caf7e` fix wallets).
 Arbitrage Patrick (19/10) : reconnaissance vocale **native du navigateur**
 (`SpeechRecognition`) sur tout le web ; sherpa-WASM écarté ; sherpa reste le
 seul moteur de l'APK. Trace : `docs/DECISIONS.md` 19/10.
@@ -191,10 +224,11 @@ Backlog : `BOScoreFinancier.tsx` même chemin `/api/v1` relatif ; `RoleDashboard
 | quoi | état |
 |---|---|
 | `test:voix-trace-source` | 🟠 **rouge voulu** — 4 empreintes VOICE-01. Attend `--regenerer` |
-| `test:i18n-empreintes-argent` | 🟠 empreinte `intentLocal` — diff établi : **14 phrases / 844, unité ajoutée, 0 franc déplacé**. Attend `--calculer` |
-| `test:garde-argent` | 🟠 **12 entrés / 14 perdues**. Attend `--figer-perimetre` |
+| `test:i18n-empreintes-argent` | ✅ **redevenu vert** (20/10) — plus dans la liste `CONNUS` |
+| `test:garde-argent` | 🟠 **7 entrés / 55 perdus** (mesuré le 21/10 ; l'étiquette « 12/14 » est périmée). Cause : le renommage `frontend_src` → `frontend` (172 gardes vues comme nouvelles). Attend `--figer-perimetre` |
 | `test:entree-unique`, `test:nom-tantie` | ❌ bancs **orphelins** découverts le 03/10, jamais exécutés avant. Hors `verify`, cause non diagnostiquée |
-| 6 rouges **nouveaux dans `verify`** (19/10) | `test:enum-check-phone` (`.env` sans `AUTH_TELEPHONES_TEST`), `test:i18n-source` (phrase absente : `WithdrawWalletModal.tsx:207`), `test:refus-hors-ligne-commande` (`toast is not defined`), `test:accueil-honnete` (Keiwa/tuile argent), `test:voix-connexion-lot-a` (effacement, 1 mot d'écart), `test:modules-pilote` (38 routes d'argent). **Tous rouges à l'HEAD sans mon lot** (prouvé par stash) — préexistants, absents de la liste `CONNUS` de `verify-tout.mjs`. Écart à arbitrer : les ajouter à `CONNUS` ou les corriger |
+| 2 suites unitaires **backend** rouges (`npm run check`) | ❌ **rouge préexistant à l'HEAD**, prouvé par stash le 21/10 : `telephones-tests-uniques.spec.ts` (12 numéros de recette inscrits par deux suites d'invariants à la fois) et `stocks-rest.idempotency.spec.ts` (le PATCH de stock fait 3 requêtes et non 2 depuis STK-04). **Non touché** : ce sont des gardes d'argent ; les corriger touche aux empreintes gelées du garde-argent → **lot à arbitrer à part** |
+| 6 rouges **nouveaux dans `verify`** (19/10) | ✅ **FERMÉS** : 4 corrigés par les commits du 20/10 ; `test:enum-check-phone` et `test:i18n-source` corrigés le 21/10 (`de4229f8`, `adc66a99`). `verify` : **150 vert / 2 rouge sur 152**, 0 rouge nouveau |
 
 ---
 
