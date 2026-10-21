@@ -103,6 +103,10 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
 import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
+// Maquette du 12/10 — le testeur saute d'un univers à l'autre depuis la
+// connexion : bouton `<>` haut-droite + menu rôles (DEV uniquement,
+// silencieux — voir MenuRolesTest.tsx).
+import { MenuRolesTest } from './MenuRolesTest';
 // AUTH-10 — les blocs dupliqués du JSX, une seule source chacun.
 import { BanniereErreur } from './BanniereErreur';
 import { PaveSaisie } from './PaveSaisie';
@@ -1087,6 +1091,37 @@ export function LoginPassword() {
       paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))',
       position: 'relative',
     }}>
+      {/* Maquette du 12/10 — « Aide vocale » haut-gauche : la MÊME voix que le
+          bouton de relecture (ecouterTata, aucun appel de parole nouveau),
+          avec un libellé lisible — l'aide n'est pas une devinette d'icône. */}
+      <button
+        type="button"
+        onClick={ecouterTata}
+        aria-label={tataSpeaking ? 'Aide vocale — le guide parle' : 'Aide vocale — écouter le guide'}
+        style={{
+          position: 'absolute', top: 12, left: 12, zIndex: 500,
+          height: 44, display: 'flex', alignItems: 'center', gap: 8,
+          padding: '0 14px', borderRadius: 999,
+          background: 'var(--commerce-surface)',
+          border: '1px solid var(--commerce-apricot)',
+          color: 'var(--commerce-ink)', cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(51,37,51,0.08)',
+          fontFamily: 'inherit',
+        }}
+      >
+        <Volume2 aria-hidden="true" size={20} style={{ color: 'var(--commerce-action)' }} />
+        <span style={{ fontSize: 15, fontWeight: 650 }}>Aide vocale</span>
+      </button>
+      {/* Tester les autres rôles (DEV) : menu `<>` haut-droite — préremplit le
+          numéro du compte de recette du rôle, ou ouvre la porte BackOffice. */}
+      <MenuRolesTest onChoisirNumero={(numero) => {
+        annulerRelecture();
+        if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
+        setStep('phone');
+        setPinInput('');
+        setError('');
+        setPhone(numero);
+      }} />
       {import.meta.env.DEV && showDevButton && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
