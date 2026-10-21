@@ -32,13 +32,6 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
   const logout = useVoluntaryLogout();
   const { cooperative } = useCooperative();
   const isCooperateur = appUser?.role === 'cooperateur' || appUser?.role === 'cooperative';
-  const displayName = appUser
-    ? (isCooperateur && cooperative?.nom
-        ? cooperative.nom
-        : `${appUser.firstName ?? ''} ${appUser.lastName ?? ''}`.trim())
-    : profileUser
-      ? `${profileUser.prenoms || ''} ${profileUser.nom || ''}`.trim() || 'Utilisateur'
-      : '';
   const displayInitials = appUser
     ? isCooperateur && cooperative?.nom
       ? cooperative.nom.charAt(0).toUpperCase()
@@ -127,7 +120,6 @@ export function Sidebar({ role, onMicClick }: SidebarProps) {
             <div className="flex items-center gap-3">
               <span className="w-10 h-10 rounded-xl grid place-items-center font-bold shrink-0" style={{ background: '#4A384A' }}>{displayInitials}</span>
               <div className="min-w-0">
-                <p className="font-semibold truncate">{displayName}</p>
                 <p className="text-sm" style={{ color: '#D3C6D4' }}>{appUser?.phone || profileUser?.telephone || '—'}</p>
                 <p className="text-xs capitalize" style={{ color: '#D3C6D4' }}>{role}</p>
               </div>
