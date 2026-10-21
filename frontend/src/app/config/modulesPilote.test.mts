@@ -363,6 +363,29 @@ console.log('\n[8-ter] PROD-11 : les KPIs de production viennent du serveur (ré
     'KPI : le faux calcul local « quantité affichée comme stock » est mort (PROD-11)');
 }
 
+console.log('\n[8-quater] PROD-06 : les conditions de vente sont saisies, persistées, affichées');
+{
+  // PROD-06 (20/10/2026) : publications.conditions_vente était une colonne
+  // ORPHELINE — jamais envoyée par l'UI, jamais écrite, jamais lue (docx
+  // étape 5 « Publier » : le producteur décrit ses conditions). Désormais :
+  // le modal vivant les saisit (optionnel), le serveur les persiste (preuve :
+  // backend/test/invariants/prod-06-conditions-vente.spec.ts, rouge prouvé :
+  // 2/3 échecs sur l'ancien code), et le détail produit du marché les affiche.
+  const modal = lire('../components/producteur/PublierRecolteModal.tsx');
+  const modalCode = modal.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/conditions_vente:\s*conditionsVente\.trim\(\)/.test(modalCode),
+    'Modal : le POST porte les conditions de vente saisies (PROD-06)');
+  ok(/Conditions de vente/.test(modalCode) && /optionnel/i.test(modalCode),
+    'Modal : champ conditions de vente présent et optionnel (rien d\'inventé, PROD-06)');
+  const marche = lire('../components/marchand/MarcheVirtuel.tsx');
+  const marcheCode = marche.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/conditions_vente/.test(marcheCode) && /Conditions de vente/.test(marcheCode),
+    'Marché : le détail produit affiche les conditions de vente (PROD-06)');
+  const ctrl = readFileSync(new URL('../../../../backend/src/publications-rest/publications-rest.controller.ts', import.meta.url), 'utf8');
+  ok(/conditions_vente\s*=\s*EXCLUDED\.conditions_vente/.test(ctrl),
+    'Serveur : l\'upsert met à jour les conditions (PROD-06)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');

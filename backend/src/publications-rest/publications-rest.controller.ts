@@ -159,9 +159,14 @@ export class PublicationsRestController {
       );
     }
 
+    // PROD-06 (20/10/2026) : conditions_vente était une colonne ORPHELINE
+    // (jamais envoyée par l'UI, jamais lue). Le docx (étape 5 « Publier »)
+    // demande les conditions de vente de l'offre : le modal vivant les saisit
+    // désormais, le serveur les persiste, et SELECT p.* les expose au marché.
+    const conditionsVente = String(body.conditions_vente ?? body.conditionsVente ?? '').trim() || null;
     const result = await this.dataSource.query(
-      `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, date_publication)
-       VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,NOW())
+      `INSERT INTO publications (user_id, produit, culture, quantite_disponible, quantite_initiale, unite, prix_unitaire, qualite, localisation, active, statut, date_recolte, description, photo_url, conditions_vente, date_publication)
+       VALUES ($1,$2,$3,$4,$4,$5,$6,$7,$8,true,'disponible',$9,$10,$11,$12,NOW())
        ON CONFLICT (user_id, LOWER(TRIM(produit)))
        DO UPDATE SET
          quantite_disponible = EXCLUDED.quantite_disponible,
@@ -170,6 +175,7 @@ export class PublicationsRestController {
          localisation        = EXCLUDED.localisation,
          description         = EXCLUDED.description,
          photo_url           = EXCLUDED.photo_url,
+         conditions_vente    = EXCLUDED.conditions_vente,
          date_recolte        = EXCLUDED.date_recolte,
          statut              = 'disponible',
          active              = true,
@@ -177,7 +183,7 @@ export class PublicationsRestController {
        RETURNING *`,
       [user.id, body.produit, body.culture || body.produit, body.quantite_disponible,
        body.unite, body.prix_unitaire, body.qualite || 'standard', body.localisation || '',
-       body.date_recolte || null, body.description || '', body.photo_url || null]
+       body.date_recolte || null, body.description || '', body.photo_url || null, conditionsVente]
     );
     // Passer la récolte en 'validee' si recolte_id fourni
     if (body.recolte_id) {

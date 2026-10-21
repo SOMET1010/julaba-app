@@ -40,6 +40,7 @@ interface Product {
   cooperativeInfo?: { nombreMembres: number; certification?: string; };
   location: string; price: number; unit: string; stock: number;
   category: string; status: 'available' | 'low-stock' | 'out-of-stock'; description: string;
+  conditionsVente?: string | null;
 }
 
 const categories = [
@@ -214,6 +215,7 @@ export function MarcheVirtuel() {
             return 'autres';
           })(),
           status: 'available' as const, description: p.description || '',
+          conditionsVente: p.conditions_vente || null,
         }));
         setApiProducts(mapped);
       })
@@ -864,6 +866,9 @@ export function MarcheVirtuel() {
                   <div className="flex items-center gap-3"><Package className="w-5 h-5 text-gray-600" /><div><p className="text-xs text-gray-500">Stock disponible</p><p className="font-bold text-gray-900 text-sm">{selectedProduct.stock} {selectedProduct.unit}</p></div></div>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3"><p className="text-sm text-gray-600 leading-relaxed">{selectedProduct.description}</p></div>
+                {selectedProduct.conditionsVente && (
+                  <div className="bg-orange-50 rounded-xl p-3 border border-orange-100"><p className="text-xs font-bold text-orange-700 mb-1">Conditions de vente</p><p className="text-sm text-gray-700 leading-relaxed">{selectedProduct.conditionsVente}</p></div>
+                )}
               </div>
               <div className="flex-shrink-0 bg-white border-t border-gray-100 px-6 py-4 space-y-3 rounded-b-3xl">
                 <motion.button onClick={() => { addToCart(selectedProduct.id); showToast(`${selectedProduct.name} ajouté au panier`, 'success'); speakSilent(`${selectedProduct.name} ajouté au panier`); setSelectedProduct(null); }} className="w-full py-3.5 rounded-2xl bg-[var(--commerce-action)] text-white font-bold text-base shadow-lg flex items-center justify-center gap-2" whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.02 }}>
