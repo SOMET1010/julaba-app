@@ -420,6 +420,25 @@ console.log('\n[8-sexies] PROD-08 : « Mes stocks » n\'est plus un mensonge —
     'Stocks : renvoie vers Production pour le stock vu par les acheteurs (PROD-08)');
 }
 
+console.log('\n[8-septies] PROD-12 : l\'endpoint mensonger /revenus est SUPPRIMÉ');
+{
+  // PROD-12 (20/10/2026) : GET /revenus sommait prixUnitaire × quantite de
+  // TOUTES les récoltes (même jamais vendues) — un « revenu » fictif qui
+  // contredisait /producteur/stats (revenu = ENCAISSÉ, PROD-05), et zéro
+  // écran n'y recourait. Supprimé (option honnête de l'audit). Preuve :
+  // backend/test/invariants/prod-12-revenus-orphelin-supprime.spec.ts —
+  // rouge prouvé sur l'ancien code (200 reçu, 404 attendu).
+  const ctrlRevenus = (() => {
+    try { return readFileSync(new URL('../../../../backend/src/revenus/revenus.controller.ts', import.meta.url), 'utf8'); }
+    catch { return ''; }
+  })();
+  ok(ctrlRevenus === '',
+    'Serveur : plus AUCUN controller /revenus (route morte, PROD-12)');
+  const appMod = readFileSync(new URL('../../../../backend/src/app.module.ts', import.meta.url), 'utf8');
+  ok(!appMod.includes('RevenusModule'),
+    'Serveur : RevenusModule retiré de l\'application (PROD-12)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
