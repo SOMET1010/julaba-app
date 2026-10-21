@@ -386,6 +386,22 @@ console.log('\n[8-quater] PROD-06 : les conditions de vente sont saisies, persis
     'Serveur : l\'upsert met à jour les conditions (PROD-06)');
 }
 
+console.log('\n[8-quinquies] PROD-07 : le producteur voit QUOI et COMBIEN réunir (agrégat des demandes)');
+{
+  // PROD-07 (20/10/2026) : les demandes de marchands restaient une liste
+  // unitaire — aucun agrégat « quantités à fournir par produit » (étape 6 du
+  // docx). La page Commandes du producteur consolide désormais les demandes
+  // en attente par produit (somme des quantités + nombre de demandes).
+  const page = lire('../components/producteur/CommandesProducteurPage.tsx');
+  const pageCode = page.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(/aFournirParProduit/.test(pageCode),
+    'Commandes : l\'agrégat « à fournir par produit » existe (PROD-07)');
+  ok(/À réunir pour ces demandes/.test(pageCode),
+    'Commandes : l\'agrégat est affiché au-dessus de la liste (PROD-07)');
+  ok(/ex\.quantite \+= q; ex\.nb \+= 1/.test(pageCode),
+    'Commandes : somme des quantités + compte des demandes par produit (PROD-07)');
+}
+
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
