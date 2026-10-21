@@ -3,8 +3,7 @@ import { useApp } from './AppContext';
 import * as identificationsApi from '../services/api/identifications-api';
 import * as missionsApi from '../services/api/missions-api';
 import { fetchMutations, createMutation, type Mutation as ApiMutation } from '../services/api/mutations-api';
-import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
-import { API_URL } from '../utils/api';
+import { NOT_AUTHENTICATED } from '../services/api/api-client';
 
 export type DemandeMutationRow = ApiMutation & {
   zoneActuelle?: string;
@@ -147,29 +146,18 @@ export function IdentificateurProvider({ children }: { children: ReactNode }) {
         commission: i.commission,
         commissionPayee: i.commission_payee,
         dateIdentification: i.date_identification,
-        acteurNom: i.acteur_nom,
+        acteurNom: (i.acteur_nom_user || '').trim() || i.acteur_nom,
         commune: i.commune,
-        telephone: '',
-        photo: null,
-        activite: '',
-        marche: '',
+        // IDENT-11 : les champs acteur arrivent DANS la liste (JOIN serveur sur
+        // l'acteur). Fini l'enrichissement GET /users/:id PAR dossier — avec
+        // 50 dossiers et un polling 30 s, c'était jusqu'à 100 requêtes/minute.
+        telephone: i.acteur_telephone || '',
+        photo: i.acteur_photo || null,
+        activite: i.acteur_activite || '',
+        marche: i.acteur_marche || '',
       }));
 
       setIdentifications(mapped);
-
-      // Enrichir avec les details acteur
-
-      const toEnrich = mapped.filter((i: any) => i.acteurId && i.acteurId !== '');
-      const enriched = await Promise.all(toEnrich.map(async (i: any) => {
-        try {
-          const d = await apiRequest<any>(API_URL, `/users/${i.acteurId}`, { method: 'GET' });
-          return { ...i, telephone: d.phone || '', photo: d.photoUrl || null, activite: d.activity || '', marche: d.market || '', acteurNom: `${d.firstName || ''} ${d.lastName || ''}`.trim() || i.acteurNom };
-        } catch { return i; }
-      }));
-
-      const enrichedMap: Record<string, any> = {};
-      enriched.forEach((i: any) => { enrichedMap[i.id] = i; });
-      setIdentifications(mapped.map((i: any) => enrichedMap[i.id] || i));
 
     } catch (error: any) {
       if (error?.message === NOT_AUTHENTICATED) return;

@@ -290,6 +290,31 @@ console.log('\n[7-quinquies] IDENT-09 : la soumission est idempotente (une clé,
     'Fiche : la clé est consommée après confirmation — un NOUVEAU dossier part avec une clé NEUVE');
 }
 
+console.log('\n[7-sexies] IDENT-11 : le suivi identificateur n\'est plus un N+1 (la liste embarque l\'acteur)');
+{
+  // IDENT-11 (20/10/2026) : le contexte chargeait GET /users/:id POUR CHAQUE
+  // dossier (Promise.all) et son polling 30 s rejouait le tout — 50 dossiers
+  // = jusqu'à 100 requêtes/minute pour des champs que le serveur PEUT joindre.
+  // GET /identifications JOIN désormais l'acteur et embarque téléphone, photo,
+  // activité, marché et nom (preuve serveur :
+  // backend/test/invariants/ident-11-liste-dossiers-batch-acteur.spec.ts,
+  // rouge prouvé sur l'ancien code). La garde verrouille le contrat front :
+  // plus AUCUN appel unitaire au chargement, le mapping consomme les champs
+  // batch, et le JOIN acteur existe dans les DEUX branches serveur.
+  const ctx = lire('../contexts/IdentificateurContext.tsx');
+  const ctxCode = ctx.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  ok(!/`\/users\/\$\{/.test(ctxCode),
+    'Contexte : plus AUCUN appel GET /users/:id par dossier (N+1 mort, IDENT-11)');
+  ok(/acteur_telephone/.test(ctxCode) && /acteur_nom_user/.test(ctxCode),
+    'Contexte : le mapping consomme les champs batch du serveur (téléphone + nom, IDENT-11)');
+  ok(/acteur_activite/.test(ctxCode) && /acteur_marche/.test(ctxCode),
+    'Contexte : activité et marché du participant embarqués (IDENT-11)');
+  const ctrl = readFileSync(new URL('../../../../backend/src/identifications/identifications.controller.ts', import.meta.url), 'utf8');
+  const joinsActeur = (ctrl.match(/LEFT JOIN users a ON a\.id::text = i\.acteur_id/g) || []).length;
+  ok(joinsActeur === 2,
+    `Serveur : le JOIN acteur est présent dans les DEUX branches de la liste (trouvé : ${joinsActeur}, IDENT-11)`);
+}
+
 console.log('\n[8] Le défaut est le côté sûr : les builds livrés ne posent PAS le drapeau');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
