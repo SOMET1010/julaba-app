@@ -31,8 +31,22 @@ export function StocksWrapper() {
   }, [activeTab]);
 
   return (
-    <SubPageLayout role="producteur" title="Mes stocks">
+    <SubPageLayout role="producteur" title="Mon inventaire boutique">
       <div className="min-h-screen pb-28 lg:pb-8">
+        {/* PROD-08 (20/10/2026) — honnêteté sur le double modèle de stock :
+        ce carnet est l'inventaire BOUTIQUE (table stocks, le carnet du
+        détaillant), DISTINCT du stock du MARCHÉ qui vient des récoltes
+        déclarées (recoltes.stock_disponible, écran Production). Le libellé
+        « Mes stocks » laissait croire que cet écran pilote les offres du
+        marché — c'est faux, et l'audit le dit : renommer/découpler. */}
+        <div className="mx-1 mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-bold text-amber-800 mb-0.5">Inventaire boutique ≠ stock du marché</p>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Cet écran est ton carnet boutique. Ce que voient les acheteurs sur
+            le marché vient de tes <b>récoltes déclarées</b> — gère-le dans
+            <b> Production</b>.
+          </p>
+        </div>
         {/* Tabs - Fixed sticky header */}
         <div className="sticky top-0 z-20 bg-gradient-to-b from-green-50 to-white pb-4">
           <div 
