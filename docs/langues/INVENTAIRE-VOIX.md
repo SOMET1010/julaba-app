@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **432** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 449 |
-| — littéraux (phrase fixe en dur) | 201 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **433** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 450 |
+| — littéraux (phrase fixe en dur) | 202 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 91 |
 | — relais (`dire = (t) => speak(t)`) | 23 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **243** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **244** |
 | Dont dynamiques (avec variables) | 72 |
-| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **57** |
+| Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **58** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **476** |
 | Fichiers avec au moins un site d'appel | 83 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 318 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 321 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -34,8 +34,8 @@
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
+| `components/marchand/GestionStock.tsx` | stock | 13 | 8 | 4 | 1 | 1 | 0 | 3 |
 | `components/auth/LoginPassword.tsx` | auth | 12 | 8 | 0 | 6 | 0 | 0 | 0 |
-| `components/marchand/GestionStock.tsx` | stock | 12 | 7 | 4 | 1 | 1 | 0 | 2 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 10 | 8 | 0 | 0 | 2 | 0 | 0 |
@@ -117,7 +117,7 @@
 | producteur | 71 | 57 | 6 |
 | marchand_autre | 57 | 41 | 16 |
 | partage | 42 | 27 | 0 |
-| stock | 38 | 37 | 3 |
+| stock | 39 | 38 | 4 |
 | caisse | 36 | 0 | 0 |
 | wallet | 36 | 37 | 19 |
 | vente | 28 | 0 | 0 |
@@ -182,9 +182,9 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 819 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
 | 843 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
 | 844 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
-| 1047 | `parle` | literal | Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! |  |  |
-| 1059 | `parle` | literal | C'est effacé net. |  |  |
-| 1343 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 1057 | `parle` | literal | Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! |  |  |
+| 1069 | `parle` | literal | C'est effacé net. |  |  |
+| 1356 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
 
 ### `components/backoffice/BOLayout.tsx` — backoffice
 
@@ -275,7 +275,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 55 | `speak` | literal | À bientôt sur Jùlaba |  |  |
+| 48 | `speak` | literal | À bientôt sur Jùlaba |  |  |
 
 ### `components/marchand/AjoutProduitGuide.tsx` — autre
 
@@ -384,19 +384,20 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 252 | `speak` | relais | t |  |  |
-| 391 | `speak` | literal | Tous tes stocks sont bons |  |  |
-| 391 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
-| 394 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
-| 398 | `speak` | template | La valeur totale est {val} francs | `val` | € |
-| 477 | `speak` | literal | C'est mis à jour. |  |  |
-| 480 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
-| 492 | `speak` | literal | Saisis une quantité valide |  | € |
-| 497 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
-| 526 | `speak` | template | {name} supprimé | `name` |  |
-| 534 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
-| 599 | `speak` | dynamique | dit |  |  |
-| 603 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
+| 255 | `speak` | relais | t |  |  |
+| 398 | `speak` | literal | Tous tes stocks sont bons |  |  |
+| 398 | `speak` | template | {low} produits en stock bas : {join} | `low` `join` |  |
+| 401 | `speak` | literal | Tes montants sont cachés. Appuie sur l'œil pour les afficher. |  |  |
+| 405 | `speak` | template | La valeur totale est {val} francs | `val` | € |
+| 484 | `speak` | literal | C'est mis à jour. |  |  |
+| 487 | `speak` | literal | Ça n'a pas marché. Réessaie, s'il te plaît. |  |  |
+| 499 | `speak` | literal | Saisis une quantité valide |  | € |
+| 511 | `speak` | literal | Le montant du coût n'est pas valide |  | € |
+| 518 | `speak` | template | {reappNum} {unit} de {name} ajoutés. Stock à {newQty} {unit} | `reappNum` `unit` `name` `newQty` `unit` |  |
+| 549 | `speak` | template | {name} supprimé | `name` |  |
+| 557 | `speak` | literal | Ça n'a pas marché. Le produit n'est pas supprimé. |  |  |
+| 622 | `speak` | dynamique | dit |  |  |
+| 626 | `speak` | literal | Ça n'a pas été enregistré. Réessaie, s'il te plaît. |  |  |
 
 ### `components/marchand/MaCooperative.tsx` — marchand_autre
 
@@ -534,7 +535,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 107 | `speak` | dynamique | parts.join(' ') |  |  |
+| 115 | `speak` | dynamique | parts.join(' ') |  |  |
 
 ### `components/marchand/ResumeCaisse.tsx` — caisse
 
@@ -592,32 +593,32 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 309 | `speak` | literal | Commande acceptée. Le marchand va maintenant payer. |  | € |
-| 315 | `speak` | dynamique | message |  |  |
-| 325 | `speak` | literal | Commande refusée. |  |  |
+| 327 | `speak` | literal | Commande acceptée. Le marchand va maintenant payer. |  | € |
 | 333 | `speak` | dynamique | message |  |  |
-| 345 | `speak` | template | Contre-proposition de {nouveauPrix} FCFA envoyée au marchand. | `nouveauPrix` | € |
-| 354 | `speak` | dynamique | message |  |  |
-| 363 | `speak` | literal | Livraison déclarée. Le marchand va confirmer la réception. |  |  |
-| 369 | `speak` | dynamique | message |  |  |
-| 382 | `speak` | literal | Paiement récupéré ! L'argent est dans ton Keiwa. |  |  |
-| 389 | `speak` | dynamique | message |  |  |
-| 522 | `speak` | template | Commande mise à jour : {statut} | `statut` |  |
-| 528 | `speak` | dynamique | message |  |  |
-| 614 | `speak` | template | Commande de {produit} ajoutée | `produit` |  |
-| 623 | `speak` | dynamique | message |  |  |
-| 664 | `speak` | literal | Toutes les commandes |  |  |
-| 673 | `speak` | literal | Commandes urgentes |  |  |
-| 682 | `speak` | literal | Mes revenus |  |  |
-| 691 | `speak` | literal | Commandes livrées |  |  |
-| 789 | `speak` | template | Demande pour {produit} | `produit` |  |
-| 1560 | `speak` | literal | Commande marquée comme livrée |  |  |
-| 1565 | `speak` | dynamique | message |  |  |
-| 1664 | `speak` | literal | Commande annulée |  |  |
-| 1670 | `speak` | dynamique | message |  |  |
-| 1687 | `speak` | literal | Commande annulée |  |  |
-| 1693 | `speak` | dynamique | message |  |  |
-| 2451 | `speak` | literal | Paiement encaissé ! L'argent est dans ton Keiwa. |  | € |
+| 343 | `speak` | literal | Commande refusée. |  |  |
+| 351 | `speak` | dynamique | message |  |  |
+| 363 | `speak` | template | Contre-proposition de {nouveauPrix} FCFA envoyée au marchand. | `nouveauPrix` | € |
+| 372 | `speak` | dynamique | message |  |  |
+| 381 | `speak` | literal | Livraison déclarée. Le marchand va confirmer la réception. |  |  |
+| 387 | `speak` | dynamique | message |  |  |
+| 400 | `speak` | literal | Paiement récupéré ! L'argent est dans ton Keiwa. |  |  |
+| 407 | `speak` | dynamique | message |  |  |
+| 540 | `speak` | template | Commande mise à jour : {statut} | `statut` |  |
+| 546 | `speak` | dynamique | message |  |  |
+| 632 | `speak` | template | Commande de {produit} ajoutée | `produit` |  |
+| 641 | `speak` | dynamique | message |  |  |
+| 682 | `speak` | literal | Toutes les commandes |  |  |
+| 691 | `speak` | literal | Commandes urgentes |  |  |
+| 700 | `speak` | literal | Mes revenus |  |  |
+| 709 | `speak` | literal | Commandes livrées |  |  |
+| 826 | `speak` | template | Demande pour {produit} | `produit` |  |
+| 1597 | `speak` | literal | Commande marquée comme livrée |  |  |
+| 1602 | `speak` | dynamique | message |  |  |
+| 1701 | `speak` | literal | Commande annulée |  |  |
+| 1707 | `speak` | dynamique | message |  |  |
+| 1724 | `speak` | literal | Commande annulée |  |  |
+| 1730 | `speak` | dynamique | message |  |  |
+| 2488 | `speak` | literal | Paiement encaissé ! L'argent est dans ton Keiwa. |  | € |
 
 ### `components/producteur/CreerPlantationModal.tsx` — producteur
 
@@ -701,19 +702,19 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 29 | `speak` | literal | La quantité doit être supérieure à zéro |  |  |
-| 33 | `speak` | template | La quantité ne peut pas dépasser le stock disponible de {stockMax} | `stockMax` |  |
-| 38 | `speak` | literal | Prix invalide |  | € |
-| 43 | `speak` | literal | Publication en cours... |  |  |
-| 59 | `speak` | literal | Récolte publiée avec succès ! |  |  |
-| 63 | `speak` | literal | Erreur lors de la publication |  |  |
+| 33 | `speak` | literal | La quantité doit être supérieure à zéro |  |  |
+| 37 | `speak` | template | La quantité ne peut pas dépasser le stock disponible de {stockMax} | `stockMax` |  |
+| 42 | `speak` | literal | Prix invalide |  | € |
+| 47 | `speak` | literal | Publication en cours... |  |  |
+| 64 | `speak` | literal | Récolte publiée avec succès ! |  |  |
+| 68 | `speak` | literal | Erreur lors de la publication |  |  |
 
 ### `components/producteur/RecolteDetailModal.tsx` — producteur
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 322 | `speak` | literal | Modifier la récolte |  |  |
-| 336 | `speak` | literal | Publication sur le marché en cours |  |  |
+| 365 | `speak` | literal | Modifier la récolte |  |  |
+| 379 | `speak` | literal | Publication sur le marché en cours |  |  |
 
 ### `components/producteur/RecolteForm.tsx` — producteur
 
@@ -853,11 +854,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 632 | `speak` | literal | Paramètres sauvegardés |  |  |
-| 752 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
-| 752 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
-| 955 | `speak` | literal | Export en cours |  |  |
-| 1099 | `speak` | literal | Déconnexion en cours |  |  |
+| 631 | `speak` | literal | Paramètres sauvegardés |  |  |
+| 751 | `speak` | cle_i18n | REGLAGE_VOIX_ESSENTIEL |  |  |
+| 751 | `speak` | cle_i18n | REGLAGE_VOIX_COMPLET |  |  |
+| 937 | `speak` | literal | Export en cours |  |  |
+| 1081 | `speak` | literal | Déconnexion en cours |  |  |
 
 ### `components/ui/UniversalKPI.tsx` — partage
 
@@ -1672,7 +1673,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (318)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (321)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
