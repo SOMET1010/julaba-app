@@ -1406,13 +1406,13 @@ export function LoginPassword() {
             <div style={{
               // AUTH-16 — surface sur token (mode sombre cohérent).
               width: '100%', background: 'var(--commerce-surface)', borderRadius: 16,
-              padding: '10px 10px', display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
               boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
             }}>
-              <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', left: 10, width: 20, height: 20, borderRadius: '50%', background: '#e8f5e9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Check aria-hidden="true" size={10} strokeWidth={3} color="#2E8B57" />
               </div>
-              <span style={{ flex: 1, fontSize: 15, color: '#3d1a08', fontWeight: 500, letterSpacing: 1.5 }}>
+              <span style={{ width: '100%', textAlign: 'center', fontSize: 15, color: '#3d1a08', fontWeight: 500, letterSpacing: 1.5 }}>
                 {formatPhoneNumber(phone)}
               </span>
               <motion.button
@@ -1430,7 +1430,7 @@ export function LoginPassword() {
                 // AUTH-09 — cible ≥ 44 px (mesurée 44×16,5 px en R5 : le
                 // geste « changer de numéro » était presque impossible au
                 // doigt) + taille de texte lisible.
-                style={{ minHeight: 44, padding: '12px 16px', fontSize: 13, color: 'rgba(198,106,44,0.65)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ position: 'absolute', right: 0, minHeight: 44, padding: '12px 16px', fontSize: 13, color: 'rgba(198,106,44,0.65)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
                 whileTap={{ scale: 0.95 }}
               >Modifier</motion.button>
             </div>
