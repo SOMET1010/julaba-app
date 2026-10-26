@@ -1265,3 +1265,24 @@ Stage Summary:
 - L'écran de connexion rend à nouveau CE QUE LA MAQUETTE MONTRE : « Aide vocale » (produit) + `<>` menu rôles (DEV) — la fidélité est prouvée par captures et par le parcours des trois rôles, pas déclarée
 - Le P3 reste FERMÉ (lot p3-lot-20-10 : IDENT-11, PROD-06 à 12) ; origin/dev = 6b00e063
 - Stack preview vivant : PG :5432 (binaires embarqués + symlinks ICU), backend :3001, frontend :3000 — recette de reconstruction consignée (LD_LIBRARY_PATH, symlinks .60, double-fork)
+
+---
+Task ID: preview-relance-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Non non récupère le dernier push de la branche dev, c'est là qu'on travaille » — vérifier la synchronisation de dev et lancer la preview sur CE code
+
+Work Log:
+- État des lieux : dev == origin/dev == bc0c78c2 (0 retard / 0 avance) — le dernier push était déjà en place ; dépôt principal re-flippé sur main (frontend/ et mini-services/ absents), worktree .wt-dev intact sur dev
+- Le sandbox avait purgé /home/z/pg (runtime + données) et les node_modules réels ; .env et dist/main.js du worktree ont survécu
+- Reconstruction : rm des symlinks cassés puis bun install ×3 DANS le worktree (.wt-dev/backend 1432 paquets, .wt-dev/frontend, .wt-dev/mini-services/postgres-service 20 paquets) — les node_modules vivent désormais dans le worktree, flip-immuns
+- PG : binaires @embedded-postgres recopiés vers /home/z/pg/emb/native + 3 symlinks ICU (.60.2→.60), initdb -U julaba --auth=trust -E UTF8, pg_ctl :5432 (daemon survivant), CREATE DATABASE julaba_dev via client pg (bun -e)
+- Backend node dist/main.js (double-fork) : base vierge → schéma construit par le service (DbInitService), puis seed démo complet (Awa Koné, Hervé Koffi, Bénito, Michelle, Coopérative Daloa…) — « Scénario de démonstration cohérent chargé »
+- Frontend Vite 6.4.4 :3000 (double-fork) ; curl : backend direct {"exists":true}, HTTP 200 :3000, via proxy Vite {"exists":true}
+- Navigateur 390×844 E2E : splash Tantie Nanti Lou → « Ton guide » → connexion : pill « Aide vocale » + « Tester les autres rôles » présents → menu déroulé = Identificateur / BackOffice / Espace coopérative (conforme maquette) → clavier 0700000009 → « C'est mon numéro » → PIN 1234 → ACCUEIL MARCHANDE « Bonjour Awa / Ton comptoir est prêt », MA CAISSE AUJOURD'HUI 1 500 F, Vendre / Mon stock / Mes dépenses / Mes ventes / Mon argent, EventsGateway (WebSocket) connecté — 0 erreur console, 0 erreur backend
+- Captures : .zlogs/preview-dev-1-login.png → preview-dev-6-accueil.png
+
+Stage Summary:
+- La preview tourne sur le DERNIER PUSH dev (bc0c78c2) : PG :5432 + backend :3001 + frontend :3000, tous flip-immuns (worktree + double-fork)
+- Golden path marchande prouvé de bout en bout par navigateur, pas déclaré
+- node_modules désormais DANS le worktree (plus de symlink vers le dépôt principal) — les flips main ne cassent plus l'installation
+- origin/dev inchangé au moment du lot (aucun nouveau push d'Akoun-dev) ; aucun commit code ce lot — lot d'exploitation, worklog seul poussé
