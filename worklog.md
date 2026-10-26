@@ -1365,3 +1365,30 @@ Stage Summary:
 - 0 erreur console, 0 erreur page ; 0 élément hors viewport
 - INCIDENT DOCUMENTÉ : le service worker (sw.js) a servi `tataUiClips.ts?t=…` depuis son cache (transferSize=0) pendant la longue session dev → module SANS les 15 clips → l'erreur passait par la synthèse. Désenregistrement SW + caches vidés → clips réels joués. Artefact de session dev longue (pas un bug du lot) ; le SW se ré-enregistre au rechargement. À relier au futur lot SW-versioning si les mises à jour d'APK montrent le même symptôme.
 - Reste OUVERT : preuve ASR des 15 clips (quota 429 pendant tout le lot) ; états du compte login-55..58 non déclenchables en démo (aucun compte suspendu/rejeté de seed) — câblage prouvé par code + tsc, à éprouver en recette avec un compte réel.
+
+---
+Task ID: revue-tout-encore-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Assure toi que tout est comblé pour toute éventualités pour le système auth, revois aussi, pass en revu tout encore »
+
+Work Log:
+- Garde anti-course OK (0 nouveau commit Akoun au départ ET avant le push)
+- REVUE EXHAUSTIVE PAR SCRIPTS (2 passes) : pass 1 = chaque setError() littéral des 12 composants auth × catalogue 243 clips ; pass 2 = BanniereErreur/toast. 27 messages vérifiés → 4 SANS CLIP trouvés : les 3 validations du formulaire TEXTE back-office de ChangePasswordScreen (le lot 53-67 n'avait couvert que le pavé) + le toast « rôle non reconnu » d'EntryGate
+- LoginPassword re-vérifié branche par branche : états compte (55-58), verrou (ui-125/login-30), essais restants (29/28), effet error→parle — tout est câblé, rien à ajouter
+- OnboardingSlides/Welcome/PropositionReconnaissance/PaveSaisie/BanniereErreur : couverts (parlerAvantConnexion par slide, AKWABA, etc.)
+- GÉNÉRATION : 4 clips login-68..71 edge-tts fr-FR-DeniseNeural débit −10 %, loudnorm −16 LUFS, 24 kHz mono 96 kbps (ffprobe) ; enregistrés dans tataUiClips.ts + entreeVoix.ts (clés ancienCodeManquant, motDePasseAccueil, motDePasseTropCourt, roleNonReconnu) + type EntreeVoiceKey étendu
+- CÂBLAGE : ChangePasswordScreen handleSubmit aligné mot pour mot sur les clips (login-68/70, login-62 réutilisé par alignement de texte) ; accueil BO au mount (login-69, effet pour rôles non-code) ; EntryGate : toast = texte du clip login-71, voix speakClipOrText + useAudioUnlockFallback au niveau composant (ref d'activation : aucun son sans rôle inconnu)
+- INDICATEURS : champ fautif clignotant login-cue-clignote sur le formulaire BO ('old'/'new'/'confirm'), nettoyé à la saisie ; l'indicateur SUIT le champ fautif (prouvé : blink-old → blink-new → blink-confirm)
+- BUG RÉEL DÉCOUVERT PAR L'E2E : le backend renvoie TOUJOURS 200 + {success:false, message:'Ancien code incorrect'} (contrat réel lu dans auth.controller.ts) — JAMAIS 401. Le branchement login-65 sur res.status===401 (lot 53-67) était du CODE MORT : l'échec le plus fréquent de l'écran tombait sur le message générique. Corrigé : mapping du message serveur → clip exact
+- PREUVES NAVIGATEUR (compte BO +2250700000016, mot de passe NON changé — tous les POST ont refusé) : accueil formulaire → login-69 GET 206 ; vide → texte « Écris ton ancien code secret d'abord. » + login-68 206 + blink-old ; trop court → login-70 206 + blink-new ; codes différents → login-62 206 + blink-confirm ; ancien code faux (chemin RÉEL) → « Ce n'est pas ton ancien code. Regarde bien et recommence. » + login-65 206
+- ARTEFACT SW RECONTRUVÉ : le service worker servait l'ANCIEN tataUiClips.ts (sans textes 68-71) → synthèse au lieu du clip. Désenregistrement SW + caches vidés → clips réels. (2e occurrence documentée — le futur lot SW-versioning reste pertinent)
+- Golden path marchande re-vérifié : purge cookie BO → splash → onboarding → numéro 0700000009 → code 1234 → /marchand « Ton comptoir est prêt / Bonjour Awa » ; 0 erreur console après reload (l'erreur vite HMR vue en cours de session datait d'une faute d'import corrigée dans la foulée)
+- Gardes : registre-voix (243 mappés, 8 orphelins), voix-trace 34/34, voix-trace-source (référence régénérée), auth-charte, cible-tactile, verrou-connexion, entree-unique, parole-entree, akwaba-voix, entree-numero-voix, voix-connexion-lot-a, login-images-repli, lien-activation, clips-embarques, audio-unlock — TOUS VERTS ; tsc 0 ; eslint 0
+- Preuve ASR (resterait ouvert du lot 53-67) : job de fond throttlé lancé (19 clips : 53-67 + 68-71) ; 3/19 reçus pendant le lot — login-59 « Saisissez le code d'activation. » (exact), login-58 et login-60 transcrits en chinois PAR L'ASR avec contenu sémantique exact (détection de langue erronée du moteur ASR, les clips sont bien les phrases françaises générées) ; les JSON continuent d'arriver dans .ztools/asr53/
+- Push anti-course : rev-list count = 0 au moment du push
+
+Stage Summary:
+- L'audit croisé ne trouve PLUS AUCUN message d'auth sans clip : 0 « SANS CLIP » sur les 27 messages (les scripts d'audit restent dans .ztools/audit-auth-voix*.mjs pour les prochaines revues)
+- Le « tout » de Patrick est comblé : 4 écrans/parcours de PLUS sont parlés + montrés, et le bug du chemin mort (login-65 sur un 401 qui n'arrive jamais) est fermé par la preuve E2E — la revue a fait son travail : elle a trouvé ce que le lot précédent avait cru couvrir
+- Leçon de méthode enregistrée : un branchement prouvé « par code + tsc » ne prouve PAS le chemin — le contrat RÉEL du serveur (200 + success:false) était différent de l'hypothèse (401) ; dorénavant toute éventualité câblée se déclenche EN NAVIGATEUR au moins une fois
+- Preuves : .zlogs/revue-tout-login65-68-70-62.png (desktop), .zlogs/revue-tout-mobile-390.png (390 px)
