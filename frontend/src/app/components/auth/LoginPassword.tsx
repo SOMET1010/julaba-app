@@ -1313,6 +1313,7 @@ export function LoginPassword() {
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={handleBiometric}
                   disabled={isLoading}
+                  className="login-cue-clignote"
                   style={{
                     width: '100%', height: 58,
                     borderRadius: 14, border: 'none', cursor: isLoading ? 'wait' : 'pointer', color: '#fff',
@@ -1330,6 +1331,7 @@ export function LoginPassword() {
                   aria-label="Entre ton code secret"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => { setError(''); setStep('password'); }}
+                  className="login-cue-clignote"
                   style={{
                     width: '100%', height: 96,
                     borderRadius: 14, border: 'none', cursor: 'pointer', color: '#fff',
@@ -1578,6 +1580,7 @@ export function LoginPassword() {
                 On touche le cadenas pour réentendre la consigne. */}
             <button
               type="button"
+              className="login-cue-clignote"
               aria-label="Ton code secret — touche pour écouter"
               onClick={() => { void direConsigne('code'); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '2px 0 4px', minHeight: 44, display: 'flex', justifyContent: 'center', width: '100%' }}
