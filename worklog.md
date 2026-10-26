@@ -1309,3 +1309,27 @@ Stage Summary:
 - Le bug Patrick « l'effacement ne parle pas français » est de nouveau fermé sur la branche officielle — la force-push d'Akoun l'avait involontairement réouvert (ancien clip anglais revenu)
 - La preview (:3000/:3001/PG) tourne sur ce code sans redémarrage (node_modules dans le worktree, HMR a tout absorbé)
 - Preuves : /home/z/my-project/.zlogs/sync-dev-effacement-francais-ok.png, /tmp/asr-actuel.json (anglais), /tmp/asr-fix.json (français)
+
+---
+Task ID: voix-everywhere-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Transcrit tous les audios de tata, regarde dans le système auth où ils doivent être joués, ajoutons la voix sur chaque vue ou étape de l'onboarding avec des indices visuels comme le clignotement du bouton "C'est mon numéro" »
+
+Work Log:
+- Garde anti-course OK (0 nouveau commit Akoun au départ du lot)
+- INVENTAIRE : 221 mp3 dans voix/tata (registre : 213 mappés, 8 orphelins ui-0xx). Transcription ASR batch lancée en fond (rate limit 429 — progression lente, throttlée)
+- AUDIT PAR SCRIPT des phrases muettes (parle()/setError() vs index entreeVoix + catalogue tataUiClips) : 11 phrases fixes sans clé — dont le message d'erreur du mauvais préfixe, les 2 questions d'adaptation, l'installation de voix, 3 erreurs serveur, la redirection admin, l'accueil ET la réussite de /activation
+- CARTOGRAPHIE voix × étapes : numéro (login-05/06/07 à l'entrée + login-09 à la confirmation ✓), code (login-19/23 ✓), reconnaissance (clip prototype → MUET en prod ✗), mode images (login-20/21/22 ✓)
+- GÉNÉRATION : 11 clips login-42..52 via edge-tts fr-FR-DeniseNeural, 24 kHz mono 96 kbps, −16 LUFS (mêmes specs lot A)
+- CÂBLAGE : reconnaissance → login-42 (lotA, plus de drapeau prototype) ; accessMode.ts devient le foyer unique des 2 textes de suggestion (importés par entreeVoix — anti-login-41) ; siPasPrete cite sa clé ; ActivationScreen parle maintenant pour de vrai (accueil + réussite) ; les 6 erreurs se disent par setError→parle(error) exact
+- REGISTRE régénéré (224 clips mappés) ; référence voix-trace-source régénérée (--regenerer — la divergence ObjectifContext/LoginPassword préexistait au sync Akoun)
+- INDICES VISUELS : classe .login-cue-clignote (login.css, zéro hex) posée sur le grand bouton de reconnaissance (« Entrer » / « Utiliser mon code ») et le cadenas du code ; « C'est mon numéro » clignotait déjà (6 clignotements au montage, AnimatePresence rejoue à chaque arrivée d'étape)
+- PREUVES NAVIGATEUR : parcours complet Awa — entrée numéro (05/06), mauvais préfixe → erreur AFFICHÉE ET DITE (login-46 GET 206), effacement → login-41, confirmation → blink + login-09, code → login-19/23 + cadenas clignotant, connexion → « Bonjour Awa », reconnaissance → login-42 GET 206 + blink « Ton téléphone te reconnaît » ; login-28 parle sur le mauvais PIN
+- Gardes verts : registre-voix, auth-charte, cible-tactile, verrou-connexion, entree-unique, voix-connexion-lot-a, akwaba-voix, parole-entree, login-images-repli, voix-trace 34/34, voix-trace-source ; tsc vert
+- Push anti-course : 32da1f70 (voix) + b5830ea6 (clignotement) → origin/dev
+
+Stage Summary:
+- L'entrée est SANS SILENCE : chaque vue (numéro, reconnaissance, code, images, activation) parle à son arrivée, chaque message fixe a son clip, chaque étape montre son geste par clignotement
+- 11 phrases muettes fermées mot pour mot ; l'étape reconnaissance parle ENFIN en prod (clip prototype débloqué)
+- La transcription ASR complète des 221 clips continue en fond (rate limit) — le rapport attendu arrive dans le prochain lot
+- Preuves : .zlogs/voix-everywhere-*.png (4 captures), requêtes GET 206 des nouveaux clips dans le journal réseau
