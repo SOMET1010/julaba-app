@@ -13,6 +13,7 @@ import { tataUiClipForText } from '../../services/tataUiClips';
 import { speakClipOrText } from '../../services/audioManager';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 
@@ -56,6 +57,10 @@ export function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  // LE CHAMP FAUTIF clignote (indicateur visuel de la revue « tout encore ») :
+  // 'old' | 'new' | 'confirm' | null — la voix DIT le problème, le clignotement
+  // le MONTRE (même famille que le pavé et les boutons login-cue-clignote).
+  const [champEnErreur, setChampEnErreur] = useState<'old' | 'new' | 'confirm' | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   // Parcours à 4 chiffres (acteurs) : on saisit, puis on redit pour confirmer.
   const [etape, setEtape] = useState<'nouveau' | 'confirme'>('nouveau');
@@ -200,7 +205,21 @@ export function ChangePasswordScreen() {
           navigate(target);
         }, 2000);
       } else {
-        setError("Ça n'a pas marché comme il faut. Reprends depuis le début.");
+        // ── LA REVUE « TOUT ENCORE », 26/10 : LE VRAI CHEMIN DU MAUVAIS CODE ──
+        // Le serveur ne renvoie JAMAIS 401 ici : HTTP 200 + { success:false,
+        // message:'Ancien code incorrect' } (contrat réel, prouvé par la
+        // requête E2E). Le branchement login-65 sur res.status===401 était
+        // donc du code mort : l'échec le plus fréquent de cet écran tombait
+        // sur le message générique, faux pour quelqu'un qui ne lit pas. On
+        // mappe maintenant le message du SERVEUR sur le clip exact.
+        const messageServeur = typeof data?.message === 'string' ? data.message : '';
+        if (messageServeur.includes('ncien code incorrect')) {
+          setOldPassword(''); setNewPassword(''); setConfirm('');
+          setPin(''); setPremierPin(''); setEtape('nouveau');
+          setError(ENTREE_VOICE_CLIPS.ancienCodeIncorrect.texte);
+        } else {
+          setError("Ça n'a pas marché comme il faut. Reprends depuis le début.");
+        }
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -212,11 +231,19 @@ export function ChangePasswordScreen() {
   };
 
   // Formulaire texte (back-office) : mêmes contrôles qu'avant, un seul envoi.
+  // ── LA REVUE « TOUT ENCORE », 26/10 : CE FORMULAIRE SE DIT AUSSI ──────────
+  // Le lot 53-67 n'avait couvert que le PAVÉ à 4 chiffres ; le formulaire
+  // texte du back-office restait muet avec ses messages en registre formel
+  // (« Veuillez… ») — une autre voix que Tata, et pas de clip du tout.
+  // Les 3 textes sont maintenant EXACTEMENT ceux des clips (login-68, 70 et
+  // login-62) : la voix part par l'effet `error → direSuite(error)`, et le
+  // champ fautif clignote (`login-cue-clignote`, même famille que le pavé).
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!oldPassword.trim()) { setError('Veuillez saisir votre mot de passe actuel'); return; }
-    if (!newPassword.trim() || newPassword.length < 4) { setError('Mot de passe trop court, minimum 4 caractères.'); return; }
-    if (newPassword !== confirm) { setError('Les mots de passe ne correspondent pas'); return; }
+    if (!oldPassword.trim()) { setChampEnErreur('old'); setError(ENTREE_VOICE_CLIPS.ancienCodeManquant.texte); return; }
+    if (!newPassword.trim() || newPassword.length < 4) { setChampEnErreur('new'); setError(ENTREE_VOICE_CLIPS.motDePasseTropCourt.texte); return; }
+    if (newPassword !== confirm) { setChampEnErreur('confirm'); setError(ENTREE_VOICE_CLIPS.activationCodesDifferents.texte); return; }
+    setChampEnErreur(null);
     setError('');
     await envoyerChangement(oldPassword, newPassword);
   };
@@ -259,6 +286,16 @@ export function ChangePasswordScreen() {
   useEffect(() => {
     if (!estRoleACode) return;
     void direSuite('Entre ton code secret à 4 chiffres', 'Choisis ton nouveau code, celui que tu utiliseras tous les jours.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estRoleACode]);
+
+  // LE FORMULAIRE TEXTE S'ANNONCE AUSSI (revue « tout encore ») : les rôles
+  // non-code (back-office) arrivaient ici EN SILENCE — le seul accueil posé
+  // couvrait le pavé à 4 chiffres. Même clip que l'écran affiche en titre :
+  // « Crée ton mot de passe. Au moins 4 caractères. » (login-69).
+  useEffect(() => {
+    if (estRoleACode) return;
+    void direSuite(ENTREE_VOICE_CLIPS.motDePasseAccueil.texte);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estRoleACode]);
 
@@ -396,9 +433,9 @@ export function ChangePasswordScreen() {
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? 'change-pwd-erreur' : undefined}
               value={oldPassword}
-              onChange={e => setOldPassword(e.target.value)}
+              onChange={e => { setOldPassword(e.target.value); if (champEnErreur === 'old') setChampEnErreur(null); }}
               placeholder="Mot de passe actuel"
-              className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest"
+              className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'old' ? ' login-cue-clignote' : ''}`}
               style={{ borderColor: palette.border }}
             />
           </div>
@@ -412,9 +449,9 @@ export function ChangePasswordScreen() {
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? 'change-pwd-erreur' : undefined}
                 value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
+                onChange={e => { setNewPassword(e.target.value); if (champEnErreur === 'new') setChampEnErreur(null); }}
                 placeholder="Nouveau mot de passe (minimum 4 caractères)"
-                className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest"
+                className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'new' ? ' login-cue-clignote' : ''}`}
                 style={{ borderColor: palette.border }}
               />
               <button
@@ -439,9 +476,9 @@ export function ChangePasswordScreen() {
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? 'change-pwd-erreur' : undefined}
               value={confirm}
-              onChange={e => setConfirm(e.target.value)}
+              onChange={e => { setConfirm(e.target.value); if (champEnErreur === 'confirm') setChampEnErreur(null); }}
               placeholder="Confirmez le mot de passe"
-              className="w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest"
+              className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'confirm' ? ' login-cue-clignote' : ''}`}
               style={{ borderColor: palette.border }}
             />
           </div>

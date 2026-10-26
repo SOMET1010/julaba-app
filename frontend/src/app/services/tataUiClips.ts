@@ -314,6 +314,17 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-65.mp3", text: "Ce n'est pas ton ancien code. Regarde bien et recommence." },
   { file: "/voix/tata/login-66.mp3", text: "Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code." },
   { file: "/voix/tata/login-67.mp3", text: "La connexion ne passe pas pour le moment. Attends un peu, puis réessaie." },
+  // ── CLIPS 68-71 — LA REVUE « TOUT ENCORE », 26/10/2026 ───────────────────
+  // Le passage en revue complet (audit croisé setError/toast × catalogue) a
+  // encore trouvé 4 éventualités muettes : les 3 validations du FORMULAIRE
+  // TEXTE du changement de mot de passe (parcours back-office, le lot 53-67
+  // n'avait couvert que le pavé à 4 chiffres) et le toast « rôle non
+  // reconnu » d'EntryGate. Mêmes specs : Denise fr-FR, 24 kHz mono 96 kbps,
+  // −16 LUFS. Texte = EXACTEMENT ce que l'écran affiche et passe à la voix.
+  { file: "/voix/tata/login-68.mp3", text: "Écris ton ancien code secret d'abord." },
+  { file: "/voix/tata/login-69.mp3", text: "Crée ton mot de passe. Au moins 4 caractères." },
+  { file: "/voix/tata/login-70.mp3", text: "Ton mot de passe est trop court. Il faut au moins 4 caractères." },
+  { file: "/voix/tata/login-71.mp3", text: "On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

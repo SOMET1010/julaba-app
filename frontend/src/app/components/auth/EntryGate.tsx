@@ -12,7 +12,7 @@
  * AUCUNE redirection en cascade - Logique centralisée unique
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
@@ -24,6 +24,13 @@ import { LoginPassword } from './LoginPassword';
 import { noterLancement } from '../../utils/parcours';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
+// LA REVUE « TOUT ENCORE », 26/10 : le toast « rôle non reconnu » était MUET.
+// Même cas limite que /non-enregistre : la page peut être fraîchement chargée
+// (session en cache + rôle inconnu), donc le filet audio-unlock s'applique.
+import { speakClipOrText } from '../../services/audioManager';
+import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
+import { guidageVocal } from '../../utils/accessMode';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 
 // Clés localStorage
 const STORAGE_KEYS = {
@@ -44,6 +51,21 @@ export function EntryGate() {
       return false;
     }
   });
+
+  // ── LA VOIX DU RÔLE INCONNU (revue « tout encore », 26/10) ───────────────
+  // Le toast seul, pour quelqu'un qui ne lit pas, c'est une déconnexion sans
+  // explication. Le hook audio-unlock n'est appelable QU'AU NIVEAU DU
+  // COMPOSANT : il rejoue `direRoleInconnu` au premier geste — mais ne dit
+  // RIEN tant que `roleInconnuActifRef` est faux (aucun rôle inconnu = aucun
+  // son, jamais). Le texte affiché (toast) est le texte DU CLIP (login-71).
+  const roleInconnuActifRef = useRef(false);
+  const direRoleInconnu = useCallback(() => {
+    if (!roleInconnuActifRef.current || !guidageVocal()) return;
+    const annonce = ENTREE_VOICE_CLIPS.roleNonReconnu;
+    void speakClipOrText({ clipUrl: annonce.file, text: annonce.texte })
+      .catch(() => { /* la voix n'est jamais bloquante */ });
+  }, []);
+  useAudioUnlockFallback(direRoleInconnu);
   
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean>(() => {
     try {
@@ -91,9 +113,15 @@ export function EntryGate() {
     const userRole = typeof user.role === 'string' ? user.role : '';
 
     // Cas rôle inconnu : logout forcé + toast (anti état zombie post-auth)
+    // ── CETTE ÉVENTUALITÉ SE DIT (revue « tout encore », 26/10) ───────────
+    // Toast + clip login-71 (mot pour mot) + filet audio-unlock : la page
+    // peut être fraîchement chargée ici (session en cache + rôle inconnu).
     if (!isKnownRole(userRole)) {
       warnDev('[EntryGate] unknown role detected:', userRole);
-      toast.error('Rôle utilisateur non reconnu. Reconnexion requise.');
+      const annonce = ENTREE_VOICE_CLIPS.roleNonReconnu;
+      toast.error(annonce.texte);
+      roleInconnuActifRef.current = true;
+      direRoleInconnu();
       // Tentative logout via event global (BackOffice/AppContext écoutent)
       window.dispatchEvent(new CustomEvent('julaba:force-logout'));
       // Fallback navigation immédiate vers login
