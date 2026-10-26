@@ -279,6 +279,21 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   // AUTH_41 — décision Patrick 20/10 : chaque effacement du numéro nomme le
   // geste (clip TTS du 20/10, atteste:false — voix de travail).
   { file: "/voix/tata/login-41.mp3", text: "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !" },
+  // AUTH — voix sur chaque vue (décision Patrick 26/10 : « on a affaire à des
+  // personnes qui ne savent pas forcément lire/écrire »). Clips 42-51 : les
+  // derniers silences de l'entrée, fermés mot pour mot (audit-voix du 26/10).
+  // Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS — mêmes specs que le lot A.
+  { file: "/voix/tata/login-42.mp3", text: "Touche le grand bouton. Ton téléphone va te reconnaître." },
+  { file: "/voix/tata/login-43.mp3", text: "J'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s'adapte ?" },
+  { file: "/voix/tata/login-44.mp3", text: "J'ai remarqué que tu préfères me parler. Veux-tu que Julaba s'adapte ?" },
+  { file: "/voix/tata/login-45.mp3", text: "Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro." },
+  { file: "/voix/tata/login-46.mp3", text: "Ce numéro-là ne commence pas comme un numéro d'ici. Regarde bien le début." },
+  { file: "/voix/tata/login-47.mp3", text: "Ça n'a pas bien répondu. Attends un petit moment, puis reprends." },
+  { file: "/voix/tata/login-48.mp3", text: "Ça n'a pas marché comme il faut. Reprends depuis le début." },
+  { file: "/voix/tata/login-49.mp3", text: "Mot de passe temporaire, redirection en cours..." },
+  { file: "/voix/tata/login-50.mp3", text: "Accès non autorisé. Utilise le portail administrateur sur julaba.online/backoffice/login" },
+  { file: "/voix/tata/login-51.mp3", text: "Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître." },
+  { file: "/voix/tata/login-52.mp3", text: "Compte activé ! Tu peux maintenant te connecter avec ton code." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },
