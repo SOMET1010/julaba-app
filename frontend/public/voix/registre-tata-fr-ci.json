@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 257,
-    "clips_mappes": 249,
+    "fichiers_mp3": 261,
+    "clips_mappes": 253,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -3103,6 +3103,58 @@
       "sha256": "4148bea19b583389f910a99e90207966c0c6ca6fe6d57daa98c1421aaeb39493",
       "octets": 62540,
       "duree_ms": 5184
+    },
+    {
+      "id": "login-78",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "C'est bien ton numéro ? Dis oui, ou appuie sur le bouton qui clignote.",
+      "fichier": "/voix/tata/login-78.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "0603e2c338960df65abd6cbdb6ff1a448628f661c5d0f51925a29d26031fc105",
+      "octets": 75788,
+      "duree_ms": 6288
+    },
+    {
+      "id": "login-79",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "D'accord, je vérifie ton numéro.",
+      "fichier": "/voix/tata/login-79.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "a7d99b64f9d14f2a83b5683ddbc7d1ff329819a3ff44f7e064e9291ccd9e48ee",
+      "octets": 42668,
+      "duree_ms": 3528
+    },
+    {
+      "id": "login-80",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "D'accord, dis ton numéro encore.",
+      "fichier": "/voix/tata/login-80.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "60ea03fa7d5d83d5d46ee6df8efa3ca262db8f80ba03ba8baabdb85181e04f5e",
+      "octets": 42668,
+      "duree_ms": 3528
+    },
+    {
+      "id": "login-81",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Voilà les chiffres. Tape ton numéro ici.",
+      "fichier": "/voix/tata/login-81.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "ed32e520cd3f783408e200610651d08c7c85df5b1d086ead1957819339b6a08e",
+      "octets": 57068,
+      "duree_ms": 4728
     },
     {
       "id": "stk-02",

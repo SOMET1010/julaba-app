@@ -107,6 +107,12 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // AUTH-10 — le ROUAGE de dictée vit dans son hook ; l'écran garde la POLITIQUE
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
+// LA CONFIRMATION DU NUMÉRO DEVIENT PARLABLE (audit 26/10) : après le rappel,
+// l'écran écoute « oui » / « c'est mon numéro » / « recommencer » / « les
+// chiffres ». Le rouage (micro, moteurs, anti-écho) vit dans son hook ; la
+// grammaire déclarée vit dans voice-offline/commandesEntree (testée).
+import { useCommandesVocales } from '../../hooks/useCommandesVocales';
+import type { CommandeNumero } from '../../voice-offline/commandesEntree';
 import { BoutonCodeAgent } from './BoutonCodeAgent';
 // Maquette du 12/10 — le testeur saute d'un univers à l'autre depuis la
 // connexion : bouton `<>` haut-droite + menu rôles (DEV uniquement,
@@ -217,6 +223,22 @@ export function LoginPassword() {
   // AUTH-10 — isListening / isFinalizingDictation et toute la mécanique de
   // dictée EN DIRECT vivent dans useDicteeLive ; l'écran consomme la surface.
   const { isListening, isFinalizingDictation, demarrerDictee } = useDicteeLive();
+  // ── LA CONFIRMATION DEVIENT PARLABLE — audit Patrick, 26/10 ───────────────
+  // « La confirmation demande encore de toucher "C'est mon numéro" » et
+  // « il n'existe pas encore de reconnaissance de commandes vocales ». Le
+  // rouage d'écoute (moteurs web/APK, garde anti-écho, fenêtre) vit dans
+  // useCommandesVocales ; l'écran garde la politique : QUAND écouter (le
+  // rappel de confirmation), QUOI faire des trois commandes reconnues.
+  // B5 intouché : à l'étape du code, JAMAIS d'écoute — un secret ne se dit pas.
+  const { demarrer: demarrerCommandes, arreter: arreterCommandes } = useCommandesVocales();
+  // Miroirs REF des états que les suites ASYNCHRONES (après la fin du clip de
+  // rappel) doivent relire au moment T, pas à celui de leur closure.
+  const stepRef = useRef(step);
+  useEffect(() => { stepRef.current = step; }, [step]);
+  const isListeningRef = useRef(isListening);
+  useEffect(() => { isListeningRef.current = isListening; }, [isListening]);
+  const isFinalizingRef = useRef(isFinalizingDictation);
+  useEffect(() => { isFinalizingRef.current = isFinalizingDictation; }, [isFinalizingDictation]);
   // Mode d'accès EFFECTIF (résout 'auto' via l'usage observé) : l'écran S'ADAPTE
   // (lecture = clavier direct, mixte = les deux, voix = micro au centre).
   const accessMode: EffectiveMode = getEffectiveMode();
@@ -304,6 +326,14 @@ export function LoginPassword() {
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmationNumeroTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmationNumeroClignote, setConfirmationNumeroClignote] = useState(false);
+  // RÉVISION DU RAPPEL — trou trouvé en E2E (26/10) : une redictée du MÊME
+  // numéro ne change pas `phone` — l'effet de rappel ([phone, step]) ne
+  // re-tournait JAMAIS : plus de question, plus d'écoute — celle qui a dit
+  // « recommencer » puis a redicté JUSTE restait sans question, avec un
+  // bouton qui ne clignote déjà plus. Chaque dictée RÉUSSIE incrémente ce
+  // compteur : le rappel (et l'écoute qui le suit) se ré-arme, valeur
+  // identique ou pas.
+  const [rappelRevision, marquerRappelRevision] = useState(0);
   // Empêche une double séquence quand React rejoue les effets au montage
   // (développement) ou quand l'écran est réévalué sans quitter l'étape téléphone.
   const accueilNumeroVoixLanceRef = useRef(false);
@@ -324,10 +354,13 @@ export function LoginPassword() {
   // `AppContext.speak` — légitime ici (personne n'est connecté), mais aucune
   // règle ne disait qui avait le droit de le faire. La permission se demande.
   const parle = (texte: string) => {
-    if (!texte) return;
+    if (!texte) return Promise.resolve(false);
     // `direEntreeTexte` reste le CANAL — clip exact, aucune voix étrangère en
     // repli. La primitive décide seulement si la porte s'ouvre.
-    void parlerAvantConnexion('connexion', texte, direEntreeTexte);
+    // La promesse est RETOURNÉE (sans changer ce qui est dit) : le rappel de
+    // confirmation doit savoir QUAND Tantie se tait pour ouvrir le micro
+    // après elle — jamais pendant (MIC-01).
+    return parlerAvantConnexion('connexion', texte, direEntreeTexte);
   };
   // Enchaîne PLUSIEURS prises de parole sans qu'elles se coupent. audioManager
   // ne sert qu'un créneau exclusif à la fois et toute nouvelle demande annule
@@ -484,6 +517,10 @@ export function LoginPassword() {
   }, []);
 
   const scheduleTransitionToPasswordAfterCheck = (confirmedPhone: string) => {
+    // Une écoute de commandes en cours est OBSOLÈTE ici : on va quitter
+    // l'étape (ou l'écran vient de confirmer par la voix — déjà rendu par le
+    // hook). Le micro est rendu avant toute vérification.
+    arreterCommandes();
     if (isLoading || isListening || isFinalizingDictation || !numeroCIComplet(confirmedPhone, TEST_PHONES)) return;
     setIsLoading(true);
     if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
@@ -629,6 +666,10 @@ export function LoginPassword() {
         // + haptique). La phrase « J'ai compris. 0 7 … » n'avait aucun clip :
         // elle promettait une voix et se taisait.
         relireNumero(num);
+        // Le rappel se RÉ-ARME après toute dictée réussie (rappelRevision) :
+        // même numéro redicté ou pas, la question « c'est bien ton numéro ? »
+        // doit revenir — et l'écoute de la réponse avec elle.
+        marquerRappelRevision((v) => v + 1);
         return;
       }
       try { vibrerErreur(); } catch { /* ignore */ }
@@ -736,6 +777,37 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // ── LES TROIS COMMANDES DE LA CONFIRMATION — audit Patrick, 26/10 ─────────
+  // « oui » / « c'est mon numéro » → vaut le bouton « C'est mon numéro » ;
+  // « recommencer » → la dictée repart ; « les chiffres » → le pavé s'ouvre.
+  // Le bouton clignotant reste le filet : la voix S'AJOUTE, elle ne remplace
+  // rien. Le micro est DÉJÀ rendu quand cette fonction tourne (le hook
+  // arrête l'écoute avant de prévenir) — la suite peut redicter ou reparler.
+  const gererCommandeNumero = (commande: CommandeNumero) => {
+    if (stepRef.current !== 'phone') return;
+    if (commande === 'confirmer') {
+      // L'acquittement d'abord (login-79) : un silence après son « oui »
+      // ressemblerait à un échec. Puis la vérification, comme après un toucher.
+      setConfirmationNumeroClignote(false);
+      parle(ENTREE_VOICE_CLIPS.confirmationVoixRecue.texte);
+      scheduleTransitionToPasswordAfterCheck(phoneRef.current);
+      return;
+    }
+    if (commande === 'redire') {
+      // Acquittement (login-80) ATTENDU, PUIS redictée : la dictée coupe
+      // toutes les voix à son ouverture — sans l'await, la consigne mangera
+      // l'acquittement (leçon des chaînes de voix du 26/10).
+      void (async () => {
+        try { await parle(ENTREE_VOICE_CLIPS.confirmationVoixRefus.texte); } catch { /* la voix a échoué */ }
+        if (stepRef.current === 'phone') dicterNumero();
+      })();
+      return;
+    }
+    // 'clavier' — le pavé nommé par la voix (« utiliser les chiffres »).
+    setShowKeypad(true);
+    parle(ENTREE_VOICE_CLIPS.clavierSurCommande.texte);
+  };
+
   // Après les 10 chiffres, laisser le temps à la main de se poser puis rappeler
   // le geste de confirmation. Le minuteur est réarmé à chaque modification du
   // numéro et annulé dès qu'on quitte l'étape téléphone.
@@ -744,6 +816,9 @@ export function LoginPassword() {
       clearTimeout(confirmationNumeroTimeoutRef.current);
       confirmationNumeroTimeoutRef.current = null;
     }
+    // Une écoute de commandes appartient à UNE version du numéro : tout
+    // changement (chiffre ajouté, effacé, étape quittée) la rend fausse.
+    arreterCommandes();
     setConfirmationNumeroClignote(false);
     if (step !== 'phone' || phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES)) return;
 
@@ -752,9 +827,34 @@ export function LoginPassword() {
       // si la chaîne d'accueil enseigne encore (arrivée sur l'écran, numéro
       // déjà là — cas « Modifier »), on REPORTE le rappel au lieu de couper
       // la voix en plein mot. On re-tente toutes les 1,5 s jusqu'au silence.
+      // ── LE CLIP CHOISIT LE PARCOURS — audit Patrick, 26/10 ──────────────
+      // Quand la voix écoute réellement (guidage vocal, micro disponible, pas
+      // de question d'adaptation en suspens), le rappel devient login-78 : il
+      // nomme les DEUX gestes (« dis oui », ou le bouton qui clignote) et
+      // l'écran écoute la réponse. Sinon, login-09 historique : le bouton
+      // reste la seule porte — l'écran ne fait pas semblant d'écouter.
+      const ecoutePossible = guidageVocal(accessMode) && voixEcouteDispo
+        && !(suggestion && !suggReponseRef.current);
+      const clipRappel = ecoutePossible
+        ? ENTREE_VOICE_CLIPS.numeroConfirmationVoix
+        : ENTREE_VOICE_CLIPS.numeroConfirmation;
       const rappeler = () => {
         setConfirmationNumeroClignote(true);
-        void parle(ENTREE_VOICE_CLIPS.numeroConfirmation.texte);
+        void (async () => {
+          try { await parle(clipRappel.texte); } catch { /* la voix a échoué */ }
+          // LE MICRO S'OUVRE QUAND TANTIE SE TAIT (MIC-01) : jamais pendant le
+          // clip — son propre « dis oui » revenu par la pièce se serait fait
+          // passer pour une réponse. Le mot déclencheur est dit au MILIEU du
+          // clip ; à la fin du clip, son écho a déjà décru. La garde du hook
+          // ignore EN PLUS les 600 premières ms de l'écoute (queue en vol).
+          if (!ecoutePossible || stepRef.current !== 'phone') return;
+          if (phoneRef.current.length !== 10 || !numeroCIComplet(phoneRef.current, TEST_PHONES)) return;
+          if (isListeningRef.current || isFinalizingRef.current) return;
+          await new Promise((r) => setTimeout(r, 400));
+          if (stepRef.current !== 'phone') return;
+          if (isListeningRef.current || isFinalizingRef.current) return;
+          demarrerCommandes({ surCommande: gererCommandeNumero });
+        })();
       };
       const tenter = () => {
         if (accueilNumeroEnCoursRef.current) {
@@ -771,10 +871,12 @@ export function LoginPassword() {
         clearTimeout(confirmationNumeroTimeoutRef.current);
         confirmationNumeroTimeoutRef.current = null;
       }
+      // Le démontage de CETTE version du numéro ferme aussi l'écoute.
+      arreterCommandes();
     };
     // `parle` et les constantes vocales sont stables pour cette intention.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone, step]);
+  }, [phone, step, rappelRevision]);
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -785,6 +887,8 @@ export function LoginPassword() {
       if (focusPinTimeoutRef.current) clearTimeout(focusPinTimeoutRef.current);
       // AUTH-04 — un balayage de relecture en cours ne survit pas à l'écran.
       annulerRelecture();
+      // L'écoute de commandes non plus : micro rendu au démontage.
+      arreterCommandes();
       // (La dictée EN DIRECT se coupe elle-même : useDicteeLive nettoie son
       // micro, son moteur et ses minuteurs à son propre démontage — AUTH-10.)
       if (phoneToPasswordTimeout.current) {
@@ -1204,6 +1308,9 @@ export function LoginPassword() {
   const handleKeyDelete = () => {
     if (isLoading || isFinalizingDictation || (step === 'phone' && isListening)) return;
     annulerRelecture(); // AUTH-04 — elle agit : le balayage s'efface
+    // Elle corrige le numéro : l'écoute de confirmation qui attendait est
+    // obsolète (elle sera réouverte par le rappel, sur le nouveau numéro).
+    arreterCommandes();
     if (step === 'phone') {
       if (phoneToPasswordTimeout.current) clearTimeout(phoneToPasswordTimeout.current);
       const next = phone.slice(0, -1);
@@ -1513,7 +1620,7 @@ export function LoginPassword() {
               type="button"
               aria-label={numeroSaisi ? 'Recommencer et redire votre numéro' : 'Touchez et dites votre numéro'}
               onPointerDown={(e) => e.preventDefault()}
-              onClick={dicterNumero}
+              onClick={() => { arreterCommandes(); dicterNumero(); }}
               className="login-dictate"
               aria-pressed={isListening}
               disabled={isLoading || isFinalizingDictation}

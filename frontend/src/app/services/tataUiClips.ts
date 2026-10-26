@@ -342,6 +342,18 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-75.mp3", text: "Trop de tentatives incorrectes. Réessaie dans 1 heure." },
   { file: "/voix/tata/login-76.mp3", text: "Vérifie ton numéro : touche le micro pour redire, ou corrige." },
   { file: "/voix/tata/login-77.mp3", text: "Il manque des chiffres : touche le micro pour redire, ou complète." },
+  // ── CLIPS 78-81 — LA CONFIRMATION DEVIENT PARLABLE, 26/10/2026 ───────────
+  // Audit Patrick : la confirmation du numéro exigeait un toucher, et aucune
+  // commande vocale n'existait (« oui », « c'est mon numéro », « utiliser
+  // les chiffres »). Après login-78, l'écran écoute (hooks/useCommandesVocales)
+  // — « oui » vaut le bouton, « recommencer » redicte, « les chiffres » ouvre
+  // le pavé. 79/80 : l'acquittement (un silence après « oui » ressemblerait à
+  // un échec). Texte = EXACTEMENT ce que l'écran affiche et fait entendre.
+  // Mêmes specs : Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS.
+  { file: "/voix/tata/login-78.mp3", text: "C'est bien ton numéro ? Dis oui, ou appuie sur le bouton qui clignote." },
+  { file: "/voix/tata/login-79.mp3", text: "D'accord, je vérifie ton numéro." },
+  { file: "/voix/tata/login-80.mp3", text: "D'accord, dis ton numéro encore." },
+  { file: "/voix/tata/login-81.mp3", text: "Voilà les chiffres. Tape ton numéro ici." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

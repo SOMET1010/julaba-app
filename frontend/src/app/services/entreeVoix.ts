@@ -94,7 +94,20 @@ export type EntreeVoiceKey =
   | 'ancienCodeManquant'
   | 'motDePasseAccueil'
   | 'motDePasseTropCourt'
-  | 'roleNonReconnu';
+  | 'roleNonReconnu'
+  // ── CLIPS 78-81 — LA CONFIRMATION DEVIENT PARLABLE, 26/10/2026 ────────────
+  // Audit Patrick : « après la dictée du numéro, la confirmation demande
+  // encore de toucher "C'est mon numéro" » et « il n'existe pas encore de
+  // reconnaissance de commandes vocales comme "oui", "c'est mon numéro" ou
+  // "utiliser les chiffres" ». 78 : le rappel quand l'écran ÉCOUTE la
+  // réponse (hooks/useCommandesVocales) — il nomme les DEUX gestes (dire
+  // oui OU toucher). 79/80 : l'acquittement — Tantie confirme qu'elle a
+  // compris avant d'agir, sinon un silence après « oui » ressemble à un
+  // échec. 81 : le pavé nommé par la voix (commande « les chiffres »).
+  | 'numeroConfirmationVoix'
+  | 'confirmationVoixRecue'
+  | 'confirmationVoixRefus'
+  | 'clavierSurCommande';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -774,6 +787,42 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   roleNonReconnu: {
     file: '/voix/tata/login-71.mp3',
     texte: 'On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── CLIPS 78-81 — LA CONFIRMATION DU NUMÉRO DEVIENT PARLABLE ────────────
+  // Audit Patrick, 26/10 : la confirmation exigeait un TOUCHER sur « C'est
+  // mon numéro » et « il n'existe pas encore de reconnaissance de commandes
+  // vocales ». Après le rappel ci-dessous, l'écran ÉCOUTE
+  // (hooks/useCommandesVocales) :
+  // « oui » / « c'est mon numéro » vaut le bouton, « recommencer » redicte,
+  // « les chiffres » ouvre le pavé. LE TEXTE DU RAPPEL NOMME LES DEUX GESTES
+  // et le mot déclencheur (« dis oui ») est dit au MILIEU du clip, pas à la
+  // fin : le micro s'ouvrant après la fin du clip, l'écho du déclencheur a
+  // déjà décru quand l'écoute commence (MIC-01). Mêmes specs lot A : Denise
+  // fr-FR, 24 kHz mono 96 kbps, −16 LUFS.
+  numeroConfirmationVoix: {
+    file: '/voix/tata/login-78.mp3',
+    texte: "C'est bien ton numéro ? Dis oui, ou appuie sur le bouton qui clignote.",
+    atteste: false,
+    lotA: true,
+  },
+  confirmationVoixRecue: {
+    file: '/voix/tata/login-79.mp3',
+    texte: "D'accord, je vérifie ton numéro.",
+    atteste: false,
+    lotA: true,
+  },
+  confirmationVoixRefus: {
+    file: '/voix/tata/login-80.mp3',
+    texte: "D'accord, dis ton numéro encore.",
+    atteste: false,
+    lotA: true,
+  },
+  clavierSurCommande: {
+    file: '/voix/tata/login-81.mp3',
+    texte: 'Voilà les chiffres. Tape ton numéro ici.',
     atteste: false,
     lotA: true,
   },
