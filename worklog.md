@@ -1286,3 +1286,26 @@ Stage Summary:
 - Golden path marchande prouvé de bout en bout par navigateur, pas déclaré
 - node_modules désormais DANS le worktree (plus de symlink vers le dépôt principal) — les flips main ne cassent plus l'installation
 - origin/dev inchangé au moment du lot (aucun nouveau push d'Akoun-dev) ; aucun commit code ce lot — lot d'exploitation, worklog seul poussé
+
+---
+Task ID: sync-dev-9a584805-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « récupère le dernier push en force de la branche dev, c'est là qu'on travaille » — sync forcé + restauration du fix voix écrasé
+
+Work Log:
+- git fetch : Akoun-dev a FORCE-PUSHÉ dev → 9a584805 (feat auth: séquencer l'accueil vocal et les images de connexion), écrasant nos 2 commits locaux (b30a8173 fix voix + 2020807c worklog)
+- git reset --hard origin/dev dans .wt-dev (autorisation permanente de Patrick) : worktree à l'identique du push Akoun
+- Constat critique : 9a584805 est basé sur 1eca3f74, AVANT notre fix — le reset a restauré l'ANCIEN login-41.mp3 (47 276 octets)
+- Preuve ASR des 2 blobs : clip actuel = « H, Tuesday as N train the facer Li Nu E N Hein Hain » (ANGLAIS, le bug exact de Patrick) ; clip écrasé b30a8173 = « En même temps [Mmmh…], tu es en train d'effacer le numéro, un ? Hein ! » (FRANÇAIS)
+- git cherry-pick b30a8173 → d0c175e6 sans conflit (login-41.mp3 64 844 octets + registre régénéré + commentaire entreeVoix.ts) ; auto-merge propre avec le nouveau entreeVoix.ts d'Akoun
+- Gardes : registre-voix (213 clips), voix-trace 34/34, voix-connexion-lot-a, auth-charte, cible-tactile, login-images-repli (nouveau test Akoun), verrou-connexion, entree-unique, parole-entree, akwaba-voix — TOUS VERTS
+- Push anti-course (rev-list count = 0) : origin/dev = d0c175e6
+- Navigateur : parcours frais → Modifier → Taper mon numéro sur le clavier → « Numéro saisi » 0700000009 → clic « Effacer le dernier chiffre » → affichage 070000000 (le chiffre part) + GET /voix/tata/login-41.mp3 (206) sur CETTE action exacte
+- Étape CODE vérifiée aussi : effacement joue login-24.mp3 (AUTH_24 « C'est effacé net. ») — règle lot A intacte
+- Logs vite/backend propres (HMR du sync + du fix, cron BPAY normal, 0 erreur)
+
+Stage Summary:
+- dev = origin/dev = d0c175e6 : le sync Akoun (séquençage accueil vocal + mode images + test repli) EST le socle, et le clip d'effacement français EST restauré dessus
+- Le bug Patrick « l'effacement ne parle pas français » est de nouveau fermé sur la branche officielle — la force-push d'Akoun l'avait involontairement réouvert (ancien clip anglais revenu)
+- La preview (:3000/:3001/PG) tourne sur ce code sans redémarrage (node_modules dans le worktree, HMR a tout absorbé)
+- Preuves : /home/z/my-project/.zlogs/sync-dev-effacement-francais-ok.png, /tmp/asr-actuel.json (anglais), /tmp/asr-fix.json (français)
