@@ -276,9 +276,10 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-35.mp3", text: "D'accord, c'est calé comme ça." },
   { file: "/voix/tata/login-36.mp3", text: "D'accord, on continue comme d'habitude." },
   { file: "/voix/tata/login-37.mp3", text: "Voilà, ma fille. Allons-y !" },
-  // AUTH_41 — décision Patrick 20/10 : chaque effacement du numéro nomme le
-  // geste (clip TTS du 20/10, atteste:false — voix de travail).
-  { file: "/voix/tata/login-41.mp3", text: "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !" },
+  // AUTH_41 — décision Patrick 20/10, phrase exacte confirmée le 26/10 :
+  // chaque effacement du numéro nomme le geste (clip TTS du 26/10,
+  // atteste:false — voix de travail).
+  { file: "/voix/tata/login-41.mp3", text: "Tu es en train d'effacer le numéro !" },
   // AUTH — voix sur chaque vue (décision Patrick 26/10 : « on a affaire à des
   // personnes qui ne savent pas forcément lire/écrire »). Clips 42-51 : les
   // derniers silences de l'entrée, fermés mot pour mot (audit-voix du 26/10).

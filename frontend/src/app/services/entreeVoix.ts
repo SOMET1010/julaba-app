@@ -287,28 +287,21 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
 
   // ── EFFACER UN CHIFFRE DU NUMÉRO — AUTH_41, DÉCISION PATRICK 20/10 ───────
   //
-  // Patrick : « faut qu'il le prononce pour chaque suppression ». À chaque
-  // effacement d'un chiffre du numéro, l'écran NOMME le geste, surprise
-  // ivoirienne comprise. La règle du lot A (« un effacement ne nomme pas le
-  // numéro ») est détendue ICI SEULEMENT par cette décision datée —
-  // l'effacement du CODE garde `effacement` (AUTH_24), qui ne nomme rien.
+  // Patrick : « faut qu'il le prononce pour chaque suppression » (20/10),
+  // puis : la phrase exacte est « Tu es en train d'effacer le numéro ! »
+  // (26/10). À chaque effacement d'un chiffre du numéro, l'écran NOMME le
+  // geste. La règle du lot A (« un effacement ne nomme pas le numéro ») est
+  // détendue ICI SEULEMENT par cette décision datée — l'effacement du CODE
+  // garde `effacement` (AUTH_24), qui ne nomme rien.
   //
-  // Clip RÉGÉNÉRÉ le 26/10 : celui du 20/10 (`dd3f9f9d`) parlait ANGLAIS —
-  // découvert par transcription automatique (ASR) du fichier : on y entendait
-  // « H, Tuesday S N train the face Linu E N Hein Hain », et Patrick l'a
-  // signalé (« lorsque j'efface un numéro sur la vue auth, il ne parle pas
-  // français »). Cause : les interjections (« Mmmh… », « un ? », « Hein ! »)
-  // font dériver les moteurs de synthèse hors du français — le générateur du
-  // 20/10 a livré sans écouter. Nouveau clip : voix neurale fr-FR
-  // (Denise), « Mmmh » tenu ~1 s assemblé par montage, normalisé −16 LUFS,
-  // 24 kHz mono 96 kbps — MÊMES specs que les clips sains du lot A.
-  // Contrôle ASR du produit fini : « …tu es en train d'effacer le numéro,
-  // un ? Hein ! » — du français. `atteste: false` TOUJOURS : l'ASR prouve la
-  // langue, pas la justesse d'une oreille ivoirienne ; une locutrice pourra
-  // la refaire au studio. Dioula à enregistrer (règle lot B).
+  // Clip RÉGÉNÉRÉ le 26/10 : voix neurale fr-FR (Denise), phrase sans
+  // interjection, normalisée −16 LUFS, 24 kHz mono 96 kbps — MÊMES specs
+  // que les clips sains du lot A. `atteste: false` TOUJOURS : la synthèse
+  // n'est pas une oreille ivoirienne ; une locutrice pourra la refaire au
+  // studio. Dioula à enregistrer (règle lot B).
   effacementNumero: {
     file: '/voix/tata/login-41.mp3',
-    texte: 'Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !',
+    texte: 'Tu es en train d\'effacer le numéro !',
     atteste: false,
     lotA: true,
   },

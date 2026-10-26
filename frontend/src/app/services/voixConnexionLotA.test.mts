@@ -110,14 +110,14 @@ console.log('\n[5] effacer : le CODE ne nomme rien, le NUMÉRO se nomme (décisi
   ok(!/[0-9]/.test(t) && !/chiffre|numero|code/.test(t),
      'AUTH_24 (effacement du code) ne nomme ni chiffre, ni numéro, ni code',
      `texte : « ${ENTREE_VOICE_CLIPS.effacement.texte} »`);
-  const attends = 'Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !';
+  const attends = 'Tu es en train d\'effacer le numéro !';
   ok(norm(ENTREE_VOICE_CLIPS.effacementNumero.texte) === norm(attends),
      'AUTH_41 : l\'effacement du numéro dit EXACTEMENT la décision du 20/10',
      `obtenu : « ${ENTREE_VOICE_CLIPS.effacementNumero.texte} »`);
   ok(!/[0-9]/.test(ENTREE_VOICE_CLIPS.effacementNumero.texte),
      'AUTH_41 n\'écrit AUCUN chiffre : ce qui a été tapé reste secret');
   const zone = ecran.slice(ecran.indexOf("rendreALaMain('numero', 'effacement')"));
-  ok(zone.includes("parle('Mmmh…"),
+  ok(zone.includes("parle('Tu es en train d\\'effacer le numéro !')"),
      'l\'écran parle le clip à CHAQUE effacement du numéro (le parle vit dans le geste)',
      'un mot d\'écart et direEntreeTexte ne trouve plus la clé');
 }
