@@ -7,6 +7,13 @@ export type EntreeVoiceKey =
   | 'numeroAccueil'
   | 'numeroMicroAccueil'
   | 'numeroChiffresAccueil'
+  | 'numeroConfirmation'
+  | 'dicteeNumeroIncomprise'
+  | 'dicteeNumeroClavier'
+  | 'codeAccueil'
+  | 'codeDiscretionAccueil'
+  | 'pinImagesAccueil'
+  | 'pinImagesEchec'
   | 'code'
   | 'codeErreur'
   | 'connexionIndisponible'
@@ -98,6 +105,36 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
     atteste: false,
     lotA: true,
   },
+  numeroConfirmation: {
+    file: '/voix/tata/login-09.mp3',
+    texte: "C'est bien ton numéro, non ? Appuie ici pour avancer.",
+    atteste: false,
+    lotA: true,
+  },
+  dicteeNumeroIncomprise: {
+    file: '/voix/tata/login-13.mp3',
+    texte: "Je n'ai pas bien entendu, deh. Redis-moi ça doucement.",
+    atteste: false,
+    lotA: true,
+  },
+  dicteeNumeroClavier: {
+    file: '/voix/tata/login-14.mp3',
+    texte: 'Si tu veux, tape ton numéro directement ici.',
+    atteste: false,
+    lotA: true,
+  },
+  codeAccueil: {
+    file: '/voix/tata/login-19.mp3',
+    texte: 'Bon, mets les quatre chiffres de ton code secret.',
+    atteste: false,
+    lotA: true,
+  },
+  codeDiscretionAccueil: {
+    file: '/voix/tata/login-23.mp3',
+    texte: "Ton code là, c'est pour toi seule. Faut jamais montrer ou dire ça à quelqu'un.",
+    atteste: false,
+    lotA: true,
+  },
   numero: {
     file: `${BASE}/tata-entree-numero.mp3`,
     texte: 'Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.',
@@ -150,6 +187,18 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   pinImages: {
     file: '/voix/tata/login-21.mp3',
     texte: 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.',
+    atteste: false,
+    lotA: true,
+  },
+  pinImagesAccueil: {
+    file: '/voix/tata/login-20.mp3',
+    texte: 'Appuie sur tes quatre photos, une à une, comme tu avais choisi là.',
+    atteste: false,
+    lotA: true,
+  },
+  pinImagesEchec: {
+    file: '/voix/tata/login-27.mp3',
+    texte: "Ce n'est pas toi ? Y'a pas problème, appuie ici pour taper ton numéro.",
     atteste: false,
     lotA: true,
   },
