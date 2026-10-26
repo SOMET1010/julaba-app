@@ -1333,3 +1333,26 @@ Stage Summary:
 - 11 phrases muettes fermées mot pour mot ; l'étape reconnaissance parle ENFIN en prod (clip prototype débloqué)
 - La transcription ASR complète des 221 clips continue en fond (rate limit) — le rapport attendu arrive dans le prochain lot
 - Preuves : .zlogs/voix-everywhere-*.png (4 captures), requêtes GET 206 des nouveaux clips dans le journal réseau
+
+---
+Task ID: voix-eventualites-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Il y a des voix qui manquent au niveau du système d'authentification. Par exemple, quand il y a une erreur de numéro, on doit avoir également un clip. (…) je veux aussi que tu génères des clips pour toutes les éventualités qu'on a au niveau du système d'authentification. Et ajouter des indicateurs aussi »
+
+Work Log:
+- Garde anti-course OK (0 nouveau commit Akoun au départ du lot)
+- AUDIT PAR SCRIPT (audit croisé setError()/parle() × registre 224 clips × entreeVoix) : 15 éventualités muettes trouvées — /non-enregistre ZÉRO voix (le défaut exact cité par Patrick), les 4 états du compte du login (suspendu/rejeté/attente/pas activé) tombaient dans le message générique du mauvais code (FAUX message + FAUX clip), 5 éventualités d'activation muettes, ChangePasswordScreen AUCUN effet sur error/success (échecs ET réussite silencieux)
+- GÉNÉRATION : 15 clips login-53..67 via edge-tts fr-FR-DeniseNeural, débit −10 %, 24 kHz mono 96 kbps, −16 LUFS (mêmes specs lot A) ; specs prouvées par ffprobe ; preuve ASR en attente (quota 429 pendant tout le lot) — textes figés dans le registre
+- RÈGLE DU LOT : le texte AFFICHÉ est le texte DU CLIP, mot pour mot — l'effet `error → parle(error)` fait entendre sans nouvel appel de parole (même fil que AUTH-03)
+- CÂBLAGE : LoginPassword intercepte result.message (états du compte → login-55..58) ; UnregisteredPhone parle accueil+geste (53/54, filet audio-unlock, Retour clignote) ; ActivationScreen : le serveur + 4 validations disent par clips (59-63), bouton clignote ; ChangePasswordScreen : effets error/success (65/30/48/67/64), pavé clignote, textes alignés sur les clips
+- REGISTRE régénéré : 239 clips mappés, 8 orphelins inchangés
+- lien-activation trouvé ROUGE sur la base PROPRE 30b8623b (prouvé par git stash) : le refacto Akoun 9a584805 avait retiré l'enchaînement attenteCodeAgent sans mettre à jour le garde → garde aligné sur le contrat actuel (la voix de l'activation vit sur /activation)
+- voix-trace-source : référence régénérée (1 ligne, l'empreinte du catalogue — zéro appel de parole changé)
+- Gardes verts : registre-voix, auth-charte, cible-tactile, verrou-connexion, voix-trace 34/34, voix-trace-source, voix-connexion-lot-a, akwaba-voix, parole-entree, entree-numero-voix, login-images-repli, entree-unique, clips-embarques, audio-unlock, lien-activation ; tsc 0 ; eslint 0
+- Push anti-course : origin/dev = 81165cde
+
+Stage Summary:
+- TOUTES les éventualités du système d'authentification se disent : numéro non enregistré (accueil + geste), états du compte (4), activation (5), changement de code (échecs + réussite) — plus aucun 401 qui mente (« le code n'est pas bon » à un compte suspendu), plus aucun écran muet
+- Chaque erreur arrive AVEC son indicateur : clignotement du geste à faire (Retour, Activer, pavé) — la famille login-cue-clignote couvre désormais 4 écrans
+- 15 clips = lot le plus large depuis le lot A ; l'écart de langage affiché/dit est fermé par construction (texte = clip)
+- Reste OUVERT : preuve ASR des 15 clips (quota 429) ; messages du serveur sans clip (400 Données invalides, bo-form) passent par la synthèse — jamais le silence
