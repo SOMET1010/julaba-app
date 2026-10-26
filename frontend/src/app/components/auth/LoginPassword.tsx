@@ -307,6 +307,12 @@ export function LoginPassword() {
   // Empêche une double séquence quand React rejoue les effets au montage
   // (développement) ou quand l'écran est réévalué sans quitter l'étape téléphone.
   const accueilNumeroVoixLanceRef = useRef(false);
+  // Vrai tant que la chaîne d'accueil du numéro (login-05 → 06 → 07 → question
+  // d'adaptation) est EN COURS. Le rappel de confirmation (login-09) la lit :
+  // tant que Tata enseigne encore, il ATTEND son tour au lieu de couper
+  // (trace du 26/10 : 09 partait à t+3 s, tronquait 06 en plein mot, puis 07
+  // tronquait 09 — l'oreille ne gardait que des fragments).
+  const accueilNumeroEnCoursRef = useRef(false);
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -660,25 +666,26 @@ export function LoginPassword() {
     // dictée échoue ensuite).
     onCanalVoix: () => { dernierCanalRef.current = 'voix'; aTenteVoixRef.current = true; },
     siPasPrete: () => { setShowVoiceInstall(true); parle(ENTREE_VOICE_CLIPS.verifVoix.texte); },
-    // Échec de la redictée : login-13 puis login-14 expliquent le problème
-    // et ouvrent directement le filet clavier, dans cet ordre.
+    // Échec de la redictée : le texte affiché EST le clip (login-16), dit par
+    // l'effet error — UNE SEULE chaîne de voix. Ici la parleSuite se faisait
+    // COUPER par l'effet (trace du 26/10 : TTS_COUPEE ×2, trois prises de
+    // parole se cramponnaient le micro et l'oreille n'en gardait aucun
+    // fragment). login-13 (« Je n'ai pas bien entendu ») mentait en plus dans
+    // CE cas : le micro a refusé, elle n'a jamais pu parler. Le clip nomme le
+    // geste (« Faut taper ton numéro ici ») et le clavier s'ouvre ci-dessous.
+    // Le texte visuel historique « Problème avec le micro — réessaie » reste
+    // documenté ; la voix suit désormais ce qui est écrit.
     siMicRefuse: () => {
-      // Le texte visuel historique « Problème avec le micro — réessaie » reste
-      // documenté ; la voix, elle, suit désormais login-13 puis login-14.
       setError('Le micro ne prend pas là. Faut taper ton numéro ici.');
       setShowKeypad(true);
-      void parleSuite(
-        ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
-        ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
-      );
     },
+    // Même fil que siMicRefuse : le texte affiché est le clip enregistré
+    // (dicteeIncomprise, ui-058 — la vraie voix, atteste), dit par l'effet
+    // error. La parleSuite d'ici se faisait couper par le même effet, et
+    // login-14 répétait le geste que la bannière nomme déjà.
     siEchec: () => {
       setError("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
       setShowKeypad(true);
-      void parleSuite(
-        ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
-        ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
-      );
     },
   });
 
@@ -704,12 +711,19 @@ export function LoginPassword() {
     // LA QUESTION D'ADAPTATION TERMINE LA CHAÎNE (leçon du silence 26/10) :
     // lancée en parallèle au mount, elle était cancellée par CET accueil —
     // elle se fait entendre maintenant APRÈS lui, dans la même file.
-    void parleSuite(
-      ENTREE_VOICE_CLIPS.numeroAccueil.texte,
-      ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte,
-      ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,
-      (suggestion && !suggReponseRef.current) ? suggestion.texte : null,
-    );
+    accueilNumeroEnCoursRef.current = true;
+    void (async () => {
+      try {
+        await parleSuite(
+          ENTREE_VOICE_CLIPS.numeroAccueil.texte,
+          ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte,
+          ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,
+          (suggestion && !suggReponseRef.current) ? suggestion.texte : null,
+        );
+      } finally {
+        accueilNumeroEnCoursRef.current = false;
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
@@ -734,8 +748,22 @@ export function LoginPassword() {
     if (step !== 'phone' || phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES)) return;
 
     confirmationNumeroTimeoutRef.current = setTimeout(() => {
-      setConfirmationNumeroClignote(true);
-      void parle(ENTREE_VOICE_CLIPS.numeroConfirmation.texte);
+      // Le geste se montre ET se dit — mais seulement QUAND C'EST SON TOUR :
+      // si la chaîne d'accueil enseigne encore (arrivée sur l'écran, numéro
+      // déjà là — cas « Modifier »), on REPORTE le rappel au lieu de couper
+      // la voix en plein mot. On re-tente toutes les 1,5 s jusqu'au silence.
+      const rappeler = () => {
+        setConfirmationNumeroClignote(true);
+        void parle(ENTREE_VOICE_CLIPS.numeroConfirmation.texte);
+      };
+      const tenter = () => {
+        if (accueilNumeroEnCoursRef.current) {
+          confirmationNumeroTimeoutRef.current = setTimeout(tenter, 1500);
+          return;
+        }
+        rappeler();
+      };
+      tenter();
     }, 3000);
 
     return () => {
