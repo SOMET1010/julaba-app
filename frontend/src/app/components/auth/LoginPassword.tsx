@@ -39,7 +39,7 @@ import type { MessageId } from '../../i18n/voice/types';
  * la CLÉ de catalogue et on la remet au moteur audio directement. Le muet
  * global reste respecté : il vit dans `audioManager`, pas dans la garde de rôle.
  */
-const CLE_CATALOGUE: Readonly<Record<EntreeVoiceKey, MessageId>> = {
+const CLE_CATALOGUE: Readonly<Partial<Record<EntreeVoiceKey, MessageId>>> = {
   numero: 'ENTREE_NUMERO',
   numeroVoix: 'ENTREE_NUMERO_VOIX',
   code: 'ENTREE_CODE',
@@ -83,7 +83,12 @@ function direConsigne(key: EntreeVoiceKey): Promise<void> {
     // écran parlait AUSSI par le moteur en direct, à côté de son propre
     // `parle()`. Deux portes dans un seul fichier — la preuve qu'une porte
     // non nommée s'en fait toujours une autre.
-    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('connexion', tParle(CLE_CATALOGUE[key])).then(() => undefined) : undefined))
+    .then((r) => {
+      const messageId = CLE_CATALOGUE[key];
+      return r.doitDireLeTexte && messageId
+        ? parlerAvantConnexion('connexion', tParle(messageId)).then(() => undefined)
+        : undefined;
+    })
     .catch(() => { /* une consigne qui casse ne bloque jamais la connexion */ });
 }
 // (offlineModelInstalled, startLiveDictation et la mécanique du moteur vivent
@@ -291,6 +296,9 @@ export function LoginPassword() {
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Empêche une double séquence quand React rejoue les effets au montage
+  // (développement) ou quand l'écran est réévalué sans quitter l'étape téléphone.
+  const accueilNumeroVoixLanceRef = useRef(false);
   const phoneRef = useRef(phone);
   useEffect(() => {
     phoneRef.current = phone;
@@ -318,7 +326,9 @@ export function LoginPassword() {
   const parleSuite = async (...textes: (string | null | undefined)[]) => {
     for (const texte of textes) {
       if (!texte) continue;
-      try { await direEntreeTexte(texte); } catch { /* ignore */ }
+      try {
+        await parlerAvantConnexion('connexion', texte, direEntreeTexte);
+      } catch { /* ignore */ }
     }
   };
   // ── AUTH-04 — « REVOIR MON NUMÉRO » : ça SE VOIT et SE SENT, ça ne S'ENTEND PAS.
@@ -649,11 +659,24 @@ export function LoginPassword() {
   const direConsigneNumero = useCallback(() => {
     if (step !== 'phone') return;
     if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas d'accueil vocal auto
-    void direConsigne(voixEcouteDispo ? 'numeroVoix' : 'numero');
+    if (accueilNumeroVoixLanceRef.current) return;
+    accueilNumeroVoixLanceRef.current = true;
+    // À l'arrivée, le parcours demandé est fixe : login-05 puis login-06.
+    // `parleSuite` attend la fin de chaque clip pour éviter que audioManager
+    // annule le premier au démarrage du second.
+    void parleSuite(
+      ENTREE_VOICE_CLIPS.numeroAccueil.texte,
+      ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte,
+      ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, accessMode, voixEcouteDispo]);
+  }, [step, accessMode]);
 
   useEffect(() => {
+    if (step !== 'phone') {
+      accueilNumeroVoixLanceRef.current = false;
+      return;
+    }
     direConsigneNumero();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -786,8 +809,24 @@ export function LoginPassword() {
       } catch (err) {
         warnDev('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
+        // Un proxy Render peut répondre brièvement en HTML (502/503) pendant
+        // le réveil ou le redémarrage de l'API. Ce n'est pas un refus de code :
+        // réutiliser le même repli que pour "Failed to fetch" évite d'abandonner
+        // dès la première réponse illisible.
+        if (retry < 2) {
+          setError('Ça pèse un peu. Patiente, je suis en train de relancer.');
+          setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
+          return;
+        }
         setError('Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.');
         setIsLoading(false);
+        return;
+      }
+      // Les erreurs 5xx sont transitoires dans la même situation, même si le
+      // proxy renvoie par hasard un JSON exploitable.
+      if (response.status >= 500 && retry < 2) {
+        setError('Ça pèse un peu. Patiente, je suis en train de relancer.');
+        setTimeout(() => { handleLogin(pwd, retry + 1); }, 7000);
         return;
       }
       if (!response.ok || result.error) {

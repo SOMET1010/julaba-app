@@ -4,6 +4,9 @@ import type { ResultatEntree, ResultatLecture } from './entreeVoixAvantConnexion
 export type EntreeVoiceKey =
   | 'numero'
   | 'numeroVoix'
+  | 'numeroAccueil'
+  | 'numeroMicroAccueil'
+  | 'numeroChiffresAccueil'
   | 'code'
   | 'codeErreur'
   | 'connexionIndisponible'
@@ -75,6 +78,26 @@ function prototypesVoixActifs(): boolean {
  * Ils restent marqués « prototype » jusqu'à validation humaine ivoirienne.
  */
 export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
+  // Arrivée sur la vue de saisie du numéro : ces deux clips sont joués dans
+  // cet ordre par LoginPassword. Ils restent actifs dans tout build livré.
+  numeroAccueil: {
+    file: '/voix/tata/login-05.mp3',
+    texte: 'Mets ton numéro de téléphone ici.',
+    atteste: false,
+    lotA: true,
+  },
+  numeroMicroAccueil: {
+    file: '/voix/tata/login-06.mp3',
+    texte: "Tu peux me dicter aussi, hein. Appuie sur le micro d'abord.",
+    atteste: false,
+    lotA: true,
+  },
+  numeroChiffresAccueil: {
+    file: '/voix/tata/login-07.mp3',
+    texte: 'Dis les chiffres doucement doucement, un à un.',
+    atteste: false,
+    lotA: true,
+  },
   numero: {
     file: `${BASE}/tata-entree-numero.mp3`,
     texte: 'Tape les chiffres de ton numéro, un par un. Les ronds en haut vont se remplir.',
