@@ -1356,3 +1356,12 @@ Stage Summary:
 - Chaque erreur arrive AVEC son indicateur : clignotement du geste à faire (Retour, Activer, pavé) — la famille login-cue-clignote couvre désormais 4 écrans
 - 15 clips = lot le plus large depuis le lot A ; l'écart de langage affiché/dit est fermé par construction (texte = clip)
 - Reste OUVERT : preuve ASR des 15 clips (quota 429) ; messages du serveur sans clip (400 Données invalides, bo-form) passent par la synthèse — jamais le silence
+
+### Preuves navigateur (complément au lot voix-eventualites-26-10, même jour)
+- /non-enregistre (390 px) : `GET login-53.mp3 (206)` + `GET login-54.mp3 (206)` sur l'arrivée, classe `login-cue-clignote` posée sur « Retour à la connexion » — capture .zlogs/e2e-non-enregistre-voix.png
+- /activation : accueil `login-51 (206)`, soumission vide → erreur affichée « Saisis le code d'activation. » ET dite (`login-59 (206)`), « Activer mon compte » clignote
+- /change-password : pavé clignotant (animation login-confirmation-blink), 401 ancien code → texte exact affiché + journal vocal interne : `TTS_MOTEUR clip /voix/tata/login-65.mp3 → play-accepte → ended, lu: 5.616s` (le clip joue ENTIÈREMENT) — capture .zlogs/e2e-change-password-clip65.png
+- Golden path : reconnaissance (échec WebAuthn headless → message affiché, chemin existant) → code 1234 → accueil marchande « Ton comptoir est prêt », caisse 1 500 F annoncée — zéro régression
+- 0 erreur console, 0 erreur page ; 0 élément hors viewport
+- INCIDENT DOCUMENTÉ : le service worker (sw.js) a servi `tataUiClips.ts?t=…` depuis son cache (transferSize=0) pendant la longue session dev → module SANS les 15 clips → l'erreur passait par la synthèse. Désenregistrement SW + caches vidés → clips réels joués. Artefact de session dev longue (pas un bug du lot) ; le SW se ré-enregistre au rechargement. À relier au futur lot SW-versioning si les mises à jour d'APK montrent le même symptôme.
+- Reste OUVERT : preuve ASR des 15 clips (quota 429 pendant tout le lot) ; états du compte login-55..58 non déclenchables en démo (aucun compte suspendu/rejeté de seed) — câblage prouvé par code + tsc, à éprouver en recette avec un compte réel.
