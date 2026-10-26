@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 247,
-    "clips_mappes": 239,
+    "fichiers_mp3": 251,
+    "clips_mappes": 243,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -2973,6 +2973,58 @@
       "sha256": "7749d78c6b6a230ae23c69d52c6e8bce9b6984156cf77585147293979a4d4e25",
       "octets": 74060,
       "duree_ms": 6144
+    },
+    {
+      "id": "login-68",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Écris ton ancien code secret d'abord.",
+      "fichier": "/voix/tata/login-68.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "920433fa9841d29f9e255a1709590e86337e8a6a4882df25de90d24dad17e345",
+      "octets": 41516,
+      "duree_ms": 3432
+    },
+    {
+      "id": "login-69",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Crée ton mot de passe. Au moins 4 caractères.",
+      "fichier": "/voix/tata/login-69.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "ca2e2cbfdcbe2f3023244b444a78acd096aad84034676b7a9b0148b13bb075d9",
+      "octets": 60236,
+      "duree_ms": 4992
+    },
+    {
+      "id": "login-70",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Ton mot de passe est trop court. Il faut au moins 4 caractères.",
+      "fichier": "/voix/tata/login-70.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "2d05a27f93e8615174c6feb6f00968f5786fb0b32ccbf671623cd7139b913a6f",
+      "octets": 70028,
+      "duree_ms": 5808
+    },
+    {
+      "id": "login-71",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer.",
+      "fichier": "/voix/tata/login-71.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "af12e7c9f9f166ed503d0f1066fdee67f818f689024965e71bf6eed1f683f7c4",
+      "octets": 73772,
+      "duree_ms": 6120
     },
     {
       "id": "stk-02",

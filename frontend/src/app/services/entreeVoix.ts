@@ -79,7 +79,12 @@ export type EntreeVoiceKey =
   | 'codeSecretChange'
   | 'ancienCodeIncorrect'
   | 'codesDifferentsRecommencer'
-  | 'connexionInterrompue';
+  | 'connexionInterrompue'
+  // ── CLIPS 68-71 — LA REVUE « TOUT ENCORE », 26/10/2026 ────────────────────
+  | 'ancienCodeManquant'
+  | 'motDePasseAccueil'
+  | 'motDePasseTropCourt'
+  | 'roleNonReconnu';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -665,6 +670,38 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   connexionInterrompue: {
     file: '/voix/tata/login-67.mp3',
     texte: 'La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── CLIPS 68-71 — LA REVUE « TOUT ENCORE », 26/10/2026 ───────────────────
+  // Le passage en revue complet (audit croisé setError/toast × catalogue) a
+  // encore trouvé 4 éventualités muettes : les validations du FORMULAIRE
+  // TEXTE du changement de mot de passe (parcours back-office, le lot 53-67
+  // n'avait couvert que le pavé à 4 chiffres) et le toast « rôle non
+  // reconnu » d'EntryGate. Texte = EXACTEMENT ce que l'écran affiche et
+  // passe à la voix — les écrans citent la CLÉ, jamais une copie retapée.
+  ancienCodeManquant: {
+    file: '/voix/tata/login-68.mp3',
+    texte: "Écris ton ancien code secret d'abord.",
+    atteste: false,
+    lotA: true,
+  },
+  motDePasseAccueil: {
+    file: '/voix/tata/login-69.mp3',
+    texte: 'Crée ton mot de passe. Au moins 4 caractères.',
+    atteste: false,
+    lotA: true,
+  },
+  motDePasseTropCourt: {
+    file: '/voix/tata/login-70.mp3',
+    texte: 'Ton mot de passe est trop court. Il faut au moins 4 caractères.',
+    atteste: false,
+    lotA: true,
+  },
+  roleNonReconnu: {
+    file: '/voix/tata/login-71.mp3',
+    texte: 'On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer.',
     atteste: false,
     lotA: true,
   },
