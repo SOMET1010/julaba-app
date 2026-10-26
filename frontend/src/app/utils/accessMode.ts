@@ -83,6 +83,15 @@ export function getEffectiveMode(): EffectiveMode {
 }
 
 /**
+ * LES DEUX QUESTIONS D'ADAPTATION VIVENT ICI SEULEMENT. `services/entreeVoix.ts`
+ * importe ces constantes pour nommer ses clips : une phrase qui s'AFFICHE et se
+ * DIT doit avoir UN SEUL foyer — le défaut login-41 (un mot d'écart entre l'écran
+ * et le clip = l'écran redevient muet sans rien signaler) ne rentre pas ici.
+ */
+export const TEXTE_SUGGESTION_CLAVIER = "J'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s'adapte ?";
+export const TEXTE_SUGGESTION_VOIX = "J'ai remarqué que tu préfères me parler. Veux-tu que Julaba s'adapte ?";
+
+/**
  * En mode 'auto' : si l'usage penche FRANCHEMENT d'un côté et qu'on n'a pas
  * demandé récemment, renvoie une proposition à confirmer par Tata. Sinon null.
  */
@@ -94,10 +103,10 @@ export function suggestionAuto(): { mode: EffectiveMode; texte: string } | null 
   if (s.logins - s.lastAsk < ASK_SNOOZE) return null; // on ne harcèle pas
   const rClavier = s.clavier / total;
   if (rClavier >= ASK_STRONG) {
-    return { mode: 'lecture', texte: "J'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s'adapte ?" };
+    return { mode: 'lecture', texte: TEXTE_SUGGESTION_CLAVIER };
   }
   if (rClavier <= 1 - ASK_STRONG) {
-    return { mode: 'voix', texte: "J'ai remarqué que tu préfères me parler. Veux-tu que Julaba s'adapte ?" };
+    return { mode: 'voix', texte: TEXTE_SUGGESTION_VOIX };
   }
   return null;
 }

@@ -648,7 +648,7 @@ export function LoginPassword() {
     // obtenu), l'écran note (apprentissage 'auto' ; trace conservée même si la
     // dictée échoue ensuite).
     onCanalVoix: () => { dernierCanalRef.current = 'voix'; aTenteVoixRef.current = true; },
-    siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
+    siPasPrete: () => { setShowVoiceInstall(true); parle(ENTREE_VOICE_CLIPS.verifVoix.texte); },
     // Échec de la redictée : login-13 puis login-14 expliquent le problème
     // et ouvrent directement le filet clavier, dans cet ordre.
     siMicRefuse: () => {

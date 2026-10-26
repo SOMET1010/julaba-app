@@ -1,5 +1,6 @@
 import { playClip } from './audioManager';
 import type { ResultatEntree, ResultatLecture } from './entreeVoixAvantConnexion';
+import { TEXTE_SUGGESTION_CLAVIER, TEXTE_SUGGESTION_VOIX } from '../utils/accessMode';
 
 export type EntreeVoiceKey =
   | 'numero'
@@ -39,7 +40,21 @@ export type EntreeVoiceKey =
   // ── AUTH-03 — LE VERROU ET LE DERNIER ESSAI, DITS PAR CLIP ────────────────
   | 'verrouCinqMinutes'
   | 'dernierEssai'
-  | 'mauvaisCodeAttention';
+  | 'mauvaisCodeAttention'
+  // ── VOIX SUR CHAQUE VUE — 26/10/2026, DÉCISION PATRICK ────────────────
+  // « On a affaire à des personnes qui ne savent pas forcément lire/écrire » :
+  // chaque vue et chaque message de l'entrée SE DIT. Ces clés ferment les
+  // derniers silences trouvés par l'audit des phrases muettes du 26/10.
+  | 'suggestionClavier'
+  | 'suggestionVoix'
+  | 'verifVoix'
+  | 'numeroPasCommence'
+  | 'reponseServeur'
+  | 'echecGeneral'
+  | 'motDePasseTemporaire'
+  | 'portailAdmin'
+  | 'activationAccueil'
+  | 'activationReussie';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -166,10 +181,16 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
     prototype: true,
   },
   reconnaissance: {
-    file: `${BASE}/tata-entree-reconnaissance.mp3`,
+    // Clip RÉGÉNÉRÉ le 26/10 : l'ancien vivait derrière le drapeau prototype
+    // (VITE_JULABA_VOICE_PREVIEW) — donc MUET dans tout build livré. L'étape
+    // « Tata me connaît » arrivait en silence : une vue d'accueil sans voix,
+    // exactement ce que Patrick a fermé (« la voix sur chaque vue ou étape »).
+    // Mêmes specs que le lot A : voix neurale fr-FR Denise, 24 kHz mono
+    // 96 kbps, normalisé −16 LUFS.
+    file: '/voix/tata/login-42.mp3',
     texte: 'Touche le grand bouton. Ton téléphone va te reconnaître.',
     atteste: false,
-    prototype: true,
+    lotA: true,
   },
   // ── PASSAGE CHIFFRES ⇄ IMAGES — LOT A, 26/09/2026 ────────────────────────
   //
@@ -452,6 +473,76 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   mauvaisCodeAttention: {
     file: '/voix/tata/login-28.mp3',
     texte: 'Le numéro ou le code n\'est pas bon, deh. Regarde bien avant de reprendre.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── VOIX SUR CHAQUE VUE — CLIPS 43-51, 26/10/2026 ─────────────────────
+  // Chaque phrase ci-dessous ÉTAIT MUETTE : l'écran l'affichait et la passait
+  // à `parle()`, mais `direEntreeTexte` ne trouvait aucune clé — le silence
+  // exact que le lot AUTH-ERR documentait (« une phrase partait, et rien ne
+  // sortait »). Audit du 26/10 : 9 phrases fixes sans clé, trouvées par
+  // script (audit-voix) et fermées ici, MOT POUR MOT — la clé se retrouve
+  // par le TEXTE, un mot d'écart = muet (leçon login-41). Mêmes specs lot A
+  // (Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS). `atteste: false` : l'ASR
+  // prouve la langue, une locutrice validera au studio (règle lot B).
+  suggestionClavier: {
+    file: '/voix/tata/login-43.mp3',
+    texte: TEXTE_SUGGESTION_CLAVIER,
+    atteste: false,
+    lotA: true,
+  },
+  suggestionVoix: {
+    file: '/voix/tata/login-44.mp3',
+    texte: TEXTE_SUGGESTION_VOIX,
+    atteste: false,
+    lotA: true,
+  },
+  verifVoix: {
+    file: '/voix/tata/login-45.mp3',
+    texte: 'Pour que je puisse t\'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro.',
+    atteste: false,
+    lotA: true,
+  },
+  numeroPasCommence: {
+    file: '/voix/tata/login-46.mp3',
+    texte: 'Ce numéro-là ne commence pas comme un numéro d\'ici. Regarde bien le début.',
+    atteste: false,
+    lotA: true,
+  },
+  reponseServeur: {
+    file: '/voix/tata/login-47.mp3',
+    texte: 'Ça n\'a pas bien répondu. Attends un petit moment, puis reprends.',
+    atteste: false,
+    lotA: true,
+  },
+  echecGeneral: {
+    file: '/voix/tata/login-48.mp3',
+    texte: 'Ça n\'a pas marché comme il faut. Reprends depuis le début.',
+    atteste: false,
+    lotA: true,
+  },
+  motDePasseTemporaire: {
+    file: '/voix/tata/login-49.mp3',
+    texte: 'Mot de passe temporaire, redirection en cours...',
+    atteste: false,
+    lotA: true,
+  },
+  portailAdmin: {
+    file: '/voix/tata/login-50.mp3',
+    texte: 'Accès non autorisé. Utilise le portail administrateur sur julaba.online/backoffice/login',
+    atteste: false,
+    lotA: true,
+  },
+  activationAccueil: {
+    file: '/voix/tata/login-51.mp3',
+    texte: 'Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d\'autre ne doit le connaître.',
+    atteste: false,
+    lotA: true,
+  },
+  activationReussie: {
+    file: '/voix/tata/login-52.mp3',
+    texte: 'Compte activé ! Tu peux maintenant te connecter avec ton code.',
     atteste: false,
     lotA: true,
   },

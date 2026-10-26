@@ -3,18 +3,18 @@
   "empreintes": {
     "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
     "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
-    "hooks/useVoiceCore.ts": "65ea3c8d2f3401dc28cf8bdf557b08b2864e9c3c7af3703b7bc7334628f34d67",
+    "hooks/useVoiceCore.ts": "874d8039cae9c59c2fcdcee42f0c213db330d351f52ac43dbd11a4a3f50df829",
     "contexts/AppContext.tsx": "64f884e022b9db7781596ef7fd17d04f48737f71ddd610b563f058e11406c224",
     "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
-    "components/layout/AppLayout.tsx": "addfe8f95e5f505683f552d1efbcbe26e6fb128c2f03d6e19fb7cc6d427af9c2",
+    "components/layout/AppLayout.tsx": "39573bdd3be96a1a8c862c73a8ce6eaac2b4bcfbefa0124fd8f97a79276e46be",
     "services/tataVoice.ts": "7c55d2de5405a1bb6d16ef9dec0f7c4295c7e06a0f91b05961982d3033382dfc",
-    "services/tataUiClips.ts": "8c6765330fcee5df3868b8f8b587ec72f4707b9a47e598b01d9baf9bcbc41076",
+    "services/tataUiClips.ts": "7d1e3cb5b987aabc4e3a050cab10b5def18c54a515c62f9bfc1a86f8064fede0",
     "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
     "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
     "services/onboardingVoix.ts": "5eee52588c74af2e7659a21327b447b1f55e61c54fa97bc069a1d5b985b72cec",
     "voice-offline/nativeStt.ts": "c1b87d795378cdf4c9953241e35f0bc48038a6bcb73fb93bbbc2bb15da97a995",
-    "contexts/ObjectifContext.tsx": "1e6093003b78398829391edad8cfc12479e6d8dbd4b8fb285f17c11058a14d46"
+    "contexts/ObjectifContext.tsx": "958c876b2dbcf122ce2bb53863fda2f1cd255276e35d57ae805a9c43ca30a132"
   },
   "appels": {
     "services/audioManager.ts": [
@@ -62,27 +62,32 @@
     ],
     "voice-offline/nativeStt.ts": [],
     "contexts/ObjectifContext.tsx": [
+      "speak(texte, { priority: 'user' })",
+      "speakAuto(texte, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 })",
       "speakAuto(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`, { dedupeKey: 'objectif-50', minRepeatMs: 5 * 60 * 1000 })",
-      "speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 })",
-      "speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 })",
-      "speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' })"
+      "speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 })"
     ],
     "components/auth/LoginPassword.tsx": [
-      "parle(next ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\\'a pas changé.' : 'Voilà les chiffres maintenant. Mets ton code comme d\\'habitude.')",
+      "parle(next ? ENTREE_VOICE_CLIPS.pinImagesAccueil.texte : 'Voilà les chiffres maintenant. Mets ton code comme d\\'habitude.')",
       "parle(error)",
+      "parleSuite(ENTREE_VOICE_CLIPS.codeAccueil.texte, ENTREE_VOICE_CLIPS.codeDiscretionAccueil.texte,)",
       "parle(suggestion.texte)",
       "parle('D\\'accord, c\\'est calé comme ça.')",
       "parle('D\\'accord, on continue comme d\\'habitude.')",
-      "parleSuite(num.length >= 10 ? \"Je n'ai pas compris. Tape ton numéro, ou réessaie.\" : 'Il manque encore des chiffres dedans. Continue.')",
-      "parleSuite(\"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
-      "parle(\"Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro.\")",
-      "parleSuite('Problème avec le micro — réessaie')",
-      "parleSuite(\"Je n'ai pas compris. Tape ton numéro, ou réessaie.\")",
+      "parleSuite(ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte, ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,)",
+      "parleSuite(ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte, ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,)",
+      "parle(ENTREE_VOICE_CLIPS.verifVoix.texte)",
+      "parleSuite(ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte, ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,)",
+      "parleSuite(ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte, ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,)",
+      "parleSuite(ENTREE_VOICE_CLIPS.numeroAccueil.texte, ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte, ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,)",
+      "parle(ENTREE_VOICE_CLIPS.numeroConfirmation.texte)",
+      "parle(ENTREE_VOICE_CLIPS.pinImagesEchec.texte)",
       "parle(minutes === 5 ? ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte : ENTREE_VOICE_CLIPS.tropDEssais.texte)",
-      "parle(restants === 1 ? ENTREE_VOICE_CLIPS.dernierEssai.texte : restants === 2 ? ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte : ENTREE_VOICE_CLIPS.codeErreur.texte)",
+      "parle(ENTREE_VOICE_CLIPS.dernierEssai.texte)",
+      "parle(ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte)",
+      "parle('Mmmh… Tu es en train d\\'effacer le numéro, un ? Hein !')",
       "parle('C\\'est effacé net.')",
-      "parle('C\\'est bon maintenant. Appuie sur le micro et puis parle.')",
-      "parle(`Version ${__APP_VERSION__}, ${__BUILD_ID__}`)"
+      "parle('C\\'est bon maintenant. Appuie sur le micro et puis parle.')"
     ],
     "components/shared/UniversalParametres.tsx": [
       "speak('Paramètres sauvegardés')",
