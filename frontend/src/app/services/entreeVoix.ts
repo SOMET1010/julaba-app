@@ -232,9 +232,19 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   // numéro ») est détendue ICI SEULEMENT par cette décision datée —
   // l'effacement du CODE garde `effacement` (AUTH_24), qui ne nomme rien.
   //
-  // Clip synthétisé le 20/10 (voix de travail, « Mmmh… » tenu ~1 s) —
-  // `atteste: false` : personne ne l'a écoutée ; une locutrice pourra la
-  // refaire au studio. Dioula à enregistrer (règle lot B).
+  // Clip RÉGÉNÉRÉ le 26/10 : celui du 20/10 (`dd3f9f9d`) parlait ANGLAIS —
+  // découvert par transcription automatique (ASR) du fichier : on y entendait
+  // « H, Tuesday S N train the face Linu E N Hein Hain », et Patrick l'a
+  // signalé (« lorsque j'efface un numéro sur la vue auth, il ne parle pas
+  // français »). Cause : les interjections (« Mmmh… », « un ? », « Hein ! »)
+  // font dériver les moteurs de synthèse hors du français — le générateur du
+  // 20/10 a livré sans écouter. Nouveau clip : voix neurale fr-FR
+  // (Denise), « Mmmh » tenu ~1 s assemblé par montage, normalisé −16 LUFS,
+  // 24 kHz mono 96 kbps — MÊMES specs que les clips sains du lot A.
+  // Contrôle ASR du produit fini : « …tu es en train d'effacer le numéro,
+  // un ? Hein ! » — du français. `atteste: false` TOUJOURS : l'ASR prouve la
+  // langue, pas la justesse d'une oreille ivoirienne ; une locutrice pourra
+  // la refaire au studio. Dioula à enregistrer (règle lot B).
   effacementNumero: {
     file: '/voix/tata/login-41.mp3',
     texte: 'Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !',
