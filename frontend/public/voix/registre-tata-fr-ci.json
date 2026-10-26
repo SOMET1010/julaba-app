@@ -2627,14 +2627,14 @@
       "id": "login-41",
       "locale": "fr-CI",
       "role": "guide-ivoirienne",
-      "texte_exact": "Mmmh… Tu es en train d'effacer le numéro, un ? Hein !",
+      "texte_exact": "Tu es en train d'effacer le numéro !",
       "fichier": "/voix/tata/login-41.mp3",
       "criticite": "a_classer",
       "validation_humaine": "a_documenter",
       "consentement": "a_relier_au_dossier_de_production",
-      "sha256": "5945c792bece222a98a7b0c0adaf6fc04b3f6a681a8dd09e34dae29df95d7b2b",
-      "octets": 64844,
-      "duree_ms": 5376
+      "sha256": "724f0995dc5c4faec641b30f1dc99f72b52742d186aed5c487a93d143e0d4f8f",
+      "octets": 22220,
+      "duree_ms": 1824
     },
     {
       "id": "login-42",

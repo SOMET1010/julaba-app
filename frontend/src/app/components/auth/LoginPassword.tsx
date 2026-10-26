@@ -1183,26 +1183,16 @@ export function LoginPassword() {
       // Effacer est un AUTRE geste : motif distinct, annoncé à chaque tape.
       rendreALaMain('numero', 'effacement');
       // DÉCISION PATRICK, 20/10 (« faut qu'il le prononce pour chaque
-      // suppression ») : à CHAQUE effacement d'un chiffre du numéro, l'écran
-      // NOMME le geste, surprise ivoirienne comprise — clip AUTH_41
-      // (login-41.mp3), MOT POUR MOT ce texte : un mot d'écart et
+      // suppression »), phrase exacte confirmée le 26/10 : à CHAQUE
+      // effacement d'un chiffre du numéro, l'écran NOMME le geste — clip
+      // AUTH_41 (login-41.mp3), MOT POUR MOT ce texte : un mot d'écart et
       // `direEntreeTexte` ne retrouve plus la clé, l'écran redevient muet
       // sans erreur. La règle du lot A (« un effacement ne nomme pas le
       // numéro ») est détendue ICI SEULEMENT par cette décision datée ;
       // l'effacement du CODE garde AUTH_24, qui ne nomme rien. `parle()` est
       // la porte canonique — clip exact, zéro voix machine en repli.
       if (phone.length > 0) {
-        // RESTAURATION, 20/10 : le commit b0969c6 (« simplifier le message
-        // vocal d'effacement ») a raccourci ce texte — « Mmmh… » et « Hein ! »
-        // supprimés. Or `direEntreeTexte` retrouve le clip PAR LE TEXTE EXACT
-        // (voir entreeVoix.ts, `INDEX_TEXTE.get(normaliser(texte))`) : le texte
-        // raccourci n'a AUCUNE clé, la fonction rendait { lu: false } et
-        // l'écran redevait MUET à chaque effacement — la panne exacte que la
-        // décision du 20/10 avait fermée. La garde `test:voix-connexion-lot-a`
-        // l'a détecté (1 échec). On rétablit MOT POUR MOT la clé du clip
-        // AUTH_41 (login-41.mp3, déjà généré) — la décision de Patrick du
-        // 20/10 prime : « Mmmh… » + « le numéro, un ? » + « Hein ! ».
-        void parle('Mmmh… Tu es en train d\'effacer le numéro, un ? Hein !');
+        void parle('Tu es en train d\'effacer le numéro !');
       }
     } else {
       if (pinInput.length === 0) {
