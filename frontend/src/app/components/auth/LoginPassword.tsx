@@ -271,6 +271,10 @@ export function LoginPassword() {
   // Proposition d'adaptation de Tata (mode 'auto' + préférence franche observée).
   const [suggestion] = useState(() => suggestionAuto());
   const [suggReponse, setSuggReponse] = useState(false); // déjà répondu → on masque
+  // Miroir REF de suggReponse : la chaîne d'accueil vocal (parleSuite, voir
+  // `direConsigneNumero`) lit la réponse AU MOMENT DE PARLER, sans dépendre
+  // d'un state potentiellement périmé dans la closure du useCallback.
+  const suggReponseRef = useRef(false);
   const [tataSpeaking, setTataSpeaking] = useState(false);
   const [operateur, setOperateur] = useState<Operateur | null>(null); // opérateur déduit du numéro
   const [showVoiceInstall, setShowVoiceInstall] = useState(false);    // proposer d'installer la voix (consenti)
@@ -434,14 +438,21 @@ export function LoginPassword() {
   }, []);
 
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
-  // question, pas un réglage à trouver. On l'énonce dès l'affichage.
-  useEffect(() => {
-    if (suggestion && !suggReponse) parle(suggestion.texte);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // question, pas un réglage à trouver.
+  // ── LE SILENCE DE CETTE QUESTION, TROUVÉ PAR PATRICK, 26/10 ──────────────
+  // La question partait ICI, au mount, EN PARALLÈLE de l'accueil de l'étape
+  // numéro (login-05→06→07, même moment). audioManager ne sert qu'un créneau
+  // exclusif : toute nouvelle demande ANNULE la précédente — la question était
+  // donc systématiquement cancellée par l'accueil qui la suivait. Le clip se
+  // téléchargeait (GET 206) et ne jouait jamais. ELLE S'ENCHAÎNE MAINTENANT
+  // DERRIÈRE l'accueil, dans la MÊME file (`direConsigneNumero` plus bas) —
+  // une seule chaîne de voix, aucune annulation. Le ref suit la réponse :
+  // une question à laquelle Tata a déjà eu sa réponse ne se redit jamais
+  // (retour sur l'étape numéro par « Modifier »).
   // Réponse à la proposition de Tata : oui → on adopte le mode ; non → on met en pause.
   const repondreSuggestion = (oui: boolean) => {
     if (!suggestion) return;
+    suggReponseRef.current = true;
     if (oui) {
       setAccessMode(suggestion.mode);
       parle('D\'accord, c\'est calé comme ça.');
@@ -690,10 +701,14 @@ export function LoginPassword() {
     // À l'arrivée, le parcours demandé est fixe : login-05 puis login-06.
     // `parleSuite` attend la fin de chaque clip pour éviter que audioManager
     // annule le premier au démarrage du second.
+    // LA QUESTION D'ADAPTATION TERMINE LA CHAÎNE (leçon du silence 26/10) :
+    // lancée en parallèle au mount, elle était cancellée par CET accueil —
+    // elle se fait entendre maintenant APRÈS lui, dans la même file.
     void parleSuite(
       ENTREE_VOICE_CLIPS.numeroAccueil.texte,
       ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte,
       ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,
+      (suggestion && !suggReponseRef.current) ? suggestion.texte : null,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
@@ -1396,10 +1411,15 @@ export function LoginPassword() {
                 pas un réglage : elle l'a dite, ici les deux réponses. */}
             {suggestion && !suggReponse && (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+                className="login-cue-clignote"
                 style={{ background: '#EEF4FF', border: '1px solid #C7D8FF', borderRadius: 16, padding: '12px 14px', marginBottom: 6 }}>
                 <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#1e3a8a', textAlign: 'center' }}>{suggestion.texte}</p>
                 <div style={{ display: 'flex', gap: 10 }}>
                   {/* AUTH-09 — cibles ≥ 44 px ; AUTH-16 — surface sur token. */}
+                  {/* INDICE VISUEL (leçon Patrick 26/10) : la question CLIGNOTE
+                      à son arrivée (6 fois, même famille que « C'est mon
+                      numéro ») — la voix l'explique juste après l'accueil,
+                      le clignotement montre où répondre. */}
                   <button type="button" onClick={() => repondreSuggestion(false)}
                     style={{ flex: 1, padding: '11px 0', minHeight: 44, borderRadius: 12, fontWeight: 800, fontSize: 14, color: '#1e3a8a', background: 'var(--commerce-surface)', border: '2px solid #C7D8FF', cursor: 'pointer' }}>Non</button>
                   <button type="button" onClick={() => repondreSuggestion(true)}
