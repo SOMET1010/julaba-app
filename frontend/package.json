@@ -182,6 +182,7 @@
     "test:refus-parle": "tsx src/app/components/marchand/refusParle.test.mts",
     "test:unite-traverse": "tsx src/app/services/uniteTraverse.test.mts",
     "test:acquiescement": "tsx src/app/voice-offline/grammaireAcquiescement.test.mts",
+    "test:commandes-entree": "tsx src/app/voice-offline/commandesEntree.test.mts",
     "test:objectif-dit": "tsx src/app/contexts/objectifDit.test.mts",
     "test:encaissement-deux-formes": "tsx src/app/services/encaissementDeuxFormes.test.mts",
     "test:panier-fidele": "tsx src/app/services/panierFidele.test.mts",
