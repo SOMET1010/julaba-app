@@ -325,6 +325,22 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-69.mp3", text: "Crée ton mot de passe. Au moins 4 caractères." },
   { file: "/voix/tata/login-70.mp3", text: "Ton mot de passe est trop court. Il faut au moins 4 caractères." },
   { file: "/voix/tata/login-71.mp3", text: "On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer." },
+  // ── CLIPS 72-77 — LES INDICATIFS SE DISENT, 26/10/2026, DÉCISION PATRICK ──
+  // « Retire cet indicatif "Ce n'est pas le bon code. Attention : encore 2
+  // essais, après il faudra attendre." mais plutôt ajoute-le comme clip,
+  // fais pareil pour les autres indicatifs, fais des clips. » Les phrases
+  // interpolées de l'écran de connexion (essais restants, durée du verrou)
+  // et les deux constats de dictée étaient écrites à la main : aucun clip
+  // ne les portait, la voix disait AUTRE CHOSE que la bannière. Texte =
+  // EXACTEMENT ce que l'écran affiche et fait entendre (effet
+  // `error → parle(error)`). Mêmes specs : Denise fr-FR, 24 kHz mono
+  // 96 kbps, −16 LUFS.
+  { file: "/voix/tata/login-72.mp3", text: "Ce n'est pas le bon code. Attention : encore 2 essais, après il faudra attendre." },
+  { file: "/voix/tata/login-73.mp3", text: "Ce n'est pas le bon code. Attention : encore 1 essai, après il faudra attendre." },
+  { file: "/voix/tata/login-74.mp3", text: "Trop de tentatives incorrectes. Réessaie dans 15 minutes." },
+  { file: "/voix/tata/login-75.mp3", text: "Trop de tentatives incorrectes. Réessaie dans 1 heure." },
+  { file: "/voix/tata/login-76.mp3", text: "Vérifie ton numéro : touche le micro pour redire, ou corrige." },
+  { file: "/voix/tata/login-77.mp3", text: "Il manque des chiffres : touche le micro pour redire, ou complète." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

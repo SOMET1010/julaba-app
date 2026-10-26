@@ -100,6 +100,31 @@ verifier(
   'ce qui est dit doit référencer une clé de services/entreeVoix.ts (AUTH-03).',
 );
 
+// ── DÉCISION PATRICK, 26/10 : L'INDICATIF AFFICHÉ EST LE CLIP ─────────────
+// Les deux phrases interpolées (« encore N essais… », « Attends N minutes… »)
+// étaient des copies retapées : aucun clip ne les portait, la voix disait
+// AUTRE CHOSE que la bannière. Désormais l'affichage passe par des constantes
+// assignées depuis le catalogue (clips 72-77), et l'effet
+// `error → parle(error)` dit exactement ce qui est écrit.
+
+verifier(
+  'plus aucune phrase interpolée à l’écran (essais ou attente)',
+  !/\$\{restants\}|\$\{attenteEnClair|attenteEnClair\(/.test(code),
+  'l’indicatif affiché doit être un clip du catalogue (clips 72-77), pas une copie retapée.',
+);
+
+verifier(
+  'l’attente du verrou passe par un clip du catalogue (constante clipVerrou)',
+  /const clipVerrou\s*=[\s\S]{0,600}?ENTREE_VOICE_CLIPS\./.test(code),
+  'chaque palier serveur (5 min, 15 min, 1 heure) a son clip — le verrou n’écrit plus de durée à la main.',
+);
+
+verifier(
+  'l’avertissement essais restants passe par un clip du catalogue (constante clipErreur)',
+  /const clipErreur\s*=[\s\S]{0,600}?ENTREE_VOICE_CLIPS\./.test(code),
+  'les clips 72/73 disent exactement « encore N essais, après il faudra attendre ».',
+);
+
 // Chaque clé citée dans le flux verrou existe, avec un fichier audio embarqué.
 // Deux formes de `file:` cohabitent : littéral '/voix/...' ou gabarit
 // `${BASE}/...` (BASE = '/voix/fr-CI/prototype' — les 6 clips prototype).
