@@ -1392,3 +1392,23 @@ Stage Summary:
 - Le « tout » de Patrick est comblé : 4 écrans/parcours de PLUS sont parlés + montrés, et le bug du chemin mort (login-65 sur un 401 qui n'arrive jamais) est fermé par la preuve E2E — la revue a fait son travail : elle a trouvé ce que le lot précédent avait cru couvrir
 - Leçon de méthode enregistrée : un branchement prouvé « par code + tsc » ne prouve PAS le chemin — le contrat RÉEL du serveur (200 + success:false) était différent de l'hypothèse (401) ; dorénavant toute éventualité câblée se déclenche EN NAVIGATEUR au moins une fois
 - Preuves : .zlogs/revue-tout-login65-68-70-62.png (desktop), .zlogs/revue-tout-mobile-390.png (390 px)
+
+---
+Task ID: question-adaptation-voix-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « "J'ai remarqué que tu préfères le clavier. Veux-tu que Julaba s'adapte ?" ne parle pas et pas d'indice »
+
+Work Log:
+- Garde anti-course OK (0 nouveau commit Akoun)
+- REPRODUCTION E2E : stats forcées (clavier 20/voix 2, logins 8 → suggestionAuto 'lecture') → la boîte de question apparaît bien sur l'étape numéro, login-43.mp3 se TÉLÉCHARGE (GET 206) mais ne JOUE PAS
+- RACINE : la question partait au mount EN PARALLÈLE de l'accueil de l'étape (parleSuite login-05→06→07). audioManager = un créneau exclusif, toute nouvelle demande ANNULE la précédente → la question était cancellée à coup sûr par l'accueil qui la doublait au même instant. Le lot « voix-everywhere » avait câblé le TEXTE (clé + clip), mais le POINT DE DÉPART (mount parallèle) la condamnait au silence — un branchement vivant mais toujours perdant de la course
+- CORRECTION : UNE SEULE CHAÎNE — la question s'enchaîne DERRIÈRE l'accueil dans le parleSuite de direConsigneNumero (05→06→07→43) ; effet mount de la question supprimé ; suggReponseRef (miroir ref) fait lire la réponse au moment de parler (pas de re-dit après « Modifier ») ; les 2 réponses gardent login-35/36
+- INDICE : login-cue-clignote posé sur la boîte (6 clignotements à l'arrivée, famille « C'est mon numéro »)
+- PREUVES NAVIGATEUR : ordre réseau login-05→06→07 puis login-43 (206) ; classe clignote sur la boîte (capture .zlogs/suggestion-adaptation-voix-clignote.png, 390 px) ; « Oui, adapte » → julaba_access_mode=lecture + login-35 206 + boîte masquée ; « Non » → lastAsk=8 (snooze 4 connexions) + login-36 206 + mode auto intact ; la variante voix (login-44) partage le même chemin corrigé
+- CONTRAINTE CONNUE (préexistante, non régressée) : un chargement FRAIS directement sur l'étape numéro (sans aucun geste) bloque tout l'accueil vocal de l'écran jusqu'au 1er geste — le clignotement couvre visuellement ce cas ; le filet audio-unlock n'est PAS ajouté ici car l'accueil complet rejouerait après les flux normaux (double voix) — décision documentée
+- voix-trace-source a VU le changement d'appel de parole (son rôle) — référence régénérée ; 16 gardes verts ; tsc 0 ; eslint 0
+- Push anti-course : rev-list count = 0
+
+Stage Summary:
+- La question d'adaptation est ENFIN entendue : elle termine la chaîne d'accueil de l'étape numéro au lieu de courir (et perdre) contre lui — et elle CLIGNOTE
+- Leçon de méthode : câbler un texte (clé + clip) ne suffit pas — le MOMENT du départ décide ; deux chaînes de voix qui démarrent au même mount se tuent l'une l'autre, la file unique est la règle
