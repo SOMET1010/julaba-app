@@ -294,6 +294,26 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-50.mp3", text: "Accès non autorisé. Utilise le portail administrateur sur julaba.online/backoffice/login" },
   { file: "/voix/tata/login-51.mp3", text: "Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître." },
   { file: "/voix/tata/login-52.mp3", text: "Compte activé ! Tu peux maintenant te connecter avec ton code." },
+  // ── CLIPS 53-67 — TOUTES LES ÉVENTUALITÉS DE L'AUTH, 26/10/2026 ───────────
+  // Numéro non enregistré (écran entier), états du compte au login, erreurs
+  // de validation d'activation, changement de code secret. Texte = EXACTEMENT
+  // ce que l'écran affiche et passe à la voix (règle mot pour mot, leçon
+  // login-41). Mêmes specs lot A : Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS.
+  { file: "/voix/tata/login-53.mp3", text: "Ce numéro n'est pas encore enregistré sur Julaba." },
+  { file: "/voix/tata/login-54.mp3", text: "Pour créer ton compte, contacte un agent identificateur ou un administrateur Julaba." },
+  { file: "/voix/tata/login-55.mp3", text: "Ton compte est suspendu. Va voir un administrateur Julaba." },
+  { file: "/voix/tata/login-56.mp3", text: "Ton compte a été rejeté. Va voir un administrateur Julaba." },
+  { file: "/voix/tata/login-57.mp3", text: "Ton compte attend la validation d'un super administrateur. Reviens un peu plus tard." },
+  { file: "/voix/tata/login-58.mp3", text: "Ton compte n'est pas encore activé. Utilise le code d'activation reçu par SMS." },
+  { file: "/voix/tata/login-59.mp3", text: "Saisis le code d'activation." },
+  { file: "/voix/tata/login-60.mp3", text: "Ton code doit avoir au moins 4 chiffres." },
+  { file: "/voix/tata/login-61.mp3", text: "Ce code est trop simple. Choisis-en un autre." },
+  { file: "/voix/tata/login-62.mp3", text: "Les deux codes ne sont pas pareils." },
+  { file: "/voix/tata/login-63.mp3", text: "Code d'activation invalide ou expiré." },
+  { file: "/voix/tata/login-64.mp3", text: "C'est bon, ton code secret est changé." },
+  { file: "/voix/tata/login-65.mp3", text: "Ce n'est pas ton ancien code. Regarde bien et recommence." },
+  { file: "/voix/tata/login-66.mp3", text: "Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code." },
+  { file: "/voix/tata/login-67.mp3", text: "La connexion ne passe pas pour le moment. Attends un peu, puis réessaie." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

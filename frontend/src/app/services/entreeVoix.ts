@@ -54,7 +54,32 @@ export type EntreeVoiceKey =
   | 'motDePasseTemporaire'
   | 'portailAdmin'
   | 'activationAccueil'
-  | 'activationReussie';
+  | 'activationReussie'
+  // ── TOUTES LES ÉVENTUALITÉS — 26/10/2026, DÉCISION PATRICK ────────────────
+  // « Il y a des voix qui manquent au niveau du système d'authentification.
+  // Par exemple, quand il y a une erreur de numéro, on doit avoir également
+  // un clip. (…) je veux aussi que tu génères des clips pour toutes les
+  // éventualités qu'on a au niveau du système d'authentification. »
+  // Le numéro non enregistré se taisait (écran ENTIER sans voix) ; les états
+  // du compte (suspendu, rejeté, attente, non activé) tombaient dans le
+  // message générique du mauvais code — un faux message ET un faux clip.
+  // Les validations d'activation et du changement de code n'avaient que la
+  // synthèse (muette en APK). Chaque clé ci-dessous ferme une éventualité.
+  | 'numeroNonEnregistre'
+  | 'numeroNonEnregistreAide'
+  | 'compteSuspendu'
+  | 'compteRejete'
+  | 'compteAttenteValidation'
+  | 'comptePasActif'
+  | 'activationCodeVide'
+  | 'activationCodeCourt'
+  | 'activationCodeSimple'
+  | 'activationCodesDifferents'
+  | 'activationCodeInvalide'
+  | 'codeSecretChange'
+  | 'ancienCodeIncorrect'
+  | 'codesDifferentsRecommencer'
+  | 'connexionInterrompue';
 
 export interface EntreeVoiceClip {
   file: string;
@@ -543,6 +568,103 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   activationReussie: {
     file: '/voix/tata/login-52.mp3',
     texte: 'Compte activé ! Tu peux maintenant te connecter avec ton code.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── CLIPS 53-67 — TOUTES LES ÉVENTUALITÉS, 26/10/2026 ────────────────────
+  // Mêmes specs lot A (Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS).
+  // RÈGLE DU LOT : le texte AFFICHÉ est le texte DU CLIP, mot pour mot —
+  // l'effet `error → parle(error)` de l'écran fait le reste tout seul.
+  // Un mot d'écart = muet (leçon login-41) : les écrans citent la CLÉ,
+  // jamais une copie retapée.
+  numeroNonEnregistre: {
+    file: '/voix/tata/login-53.mp3',
+    texte: "Ce numéro n'est pas encore enregistré sur Julaba.",
+    atteste: false,
+    lotA: true,
+  },
+  numeroNonEnregistreAide: {
+    file: '/voix/tata/login-54.mp3',
+    texte: 'Pour créer ton compte, contacte un agent identificateur ou un administrateur Julaba.',
+    atteste: false,
+    lotA: true,
+  },
+  compteSuspendu: {
+    file: '/voix/tata/login-55.mp3',
+    texte: 'Ton compte est suspendu. Va voir un administrateur Julaba.',
+    atteste: false,
+    lotA: true,
+  },
+  compteRejete: {
+    file: '/voix/tata/login-56.mp3',
+    texte: 'Ton compte a été rejeté. Va voir un administrateur Julaba.',
+    atteste: false,
+    lotA: true,
+  },
+  compteAttenteValidation: {
+    file: '/voix/tata/login-57.mp3',
+    texte: "Ton compte attend la validation d'un super administrateur. Reviens un peu plus tard.",
+    atteste: false,
+    lotA: true,
+  },
+  comptePasActif: {
+    file: '/voix/tata/login-58.mp3',
+    texte: "Ton compte n'est pas encore activé. Utilise le code d'activation reçu par SMS.",
+    atteste: false,
+    lotA: true,
+  },
+  activationCodeVide: {
+    file: '/voix/tata/login-59.mp3',
+    texte: "Saisis le code d'activation.",
+    atteste: false,
+    lotA: true,
+  },
+  activationCodeCourt: {
+    file: '/voix/tata/login-60.mp3',
+    texte: 'Ton code doit avoir au moins 4 chiffres.',
+    atteste: false,
+    lotA: true,
+  },
+  activationCodeSimple: {
+    file: '/voix/tata/login-61.mp3',
+    texte: 'Ce code est trop simple. Choisis-en un autre.',
+    atteste: false,
+    lotA: true,
+  },
+  activationCodesDifferents: {
+    file: '/voix/tata/login-62.mp3',
+    texte: 'Les deux codes ne sont pas pareils.',
+    atteste: false,
+    lotA: true,
+  },
+  activationCodeInvalide: {
+    file: '/voix/tata/login-63.mp3',
+    texte: "Code d'activation invalide ou expiré.",
+    atteste: false,
+    lotA: true,
+  },
+  codeSecretChange: {
+    file: '/voix/tata/login-64.mp3',
+    texte: "C'est bon, ton code secret est changé.",
+    atteste: false,
+    lotA: true,
+  },
+  ancienCodeIncorrect: {
+    file: '/voix/tata/login-65.mp3',
+    texte: "Ce n'est pas ton ancien code. Regarde bien et recommence.",
+    atteste: false,
+    lotA: true,
+  },
+  codesDifferentsRecommencer: {
+    file: '/voix/tata/login-66.mp3',
+    texte: 'Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code.',
+    atteste: false,
+    lotA: true,
+  },
+  connexionInterrompue: {
+    file: '/voix/tata/login-67.mp3',
+    texte: 'La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.',
     atteste: false,
     lotA: true,
   },
