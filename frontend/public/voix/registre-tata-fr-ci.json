@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 251,
-    "clips_mappes": 243,
+    "fichiers_mp3": 257,
+    "clips_mappes": 249,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -3025,6 +3025,84 @@
       "sha256": "af12e7c9f9f166ed503d0f1066fdee67f818f689024965e71bf6eed1f683f7c4",
       "octets": 73772,
       "duree_ms": 6120
+    },
+    {
+      "id": "login-72",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Ce n'est pas le bon code. Attention : encore 2 essais, après il faudra attendre.",
+      "fichier": "/voix/tata/login-72.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "b4eab36824312e8883ecd064dc7fd5c45fe0bb699238b202869d9079a4739745",
+      "octets": 88748,
+      "duree_ms": 7368
+    },
+    {
+      "id": "login-73",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Ce n'est pas le bon code. Attention : encore 1 essai, après il faudra attendre.",
+      "fichier": "/voix/tata/login-73.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "eccd8c1bd909665c85f395f8d08582da8ddba4dbd380ee20943f6e02df4b3bf1",
+      "octets": 87020,
+      "duree_ms": 7224
+    },
+    {
+      "id": "login-74",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Trop de tentatives incorrectes. Réessaie dans 15 minutes.",
+      "fichier": "/voix/tata/login-74.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "40e5ba0b2c7075373880068448754a88f64c993df96bfe298708eacf562d0cff",
+      "octets": 69452,
+      "duree_ms": 5760
+    },
+    {
+      "id": "login-75",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Trop de tentatives incorrectes. Réessaie dans 1 heure.",
+      "fichier": "/voix/tata/login-75.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "2deb9625df1d362b4794cf6f8ed0af031c42db2138d46150ddcae7342cae1e8a",
+      "octets": 65420,
+      "duree_ms": 5424
+    },
+    {
+      "id": "login-76",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Vérifie ton numéro : touche le micro pour redire, ou corrige.",
+      "fichier": "/voix/tata/login-76.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "80c69476befc7b5a3979dbaaa7f5680b7dfdb19f7d4b96d96e3824f05e4faa56",
+      "octets": 62540,
+      "duree_ms": 5184
+    },
+    {
+      "id": "login-77",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Il manque des chiffres : touche le micro pour redire, ou complète.",
+      "fichier": "/voix/tata/login-77.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "4148bea19b583389f910a99e90207966c0c6ca6fe6d57daa98c1421aaeb39493",
+      "octets": 62540,
+      "duree_ms": 5184
     },
     {
       "id": "stk-02",

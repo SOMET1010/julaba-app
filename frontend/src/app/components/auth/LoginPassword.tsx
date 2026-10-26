@@ -629,22 +629,22 @@ export function LoginPassword() {
       setShowKeypad(true);
       if (num.length > 0) {
         setPhone(num);
+        // ── DÉCISION PATRICK, 26/10 : L'INDICATIF DEVIENT LE CLIP ──────────
+        // Les deux phrases écrites (« Vérifie ton numéro… » / « Il manque
+        // des chiffres… ») n'étaient portées par AUCUN clip : l'effet
+        // `error → parle(error)` les refusait (direEntreeTexte ne joue que
+        // l'enregistré), et la chaîne dicteeNumeroIncomprise → Clavier
+        // disait AUTRE CHOSE que la bannière — pour une dictée COMPLÈTE mais
+        // invalide, « Je n'ai pas bien entendu » était même FAUX : elle a
+        // été entendue, le numéro n'est simplement pas d'ici. Clips
+        // login-76/77 : le texte affiché est le texte enregistré, dit par
+        // l'effet error — UNE SEULE chaîne de voix (leçon du silence du
+        // 26/10 : une parleSuite lancée ici serait cancellée par l'effet).
+        // Le geste reste nommé dans le clip (« touche le micro pour
+        // redire, ou corrige/complète ») et le clavier s'ouvre ci-dessous.
         setError(num.length >= 10
-          ? 'Vérifie ton numéro : touche le micro pour redire, ou corrige 👇'
-          : 'Il manque des chiffres : touche le micro pour redire, ou complète 👇');
-        // AUTH-11. Trop court : on DIT ce qui manque, au lieu du générique.
-        // L'écran l'écrivait déjà — l'information existait, seule la marchande
-        // qui lit y avait droit. Texte aligné mot pour mot sur login-11.
-        // Numéro complet mais invalide : on garde le générique, qui donne le
-        // GESTE. Le clip AUTH_12 nomme mieux le défaut mais ne dit pas quoi
-        // faire ; on ne troque pas une consigne contre une plus pauvre.
-        // AUTH-04 — la relecture muette qui ouvrait la suite est retirée :
-        // seuls les textes AVEC clip sont dits (le clip « relecture » de la
-        // dictée est remplacé par le balayage visuel ci-dessus).
-        void parleSuite(
-          ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
-          ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
-        );
+          ? ENTREE_VOICE_CLIPS.dicteeNumeroVerifie.texte
+          : ENTREE_VOICE_CLIPS.dicteeNumeroManque.texte);
         return;
       }
       setError("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
@@ -766,13 +766,10 @@ export function LoginPassword() {
     };
   }, []);
 
-  /** Une attente, dite comme on la dirait à quelqu'un qui n'a pas de montre. */
-  const attenteEnClair = (ms: number): string => {
-    const minutes = Math.max(1, Math.round(ms / 60000));
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-    const heures = Math.round(minutes / 60);
-    return `${heures} heure${heures > 1 ? 's' : ''}`;
-  };
+  // (attenteEnClair a quitté cet écran, 26/10 : la durée du verrou n'est plus
+  // écrite à la main côté frontend — chaque palier serveur a son clip, voir
+  // `clipVerrou` plus bas. La mise en clair d'une durée reste un métier de
+  // serveur : backend/src/auth/verrou-pin.ts.)
 
   // Mémorise la personne sur CE téléphone après une entrée réussie (lot 1) —
   // jamais bloquant : si le stockage échoue, la connexion continue normalement.
@@ -941,51 +938,59 @@ export function LoginPassword() {
         // ATTENTE EN COURS. Le serveur donne la durée : on la dit, et surtout on
         // la FAIT ENTENDRE. « Compte bloqué » sans durée ni voix, pour quelqu'un
         // qui ne lit pas, c'est une caisse qui disparaît sans explication.
+        //
+        // ── DÉCISION PATRICK, 26/10 : L'INDICATIF DU VERROU EST LE CLIP ────
+        // La phrase interpolée (« Attends N minutes, puis réessaie ») était
+        // une COPIE RETAPÉE à la main : aucun clip ne la portait, l'effet
+        // `error → parle(error)` la refusait, et seul le palier 5 minutes
+        // était dit (ui-125) — 15 minutes et 1 heure n'existaient nulle part
+        // en voix. Le serveur n'a QUE TROIS paliers (backend/src/auth/
+        // verrou-pin.ts : 3 échecs → 5 min, 6 → 15 min, 9 et plus → 1 heure)
+        // : chaque palier a maintenant SON clip, mot pour mot ce qui est
+        // affiché — ui-125 pour 5 minutes (déjà là), login-74 pour 15,
+        // login-75 pour 1 heure. L'attente entamée reste dans son palier
+        // (4 min 20 restantes → palier 5 min) : on ne dit jamais une durée
+        // FAUSSE, et une durée inconnue reçoit login-30, qui n'en énonce
+        // aucune. L'effet `error → parle(error)` dit le clip : AUCUN
+        // `parle()` explicite ici — il redémarrerait le même clip (audio-
+        // Manager annule et rejoue à chaque demande).
         if (result.locked === true) {
           const attente = typeof result.attenteMs === 'number' ? result.attenteMs : 0;
-          const minutes = Math.max(1, Math.round(attente / 60000));
-          const message = attente > 0
-            ? `Trop d'essais. Attends ${attenteEnClair(attente)}, puis réessaie.`
-            : "Trop d'essais. Attends un moment, puis réessaie.";
-          setError(message);
-          // AUTH-03 — CE QUI EST DIT DOIT ÊTRE ENTENDU. La phrase interpolée
-          // ci-dessus partait à `parle()` sans clip : `direEntreeTexte` ne
-          // joue qu'une phrase ENREGISTRÉE, elle restait donc muette — le
-          // délai du verrou, information vitale pour une non-lectrice, n'était
-          // dit À AUCUN palier. On dit maintenant une phrase RÉELLEMENT
-          // ENREGISTRÉE, choisie selon l'attente : ui-125 (VRAIE voix) dit
-          // exactement le palier 5 minutes ; les autres paliers reçoivent le
-          // clip login-30 (« Tu as trop forcé. Patiente… »), qui garde le
-          // geste sans JAMAIS énoncer une durée fausse. La durée exacte reste
-          // AFFICHÉE ci-dessus, et le garde `test:verrou-connexion` empêche
-          // le retour de la phrase interpolée.
-          try { parle(minutes === 5 ? ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte : ENTREE_VOICE_CLIPS.tropDEssais.texte); } catch { /* la voix n'est jamais bloquante */ }
+          const palier = attente <= 0 ? 0
+            : attente <= 5 * 60000 ? 5
+            : attente <= 15 * 60000 ? 15
+            : attente <= 60 * 60000 ? 60
+            : 0;
+          const clipVerrou = palier === 5 ? ENTREE_VOICE_CLIPS.verrouCinqMinutes
+            : palier === 15 ? ENTREE_VOICE_CLIPS.verrouQuinzeMinutes
+            : palier === 60 ? ENTREE_VOICE_CLIPS.verrouUneHeure
+            : ENTREE_VOICE_CLIPS.tropDEssais;
+          setError(clipVerrou.texte);
           setPinInput(""); setIsLoading(false); return;
         }
         // AVERTISSEMENT AVANT LE PALIER. Rien ne prévenait : on tombait dans
         // l'attente sans la voir venir. Le compte des essais vient du SERVEUR —
         // le compteur local d'avant mentait dès le premier rechargement.
         const restants = typeof result.essaisRestants === 'number' ? result.essaisRestants : null;
-        // Le clip prototype `codeErreur` est muet hors prévisualisation. Le
-        // clip lot A couvre l'échec standard et reste audible dans le build.
+        // ── DÉCISION PATRICK, 26/10 : L'AVERTISSEMENT EST LE CLIP ──────────
+        // « Retire cet indicatif, ajoute-le plutôt comme clip. » L'indicatif
+        // interpolé (« Attention : encore N essais, après il faudra attendre
+        // ») était une copie retapée : AUCUN clip ne le portait, l'effet
+        // `error → parle(error)` le refusait, et la voix disait AUTRE CHOSE
+        // que la bannière (login-29/login-28). Le serveur ne renvoie que
+        // 1 ou 2 essais restants (le 3ᵉ échec déclenche le palier, répondu
+        // plus haut par `clipVerrou`) : chaque cas a SON clip, mot pour mot
+        // ce qui est affiché — login-72 pour deux essais, login-73 pour le
+        // dernier. Champ absent du serveur → login-28, qui garde le geste
+        // sans jamais compter faux. L'effet `error → parle(error)` dit le
+        // clip : AUCUN `parle()` explicite ici — il redémarrerait le même
+        // clip (audioManager annule et rejoue à chaque demande).
         const clipErreur = restants === 1
-          ? ENTREE_VOICE_CLIPS.dernierEssai
+          ? ENTREE_VOICE_CLIPS.avertissementUnEssai
+          : restants === 2
+          ? ENTREE_VOICE_CLIPS.avertissementDeuxEssais
           : ENTREE_VOICE_CLIPS.mauvaisCodeAttention;
-        const message = restants !== null && restants <= 2
-          ? `Ce n'est pas le bon code. Attention : encore ${restants} essai${restants > 1 ? 's' : ''}, après il faudra attendre.`
-          : clipErreur.texte;
-        setError(message);
-        // AUTH-03 — avertissement AUDIBLE, par clip TOUJOURS DISPONIBLE :
-        // une seule chance → login-29 le dit EXACTEMENT (« Il te reste une
-        // seule chance », la vraie gravité du moment) ; deux chances →
-        // login-28 (lot A) — le clip générique codeErreur est un « prototype »,
-        // muet dans tout build livré ; login-28 est donc utilisé pour tous les
-        // autres échecs. La mention « encore N essais » reste écrite dans la
-        // bannière, car aucun clip ne porte ce nombre variable.
-        try {
-          if (restants === 1) parle(ENTREE_VOICE_CLIPS.dernierEssai.texte);
-          else parle(ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte);
-        } catch { /* la voix n'est jamais bloquante */ }
+        setError(clipErreur.texte);
         setPinInput(""); setIsLoading(false); return;
       }
       // Apprentissage 'auto' : on note comment elle s'est identifiée (clavier/voix).

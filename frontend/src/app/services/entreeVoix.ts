@@ -41,6 +41,16 @@ export type EntreeVoiceKey =
   | 'verrouCinqMinutes'
   | 'dernierEssai'
   | 'mauvaisCodeAttention'
+  // ── CLIPS 72-77 — LES INDICATIFS SE DISENT, 26/10/2026, DÉCISION PATRICK ──
+  // « Retire cet indicatif, ajoute-le plutôt comme clip ; fais pareil pour
+  // les autres indicatifs. » Chaque phrase interpolée de l'écran de connexion
+  // devient un clip exact (voir le bloc des entrées plus bas).
+  | 'avertissementDeuxEssais'
+  | 'avertissementUnEssai'
+  | 'verrouQuinzeMinutes'
+  | 'verrouUneHeure'
+  | 'dicteeNumeroVerifie'
+  | 'dicteeNumeroManque'
   // ── VOIX SUR CHAQUE VUE — 26/10/2026, DÉCISION PATRICK ────────────────
   // « On a affaire à des personnes qui ne savent pas forcément lire/écrire » :
   // chaque vue et chaque message de l'entrée SE DIT. Ces clés ferment les
@@ -481,6 +491,15 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   //    durée reste AFFICHÉE ; on ne fait jamais dire à Tantie une durée
   //    qu'elle n'a pas enregistrée.
   //
+  // ── COMPLÉTÉ PAR LA DÉCISION PATRICK, 26/10 (clips 72-77) : chacun des
+  // TROIS paliers du serveur (5 min, 15 min, 1 heure — backend/src/auth/
+  // verrou-pin.ts) a maintenant SON clip, et l'écran n'écrit plus AUCUNE
+  // durée à la main : le texte affiché EST le clip, dit par l'effet
+  // `error → parle(error)` (ui-125 pour 5 min, login-74 pour 15 min,
+  // login-75 pour 1 heure, login-30 pour une durée inconnue — JAMAIS une
+  // durée fausse). Le garde `test:verrou-connexion` vérifie que l'affichage
+  // passe par une constante `clipVerrou` assignée depuis CE fichier.
+  //
   // Le garde `test:verrou-connexion` est renforcé dans le même lot : il
   // vérifie désormais que ce qui part à `parle()` référence une clé de CE
   // fichier, et que le fichier audio existe dans `public/`.
@@ -495,14 +514,74 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
     atteste: false,
     lotA: true,
   },
+  // DERNIER ESSAI — login-29 reste au catalogue (le garde verrou l'exige, et
+  // sa voix a porté tout le lot AUTH-03), mais à l'écran l'avertissement
+  // EXACT l'a remplacé : depuis les clips 72-77, la bannière dit « encore
+  // 1 essai, après il faudra attendre » par login-73 — le texte affiché est
+  // enfin le texte enregistré (décision Patrick, 26/10).
   // Deux essais restants : le clip du mauvais code GENÉRIQUE (codeErreur) est
   // un clip « prototype » — muet dans tout build livré, le drapeau de préview
   // éteint. Le warning « encore 2 essais » serait donc resté silencieux en
   // production… login-28 (lot A, toujours embarqué) dit le même moment avec
   // la gravité qu'il mérite : code pas bon, ET regarde bien avant de reprendre.
+  // DEPUIS LES CLIPS 72-77 (26/10) : le cas « encore 2 essais » a SON clip
+  // exact (`avertissementDeuxEssais`, login-72) — login-28 reste le repli
+  // quand le serveur n'envoie pas le compte d'essais.
   mauvaisCodeAttention: {
     file: '/voix/tata/login-28.mp3',
     texte: 'Le numéro ou le code n\'est pas bon, deh. Regarde bien avant de reprendre.',
+    atteste: false,
+    lotA: true,
+  },
+
+  // ── CLIPS 72-77 — LES INDICATIFS SE DISENT, 26/10/2026, DÉCISION PATRICK ──
+  // Patrick : « Retire cet indicatif "Ce n'est pas le bon code. Attention :
+  // encore 2 essais, après il faudra attendre." mais plutôt ajoute-le comme
+  // clip, fais pareil pour les autres indicatifs, fais des clips. »
+  //
+  // LE DÉFAUT : l'écran de connexion écrivait des phrases INTERPOLÉES à la
+  // main (le compte d'essais restants, la durée du verrou) et des constats
+  // de dictée avec émoji — des mots que Tantie n'avait JAMAIS enregistrés.
+  // L'effet `error → parle(error)` les refusait tous (direEntreeTexte ne
+  // joue que l'enregistré) : la bannière disait des mots que personne
+  // n'entendait jamais, et la voix disait AUTRE CHOSE que ce qui était
+  // écrit. Chaque indicatif est maintenant un clip EXACT — le texte affiché
+  // EST le texte enregistré, dit par l'effet error (UNE seule chaîne de
+  // voix). Mêmes specs que le lot 68-71 : Denise fr-FR, 24 kHz mono
+  // 96 kbps, −16 LUFS.
+  avertissementDeuxEssais: {
+    file: '/voix/tata/login-72.mp3',
+    texte: "Ce n'est pas le bon code. Attention : encore 2 essais, après il faudra attendre.",
+    atteste: false,
+    lotA: true,
+  },
+  avertissementUnEssai: {
+    file: '/voix/tata/login-73.mp3',
+    texte: "Ce n'est pas le bon code. Attention : encore 1 essai, après il faudra attendre.",
+    atteste: false,
+    lotA: true,
+  },
+  verrouQuinzeMinutes: {
+    file: '/voix/tata/login-74.mp3',
+    texte: 'Trop de tentatives incorrectes. Réessaie dans 15 minutes.',
+    atteste: false,
+    lotA: true,
+  },
+  verrouUneHeure: {
+    file: '/voix/tata/login-75.mp3',
+    texte: 'Trop de tentatives incorrectes. Réessaie dans 1 heure.',
+    atteste: false,
+    lotA: true,
+  },
+  dicteeNumeroVerifie: {
+    file: '/voix/tata/login-76.mp3',
+    texte: 'Vérifie ton numéro : touche le micro pour redire, ou corrige.',
+    atteste: false,
+    lotA: true,
+  },
+  dicteeNumeroManque: {
+    file: '/voix/tata/login-77.mp3',
+    texte: 'Il manque des chiffres : touche le micro pour redire, ou complète.',
     atteste: false,
     lotA: true,
   },

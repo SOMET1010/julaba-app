@@ -114,6 +114,7 @@
     "test:fusion-panier": "node scripts/test-fusion-panier.mjs",
     "test:prix-catalogue": "tsx src/app/services/prixCatalogueVocal.test.mts",
     "test:verrou-connexion": "node scripts/test-verrou-connexion.mjs",
+    "test:indicatifs-dits": "node scripts/test-indicatifs-dits.mjs",
     "test:canal-code": "node scripts/test-canal-code.mjs",
     "test:login-images-repli": "tsx src/app/services/loginImagesRepli.test.mts",
     "test:recuperation-admin": "node scripts/test-recuperation-admin.mjs",
