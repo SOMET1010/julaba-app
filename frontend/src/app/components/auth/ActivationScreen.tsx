@@ -147,8 +147,10 @@ export function ActivationScreen() {
               style={{ borderColor: BORDER }} />
           </div>
           {error && <p id="activation-erreur" role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">{error}</p>}
+          {/* Indice visuel (décision Patrick 26/10) : le geste à faire CLIGNOTE
+              à l'arrivée sur la vue — 6 clignements puis silence. */}
           <motion.button type="submit" disabled={loading}
-            className="w-full py-4 rounded-2xl font-black text-white text-lg disabled:opacity-50"
+            className="login-cue-clignote w-full py-4 rounded-2xl font-black text-white text-lg disabled:opacity-50"
             style={{ backgroundColor: P }} whileHover={loading ? {} : { scale: 1.02 }} whileTap={loading ? {} : { scale: 0.98 }}>
             {loading ? 'Activation...' : 'Activer mon compte'}
           </motion.button>

@@ -901,6 +901,26 @@ export function LoginPassword() {
           setError('Tu as trop forcé. Patiente un peu d\'abord avant de réessayer.');
           setPinInput(""); setIsLoading(false); return;
         }
+        // ── LES ÉTATS DU COMPTE SE DISENT — « toutes les éventualités », 26/10 ──
+        // LE DÉFAUT FERMÉ ICI. Un 401 « Compte suspendu / rejeté / en attente
+        // de validation / pas encore activé » tombait plus bas dans le message
+        // générique du mauvais code : un compte suspendu entendait « Le numéro
+        // ou le code n'est pas bon » — un FAUX message et un FAUX clip, pour
+        // quelqu'un qui ne lit pas. Le serveur NOMME l'état (result.message) ;
+        // on affiche le texte du clip correspondant, mot pour mot, et l'effet
+        // `error → parle(error)` le fait entendre tout seul (même fil que
+        // AUTH-03 : le texte affiché EST le texte enregistré).
+        const messageBackend = typeof result.message === 'string' ? result.message : '';
+        const etatCompte =
+          messageBackend === 'Compte suspendu' ? ENTREE_VOICE_CLIPS.compteSuspendu :
+          messageBackend === 'Compte rejeté' ? ENTREE_VOICE_CLIPS.compteRejete :
+          messageBackend === 'Compte en attente de validation par un super administrateur' ? ENTREE_VOICE_CLIPS.compteAttenteValidation :
+          messageBackend.startsWith('Compte pas encore activé') ? ENTREE_VOICE_CLIPS.comptePasActif :
+          null;
+        if (etatCompte) {
+          setError(etatCompte.texte);
+          setPinInput(""); setIsLoading(false); return;
+        }
         // Source de vérité backend : verrouillage total après 9 échecs cumulés.
         // Prioritaire sur le compteur RAM (qui ne sert qu'à l'affichage progressif 5/15 min).
         // ATTENTE EN COURS. Le serveur donne la durée : on la dit, et surtout on

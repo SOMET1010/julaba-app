@@ -3,12 +3,16 @@
  * Route : /non-enregistre
  * Accessible uniquement via navigation programmatique (Login.tsx) avec state.phone.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowRight, Phone, UserX } from 'lucide-react';
 import { Button } from '../ui/button';
 import { getSystemSettings } from '../../utils/api';
+import { speakClipOrText } from '../../services/audioManager';
+import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
+import { guidageVocal } from '../../utils/accessMode';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
 // AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
 import { warnDev } from '../../utils/warnDev';
 
@@ -42,6 +46,32 @@ export function UnregisteredPhone() {
       navigate('/', { replace: true });
     }
   }, [phone, navigate]);
+
+  // ── L'ERREUR DE NUMÉRO SE DIT — « toutes les éventualités », 26/10 ────────
+  // Patrick : « quand il y a une erreur de numéro, on doit avoir également
+  // un clip ». Avant ce lot, cet écran était ENTIERMENT muet : la marchande
+  // dont le numéro n'est pas enregistré voyait une page, vibrait de rien,
+  // et ne comprenait pas. Deux clips enchaînés — l'état (« pas encore
+  // enregistré »), puis le geste (« contacte un agent… ») — les mêmes textes
+  // que la page affiche, cités DEPUIS entreeVoix (une seule source : la
+  // leçon login-41 — un mot d'écart = muet).
+  const direNumeroInconnu = useCallback(() => {
+    if (!guidageVocal()) return;
+    const accueil = ENTREE_VOICE_CLIPS.numeroNonEnregistre;
+    const geste = ENTREE_VOICE_CLIPS.numeroNonEnregistreAide;
+    void speakClipOrText({ clipUrl: accueil.file, text: accueil.texte })
+      .then(() => speakClipOrText({ clipUrl: geste.file, text: geste.texte }))
+      .catch(() => { /* la voix n'est jamais bloquante */ });
+  }, []);
+
+  useEffect(() => {
+    direNumeroInconnu();
+  }, [direNumeroInconnu]);
+
+  // FILET DE RATTRAPAGE : /non-enregistre peut être rechargée fraîche (la
+  // navigation arrive d'un tap, mais un refresh la rejoue sans geste) — même
+  // filet que Welcome/ActivationScreen.
+  useAudioUnlockFallback(direNumeroInconnu, guidageVocal());
 
   useEffect(() => {
     abortRef.current?.abort();
@@ -114,7 +144,7 @@ export function UnregisteredPhone() {
 
         <Button
           onClick={() => navigate('/')}
-          className="w-full h-14 rounded-2xl text-lg font-semibold"
+          className="login-cue-clignote w-full h-14 rounded-2xl text-lg font-semibold"
           style={{ backgroundColor: '#B74725' }}
         >
           Retour à la connexion

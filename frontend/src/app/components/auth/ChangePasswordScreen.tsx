@@ -85,6 +85,27 @@ export function ChangePasswordScreen() {
     };
   }, []);
 
+  // ── CHAQUE ÉVENTUALITÉ SE DIT — « toutes les éventualités », 26/10 ────────
+  // LE DÉFAUT FERMÉ ICI. Avant ce lot, cet écran n'avait AUCUN effet sur
+  // `error` ni sur `success` : les échecs (validation, ancien code refusé,
+  // réseau) partaient à setError() et se TAISAIENT — le succès non plus ne
+  // disait rien. La voix part par direSuite, qui retrouve le clip par le
+  // TEXTE (lot login-53-67) ; sans clip, la synthèse prend le relais —
+  // jamais le silence. Le texte affiché EST le texte dit.
+  useEffect(() => {
+    if (!error) return;
+    vibrerErreur();
+    void direSuite(error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
+
+  useEffect(() => {
+    if (!success) return;
+    try { vibrerSucces(); } catch { /* ignore */ }
+    void direSuite("C'est bon, ton code secret est changé.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success]);
+
 
   const estRoleACode = ROLES_A_CODE.includes(normalizeRole(String(role))) || ROLES_A_CODE.includes(String(role));
 
@@ -136,21 +157,25 @@ export function ChangePasswordScreen() {
         } catch (err) {
           warnDev('[ChangePasswordScreen] error response parse failed:', err instanceof Error ? err.message : err);
         }
+        // Chaque message affiché est le TEXTE D'UN CLIP (mot pour mot) :
+        // ancien code refusé → login-65, trop de tentatives → login-30 (lot A,
+        // déjà enregistré), panne générale → login-48. La synthèse ne prend le
+        // relais que sur les messages du serveur qui n'ont pas de clip.
         let userMsg: string;
         if (res.status === 401) {
-          userMsg = 'Mot de passe actuel incorrect';
+          userMsg = "Ce n'est pas ton ancien code. Regarde bien et recommence.";
           setOldPassword('');
           setNewPassword('');
           setConfirm('');
           setPin(''); setPremierPin(''); setEtape('nouveau');
         } else if (res.status === 400) {
-          userMsg = backendMsg || 'Données invalides';
+          userMsg = backendMsg || "Ça n'a pas marché comme il faut. Reprends depuis le début.";
         } else if (res.status === 429) {
-          userMsg = 'Trop de tentatives. Réessaie dans quelques minutes.';
+          userMsg = "Tu as trop forcé. Patiente un peu d'abord avant de réessayer.";
         } else if (res.status >= 500) {
-          userMsg = 'Ça n\'a pas marché. Réessaie dans un instant.';
+          userMsg = "Ça n'a pas marché comme il faut. Reprends depuis le début.";
         } else {
-          userMsg = 'Erreur lors du changement de mot de passe';
+          userMsg = "Ça n'a pas marché comme il faut. Reprends depuis le début.";
         }
         setError(userMsg);
         setLoading(false);
@@ -175,12 +200,12 @@ export function ChangePasswordScreen() {
           navigate(target);
         }, 2000);
       } else {
-        setError('Erreur lors du changement de mot de passe');
+        setError("Ça n'a pas marché comme il faut. Reprends depuis le début.");
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       warnDev('[ChangePasswordScreen] change-password failed:', err instanceof Error ? err.message : err);
-      setError('Erreur de connexion');
+      setError('La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.');
     } finally {
       setLoading(false);
     }
@@ -218,8 +243,9 @@ export function ChangePasswordScreen() {
     if (suite !== premierPin) {
       try { vibrerErreur(); } catch { /* ignore */ }
       setPin(''); setPremierPin(''); setEtape('nouveau');
-      setError("Les deux codes sont différents. Recommence 👇");
-      void direSuite("Erreur, réessaie", 'Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code.');
+      // Le texte affiché EST le texte du clip (login-66) : la voix part par
+      // l'effet `error → direSuite(error)` — pas d'appel de parole en double.
+      setError("Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code.");
       return;
     }
     try { vibrerSucces(); } catch { /* ignore */ }
@@ -294,7 +320,9 @@ export function ChangePasswordScreen() {
             <p className="text-center text-sm font-bold mb-4" style={{ color: '#B91C1C' }} role="alert">{error}</p>
           )}
 
-          <div className="grid grid-cols-3 gap-3">
+          {/* Indice visuel (décision Patrick 26/10) : le geste à faire
+              CLIGNOTE à l'arrivée — 6 clignements puis silence. */}
+          <div className="login-cue-clignote grid grid-cols-3 gap-3">
             {['1','2','3','4','5','6','7','8','9'].map((d) => (
               <button key={d} type="button" disabled={loading}
                 onPointerDown={(e) => e.preventDefault()} onClick={() => toucheChiffre(d)}
