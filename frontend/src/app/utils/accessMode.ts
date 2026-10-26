@@ -125,12 +125,22 @@ export function clavierParDefaut(m: EffectiveMode = getEffectiveMode()): boolean
  * Décision PURE du guidage vocal (testable sans localStorage).
  * Le guidage n'est COUPÉ que si l'utilisatrice a EXPLICITEMENT choisi « lecture »
  * (« Je lis et j'écris »). En 'auto', 'mixte' et 'voix' : on guide.
- * → « Automatique » ne devient JAMAIS muet (même si l'usage penche clavier),
- *   ce qui était le défaut relevé : auto se résolvait parfois en 'lecture'.
- * Si un mode EFFECTIF est explicitement fourni (écran l'ayant déjà résolu, ex.
- * l'auth), on le respecte tel quel — rétro-compatibilité.
+ * → « Automatique » ne devient JAMAIS muet, même quand l'usage penche clavier
+ *   et que l'écran se résout en 'lecture'. L'observation façonne L'INTERFACE
+ *   (clavier d'office, peu de texte…) — jamais la VOIX. Patrick, 26/10 :
+ *   « J'entends rien quand le code n'est pas bon » — reproduction navigateur :
+ *   stats clavier-franches (rClavier ≥ 0,7 sur ≥ 3 actions) → getEffectiveMode()
+ *   renvoie 'lecture' → l'auth passait ce mode résolu à guidageVocal() → l'effet
+ *   `error → parle(error)` ne partait plus : bannière affichée, zéro son. La
+ *   clause « rétro-compatibilité » ci-dessous réintroduisait EXACTEMENT le défaut
+ *   que ce commentaire dit corrigé — pour le SEUL écran qui passe un mode résolu
+ *   (l'auth). Désormais le mode EFFECTIF ne peut plus couper ce que le CHOIX n'a
+ *   pas coupé ; il reste un paramètre pour les écrans qui le passent déjà.
+ *   (Même racine que le correctif noterCanal de LoginPassword : c'est
+ *   l'INTENTION de la personne qui compte, pas la déduction de l'app.)
  */
 export function guidageActif(chosen: AccessMode, effectif?: EffectiveMode): boolean {
+  if (chosen === 'auto') return true; // « Automatique » ne se tait JAMAIS
   if (effectif !== undefined) return effectif !== 'lecture';
   return chosen !== 'lecture';
 }
