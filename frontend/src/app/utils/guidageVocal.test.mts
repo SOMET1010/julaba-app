@@ -18,8 +18,12 @@ eq(guidageActif('lecture'), false, "lecture (choix explicite) → muet");
 eq(guidageActif('mixte'), true, "mixte → guide");
 eq(guidageActif('voix'), true, "voix → guide");
 
-console.log("guidageActif — mode EFFECTIF explicite respecté (rétro-compat auth)");
-eq(guidageActif('auto', 'lecture'), false, "effectif lecture fourni → muet");
+console.log("guidageActif — mode EFFECTIF explicite (rétro-compat auth)");
+// Patrick, 26/10 : « J'entends rien quand le code n'est pas bon. »
+// Reproduction navigateur : stats clavier-franches → l'auth passait son mode
+// résolu 'lecture' à guidageVocal() → l'effet `error → parle(error)` ne partait
+// plus. « Automatique » ne se tait JAMAIS, quel que soit le mode résolu.
+eq(guidageActif('auto', 'lecture'), true, "auto résolu 'lecture' → guide (le défaut de Patrick, 26/10)");
 eq(guidageActif('auto', 'voix'), true, "effectif voix fourni → guide");
 eq(guidageActif('lecture', 'mixte'), true, "effectif mixte fourni prime → guide");
 
