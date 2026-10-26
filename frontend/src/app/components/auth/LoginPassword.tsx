@@ -107,7 +107,7 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
 // AUTH-10 — le ROUAGE de dictée vit dans son hook ; l'écran garde la POLITIQUE
 // (consignes, erreurs, aiguillage — donc le contrat vocal parle()).
 import { useDicteeLive } from '../../hooks/useDicteeLive';
-import { BoutonCodeAgent, direConsigneCodeAgent } from './BoutonCodeAgent';
+import { BoutonCodeAgent } from './BoutonCodeAgent';
 // Maquette du 12/10 — le testeur saute d'un univers à l'autre depuis la
 // connexion : bouton `<>` haut-droite + menu rôles (DEV uniquement,
 // silencieux — voir MenuRolesTest.tsx).
@@ -212,8 +212,7 @@ export function LoginPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [pinInput, setPinInput] = useState('');
-  // Vrai tant que l'écran du code attend son premier chiffre (UX-02).
-  const attenteCodeRef = useRef(false);
+  const accueilCodeVoixLanceRef = useRef(false);
   const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? (compteConnu.biometrie ? 'reconnaissance' : 'password') : 'phone');
   // AUTH-10 — isListening / isFinalizingDictation et toute la mécanique de
   // dictée EN DIRECT vivent dans useDicteeLive ; l'écran consomme la surface.
@@ -251,12 +250,15 @@ export function LoginPassword() {
       // Annonce le CHANGEMENT DE MODE, jamais le PIN — la correspondance est
       // publique (variante A), donc rien de secret n'est dit ici.
       if (guidageVocal(accessMode)) {
-        // Textes alignés MOT POUR MOT sur les clips login-21 / login-22
-        // (services/entreeVoix.ts). `direEntreeTexte` retrouve la clé par le
-        // texte : un mot d'écart et l'écran redevient muet, sans rien signaler.
-        parle(next
-          ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\'a pas changé.'
-          : 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.');
+         // Textes alignés MOT POUR MOT sur les clips login-20 / login-22
+         // (services/entreeVoix.ts). `direEntreeTexte` retrouve la clé par le
+         // texte : un mot d'écart et l'écran redevient muet, sans rien signaler.
+         // L'ancien texte login-21 (« Voilà les photos qui sont sorties à la
+         // place des chiffres. Ton code n'a pas changé. ») reste documenté dans
+         // les tests historiques ; le geste demandé utilise désormais login-20.
+         parle(next
+           ? ENTREE_VOICE_CLIPS.pinImagesAccueil.texte
+           : 'Voilà les chiffres maintenant. Mets ton code comme d\'habitude.');
       }
       return next;
     });
@@ -296,6 +298,8 @@ export function LoginPassword() {
   const abortRef = useRef<AbortController | null>(null);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const focusPinTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmationNumeroTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmationNumeroClignote, setConfirmationNumeroClignote] = useState(false);
   // Empêche une double séquence quand React rejoue les effets au montage
   // (développement) ou quand l'écran est réévalué sans quitter l'étape téléphone.
   const accueilNumeroVoixLanceRef = useRef(false);
@@ -303,10 +307,6 @@ export function LoginPassword() {
   useEffect(() => {
     phoneRef.current = phone;
   }, [phone]);
-  useEffect(() => {
-    attenteCodeRef.current = step === 'password' && pinInput === '';
-  }, [step, pinInput]);
-
   // Une phrase fixe n'est dite que si son clip Tantie exact est embarqué.
   // Aucune voix navigateur étrangère ne remplace un clip manquant.
   // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE. Cet écran parlait par
@@ -394,13 +394,20 @@ export function LoginPassword() {
   // simultanées s'annulaient avec AbortError sur le web.
   const direConsigneCode = useCallback(() => {
     if (step !== 'password') return;
-    if (!guidageVocal(accessMode)) return; // lecture explicitement choisie : pas de consigne auto
-    // UX-02 — puis le bouton « code de mon agent » se dit, si rien n'est tapé.
-    void direConsigne('code').then(() => { if (attenteCodeRef.current) void direConsigneCodeAgent(); });
+    if (accueilCodeVoixLanceRef.current) return;
+    accueilCodeVoixLanceRef.current = true;
+    // À l'arrivée sur la vue du code, seule la séquence enregistrée est jouée :
+    // login-19 puis login-23. La voix navigateur du bouton agent reste réservée
+    // à l'appui volontaire sur ce bouton.
+    void parleSuite(
+      ENTREE_VOICE_CLIPS.codeAccueil.texte,
+      ENTREE_VOICE_CLIPS.codeDiscretionAccueil.texte,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, accessMode]);
 
   useEffect(() => {
+    if (step !== 'password') accueilCodeVoixLanceRef.current = false;
     if (step === 'password') {
       vlog('VOIX_CODE_TENTEE', { guidage: guidageVocal(accessMode) });
     }
@@ -623,13 +630,18 @@ export function LoginPassword() {
         // AUTH-04 — la relecture muette qui ouvrait la suite est retirée :
         // seuls les textes AVEC clip sont dits (le clip « relecture » de la
         // dictée est remplacé par le balayage visuel ci-dessus).
-        void parleSuite(num.length >= 10
-          ? "Je n'ai pas compris. Tape ton numéro, ou réessaie."
-          : 'Il manque encore des chiffres dedans. Continue.');
+        void parleSuite(
+          ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
+          ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
+        );
         return;
       }
-      setError("Je n'ai pas compris. Touche le micro pour redire, ou tape 👇");
-      void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+      setError("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+      setShowKeypad(true);
+      void parleSuite(
+        ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
+        ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
+      );
     },
     buildTag: 'sherpa-login-live-v2-relecture',
     // AUTH-10 — le canal « elle a choisi de PARLER » : le hook SIGNALE (micro
@@ -637,12 +649,26 @@ export function LoginPassword() {
     // dictée échoue ensuite).
     onCanalVoix: () => { dernierCanalRef.current = 'voix'; aTenteVoixRef.current = true; },
     siPasPrete: () => { setShowVoiceInstall(true); parle("Pour que je puisse t'écouter, je vérifie ma voix. Touche le bouton, ou tape ton numéro."); },
-    // Micro refusé / moteur en échec : on dit les clips existants (ui-100,
-    // ui-058) plutôt qu'une phrase sur mesure qui serait muette. Aucun clip ne
-    // dit « autorise le micro » — le texte écrit le précise, la voix dit au
-    // moins qu'il y a un problème et qu'on peut réessayer.
-    siMicRefuse: () => { setError('Le micro ne prend pas là. Faut taper ton numéro ici.'); void parleSuite('Problème avec le micro — réessaie'); setShowKeypad(true); },
-    siEchec: () => { setShowKeypad(true); void parleSuite("Je n'ai pas compris. Tape ton numéro, ou réessaie."); },
+    // Échec de la redictée : login-13 puis login-14 expliquent le problème
+    // et ouvrent directement le filet clavier, dans cet ordre.
+    siMicRefuse: () => {
+      // Le texte visuel historique « Problème avec le micro — réessaie » reste
+      // documenté ; la voix, elle, suit désormais login-13 puis login-14.
+      setError('Le micro ne prend pas là. Faut taper ton numéro ici.');
+      setShowKeypad(true);
+      void parleSuite(
+        ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
+        ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
+      );
+    },
+    siEchec: () => {
+      setError("Je n'ai pas compris. Tape ton numéro, ou réessaie.");
+      setShowKeypad(true);
+      void parleSuite(
+        ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte,
+        ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,
+      );
+    },
   });
 
   // AUDIT UX B5 (11/08/2026) : le CODE SECRET ne se dicte JAMAIS à voix
@@ -680,6 +706,32 @@ export function LoginPassword() {
     direConsigneNumero();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // Après les 10 chiffres, laisser le temps à la main de se poser puis rappeler
+  // le geste de confirmation. Le minuteur est réarmé à chaque modification du
+  // numéro et annulé dès qu'on quitte l'étape téléphone.
+  useEffect(() => {
+    if (confirmationNumeroTimeoutRef.current) {
+      clearTimeout(confirmationNumeroTimeoutRef.current);
+      confirmationNumeroTimeoutRef.current = null;
+    }
+    setConfirmationNumeroClignote(false);
+    if (step !== 'phone' || phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES)) return;
+
+    confirmationNumeroTimeoutRef.current = setTimeout(() => {
+      setConfirmationNumeroClignote(true);
+      void parle(ENTREE_VOICE_CLIPS.numeroConfirmation.texte);
+    }, 3000);
+
+    return () => {
+      if (confirmationNumeroTimeoutRef.current) {
+        clearTimeout(confirmationNumeroTimeoutRef.current);
+        confirmationNumeroTimeoutRef.current = null;
+      }
+    };
+    // `parle` et les constantes vocales sont stables pour cette intention.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, step]);
 
   useEffect(() => {
     const tel = document.querySelector('input[autocomplete="tel"]') as HTMLInputElement | null;
@@ -830,6 +882,19 @@ export function LoginPassword() {
         return;
       }
       if (!response.ok || result.error) {
+        // Le pavé image est un mode d'aide, pas une autre authentification.
+        // Dès qu'il échoue, revenir aux chiffres et expliquer le geste avec le
+        // clip enregistré login-27, sans empiler le message d'erreur générique.
+        if (pinEnImages) {
+          setPinEnImages(false);
+          try { localStorage.setItem('julaba_pin_images', '0'); } catch { /* ignore */ }
+          setPinInput('');
+          setError('');
+          vibrerErreur();
+          void parle(ENTREE_VOICE_CLIPS.pinImagesEchec.texte);
+          setIsLoading(false);
+          return;
+        }
         // Trop de tentatives en 1 minute (rate-limiter) : ce N'EST PAS un mauvais
         // code -> on ne compte pas d'échec et on affiche un message clair.
         if (response.status === 429) {
@@ -1462,7 +1527,7 @@ export function LoginPassword() {
             </div>
             </>
             )}
-            <button type="button" className="login-primary" style={{ marginTop: 5 }}
+            <button type="button" className={`login-primary${confirmationNumeroClignote ? ' login-confirmation-clignote' : ''}`} style={{ marginTop: 5 }}
               disabled={phone.length !== 10 || !numeroCIComplet(phone, TEST_PHONES) || isListening || isFinalizingDictation || isLoading}
               onClick={() => scheduleTransitionToPasswordAfterCheck(phone)}>
               <CheckCircle aria-hidden="true" size={26} />{isLoading ? 'Vérification…' : 'C’est mon numéro'}

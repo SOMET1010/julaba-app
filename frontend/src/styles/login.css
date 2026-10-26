@@ -15,6 +15,8 @@ html.dark .login-logo img{filter:brightness(0) invert(1)}
 .login-welcome-actions{width:100%;max-width:380px}
 .login-primary{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;min-height:64px;padding:14px;border:0;border-radius:14px;background:var(--commerce-action);color:white;font-size:20px;font-weight:750;cursor:pointer}
 .login-primary:disabled{opacity:.5;cursor:not-allowed}
+@keyframes login-confirmation-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(1.025)}}
+.login-primary.login-confirmation-clignote{animation:login-confirmation-blink .9s ease-in-out 6}
 .login-help{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:10px;margin:8px auto;color:var(--encre-2);cursor:pointer}
 .login-partners{display:flex;justify-content:center;align-items:center;gap:24px;padding-top:12px}
 .login-partners img{height:32px;width:auto;object-fit:contain}
