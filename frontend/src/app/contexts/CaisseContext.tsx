@@ -135,7 +135,10 @@ export interface CaisseProduct {
   /** Prix d'achat unitaire (API: prix_achat) */
   prix_achat?: number;
   categorie: string;
-  stock: number;
+  /** STK-04 — `null` = stock INCONNU (« je ne sais pas »), jamais un zéro
+   *  qui voudrait dire deux choses. Le type mentait (`number`) pendant que
+   *  GestionStock le traitait déjà comme nullable. */
+  stock: number | null;
   unite: string;
   image?: string;
   /** Seuil d'alerte de stock bas (API: seuil_alerte) */
@@ -914,7 +917,11 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
       const mapped = produits.map((p: ProduitServeur) => ({
         id: p.id as string, nom: p.nom as string, prix: Number(p.prix),
         prix_achat: Number(p.prix_achat ?? p.prixAchat ?? 0) || 0,
-        categorie: p.categorie as string, stock: Number(p.stock),
+        categorie: p.categorie as string,
+        // STK-04 — au CHARGEMENT aussi : un stock inconnu qui revient du
+        // serveur reste inconnu. `Number(null)` vaut 0 — chaque rechargement
+        // réécrivait le mensonge dans le catalogue et dans le cache.
+        stock: p.stock == null ? null : Number(p.stock),
         unite: p.unite as string, image: p.image || getImageByNom(p.nom as string),
         seuil_alerte: p.seuil_alerte != null ? Number(p.seuil_alerte) : undefined,
         date_peremption: p.date_peremption || null,
@@ -939,11 +946,20 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
     if (appUser?.id) loadProducts();
   }, [appUser?.id, loadProducts]);
 
-  const addProduct = async (product: Omit<CaisseProduct, 'id'> & AliasSaisieProduit) => {
+  const addProduct = async (product: Omit<CaisseProduct, 'id'> & AliasSaisieProduit & { stock?: number | null }) => {
     try {
       const imageToStore = product.image && product.image.startsWith('http') ? product.image : null;
       const produitData = {
-        nom: product.nom, prix: product.prix, categorie: product.categorie, stock: product.stock || 0, unite: product.unite, image: imageToStore,
+        nom: product.nom, prix: product.prix, categorie: product.categorie, unite: product.unite, image: imageToStore,
+        // STK-04 — LE STOCK QU'ELLE N'A PAS DONNÉ N'EST PAS ZÉRO. Le parcours
+        // guidé pose `stock: null` quand elle a dit « Je ne sais pas » (voix,
+        // VOIX-06, ou bouton) : `stock || 0` transformait ce null en zéro
+        // ENREGISTRÉ — le mensonge exact que STK-04 interdit (« un zéro qui
+        // voudrait dire deux choses »), et l'alerte rupture se déclenchait
+        // sur un stock qu'elle n'a jamais donné. Seul un null EXPLICITE
+        // traverse ; tout le reste garde la coercion d'avant (undefined,
+        // chaîne vide, zéro → 0).
+        stock: product.stock === null ? null : (product.stock || 0),
         ...((() => { const pa = Number(product.prix_achat ?? product.prixAchat ?? product.purchasePrice ?? 0); return pa > 0 ? { prix_achat: pa } : {}; })()),
         ...(product.seuil_alerte != null || product.seuilAlerte != null || product.threshold != null
           ? { seuil_alerte: Number(product.seuil_alerte ?? product.seuilAlerte ?? product.threshold) } : {}),
@@ -967,7 +983,10 @@ export function CaisseProvider({ children }: { children: ReactNode }) {
         prix: Number(p.prix),
         prix_achat: Number(p?.prix_achat ?? p?.prixAchat ?? product.prix_achat ?? 0) || 0,
         categorie: p.categorie ?? product.categorie,
-        stock: Number(p.stock),
+        // Le stock inconnu reste INCONNU dans l'état : `Number(null)` vaudrait
+        // 0 — le mensonge reviendrait par la petite porte. Un null enregistré
+        // revient null ; GestionStock sait l'afficher (stockTracked).
+        stock: p.stock == null ? null : Number(p.stock),
         unite: p.unite ?? product.unite,
         image: p.image || getImageByNom(p.nom ?? product.nom),
         prix_promo: p.prix_promo != null ? Number(p.prix_promo) : null,

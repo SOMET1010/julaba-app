@@ -394,7 +394,7 @@ export function GestionStock() {
       // `AjoutProduitGuide` : un seul chemin de création.
 
       if (text.includes('alerte') || text.includes('stock bas')) {
-        const low = stocks.filter(s => s.quantity < s.threshold);
+        const low = stocks.filter(s => s.stockTracked !== false && s.quantity < s.threshold);
         speak(low.length === 0 ? 'Tous tes stocks sont bons' : `${low.length} produits en stock bas : ${low.map(s => s.name).join(', ')}`);
       } else if (text.includes('valeur')) {
         if (montantsMasques) {
@@ -422,7 +422,12 @@ export function GestionStock() {
     }),
     [stocks, search, activeKPI, sortByMargin]);
 
-  const lowStocks = useMemo(() => stocks.filter(s => s.quantity < s.threshold), [stocks]);
+  // STK-04 — UNE ALERTE SUR UN STOCK QU'ELLE N'A JAMAIS DONNÉ EST UN MENSONGE.
+  // Un produit non suivi (stock inconnu, « je ne sais pas ») n'entre pas dans
+  // les alertes : arbitrage de Patrick, « empêcher toute alerte rupture » sur
+  // un stock inconnu — le badge le dit déjà (◌ Stock non suivi), le compteur
+  // et la voix de Tantie le disent maintenant aussi.
+  const lowStocks = useMemo(() => stocks.filter(s => s.stockTracked !== false && s.quantity < s.threshold), [stocks]);
   const totalValue = useMemo(() => stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0), [stocks]);
 
   // Mouvements RÉELS lus sur le ledger stock_mouvements (ventes + annulations),

@@ -292,7 +292,9 @@ export interface ProduitSurEtal {
   readonly nom: string;
   readonly unite: string;
   readonly prix: number;
-  readonly stock: number;
+  /** STK-04 — `null` = stock inconnu (« je ne sais pas »), jamais un zéro
+   *  qui voudrait dire deux choses. */
+  readonly stock: number | null;
 }
 
 export function produitDejaSurEtal<P extends ProduitSurEtal>(
@@ -312,7 +314,10 @@ export function produitDejaSurEtal<P extends ProduitSurEtal>(
  * ne devine pas (jamais `|| 0`, ACC-03).
  */
 export function stockComplete(existant: Pick<ProduitSurEtal, 'stock'>, quantite: unknown): number | null {
+  const s = existant.stock;
   const q = quantiteDelle(quantite);
-  if (q == null || q <= 0 || !Number.isFinite(existant.stock)) return null;
-  return existant.stock + q;
+  // Stock inconnu (STK-04) : rien à compléter, on n'invente pas une base.
+  if (s == null) return null;
+  if (q == null || q <= 0 || !Number.isFinite(s)) return null;
+  return s + q;
 }

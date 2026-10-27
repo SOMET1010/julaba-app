@@ -42,7 +42,9 @@ export interface ProduitPourPanier {
   nom: string;
   prix: number;
   categorie: string;
-  stock: number;
+  /** STK-04 — `null` = stock inconnu (« je ne sais pas »), jamais un zéro
+   *  qui voudrait dire deux choses. */
+  stock: number | null;
   unite: string;
   prix_achat?: number;
   prix_promo?: number | null;
