@@ -62,8 +62,12 @@ interface Props {
    * ce qu'elle a donné et `etapeCourante` l'amène directement à la seule
    * question qui reste. Ce qui n'est pas là n'est JAMAIS inventé : c'est
    * précisément ce qu'on lui demande.
+   *
+   * VOIX-06 — LA QUANTITÉ N'EST PLUS JETÉE. « Ajoute dix kassos » disait
+   * « dix » : ce dix arrive ICI (préremplit la question qu'elle confirmera
+   * d'un geste — rien n'avance seul), il n'était plus un champ mort.
    */
-  depart?: { nom?: string; unite?: string; prix?: number | null };
+  depart?: { nom?: string; unite?: string; prix?: number | null; quantite?: number | null };
   /** Le produit est sur son étal. Le parent referme et rafraîchit. */
   onPose: () => void;
   onAnnuler: () => void;
@@ -118,8 +122,13 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     void rendreMessage(m, dire);
   };
 
-  /** STK-04 — ce qu'elle a répondu à « Tu en as combien ? ». Vide = pas dit. */
-  const [quantite, setQuantite] = useState('');
+  /** STK-04 — ce qu'elle a répondu à « Tu en as combien ? ». Vide = pas dit.
+   *  VOIX-06 — SAUF si elle l'a déjà dit dans la dictée du nom : « Ajoute dix
+   *  kassos » arrive avec son dix, la question reste posée (elle confirme),
+   *  mais elle ne repart pas de zéro. Un zéro dicté ne préremplit pas : la
+   *  question décidera si son zéro est une réponse ou un passager. */
+  const [quantite, setQuantite] = useState(
+    () => (typeof depart?.quantite === 'number' && depart.quantite > 0 ? String(depart.quantite) : ''));
   const brouillon: BrouillonProduit = {
     nom, unite,
     // `undefined` tant qu'elle n'a rien tapé : le stock restera INCONNU, et

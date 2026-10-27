@@ -91,13 +91,15 @@ export interface EcouteProduit {
   /** La prochaine question à lui poser. Le parcours ne demande que ça. */
   manque: EtapeAjout;
   /**
-   * LA QUANTITÉ ENTENDUE, CONSERVÉE SANS ÊTRE UTILISÉE.
+   * LA QUANTITÉ ENTENDUE — ET MAINTENANT PROPAGÉE (VOIX-06).
    *
    * Le parcours en trois questions ne demande pas de stock (STK-03e : « une
    * marchande ne décrit pas son produit, elle le vend »), et `produitACreer`
    * pose délibérément `stock: 0`. Mais elle a bien dit « dix » : le jeter
-   * serait la faute même qu'on ferme ici. On le garde, visible, en attendant
-   * l'arbitrage sur le stock initial (voisin de STK-09).
+   * serait la faute même qu'on ferme ici. VOIX-06 (26/10/2026) : ce dix est
+   * maintenant PROPAGÉ — `AjoutProduitGuide` le lit dans `depart` et
+   * préremplit la question « Tu en as combien ? » (qui reste posée : elle
+   * confirme d'un geste, rien n'avance seul).
    */
   quantite: number | null;
 }
