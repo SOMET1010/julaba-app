@@ -1571,3 +1571,21 @@ Stage Summary:
 - Le défaut trouvé (refus du micro muet) est fermé ; le seul clip attendu (ui-138) exige le studio — voix humaine — et le filet parle déjà ; les voix IA disponibles dégradent le français (ASR-prouvé)
 - 2 commits : b20c67f8 (fix onError caisse), 06f5ba5f (inventaire i18n) — poussés sous Akoun-dev
 - OBSERVATIONS POUR UN PROCHAIN ARBITRAGE : état moteur « Un instant… » prolongé après relecture TTS (sortie VOX-02 fonctionnelle, cause exacte non isolée — hook gelé) ; « Vider le panier » sans confirmation ni annonce (perte d'une vente en un tap) ; libellé du bouton-bulle d'erreur de code PIN consommé sans relance parlée du compteur d'essais restants (vu au harnais)
+
+---
+Task ID: check-tout-fonctionne-27-10
+Agent: Z.ai Code (session Patrick)
+Task: « assure toi que tout fonctionne correctement » — vérification complète après pull des 3 commits d'Akoun-dev (micro web + w-full caisse)
+
+Work Log:
+- Services vivants (PG 5432 / backend 3001 / front 3000), zéro erreur dans les logs des deux serveurs
+- Sync guard : RETARD=3 (6b8f0d82 w-full caisse, 42a31a28 debug recoWebDispo, c595a5b4 sonde micro web) → pull --ff-only vers c595a5b4
+- VERIFY a attrapé un ROUGE NOUVEAU : le commit c595a5b4 ouvrait une sonde getUserMedia({ audio: true }) NU dans useDicteeLive.ts — violation MIC-01 exactement là où la garde veille (anti-écho : la voix de Tantie ne doit pas se transcrire elle-même). Fix d001146a : la sonde demande la permission avec CONTRAINTES_MICRO_DICTEE (intention d'Akoun-dev conservée, réglage unique rétabli). test:micro-contraint vert, verify revenu à l'état de référence (157 verts / 1 rouge CONNU garde-argent), lint OK (fichier hors périmètre eslint racine)
+- PREUVE NAVIGATEUR (390×844, harnais getUserMedia mocké journalisant + faux SpeechRecognition window.__fauxReco) : la sonde de permission s'ouvre avec {echoCancellation:true, noiseSuppression:true, autoGainControl:true, channelCount:1} LUE DANS window.__gumLog — le fix vu en direct dans le navigateur
+- E2E complet sur le code fraîchement tiré : dictée du numéro « zéro sept zéro… » → +2250700000009 affiché (chemin useDicteeLive, fichier touché par le pull ET le fix) ; code secret au clavier (B5) ; connexion Awa Koné ; « vends deux tomates » → relecture dite+affichée (2 kg Tomate 200 F, total 400) ; « Oui, c'est bon » → TTS « C'est dans le panier. Tu ajoutes autre chose, ou tu encaisses ? » ; « encaisse » → intent encaisser → TTS « Elle doit quatre cents francs. Touche les billets qu'elle te donne. » ; pièce 500 touchée → relecture des trois nombres DITE (TATA_RELECTURE_MONNAIE/TATA_DONNE_RENDS) ; « oui valide » → POST /api/v1/caisse/vente 201 → TTS « Vente enregistrée. quatre cents francs » → écran « Vente réussie / 400 F / Espèces · rendu 100 F », panier vidé, zéro erreur console
+- Le seul warning console est l'artefact attendu du harnais headless (NotFoundError device audio absent, l'écoute web continue et fonctionne — preuve au journal)
+
+Stage Summary:
+- RÉPONSE À PATRICK : OUI — tout fonctionne après le pull ; la preuve E2E a été refaite sur le code fraîchement synchronisé, de la dictée du numéro à la vente enregistrée (201), 100% voix sauf les deux gestes iconiques (code secret tapé, billet touché) conformes aux arbitrage B5/pilote
+- 1 défaut trouvé et fermé : le micro nu d'Akoun-dev (sonde) — la garde a servi exactement à ça ; d001146a poussé sous Akoun-dev après sync guard RETARD=0
+- Captures : .zlogs/check-entree.png, .zlogs/check-vente-succes.png
