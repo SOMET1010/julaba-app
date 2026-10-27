@@ -206,7 +206,10 @@ export const MOTS_UNITE = new Set([
 // Normalisation
 // ──────────────────────────────────────────────
 
-function normalise(text: string): string {
+// EXPORTÉE (VOIX-06) : les lecteurs purs du parcours guidé (`uniteDite`,
+// `quantiteDite`) la réutilisent — l'apostrophe du téléphone est pliée ICI,
+// une seule fois ; une seconde normalisation serait deux vérités.
+export function normalise(text: string): string {
   return text
     .toLowerCase()
     // L'APOSTROPHE DU TÉLÉPHONE — F4NT, 01/10/2026, et c'est la cause d'un
