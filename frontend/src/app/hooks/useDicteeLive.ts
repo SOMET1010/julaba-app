@@ -179,8 +179,10 @@ export function useDicteeLive() {
       mediaStreamRef.current = stream;
     } else {
       try {
-        // Demander explicitement la permission micro pour web
-        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Permission micro demandée explicitement avant la reco web. MIC-01 :
+        // même une sonde ne repart pas nu — le réglage commun porte l'anti-écho,
+        // et la permission accordée ici vaut pour la reconnaissance qui suit.
+        const testStream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
         testStream.getTracks().forEach(t => t.stop());
       } catch (e) {
         console.warn('[dictee] getUserMedia web failed', e);
