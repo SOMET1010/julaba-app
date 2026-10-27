@@ -61,7 +61,9 @@ function lecteurWeb(): RecoCtor | null {
 export function recoWebDispo(): boolean {
   try {
     if (typeof window === 'undefined') return false;
-    return lecteurWeb() !== null;
+    const dispo = lecteurWeb() !== null;
+    console.log('[recoWebDispo]', dispo, typeof (window as any).SpeechRecognition, typeof (window as any).webkitSpeechRecognition);
+    return dispo;
   } catch {
     return false;
   }
