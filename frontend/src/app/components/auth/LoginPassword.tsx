@@ -1419,27 +1419,9 @@ export function LoginPassword() {
       paddingBottom: 'max(4px, env(safe-area-inset-bottom, 0px))',
       position: 'relative',
     }}>
-      {/* Maquette du 12/10 — « Aide vocale » haut-gauche : la MÊME voix que le
-          bouton de relecture (ecouterTata, aucun appel de parole nouveau),
-          avec un libellé lisible — l'aide n'est pas une devinette d'icône. */}
-      <button
-        type="button"
-        onClick={ecouterTata}
-        aria-label={tataSpeaking ? 'Aide vocale — le guide parle' : 'Aide vocale — écouter le guide'}
-        style={{
-          position: 'absolute', top: 12, left: 12, zIndex: 500,
-          height: 44, display: 'flex', alignItems: 'center', gap: 8,
-          padding: '0 14px', borderRadius: 999,
-          background: 'var(--commerce-surface)',
-          border: '1px solid var(--commerce-apricot)',
-          color: 'var(--commerce-ink)', cursor: 'pointer',
-          boxShadow: '0 2px 8px rgba(51,37,51,0.08)',
-          fontFamily: 'inherit',
-        }}
-      >
-        <Volume2 aria-hidden="true" size={20} style={{ color: 'var(--commerce-action)' }} />
-        <span style={{ fontSize: 15, fontWeight: 650 }}>Aide vocale</span>
-      </button>
+      {/* « Aide vocale » (maquette du 12/10, pastille haut-gauche) RETIRÉE le
+          26/10 sur demande écrite de Patrick — la relecture du guide reste sur
+          le bouton rond (login-replay), qui appelle la MÊME ecouterTata. */}
       {/* Tester les autres rôles (DEV) : menu `<>` haut-droite — préremplit le
           numéro du compte de recette du rôle, ou ouvre la porte BackOffice. */}
       <MenuRolesTest onChoisirNumero={(numero) => {

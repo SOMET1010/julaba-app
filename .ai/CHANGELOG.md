@@ -5,6 +5,17 @@
 
 
 
+### Retiré — La pastille « Aide vocale » quitte l'écran de connexion (2026-10-26)
+
+Demande écrite de Patrick (« retire moi "Aide vocale" de la page de connexion »).
+La pastille haut-gauche (maquette du 12/10) ne portait AUCUNE voix nouvelle :
+elle appelait la MÊME `ecouterTata` que le bouton rond de relecture. La
+relecture du guide reste donc entière sur le bouton rond — rien ne se tait,
+seul le doublon disparaît. La maquette annonçait déjà la pastille
+« révocable par écrit » : la révocation est tracée en commentaire daté dans
+`LoginPassword.tsx`. La chaîne vocale du 26/10 (entrer/continuer/répète,
+dictée après le bip, oui/non de la reconnaissance) est intacte.
+
 ### Ajouté — La connexion écoute : commandes vocales de confirmation (2026-10-26)
 
 Audit Patrick (« qui ne sait pas lire/écrire puisse se connecter à la voix »,

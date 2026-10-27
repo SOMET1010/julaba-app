@@ -336,3 +336,11 @@ Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; message
 Batteries : lot DOCUMENTAIRE — 0 fichier code touché (diff = .md uniquement) ; les gardes citées (tsc 0, eslint 0, 21 gardes, test:commandes-entree 35 assertions) sont celles des commits 339306c0 / 3d420d22 / e5ebc902 / 8ebe8647, preuves de première main dans leurs messages.
 
 Atomicité : docs only — rapport LOT-50 + CHANGELOG + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.
+
+## 2026-10-26 — « Retrait de la pastille Aide vocale » (agent Z.ai Code)
+
+1. `fix(connexion): retire la pastille « Aide vocale » — la relecture reste sur le bouton rond` — LoginPassword.tsx : le bouton haut-gauche (maquette du 12/10) est démonté sur demande écrite de Patrick ; il n'appelait AUCUNE voix nouvelle (la MÊME `ecouterTata` que le bouton rond de relecture) ; `ecouterTata`, `tataSpeaking`, `Volume2` restent utilisés par la relecture — rien de mort ; décision tracée en commentaire daté (la maquette était « révocable par écrit »).
+
+Batteries : tsc -b exit 0 ; test:auth-charte vert ; verify — les 2 rouges (test:enum-check-phone : backend/.env AUTH_TELEPHONES_TEST ; test:i18n-source : inventaire 438 ≠ 437) PROUVÉS préexistants par stash sur l'arbre propre — 0 rouge nouveau. REDEVENUS VERTS (test:voix-trace-source à retirer de CONNUS) = ménage du commit d'entrée s'écoute, pas touché ici.
+
+Atomicité : 1 préoccupation = 1 commit ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.

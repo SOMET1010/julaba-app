@@ -1455,3 +1455,20 @@ Stage Summary:
 - La phrase juste du LOT-50 reste entière : tout se dit SAUF le secret — B5 n'a pas bougé d'un pixel
 - Doctrine confirmée deux fois : le refus déclaré gagne (« pas encore », « oui mais pas maintenant ») ; le doute ne profite jamais — ni à l'avancée, ni à l'enrôlement
 - Limite honnête : la reco Réelle (sherpa APK / SpeechRecognition Chrome) est le moteur du navigateur ; l'E2E prouve le câblage complet avec un faux moteur, les scénarios §8 du rapport restent À RECETTER sur vrai téléphone
+
+---
+Task ID: retire-aide-vocale-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « retire moi "Aide vocale" de la page de connexion » — démontage de la pastille haut-gauche de LoginPassword
+
+Work Log:
+- Garde anti-course OK (0 commit nouveau ; HEAD de9ed52a — « l'entrée s'écoute » 96acd15e déjà au dépôt)
+- LECTURE PREUVE D'ABORD : la pastille (LoginPassword.tsx, maquette du 12/10, haut-gauche) appelait ecouterTata — la MÊME fonction que le bouton rond de relecture ; AUCUN appel de parole nouveau
+- VÉRIFIÉ AVANT DÉMONTAGE : ecouterTata (l.331), tataSpeaking (l.319), Volume2 (import) restent utilisés par le bouton rond (login-replay) — rien ne devient mort
+- DÉMONTAGE : bouton + commentaire retirés ; décision tracée en commentaire daté (la maquette était « révocable par écrit » — la révocation est écrite)
+- Batterie : tsc -b exit 0 ; test:auth-charte vert ; verify — les 2 rouges (enum-check-phone : backend/.env AUTH_TELEPHONES_TEST ; i18n-source : inventaire 438≠437) PROUVÉS préexistants par stash sur l'arbre propre → 0 rouge nouveau ; REDEVENUS VERTS (voix-trace-source à retirer de CONNUS) = ménage du commit d'entrée s'écoute, pas touché (1 préoccupation = 1 commit)
+
+Stage Summary:
+- L'écran de connexion ne montre plus la pastille « Aide vocale » ; la voix du guide reste entière sur le bouton rond — RIEN ne se tait, seul le doublon disparaît
+- La chaîne vocale du 26/10 (96acd15e) est intacte : entrer/continuer/répète, dictée après le bip, oui/non de la reconnaissance
+- À noter pour l'équipe : 2 rouges CONNUS préexistants (enum-check-phone, i18n-source) + voix-trace-source à retirer de CONNUS dans verify-tout.mjs
