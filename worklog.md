@@ -1497,3 +1497,21 @@ Stage Summary:
 - audioManager n'a pas bougé d'un pixel (VOICE-01) ; la dette ACC-05 reste ouverte mais elle n'aveugle plus ce parcours
 - Observations laissées à l'équipe (pas de ce lot) : la modale se repropose à chaque remontage de l'accueil tant qu'elle n'est pas répondue (remontages ~60 s observés au journal) ; le titre écran (« Awa, veux-tu que Tantie Nanti Lou… ») diffère du texte du clip (« Veux-tu que ton téléphone… ») — un nom variable ne peut pas être un clip figé, arbitrage produit à trancher
 - Task 2 de Patrick (saisie vocale stock, création au nom libre) : test E2E à suivre dans le prochain volet
+
+---
+Task ID: stock-nom-libre-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Au niveau du stock, test la saisie vocale — si l'utilisateur a la possibilité d'ajouter ses propres produits à volonté (ne pas tenir compte de la liste de dictionnaire) »
+
+Work Log:
+- VERDICT D'ABORD PAR LES GARDES : test:produit-dit, test:geste-ajouter-produit, test:bouton-dire-produit — verts ; la règle STK-25 (`nomLibreDicte`) est déjà là : « LE RÉFÉRENTIEL EST UNE AIDE, JAMAIS UNE PORTE »
+- E2E NAVIGATEUR (390×844, /marchand/stock, stock vide) : micro simulé (getUserMedia mocké — headless sans device) + faux SpeechRecognition pilotable (window.__fauxReco) ; « Ajouter en parlant » → dictée « Ajoute dix kassos » — HORS lexique (28 formes) ET hors étal (stock vide)
+- LE NOM LIBRE PASSE : `produitDit` → null → `nomLibreDicte` → « Kassos » — SON mot, posé dans le parcours guidé ; « Kassos, tu le vends comment ? » → sac → « Le sac, à combien ? » → 2 000 F (pavé) → « Tu en as combien ? » → 10 → Enregistrer
+- CRÉÉ ET PROUVÉ : « ✓ EN STOCK | Kassos | 10 | sac | STOCK SUIVI | SEUIL : 10 SAC » ; 1 produit, valeur 20 000 F = 2 000 × 10 (les maths du stock confirment la création) ; 0 erreur console ; capture .zlogs/stock-nom-libre-kassos.png
+- ÉTAPES QUI PARLENT : le micro prix absent nomme le geste (« Le micro ne répond pas. Tape le prix. ») — le filet tactile est DIT, pas seulement affiché (STK-22 vivant)
+- Frictions du harnais (pas de l'app) : getUserMedia rejette en headless (mocké) ; clics .click() JS muets sur le pavé prix (seuls les clics CDP passent) ; refs meurent entre commandes (remontages ~30-60 s) — tout le parcours final enchaîné en UNE commande
+
+Stage Summary:
+- RÉPONSE À PATRICK : OUI — l'utilisatrice ajoute ses produits à volonté, le dictionnaire ne bloque RIEN ; un nom inconnu du lexique et de son étal s'ajoute tel qu'elle l'a dit, avec le parcours en trois questions (unité, prix, quantité facultative) derrière
+- AUCUN code changé : la règle existait (STK-25, lot d'avant) — c'est une PREUVE, pas un correctif ; commit docs only (ce journal)
+- Limite honnête : unité/prix/quantité validés au pavé (le micro prix exige un vrai device) ; sur vrai téléphone la dictée est le même chemin webReco/sherpa que le numéro, déjà recetté
