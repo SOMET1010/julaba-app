@@ -5,6 +5,23 @@
 
 
 
+### Ajouté — La connexion écoute : commandes vocales de confirmation (2026-10-26)
+
+Audit Patrick (« qui ne sait pas lire/écrire puisse se connecter à la voix »,
+rapport complet `.ai/AUDITS/LOT-50-CONNEXION-VOIX-2026-10-26.md`) : la chaîne
+se disait pas à pas mais la confirmation du numéro exigeait un toucher et
+aucune commande vocale n'existait. Fermé dans `8ebe8647` : après le rappel
+(login-78, qui nomme les deux gestes), l'écran ÉCOUTE — « oui » (acquiescement
+par locale + phrases du numéro, le doute ne profite jamais au oui) vaut le
+bouton « C'est mon numéro », « recommencer » redicte, « utiliser les chiffres »
+ouvre le pavé. Rouage double web/sherpa, garde anti-écho 600 ms, fenêtre 10 s,
+micro rendu avant chaque action ; le rappel se ré-arme après chaque dictée
+réussie. Clips 78-81 (Denise, −16 LUFS), registre 253, garde
+`test:commandes-entree` (35 assertions). Preuve navigateur sans les mains :
+« oui » → étape code → 1234 → /marchand, zéro toucher. Le code secret reste
+au pavé : décision B5 (11/08) — un secret ne se dit pas ; la phrase juste est
+« tout se dit, sauf le secret ».
+
 ### Modifié — Le marchand crée son produit au nom libre depuis la caisse (2026-10-19)
 
 Demande Patrick : « le marchand doit pouvoir ajouter ses produits sans aucun
