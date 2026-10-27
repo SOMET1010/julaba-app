@@ -356,3 +356,19 @@ Preuves navigateur (390×844) : recharge SANS geste (conditions APK) → questio
 Batteries : tsc -b exit 0 ; eslint 0 erreur (5 fichiers) ; test:tour-voix 13/13 ; test:auth-charte, test:voix-trace 34/34, test:audio, test:voix-trace-source verts ; verify 153 vert / 3 rouge / 156 — les 3 rouges : enum-check-phone (backend/.env, prouvé préexistant au stash sur arbre propre), i18n-source (corrigé par le régén de ce lot), maillons-orphelins (corrigé par le rattachement).
 
 Atomicité : 1 préoccupation = 1 commit (le fix, puis le rattrapage mécanique) ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.
+## 2026-10-26 — « Ajouter un produit s'entend de bout en bout » (VOIX-06, agent Z.ai Code)
+
+Demande de Patrick : « Assure-toi qu'elle puisse ajouter des produits entièrement à l'aide de commandes vocales, avec des instructions audio claires et une navigation simple, sans dépendre du texte. »
+
+1. `fix(voix): le prix se dit aussi sur le web — et le micro annonce ses pannes` — dictée web dans BoutonDirePrix (même motif que nom/produit, même lecture montantDit) ; STOCK_063/064 (pannes DITES, la phrase en dur muette remplacée par la clé qu'elle affiche) ; STOCK_065 relance le silence ; cheminRef pour ne jamais doubler la relance. test:montant-dit +9.
+2. `feat(voix): la question de l'unité écoute la réponse` — uniteDite (pur : étiquette touchée = étiquette écrite, accent ignoré pour l'appariement, bigrammes, synonymes vers l'écran, mot du marché = son mot, reste → null) + BoutonDireUnite (web puis sherpa, ouvrirToutSeul, STOCK_066/067/068). normalise d'extraction exportée. test:unite-dite (36).
+3. `feat(voix): la question de la quantité écoute la réponse` — quantiteDite (extraire ; zéro = réponse STK-04 ; passe-liste étroite, « ça passe pas » ≠ passe) + BoutonDireQuantite (passe = poser(null), STOCK_069/070/071/072) ; composés hyphénés 22-69 dans DIZAINES (surensemble pur). test:quantite-dite (33).
+4. `fix(voix): ce qu'elle a dit d'avance n'est plus jeté — le dix arrive à sa question` — depart.quantite (l'état préremplit un nombre positif), garde STK-23 à la 4e question (règle « prefixe » : l'oreille ne reçoit jamais moins que l'œil).
+5. `fix(stock): le stock qu'elle n'a pas donné n'est pas zéro — STK-04 jusqu'au bout` — TROUVÉ PAR LA PREUVE : « je ne sais pas » (voix ou bouton) s'enregistrait 0 (addProduct `stock || 0`), fausse alerte rupture ; 2e coerceur au chargement (`Number(p.stock)`). Null explicite traverse partout, types `.stock: number | null`, stockComplete refuse une base inconnue, compteur d'alertes + voix « alerte » excluent les non-suivis. Garde premier-produit §6b.
+6. `docs(worklog): ajout-produit-100-voix-26-10 — chaque question écoute sa réponse, prouvé au navigateur` — ce journal + CHANGELOG.
+
+Preuves navigateur (390×844, micro mocké + faux SpeechRecognition) : Kassos 2 000 F ×10 (valeur 184 000 = 164 000 + 20 000) ; « sept pagnes » prérempli « 7 sac » ; « je ne sais pas » → stock null EN BASE + carte « ◌ Stock non suivi | — » ; « trois gommes » → relance parlée sur « euh ben attends » → « cinq cents » → « dix » → Gommes 500 F / 10 sac en base, 0 erreur console.
+
+Batteries : tsc -b exit 0 ; verify 157 vert / 1 rouge CONNU (garde-argent, état de référence) ; enum-check-phone revenu vert (backend/.env du sandbox avait perdu AUTH_TELEPHONES_TEST — ligne restaurée depuis le miroir TEST_PHONES) ; inventaire 444 = 444.
+
+Dette notée : produits créés avant le fix avec « je ne sais pas » portent un faux 0 en base (Pagnes démo) — migration de données à arbitrer. Observations : libellé « Chercher en parlant » (le micro ne cherche pas), double énoncé des questions (composant + effet), page stock muette à l'arrivée, navigation accueil→stock tactile seule.
