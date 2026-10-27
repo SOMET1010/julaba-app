@@ -125,6 +125,31 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   // `dire` qui ne rend rien, et leur comportement ne doit pas bouger.
   ok(/setTimeout\(ouvrir, 1400\)/.test(bouton),
      'et retombe sur le délai pour un appelant qui ne sait pas dire quand il a fini');
+
+  // VOIX-06 (26/10/2026) — LE PRIX S'ÉCOUTE AUSSI SUR LE WEB, ET LE MICRO DIT
+  // CE QUI LUI ARRIVE. Mesuré au navigateur avant ce lot : pas de dictée web
+  // (contrairement au nom et au produit), la panne s'affichait en silence,
+  // et un micro refermé sans prix lu ne disait rien du tout. Trois muettes
+  // pour la même oreille — une non-lectrice ne savait jamais pourquoi le
+  // micro « ne marchait pas ».
+  ok(/demarrerRecoWeb\(/.test(bouton), 'le micro du prix branche la dictée web (19/10), comme le nom et le produit');
+  ok(/recoWebDispo\(\)/.test(bouton), 'et d\'abord seulement quand le navigateur sait écouter');
+  ok(/cheminRef\.current = 'web'/.test(bouton), 'le chemin web est tracé — la relance du minuteur ne doit pas redoubler sa phrase');
+  // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche. Un message
+  // écrit seul est un message qu'elle n'entend jamais.
+  ok(/DIRE_CLE\('STOCK_063', dire\)/.test(bouton),
+     'la panne du micro se DIT (STOCK_063), comme le nom le fait avec STOCK_060');
+  ok(/DIRE_CLE\(code === 'micro' \? 'STOCK_063' : 'STOCK_064', dire\)/.test(bouton),
+     'l\'erreur web dit sa cause et le repli (STOCK_064)');
+  ok(/DIRE_CLE\('STOCK_065', dire\)/.test(bouton),
+     'le silence est relancé à la voix (STOCK_065) — le micro ne se referme plus muet');
+  ok(/cheminRef\.current === 'sherpa' && !aEntenduRef\.current/.test(bouton),
+     'la relance du minuteur ne parle que si rien n\'a été compris — et pas sur le chemin web');
+  // L'AFFICHAGE ET LA VOIX SORTENT DE LA MÊME CLÉ — jamais deux sources.
+  ok(/resoudreMessage\('STOCK_063'\)/.test(bouton),
+     'l\'affichage de la panne sort de la même clé que la voix');
+  ok(!/Tape le prix/.test(bouton),
+     'plus aucune phrase en dur dans le composant — tout passe par le catalogue');
 }
 
 console.log(echecs === 0

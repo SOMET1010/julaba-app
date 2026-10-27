@@ -24,15 +24,38 @@
  * Cet écran ne décide pas ce qu'est un prix ; il écoute et le lui donne.
  *
  * SI LE MICRO NE VEUT PAS, ON NE BLOQUE RIEN. Permission refusée, modèle
- * absent, matériel muet : le clavier est toujours là, et on le dit.
+ * absent, matériel muet : le clavier est toujours là, et ON LE DIT (VOIX-06,
+ * STK-22 — la panne se dit depuis la même clé qu'elle affiche ; avant, elle
+ * n'était qu'un texte muet qu'une non-lectrice n'entendait jamais).
+ *
+ * LE WEB ÉCOUTE AUSSI (VOIX-06, 26/10/2026). Le composant ne connaissait que
+ * `startLiveDictation` — Sherpa, réservé à l'APK : sur navigateur le modèle
+ * hors-ligne n'existe pas, le micro du prix mourait au premier essai, et le
+ * clavier redevenait la seule voie. Le chemin dictée web (décision du
+ * 19/10) — que BoutonDireProduit et BoutonDireNom empruntent déjà — est
+ * branché ici, avec la MÊME lecture `montantDit` : un seul sens pour un
+ * prix, partout.
+ *
+ * ET LE SILENCE NE SE REFERME PLUS MUET : micro refermé sans prix lu, on
+ * relance à la voix (STOCK_065). Les étapes nom et produit le faisaient
+ * déjà (STOCK_046) — le prix ne restait le seul écran où on ne lui disait
+ * pas qu'on ne l'avait pas comprise.
  */
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
 import { startLiveDictation } from '../../voice-offline/offlineStt';
+import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
 import { stopAllVoice } from '../../services/audioManager';
 import { montantDit } from '../../services/montantDit';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
+import { resoudreMessage } from '../../i18n/voice/runtime';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
+
+/** Une seule clé pour un refus : l'écran l'affiche et la voix le dit. */
+const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
+  void rendreMessage(resoudreMessage(id), (t) => dire?.(t));
+};
 
 const ORANGE = 'var(--commerce-action)';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
@@ -60,6 +83,13 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
   const fluxRef = useRef<MediaStream | null>(null);
   const minuteurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const demarreRef = useRef(false);
+  /** VOX-06 — a-t-elle été comprise ? Le silence du minuteur ne se referme
+   *  muet que si NON ; sur le chemin web, c'est `conclure` qui relance. */
+  const aEntenduRef = useRef(false);
+  /** Le chemin actif : seul le chemin sherpa laisse le minuteur relancer
+   *  (sur le chemin web, `conclure` livre le texte final et relance lui-même
+   *  — relancer ici aussi ferait deux fois la phrase). */
+  const cheminRef = useRef<null | 'web' | 'sherpa'>(null);
 
   const fermer = async () => {
     if (minuteurRef.current) { clearTimeout(minuteurRef.current); minuteurRef.current = null; }
@@ -72,6 +102,8 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
 
   const ecouter = async () => {
     if (ecoute) { void fermer(); return; }
+    aEntenduRef.current = false;
+    cheminRef.current = null;
     // VERROU PAROLE / ÉCOUTE : si Tantie parle encore, le micro l'entend elle
     // et transcrit sa propre voix. On coupe tout avant d'ouvrir l'oreille.
     try { stopAllVoice(); } catch { /* ignore */ }
@@ -83,20 +115,65 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
+      // WEB D'ABORD (VOIX-06) — Sherpa est réservé à l'APK ; le même geste
+      // utilise la reconnaissance du navigateur quand elle existe, comme les
+      // micros du nom et du produit depuis le 19/10. La lecture reste
+      // `montantDit` : un seul sens pour un prix.
+      if (recoWebDispo()) {
+        cheminRef.current = 'web';
+        const web = demarrerRecoWeb({
+          interim: (texte) => {
+            const m = montantDit(texte || '');
+            // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle.
+            if (m !== null) { aEntenduRef.current = true; onMontant(m); }
+          },
+          conclure: (texte) => {
+            const m = montantDit(texte || '');
+            void fermer();
+            if (m !== null) { aEntenduRef.current = true; onMontant(m); return; }
+            // Rien de lisible dans ce qu'elle a dit : on le lui dit, on ne
+            // referme pas le micro en silence (STOCK_065).
+            DIRE_CLE('STOCK_065', dire);
+          },
+          erreur: (code) => {
+            void fermer();
+            setIndisponible(true);
+            setEcoute(false);
+            DIRE_CLE(code === 'micro' ? 'STOCK_063' : 'STOCK_064', dire);
+          },
+        });
+        if (web) {
+          arretRef.current = web.conclure;
+          // Filet : une écoute qui ne se referme jamais retient le micro et
+          // vide la batterie. Le clavier reprend la main.
+          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
+          return;
+        }
+      }
+      cheminRef.current = 'sherpa';
       const handle = await startLiveDictation(flux, (texte, estFinal) => {
         const m = montantDit(texte || '');
         // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle, donc
         // elle sait qu'on l'entend. `null` ne remplit rien — on n'efface pas
         // ce qu'elle a déjà donné parce qu'un lot de son n'a rien rendu.
-        if (m !== null) onMontant(m);
+        if (m !== null) { aEntenduRef.current = true; onMontant(m); }
         if (estFinal && m !== null) void fermer();
       });
       arretRef.current = handle.stop;
       // Filet : une écoute qui ne se referme jamais retient le micro et vide
       // la batterie. Le clavier reprend la main.
-      minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
+      minuteurRef.current = setTimeout(() => {
+        void fermer();
+        // VOX-06 — le silence ne se referme plus muet : elle sait qu'on ne
+        // l'a pas comprise, et que le clavier reste. Le chemin web relance
+        // lui-même via `conclure` ; relancer ici aussi ferait deux fois la
+        // phrase.
+        if (cheminRef.current === 'sherpa' && !aEntenduRef.current) DIRE_CLE('STOCK_065', dire);
+      }, ECOUTE_MAX_MS);
     } catch {
-      // Permission refusée, modèle absent, matériel muet : on ne bloque rien.
+      // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche
+      // (STOCK_063). Le clavier reste le repli, et la phrase le nomme.
+      DIRE_CLE('STOCK_063', dire);
       setIndisponible(true);
       setEcoute(false);
     }
@@ -152,7 +229,7 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
   if (indisponible) {
     return (
       <p role="status" style={{ fontSize: 13, fontWeight: 700, color: 'var(--encre-4)', margin: 0, textAlign: 'center' }}>
-        Le micro ne répond pas. Tape le prix.
+        {resoudreMessage('STOCK_063').texte}
       </p>
     );
   }
