@@ -178,6 +178,13 @@ export function useDicteeLive() {
       }
       mediaStreamRef.current = stream;
     } else {
+      try {
+        // Demander explicitement la permission micro pour web
+        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        testStream.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        console.warn('[dictee] getUserMedia web failed', e);
+      }
       vlog('MIC_OK', 'navigateur (permission gérée par la reconnaissance)');
     }
     dictCfgRef.current = cfg;
