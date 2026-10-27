@@ -116,6 +116,13 @@ console.log("\n[6] L'ÉCRAN DU STOCK EST VRAIMENT REBRANCHÉ");
   ok(/useState\(depart\?\.nom/.test(guide), "le nom qu'elle a dit n'est pas redemandé");
   ok(/useState\(depart\?\.unite/.test(guide), "ni l'unité, quand elle l'a donnée");
   ok(/depart\?\.prix/.test(guide), "ni le prix, quand elle l'a dit");
+  // VOIX-06 — la quantité dite dans la même phrase n'est PLUS JETÉE : elle
+  // préremplit la question « Tu en as combien ? » (qui reste posée — elle
+  // confirme d'un geste, rien n'avance seul).
+  ok(/depart\?\.quantite/.test(guide),
+     "ni la quantité, quand elle l'a dite — « Ajoute dix kassos » garde son dix");
+  ok(/typeof depart\?\.quantite === 'number' && depart\.quantite > 0/.test(guide.replace(/\s+/g, ' ')),
+     'et elle ne préremplit que si c\'est un NOMBRE positif — jamais un zéro dicté à sa place');
 }
 
 console.log("\n[7] STK-05b — « DEUX MANIOCS » : SON ÉTAL SERT AUSSI À ENTENDRE");

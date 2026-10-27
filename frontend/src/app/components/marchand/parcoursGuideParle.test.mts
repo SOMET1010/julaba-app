@@ -55,9 +55,15 @@ const ETAPES = [
   { etape: 'nom',   id: 'STOCK_047', vars: '',                affiche: "Quel produit tu veux ajouter ?" },
   { etape: 'unite', id: 'STOCK_048', vars: ", { nom }",       affiche: '{nom}, tu le vends comment ?' },
   { etape: 'prix',  id: 'STOCK_049', vars: ", { unite }",     affiche: 'Le {unite}, à combien ?' },
+  // VOIX-06 — la quatrième question est couverte elle aussi. Elle seule dit
+  // PLUS que ce qu'elle affiche : la phrase parlée ajoute l'autorisation de
+  // passer (« si tu ne sais pas, passe »), que l'écran ne porte pas. Le
+  // garde vérifie alors que l'écran est le DÉBUT de la phrase dite —
+  // l'oreille ne doit jamais recevoir moins que l'œil.
+  { etape: 'quantite', id: 'STOCK_054', vars: '', affiche: 'Tu en as combien ?', prefixe: true },
 ] as const;
 
-console.log('\n[1] les trois questions existent au catalogue');
+console.log('\n[1] les quatre questions existent au catalogue');
 for (const e of ETAPES) {
   ok(frActuel(e.id) !== null, `${e.id} est déclarée`);
 }
@@ -75,8 +81,11 @@ console.log('\n[3] le texte DIT est le texte AFFICHÉ, au mot près');
 // dans le texte) ; le catalogue porte les mêmes variables. On compare les deux
 // formes une fois les accolades JSX ramenées à la notation du catalogue.
 for (const e of ETAPES) {
-  const cat = frActuel(e.id);
-  ok(cat === e.affiche, `${e.id} : « ${e.affiche} »`, `catalogue : « ${cat} »`);
+  const cat = frActuel(e.id) ?? '';
+  // « prefixe » — la question PARLÉE peut dire plus que l'écran (l'avis de
+  // passer de STOCK_054) ; jamais MOINS. L'écran doit être son début.
+  const meme = 'prefixe' in e && e.prefixe ? cat.startsWith(e.affiche) : cat === e.affiche;
+  ok(meme, `${e.id} : « ${e.affiche} »`, `catalogue : « ${cat} »`);
   // Le JSX écrit ses interpolations `{nom}` / `{unite}` avec les mêmes noms
   // que le catalogue : la comparaison est directe, sans traduction.
   ok(brut.includes(e.affiche),
@@ -115,6 +124,6 @@ ok((frActuel('STOCK_049') || '').includes('{unite}'),
    '« à combien ? » sans l\'unité laisse le prix du tas passer pour celui du kilo');
 
 console.log(failures === 0
-  ? '\nLes trois questions du parcours guidé se disent ✅\n'
+  ? '\nLes quatre questions du parcours guidé se disent ✅\n'
   : `\n${failures} échec(s).\n`);
 process.exit(failures === 0 ? 0 : 1);
