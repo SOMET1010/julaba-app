@@ -122,6 +122,7 @@
     "test:premier-produit",
     "test:montant-dit",
     "test:unite-dite",
+    "test:quantite-dite",
     "test:produit-dit",
     "test:sections-bo",
     "test:charte-marchande",
