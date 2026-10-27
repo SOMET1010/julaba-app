@@ -1169,6 +1169,7 @@ function POSCaisseInner() {
          rien de ce que « Caisse du jour » disait n'est perdu. */
       title="Vendre"
       variante="caisse"
+      fullWidth
       rightContent={
         <div style={{ display:'flex', gap:'var(--caisse-esp-2)', alignItems:'center' }}>
           {/* L'EN-TÊTE DE LA MAQUETTE : la date du jour et « Bonnes ventes ! »
