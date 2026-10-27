@@ -8,12 +8,12 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **437** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 453 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **438** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 454 |
 | — littéraux (phrase fixe en dur) | 200 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
 | — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 96 |
-| — relais (`dire = (t) => speak(t)`) | 23 |
+| — relais (`dire = (t) => speak(t)`) | 24 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
 | Dont dynamiques (avec variables) | 72 |
@@ -76,6 +76,7 @@
 | `components/auth/UnregisteredPhone.tsx` | auth | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
+| `components/marchand/BoutonDirePrix.tsx` | autre | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/MarchandDepenses.tsx` | depense | 2 | 2 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/ResumeCaisse.tsx` | caisse | 2 | 0 | 0 | 0 | 0 | 2 | 0 |
 | `components/marchand/TontineDetail.tsx` | marchand_autre | 2 | 3 | 0 | 0 | 0 | 0 | 0 |
@@ -97,7 +98,6 @@
 | `components/layout/Sidebar.tsx` | partage | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BesoinMarchand.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BoutonDireNom.tsx` | autre | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
-| `components/marchand/BoutonDirePrix.tsx` | autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ChoixUnite.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ProtectionSociale.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -124,7 +124,7 @@
 | wallet | 36 | 37 | 19 |
 | auth | 28 | 15 | 0 |
 | vente | 28 | 0 | 0 |
-| autre | 24 | 3 | 0 |
+| autre | 25 | 3 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
@@ -330,7 +330,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 132 | `dire` | dynamique | question |  |  |
+| 57 | `dire` | relais | t |  |  |
+| 209 | `dire` | dynamique | question |  |  |
 
 ### `components/marchand/BoutonDireProduit.tsx` — autre
 
