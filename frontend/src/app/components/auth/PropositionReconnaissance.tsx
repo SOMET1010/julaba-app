@@ -7,7 +7,8 @@ import { registerWebAuthn } from '../../hooks/useWebAuthn';
 import { doitProposerReconnaissance, marquerBiometrie, noterRefusProposition } from '../../services/comptesMemorises';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
-import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
+import { ACCUEIL_MARCHAND_VOICE_CLIPS, direAccueilMarchand, tourVoixAccueilLibre } from '../../services/accueilMarchandVoix';
+import { derniereIssuePlayClip } from '../../utils/voiceTrace';
 import { intentionOuiNon, type ReponseOuiNon } from '../../voice-offline/commandesEntree';
 import { useCommandesVocales } from '../../hooks/useCommandesVocales';
 
@@ -55,7 +56,14 @@ export function PropositionReconnaissance() {
   const { user } = useApp();
   const [visible, setVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
+  // Le téléphone a REFUSÉ le son de la question (autoplay hors geste, vrai
+  // téléphone) : l'écran le NOMME au lieu de rester une modale muette.
+  const [sonRefuse, setSonRefuse] = useState(false);
   const phoneRef = useRef('');
+  // Toute sortie de la modale (« Oui », « Non », « Fermer », ESC, fond) ABANDONNE
+  // la chaîne vocale encore en attente — on ne pose pas une question APRÈS qu'on
+  // y a déjà répondu.
+  const closRef = useRef(false);
   const ouiRef = useRef<HTMLButtonElement>(null);
   // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : LA QUESTION S'ENTEND RÉPONDRE
   // Après la question (reconnaissanceProposition) puis la consigne (login-85 —
@@ -78,39 +86,79 @@ export function PropositionReconnaissance() {
     try { propose = doitProposerReconnaissance(window.localStorage, tel); } catch { /* ignore */ }
     if (!propose) return;
     phoneRef.current = tel;
+    // La chaîne vocale vit HORS du geste (minuterie + attentes) : elle se
+    // doit abandonnable (démontage ou sortie de modale) — d'où `vivant`.
+    let vivant = true;
+    const dormir = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
+    const clipQuestion = ACCUEIL_MARCHAND_VOICE_CLIPS.reconnaissanceProposition.file;
+    const clipConsigne = ACCUEIL_MARCHAND_VOICE_CLIPS.reconnaissanceConsigneVoix.file;
     // Petite respiration : l'accueil s'installe, PUIS Tata pose sa question.
+    // MAIS LA VOIX N'EST PLUS UNE MINUTERIE NUE (Patrick, 26/10 : « la question
+    // ne joue pas »). Deux écueils fermés ici :
+    //   1. LA COURSE — la question partait PILE sur la phrase de caisse
+    //      (priorité 'user' des deux côtés : une preuve coupait l'autre, et la
+    //      caisse peut arriver TARD sur réseau réel). La question ATTEND son
+    //      tour (créneau de l'accueil — la règle « les rappels attendent leur
+    //      tour », e5ebc902) et se REDIT si la caisse la coupe en route.
+    //   2. LE SILENCE MENTEUR — sur un vrai téléphone, un `play()` hors geste
+    //      peut être REFUSÉ (autoplay) ; le résultat mourait dans l'audio-
+    //      manager qui rapportait « joué » (dette ACC-05). Le lecteur VOIX-05
+    //      (`derniereIssuePlayClip`) relit la preuve écrite par le lecteur
+    //      lui-même : refus → on ne prétend pas qu'elle a entendu, l'écran
+    //      NOMME le geste qui marche — le haut-parleur part d'un vrai doigt.
     const t = setTimeout(() => {
       setVisible(true);
-      if (guidageVocal()) {
-        void (async () => {
-          try {
+      if (!guidageVocal()) return;
+      void (async () => {
+        try {
+          // 1. ATTENDRE SON TOUR — la phrase d'argent d'abord (ACC-01),
+          //    au plus ~20 s : ne jamais la laisser dans le noir.
+          for (let i = 0; i < 13 && vivant && !tourVoixAccueilLibre(); i++) await dormir(1500);
+          // 2. LA QUESTION — deux tentatives au plus : si la caisse s'est
+          //    réservée PENDANT (réseau lent), elle a coupé la question ; on
+          //    attend derrière elle et on la redit ENTIÈRE.
+          for (let essai = 0; essai < 2 && vivant; essai++) {
+            if (closRef.current) return;
             const r = await direAccueilMarchand('reconnaissanceProposition');
-            // RIEN N'EST SORTI → RIEN NE S'OUVRE : pas de micro derrière une
-            // question que l'oreille n'a pas entendue.
-            if (!r.lu) return;
+            if (!vivant || closRef.current) return;
+            if (derniereIssuePlayClip(clipQuestion) === 'play-refuse') {
+              setSonRefuse(true);
+              return;
+            }
+            if (!r.lu) return; // coupé ou absent : cause au journal, le HP reste
+            if (!tourVoixAccueilLibre()) {
+              for (let i = 0; i < 13 && vivant && !tourVoixAccueilLibre(); i++) await dormir(1500);
+              continue;
+            }
             const c = await direAccueilMarchand('reconnaissanceConsigneVoix');
-            if (!c.lu) return;
-          } catch { return; }
-          demarrerCommandes({
-            grammaire: intentionOuiNon,
-            dureeMs: 8_000,
-            surCommande: (rep) => {
-              // « oui » → l'enrôlement ; « non » → le refus (mémorisé). Le
-              // micro est DÉJÀ rendu (le hook arrête l'écoute avant d'appeler).
-              if (rep === 'oui') void ouiActionRef.current();
-              else nonActionRef.current();
-            },
-          });
-        })();
-      }
+            if (!vivant || closRef.current) return;
+            // Consigne refusée ou coupée : pas de micro derrière une phrase
+            // que l'oreille n'a pas entendue — les boutons restent (Oui est
+            // reçu au focus).
+            if (derniereIssuePlayClip(clipConsigne) === 'play-refuse' || !c.lu) return;
+            demarrerCommandes({
+              grammaire: intentionOuiNon,
+              dureeMs: 8_000,
+              surCommande: (rep) => {
+                // « oui » → l'enrôlement ; « non » → le refus (mémorisé). Le
+                // micro est DÉJÀ rendu (le hook arrête l'écoute avant d'appeler).
+                if (rep === 'oui') void ouiActionRef.current();
+                else nonActionRef.current();
+              },
+            });
+            return;
+          }
+        } catch { return; }
+      })();
     }, 1500);
-    return () => clearTimeout(t);
+    return () => { vivant = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const repondreOui = async () => {
     if (enCours) return;
     setEnCours(true);
+    closRef.current = true; // la chaîne vocale en attente est abandonnée
     arreterCommandes();
     try {
       const r = await registerWebAuthn();
@@ -142,6 +190,7 @@ export function PropositionReconnaissance() {
   // « Non » — la seule sortie qui mémorise un refus. Deliberate : elle a lu
   // (ou entendu) la question et répond. « Une seule proposition » tient.
   const repondreNon = () => {
+    closRef.current = true; // la chaîne vocale en attente est abandonnée
     arreterCommandes();
     try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
     if (guidageVocal()) void direAccueilMarchand('reconnaissanceRefus');
@@ -156,6 +205,7 @@ export function PropositionReconnaissance() {
   // doit pas lui fermer la porte pour toujours. La proposition reviendra au
   // prochain lancement ; le jour où elle répond « Non », elle s'arrête.
   const fermerSansRepondre = () => {
+    closRef.current = true; // la chaîne vocale en attente est abandonnée
     arreterCommandes();
     setVisible(false);
   };
@@ -215,11 +265,20 @@ export function PropositionReconnaissance() {
                     {prenom ? `${prenom}, veux-tu` : 'Veux-tu'} que Tantie Nanti Lou te reconnaisse la prochaine fois ?
                   </p>
                 </DialogPrimitive.Title>
-                <button type="button" onClick={() => { void direAccueilMarchand('reconnaissanceProposition'); }}
+                <button type="button" onClick={() => { setSonRefuse(false); void direAccueilMarchand('reconnaissanceProposition'); }}
                   aria-label="Écouter Tantie Nanti Lou"
                   style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: '50%', border: '2px solid rgba(198,106,44,0.35)', background: '#fff7ef', color: 'var(--commerce-action)', display: 'grid', placeItems: 'center', cursor: 'pointer' }}>
                   <Volume2 aria-hidden="true" size={25} />
                 </button>
+                {/* Le silence NOMME le geste (26/10) : si le téléphone a refusé
+                    le son (autoplay hors geste), l'écran dit quoi toucher au lieu
+                    de rester une modale muette — le haut-parleur, lui, part
+                    d'un vrai doigt, donc il joue toujours. */}
+                {sonRefuse && (
+                  <p role="status" style={{ margin: '-8px 0 14px', fontSize: 14, fontWeight: 700, color: '#8A5A34' }}>
+                    Touche le haut-parleur pour écouter la question
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button type="button" onClick={repondreNon} disabled={enCours}
                     style={{ flex: 1, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#8A5A34', background: 'var(--commerce-surface)', border: '2px solid rgba(198,106,44,0.35)', cursor: 'pointer', fontFamily: 'inherit' }}>

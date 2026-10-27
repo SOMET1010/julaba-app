@@ -6,6 +6,7 @@
     "horsVerify liste les scripts test:* volontairement absents de verify, AVEC leur motif."
   ],
   "maillons": [
+    "test:tour-voix",
     "typecheck",
     "test:maillons-orphelins",
     "test:api-url",

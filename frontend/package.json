@@ -26,6 +26,7 @@
     "test:i18n-empreintes-argent": "tsx src/app/i18n/voice/validators/empreintesArgent.mts",
     "test:argent-parle": "tsx src/app/i18n/voice/argent/dixCasArgent.test.mts",
     "test:audio": "tsx src/app/services/audioManager.test.mts",
+    "test:tour-voix": "tsx src/app/services/tourVoixAccueil.test.mts",
     "test:cart": "tsx src/app/services/cartStorage.test.mts",
     "test:voix": "tsx src/app/services/venteVocale.test.mts",
     "test:vendre-unifie": "tsx src/app/services/vendreVocalUnifie.test.mts",

@@ -5,6 +5,34 @@
 
 
 
+### Corrigé — La question de la reconnaissance attend son tour et ne ment plus (2026-10-26)
+
+Recette vrai téléphone (Patrick) : « la question ne joue pas, on doit cliquer
+d'abord sur le HP ». Deux écueils prouvés au journal, fermés ensemble :
+
+1. LA COURSE — la question partait 1,5 s après le montage, PILE sur la phrase
+   de caisse (deux priorités 'user' : une preuve coupait l'autre ; sur réseau
+   réel la caisse arrive TARD et coupait la question). L'accueil RÉSERVE
+   maintenant un créneau à chaque prise de parole (`reserverVoixAccueil`), la
+   question attend derrière et se REDIT si la caisse la coupe en route — la
+   règle « les rappels attendent leur tour » (e5ebc902) appliquée côté
+   accueil, avec son miroir.
+2. LE SILENCE MENTEUR — un `play()` hors geste refusé par le téléphone
+   (autoplay) mourait dans l'audioManager qui rapportait « joué » (dette
+   ACC-05, figée par VOICE-01). Le lecteur VOIX-05 se lit maintenant :
+   `derniereIssuePlayClip` relit la preuve écrite par le lecteur lui-même —
+   refus → la chaîne s'arrête honnêtement et la modale NOMME le geste :
+   « Touche le haut-parleur pour écouter la question ». Le haut-parleur part
+   d'un vrai doigt : il joue toujours.
+
+Preuves navigateur (recharge SANS geste = conditions APK) : question refusée
+→ nudge affiché ; clic HP → question `ended 4,6 s` → nudge disparu. Avec
+geste : la question part à la fin exacte du créneau caisse et se joue
+entière (ended 4 661 ms), la consigne suit (ended 3 285 ms), zéro
+TTS_COUPEE. Toute sortie de la modale (« Oui », « Non », Fermer, ESC, fond)
+abandonne la chaîne vocale en attente — on ne pose plus une question après
+qu'on y a répondu. Garde nouvelle : `test:tour-voix` (13 assertions).
+
 ### Retiré — La pastille « Aide vocale » quitte l'écran de connexion (2026-10-26)
 
 Demande écrite de Patrick (« retire moi "Aide vocale" de la page de connexion »).
