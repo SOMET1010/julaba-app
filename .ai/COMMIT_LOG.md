@@ -328,3 +328,11 @@ Atomicité : docs only — rapport + COMMIT_LOG + worklog ; ajout explicite par 
 Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 12 suites vertes ; **verify complet : 150 vert / 2 rouge (2 CONNUS) / 152 — 0 rouge nouveau**.
 
 Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via `git commit -F` ; UN seul heredoc par commande bash.
+
+## 2026-10-26 — « L'audit voix de la connexion entre au cockpit » (lot 50, agent Z.ai Code)
+
+1. `docs(voix): lot 50 — l'audit voix de la connexion entre au cockpit .ai` — LOT-50-CONNEXION-VOIX-2026-10-26.md : l'audit Patrick (26/10, « qui ne sait pas lire/écrire puisse se connecter à la voix ») ; les trois écarts notés ; les écarts ①/③ FERMÉS par 8ebe8647 (« oui » vaut le bouton, « recommencer » redicte, « utiliser les chiffres » ouvre le pavé — preuve E2E zéro toucher jusqu'à /marchand) ; le code secret = DÉCISION B5 (11/08, « un secret ne se dit pas »), pas un trou ; la phrase juste écrite : « tout se dit, sauf le secret ». CHANGELOG : entrée « La connexion écoute » en tête. + worklog maj-docs-ai-26-10.
+
+Batteries : lot DOCUMENTAIRE — 0 fichier code touché (diff = .md uniquement) ; les gardes citées (tsc 0, eslint 0, 21 gardes, test:commandes-entree 35 assertions) sont celles des commits 339306c0 / 3d420d22 / e5ebc902 / 8ebe8647, preuves de première main dans leurs messages.
+
+Atomicité : docs only — rapport LOT-50 + CHANGELOG + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.

@@ -1412,3 +1412,22 @@ Work Log:
 Stage Summary:
 - La question d'adaptation est ENFIN entendue : elle termine la chaîne d'accueil de l'étape numéro au lieu de courir (et perdre) contre lui — et elle CLIGNOTE
 - Leçon de méthode : câbler un texte (clé + clip) ne suffit pas — le MOMENT du départ décide ; deux chaînes de voix qui démarrent au même mount se tuent l'une l'autre, la file unique est la règle
+---
+Task ID: maj-docs-ai-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « mets a jour suivant .ai » — mettre le cockpit .ai/ à niveau après l'audit voix de la connexion et le lot 8ebe8647
+
+Work Log:
+- Garde anti-course : 20 commits Akoun nouveaux détectés (bc0c78c2..8ebe8647) — fast-forward avant TOUTE écriture
+- Bruit de modes nettoyé : 2040 fichiers chmod 644→755 par l'environnement (0 insertion, 0 suppression) — core.fileMode=false posé sur ce worktree, arbre redevenu propre
+- Lecture des conventions .ai : README.md (règle d'or, structure, propriétaires), LOT-49 (format de référence), TASKS.md (UX-2), TEAM_STATUS.md
+- Vérifié que l'audit Patrick (26/10) n'EXISTAIT PAS dans le repo (aucun fichier .ai/ ni docs/ ne le portait) et que 8ebe8647 le cite dans son message
+- Relu les sources citées pour ne rien affirmer de faux : accessMode.ts (auto jamais muet), LoginPassword.tsx l.232/733/1760 (B5 intouché : à l'étape du code, JAMAIS d'écoute), message 8ebe8647 (grammaire, anti-écho 600 ms, fenêtre 10 s, clips 78-81, registre 253, 35 assertions, preuve E2E zéro toucher)
+- ÉCRIT : .ai/AUDITS/LOT-50-CONNEXION-VOIX-2026-10-26.md — audit voix de la connexion au format LOT : §1 ce qui est cohérent (accueil, directives, dictée, relecture, erreurs, repli pavé, passage code), §2 les trois écarts notés, §3 les écarts ①/③ FERMÉS par 8ebe8647, §4 le code secret = décision B5 pas un trou, §5 la phrase juste « tout se dit, sauf le secret », §6 gates, §7 ce que le lot ne fait pas
+- ÉCRIT : .ai/CHANGELOG.md — entrée « Ajouté — La connexion écoute : commandes vocales de confirmation (2026-10-26) » en tête
+- Aucun code touché : le diff du lot ne porte que des .md (proof docs-only)
+
+Stage Summary:
+- L'audit voix de la connexion entre dans le cockpit : .ai/AUDITS/LOT-50-CONNEXION-VOIX-2026-10-26.md
+- La doctrine est écrite noir sur blanc : les écarts ①/③ sont fermés (preuve E2E 8ebe8647), le silence du code secret est une DÉCISION B5 — on ne prétend pas « 100 % vocal », on prétend « tout se dit, sauf le secret »
+- Prochaine piste notée sans engagement : biométrie du code (§4), dioula des clips 78-81 (règle lot B)
