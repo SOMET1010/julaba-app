@@ -3,7 +3,51 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Corrigé — Ajouter un produit s'entend de bout en bout : chaque question écoute sa réponse (2026-10-26)
 
+Recette Patrick : « Assure-toi qu'elle puisse ajouter des produits entièrement
+à l'aide de commandes vocales, avec des instructions audio claires et une
+navigation simple, sans dépendre du texte. » Mesuré au navigateur avant le lot :
+sur les quatre questions du parcours guidé, DEUX n'écoutaient pas (unité,
+quantité — réponses en boutons écrits seulement), le micro du prix était mort
+sur le web (Sherpa seul), sa panne s'affichait en silence, le silence du micro
+ne relançait rien, et la quantité déjà dictée (« Ajoute dix kassos ») était
+jetée. Corrigé en cinq lots (VOIX-06) :
+
+1. **Le prix se dit sur le web** — dictée web branchée dans `BoutonDirePrix`
+   (même motif que le nom et le produit), pannes DITES (STOCK_063/064),
+   relance à la voix quand rien n'est lu (STOCK_065). STK-22 complet.
+2. **L'unité écoute** — `uniteDite` (pur, testé) + `BoutonDireUnite` : sa voix
+   écrit l'étiquette qu'elle aurait touchée (« au sac », « en sacs », « au
+   kilo » → « kg »), son mot du marché reste son mot (« au bol »), le reste
+   est relancé (STOCK_066/067/068). STK-25 appliqué aux unités.
+3. **La quantité écoute** — `quantiteDite` + `BoutonDireQuantite` : la
+   grammaire de l'application lit SON nombre, son zéro est une réponse
+   (STK-04), « passe »/« je ne sais pas » déclenchent EXACTEMENT le geste du
+   bouton (stock INCONNU) ; relance (STOCK_069/070/071) et accusé relu
+   (STOCK_072). Les composés hyphénés 22-69 (« vingt-cinq ») entrent dans la
+   grammaire des nombres — surensemble pur.
+4. **Ce qu'elle a dit d'avance n'est plus jeté** — la quantité de la dictée du
+   nom voyage dans le `brouillon` et préremplit sa question (qui reste posée :
+   elle confirme d'un geste — rien n'avance seul, décision du 24/09).
+5. **Le stock qu'elle n'a pas donné n'est pas zéro** — mesuré en base :
+   « je ne sais pas » s'enregistrait 0 avec seuil 10 et déclenchait une alerte
+   rupture sur un stock jamais donné. Le null explicite traverse maintenant
+   `addProduct` ET le chargement (`Number(null)` ne mensonge plus), le type
+   `CaisseProduct.stock` est `number | null`, et le compteur d'alertes comme
+   la voix de Tantie excluent les non-suivis.
+
+Preuve navigateur (390×844, harnais micro+reco) : « Ajoute trois gommes » →
+« euh ben attends » → relance parlée → « au sac » → « cinq cents » → ✓ →
+« dix » → ✓ → « Gommes, cinq cents francs le sac. C'est sur ton étal. » —
+produit EN BASE (500 F, stock 10, sac), 0 erreur console. Deux scénarios
+complémentaires : quantité dictée d'avance préremplie (« Ajoute sept pagnes »
+→ « 7 sac »), et « je ne sais pas » → stock null en base, carte « ◌ Stock non
+suivi — QUANTITÉ À RENSEIGNER », compteur d'alertes honnête.
+
+Gardes : test:unite-dite (36), test:quantite-dite (33) nouvelles ;
+test:montant-dit, test:produit-dit, test:premier-produit,
+test:parcours-guide-parle étendues. Inventaire 444=444.
 
 ### Corrigé — La question de la reconnaissance attend son tour et ne ment plus (2026-10-26)
 
