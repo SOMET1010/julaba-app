@@ -19,7 +19,9 @@ export interface ProduitAppariable {
   nom: string;
   prix: number;
   prix_achat?: number;
-  stock: number;
+  /** STK-04 — `null` = stock inconnu (« je ne sais pas »), jamais un zéro
+   *  qui voudrait dire deux choses. */
+  stock: number | null;
   unite: string;
 }
 

@@ -349,6 +349,25 @@ console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
   ok(/useCaisse\(\)/.test(ap) && /\bproducts\b/.test(ap), "l'écran lit son étal (`products` de la caisse)");
 }
 
+console.log('\n[6b] LE STOCK QU\'ELLE N\'A PAS DONNÉ N\'EST PAS ZÉRO — STK-04 JUSQU\'AU BOUT');
+{
+  // VOIX-06 — la primitive unique doit LAISSER PASSER le null explicite.
+  // Mesuré au navigateur : « je ne sais pas » (voix ou bouton) arrivait au
+  // backend 0 — le zéro qui voudrait dire deux choses, et l'alerte rupture
+  // se déclenchait sur un stock qu'elle n'a jamais donné.
+  const ctx = readFileSync(
+    new URL('../contexts/CaisseContext.tsx', import.meta.url), 'utf-8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n').filter(l => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+  ok(/stock:\s*product\.stock === null \? null : \(product\.stock \|\| 0\)/.test(ctx),
+     '`addProduct` traverse le null EXPLICITE — seul le parcours produit un null');
+  ok(!/stock:\s*product\.stock \|\| 0/.test(ctx),
+     'et la coercion naïve `stock || 0` est interdite : elle enregistrerait un 0 à sa place');
+  // Le type dit la vérité : le catalogue porte des stocks INCONNUS.
+  ok(/stock:\s*number \| null/.test(ctx),
+     '`CaisseProduct.stock` est `number | null` — le type ne ment plus');
+}
+
 console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
   : `\n❌ ${echecs} échec(s)\n`);
