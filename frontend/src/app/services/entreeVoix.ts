@@ -8,6 +8,14 @@ export type EntreeVoiceKey =
   | 'numeroAccueil'
   | 'numeroMicroAccueil'
   | 'numeroChiffresAccueil'
+  // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : L'ENTRÉE S'ÉCOUTE ─────────
+  // 82/83 : l'accueil et la présentation se commandent à la voix (« entrer »).
+  // 84 : la dictée du numéro démarre toute seule après le bip.
+  // 85 : la proposition de reconnaissance s'entend répondre (« dis oui ou non »).
+  | 'entreeConsigneVoix'
+  | 'onboardingConsigneVoix'
+  | 'numeroApresBip'
+  | 'propositionConsigneVoix'
   | 'numeroConfirmation'
   | 'dicteeNumeroIncomprise'
   | 'dicteeNumeroClavier'
@@ -823,6 +831,45 @@ export const ENTREE_VOICE_CLIPS: Record<EntreeVoiceKey, EntreeVoiceClip> = {
   clavierSurCommande: {
     file: '/voix/tata/login-81.mp3',
     texte: 'Voilà les chiffres. Tape ton numéro ici.',
+    atteste: false,
+    lotA: true,
+  },
+  // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : L'ENTRÉE S'ÉCOUTE ─────────
+  // Écran 1 (Akwaba), APRÈS le bonjour : le geste se NOMME à la voix, et
+  // l'écran écoute la réponse (commandesEntree.intentionEntree — « entrer »,
+  // « commencer », « continuer », « oui » ; « répète » rejoue). Texte =
+  // EXACTEMENT ce que l'écran affiche et fait entendre. Mêmes specs lot A :
+  // Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS.
+  entreeConsigneVoix: {
+    file: '/voix/tata/login-82.mp3',
+    texte: 'Dis entrer, ou touche la flèche pour commencer.',
+    atteste: false,
+    lotA: true,
+  },
+  // Écran 2 (Tantie se présente), APRÈS la présentation : la même porte,
+  // le même mot (« entrer ») — et « répète » rejoue la présentation.
+  onboardingConsigneVoix: {
+    file: '/voix/tata/login-83.mp3',
+    texte: 'Pour continuer, dis entrer. Tu peux aussi toucher la flèche.',
+    atteste: false,
+    lotA: true,
+  },
+  // Écran 3, APRÈS l'accueil du numéro (05→06→07), QUAND l'écran va écouter :
+  // le bip qui suit est la frontière audible entre la consigne et le moment
+  // de parler. La dictée démarre toute seule — le micro n'est plus une image
+  // qu'il faut savoir trouver.
+  numeroApresBip: {
+    file: '/voix/tata/login-84.mp3',
+    texte: 'Dis ton numéro après le bip, ou touche le micro.',
+    atteste: false,
+    lotA: true,
+  },
+  // Proposition de reconnaissance (« Tata me reconnaît »), APRÈS la question :
+  // la réponse se DIT — « oui » ouvre l'enrôlement, « non » le refuse, le
+  // doute n'enrichit ni l'un ni l'autre (commandesEntree.intentionOuiNon).
+  propositionConsigneVoix: {
+    file: '/voix/tata/login-85.mp3',
+    texte: 'Dis oui ou non, ou touche un bouton.',
     atteste: false,
     lotA: true,
   },

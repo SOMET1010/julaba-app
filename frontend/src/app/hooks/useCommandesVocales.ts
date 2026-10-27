@@ -45,9 +45,19 @@ import { intentionConfirmationNumero, type CommandeNumero } from '../voice-offli
  * continue jusqu'au bout de la fenêtre au lieu de réagir à côté.
  */
 
-export type CommandesVocalesCfg = {
+// LA GRAMMAIRE EST DÉSORMAIS UNE DÉCISION DE L'ÉCRAN (second volet de
+// l'audit 26/10 : « entrer » à l'accueil, « oui/non » à la proposition de
+// reconnaissance). Le rouage restait verrouillé sur LA grammaire de la
+// confirmation du numéro ; il sert désormais TOUTE grammaire déclarée
+// (`voice-offline/commandesEntree`), le défaut conservant l'originale —
+// l'écran du numéro ne change pas d'un mot. Même frontière : la politique
+// (clips, actions) reste dans l'écran, le micro et la fenêtre ici.
+export type CommandesVocalesCfg<C> = {
   /** Prévenu quand une commande est comprise — le micro est DÉJÀ rendu. */
-  surCommande: (c: CommandeNumero) => void;
+  surCommande: (c: C) => void;
+  /** La grammaire déclarée qui juge chaque texte entendu. Défaut : la
+   *  confirmation du numéro (`intentionConfirmationNumero`). */
+  grammaire?: (texte: string) => C | null;
   /** Durée totale de la fenêtre d'écoute (ms). Défaut 10 000. */
   dureeMs?: number;
   /** Silence obligatoire après l'ouverture, anti-écho (ms). Défaut 600. */
@@ -57,9 +67,9 @@ export type CommandesVocalesCfg = {
 const DUREE_DEFAUT_MS = 10_000;
 const GARDE_DEFAUT_MS = 600;
 
-export function useCommandesVocales() {
+export function useCommandesVocales<C = CommandeNumero>() {
   const [ecoute, setEcoute] = useState(false);
-  const cfgRef = useRef<CommandesVocalesCfg | null>(null);
+  const cfgRef = useRef<CommandesVocalesCfg<C> | null>(null);
   const stopRef = useRef<null | (() => void)>(null);
   const fenetreRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -83,7 +93,7 @@ export function useCommandesVocales() {
     setEcoute((v) => (v ? false : v));
   }, []);
 
-  const demarrer = useCallback((cfg: CommandesVocalesCfg) => {
+  const demarrer = useCallback((cfg: CommandesVocalesCfg<C>) => {
     if (stopRef.current || ouvertARef.current) return; // déjà en écoute (ou en vol)
     const surWeb = recoWebDispo();
     if (!surWeb && !offlineModelReady()) { vlog('COMMANDES_NON_PRETE'); return; }
@@ -94,7 +104,11 @@ export function useCommandesVocales() {
 
     const traiter = (texte: string) => {
       if (!stopRef.current) return; // arrêté entre-temps
-      const intention = intentionConfirmationNumero(texte);
+      // Le défaut (grammaire du numéro) ne sert QUE quand C est CommandeNumero
+      // — TypeScript ne peut pas lier les deux ; le cast le documente.
+      const grammaire = cfgRef.current?.grammaire
+        ?? (intentionConfirmationNumero as unknown as (texte: string) => C);
+      const intention = grammaire(texte);
       if (!intention) return;
       const depuisOuverture = Date.now() - ouvertARef.current;
       if (depuisOuverture < garde) {

@@ -14,6 +14,12 @@ import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexio
 import { tParle } from '../../i18n/voice/runtime';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
 import { estHabituee } from '../../utils/parcours';
+import { recoWebDispo } from '../../voice-offline/webReco';
+import { offlineModelReady } from '../../voice-offline/offlineStt';
+import { intentionEntree, type CommandeEntree } from '../../voice-offline/commandesEntree';
+import { useCommandesVocales } from '../../hooks/useCommandesVocales';
+import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
+import { direEntreeTexte } from '../../services/entreeVoix';
 
 interface WelcomeProps {
   onComplete?: () => void;
@@ -22,6 +28,17 @@ interface WelcomeProps {
 export function Welcome({ onComplete }: WelcomeProps) {
   const navigate = useNavigate();
   const laisserPresentationContinuer = useRef(false);
+
+  // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : CET ÉCRAN S'ÉCOUTE ────────
+  // « Il n'existe pas de commande vocale du type "Entrer", "Commencer",
+  // "Continuer" » : le bonjour se disait, la porte restait TACTILE. Après le
+  // bonjour, l'écran dit login-82 (« dis entrer, ou touche la flèche ») puis
+  // ÉCOUTE une fenêtre courte — grammaire déclarée `intentionEntree`, le
+  // doute n'avance jamais. Le micro ne s'ouvre QUE si un son est réellement
+  // sorti : dans le noir (premier chargement sans geste), point de micro.
+  const { ecoute, demarrer: demarrerCommandes, arreter: arreterCommandes } = useCommandesVocales<CommandeEntree>();
+  const commencerRef = useRef<() => void>(() => {});
+  const accueilRef = useRef<() => void>(() => {});
 
   // Tata ACCUEILLE (elle ne présente pas une appli) : elle parle du COMMERCE de
   // la marchande, et crée tout de suite un lien d'appartenance.
@@ -52,18 +69,44 @@ export function Welcome({ onComplete }: WelcomeProps) {
   // pas dans la garde de rôle.
   const accueille = useCallback(() => {
     const habituee = estHabituee();
-    void direEntreeAvantConnexion(habituee ? 'retour' : 'accueil')
-      .then((r) => {
-        if (!r.doitDireLeTexte) return;
-        // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE, PLUS UNE PORTE DÉROBÉE.
-        // Cet écran passait directement par `audioManager` pour échapper à la
-        // garde de rôle de `AppContext.speak`. Le contournement marchait, mais
-        // AUCUNE règle ne disait qui avait le droit de l'emprunter : n'importe
-        // quel écran pouvait faire pareil. La permission se demande désormais.
-        void parlerAvantConnexion('akwaba', tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));
-      })
-      .catch(() => { /* un bonjour qui casse ne bloque pas l'entrée */ });
-  }, []);
+    void (async () => {
+      let sonSorti = false;
+      try {
+        const r = await direEntreeAvantConnexion(habituee ? 'retour' : 'accueil');
+        if (r.lu) sonSorti = true;
+        else if (r.doitDireLeTexte) {
+          // AKW-02 — LA VOIE D'ENTRÉE EST NOMMÉE, PLUS UNE PORTE DÉROBÉE.
+          // Cet écran passait directement par `audioManager` pour échapper à
+          // la garde de rôle de `AppContext.speak`. Le contournement marchait,
+          // mais AUCUNE règle ne disait qui avait le droit de l'emprunter.
+          // La permission se demande désormais. `parlerAvantConnexion` rend
+          // false quand la porte (ou le son) est restée fermée.
+          sonSorti = await parlerAvantConnexion('akwaba', tParle(habituee ? 'AKWABA_RETOUR' : 'AKWABA_ACCUEIL'));
+        }
+      } catch { /* un bonjour qui casse ne bloque pas l'entrée */ }
+      // RIEN N'EST SORTI → RIEN NE S'OUVRE. Un micro ouvert dans le noir,
+      // sans qu'on sache que l'écran écoute, serait une oreille sans visage.
+      const moteurPret = (() => { try { return recoWebDispo() || offlineModelReady(); } catch { return false; } })();
+      if (!sonSorti || !moteurPret) return;
+      try {
+        const consignePassee = await parlerAvantConnexion('akwaba', ENTREE_VOICE_CLIPS.entreeConsigneVoix.texte, direEntreeTexte);
+        if (!consignePassee) return;
+      } catch { return; }
+      demarrerCommandes({
+        grammaire: intentionEntree,
+        dureeMs: 7_000,
+        surCommande: (cmd) => {
+          // « entrer »/« commencer »/« oui » → la porte ; « répète » → le
+          // bonjour de nouveau (l'accueil rejoué relance consigne + écoute).
+          if (cmd === 'entrer') commencerRef.current();
+          else accueilRef.current();
+        },
+      });
+    })();
+  }, [demarrerCommandes]);
+  // LA VOIX COMMANDÉE RESTE AUSSI À JOUR QUE LE DOIGT : le ref pointe toujours
+  // vers l'accueil du rendu courant.
+  accueilRef.current = accueille;
 
   useEffect(() => {
     const t = setTimeout(accueille, 350);
@@ -77,6 +120,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
   // l'écran suivant. Cela évite à la fois le blocage autoplay et le chevauchement
   // accueil/présentation : stopIntro coupe d'abord l'éventuel accueil en cours.
   const commencer = () => {
+    arreterCommandes();
     stopIntro();
     laisserPresentationContinuer.current = true;
     // LA PRÉSENTATION APPARTIENT DÉSORMAIS À L'ÉCRAN 2 (TNT-01). Elle était
@@ -86,6 +130,9 @@ export function Welcome({ onComplete }: WelcomeProps) {
     // avec clip, la seconde supplanterait la première en plein milieu.
     if (onComplete) onComplete(); else navigate('/login');
   };
+  // LA VOIX COMMANDÉE RESTE AUSSI À JOUR QUE LE DOIGT : le ref pointe toujours
+  // vers le `commencer` du rendu courant (navigate/onComplete vivants).
+  commencerRef.current = commencer;
 
   return (
     <main className="login-welcome login-welcome-redesign">
@@ -115,7 +162,7 @@ export function Welcome({ onComplete }: WelcomeProps) {
           <span className="login-replay"><Volume2 aria-hidden="true" size={24} /></span>
         </button>
 
-        <motion.button type="button" onClick={commencer} className="login-primary login-market-primary" whileTap={{ scale: 0.98 }}>
+        <motion.button type="button" onClick={commencer} className={`login-primary login-market-primary${ecoute ? ' login-cue-clignote' : ''}`} whileTap={{ scale: 0.98 }}>
           Écouter et entrer <ArrowRight aria-hidden="true" size={30} />
         </motion.button>
 

@@ -2,6 +2,21 @@ import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
+
+// ── SECOND VOLET (26/10) : LE GESTE SE NOTE AU NIVEAU MODULE, PAS AU MOUNT ──
+// Le geste qui débloque l'audio (le clic « Écouter et entrer » de Welcome, un
+// tap d'onboarding) arrive AVANT que LoginPassword ne monte : un listener
+// posé au mount le raterait TOUJOURS, et l'écoute auto du numéro ne partirait
+// jamais au premier passage. Le premier geste de la session se note donc dès
+// le chargement du bundle. (Le filet RÉEL reste `tousJoues` dans
+// `direConsigneNumero` : si les clips n'ont pas sonné, le micro ne s'ouvre
+// pas — c'est lui qui protège le chargement frais dans le noir.)
+let GESTE_SESSION_VU = false;
+if (typeof document !== 'undefined') {
+  const marquerGeste = () => { GESTE_SESSION_VU = true; };
+  document.addEventListener('pointerdown', marquerGeste, { once: true, capture: true });
+  document.addEventListener('keydown', marquerGeste, { once: true, capture: true });
+}
 // AUTH-15 — les icônes viennent de la bibliothèque du DS (lucide), plus de
 // trait SVG dessiné à la main par écran. (Le clavier et l'effacement vivent
 // désormais dans PaveSaisie ; la bannière porte sa propre AlertCircle.)
@@ -113,6 +128,10 @@ import { useDicteeLive } from '../../hooks/useDicteeLive';
 // grammaire déclarée vit dans voice-offline/commandesEntree (testée).
 import { useCommandesVocales } from '../../hooks/useCommandesVocales';
 import type { CommandeNumero } from '../../voice-offline/commandesEntree';
+// SECOND VOLET DE L'AUDIT (26/10) : la dictée du numéro démarre toute seule —
+// le bip est la frontière audible entre la consigne de Tantie et le moment de
+// parler (services/bipEntree : WebAudio pur, sans réseau, jamais bloquant).
+import { sonnerBipEntree } from '../../services/bipEntree';
 import { BoutonCodeAgent } from './BoutonCodeAgent';
 // Maquette du 12/10 — le testeur saute d'un univers à l'autre depuis la
 // connexion : bouton `<>` haut-droite + menu rôles (DEV uniquement,
@@ -337,6 +356,16 @@ export function LoginPassword() {
   // Empêche une double séquence quand React rejoue les effets au montage
   // (développement) ou quand l'écran est réévalué sans quitter l'étape téléphone.
   const accueilNumeroVoixLanceRef = useRef(false);
+
+  // ── SECOND VOLET (26/10) : L'ÉCOUTE AUTO DU NUMÉRO N'OUVRE PAS DANS LE NOIR
+  // `GESTE_SESSION_VU` est noté AU NIVEAU MODULE (ci-dessus) : il vaut déjà
+  // true si un geste a eu lieu n'importe où dans la session (Welcome,
+  // onboarding). Le filet décisif reste `tousJoues` plus bas : Tantie doit
+  // avoir réellement parlé avant que le micro ne s'ouvre.
+  const gesteVuRef = useRef(GESTE_SESSION_VU);
+  // Miroir du pavé (les closures d'accueil voient l'état AU MOMENT T).
+  const clavierOuvertRef = useRef(false);
+  clavierOuvertRef.current = showKeypad;
   // Vrai tant que la chaîne d'accueil du numéro (login-05 → 06 → 07 → question
   // d'adaptation) est EN COURS. Le rappel de confirmation (login-09) la lit :
   // tant que Tata enseigne encore, il ATTEND son tour au lieu de couper
@@ -367,12 +396,14 @@ export function LoginPassword() {
   // la précédente (generation) : deux `parle()` de suite ne laissent entendre
   // que le second. On attend donc la fin de chacune avant la suivante.
   const parleSuite = async (...textes: (string | null | undefined)[]) => {
+    const sortis: boolean[] = [];
     for (const texte of textes) {
       if (!texte) continue;
       try {
-        await parlerAvantConnexion('connexion', texte, direEntreeTexte);
-      } catch { /* ignore */ }
+        sortis.push(await parlerAvantConnexion('connexion', texte, direEntreeTexte));
+      } catch { sortis.push(false); /* ignore */ }
     }
+    return sortis;
   };
   // ── AUTH-04 — « REVOIR MON NUMÉRO » : ça SE VOIT et SE SENT, ça ne S'ENTEND PAS.
   //
@@ -755,12 +786,40 @@ export function LoginPassword() {
     accueilNumeroEnCoursRef.current = true;
     void (async () => {
       try {
-        await parleSuite(
+        const suggTexte = (suggestion && !suggReponseRef.current) ? suggestion.texte : null;
+        // ── SECOND VOLET (26/10) : LA DICTÉE DÉMARRE TOUTE SEULE APRÈS LE BIP ──
+        // « l'utilisatrice doit encore lancer la dictée en touchant le bouton
+        // micro » : pour qui ne lit pas, ce bouton est une image. Quand TOUT
+        // est réuni — guidage vocal, moteur d'écoute prêt, un geste a déjà eu
+        // lieu (l'audio n'est pas dans le noir), numéro vide, pavé fermé,
+        // aucune question d'adaptation en suspens — la chaîne gagne UNE
+        // phrase (login-84, qui nomme le bip ET le micro), puis le bip, puis
+        // l'écoute. Sinon la chaîne reste EXACTEMENT celle d'avant.
+        const ecouteNumeroPossible = guidageVocal(accessMode) && voixEcouteDispo
+          && gesteVuRef.current && phoneRef.current.length === 0
+          && !clavierOuvertRef.current && !isListeningRef.current && !isFinalizingRef.current
+          && !suggTexte;
+        const sortis = await parleSuite(
           ENTREE_VOICE_CLIPS.numeroAccueil.texte,
           ENTREE_VOICE_CLIPS.numeroMicroAccueil.texte,
           ENTREE_VOICE_CLIPS.numeroChiffresAccueil.texte,
-          (suggestion && !suggReponseRef.current) ? suggestion.texte : null,
+          suggTexte,
+          ...(ecouteNumeroPossible ? [ENTREE_VOICE_CLIPS.numeroApresBip.texte] : []),
         );
+        // RIEN N'EST SORTI → RIEN NE S'OUVRE : pas de micro derrière un accueil
+        // que l'oreille n'a pas entendu (chargement frais sans geste).
+        const tousJoues = sortis.length > 0 && sortis.every(Boolean);
+        if (ecouteNumeroPossible && tousJoues) {
+          sonnerBipEntree();
+          // 350 ms : le temps que l'enveloppe du bip soit identifiable avant
+          // que le micro ne s'ouvre. Puis les gardes REVISES au moment T :
+          // l'écran a pu changer pendant la chaîne.
+          await new Promise((r) => setTimeout(r, 350));
+          if (stepRef.current === 'phone' && phoneRef.current.length === 0
+            && !clavierOuvertRef.current && !isListeningRef.current && !isFinalizingRef.current) {
+            dicterNumero();
+          }
+        }
       } finally {
         accueilNumeroEnCoursRef.current = false;
       }

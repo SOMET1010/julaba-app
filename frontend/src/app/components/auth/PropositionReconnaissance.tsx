@@ -8,6 +8,8 @@ import { doitProposerReconnaissance, marquerBiometrie, noterRefusProposition } f
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
+import { intentionOuiNon, type ReponseOuiNon } from '../../voice-offline/commandesEntree';
+import { useCommandesVocales } from '../../hooks/useCommandesVocales';
 
 /**
  * « Tata propose de me reconnaître » (connexion inclusive, lot 2).
@@ -55,6 +57,14 @@ export function PropositionReconnaissance() {
   const [enCours, setEnCours] = useState(false);
   const phoneRef = useRef('');
   const ouiRef = useRef<HTMLButtonElement>(null);
+  // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : LA QUESTION S'ENTEND RÉPONDRE
+  // Après la question (reconnaissanceProposition) puis la consigne (login-85 —
+  // « dis oui ou non »), l'écran ÉCOUTE une fenêtre courte. Le doute
+  // n'enrichit NI le oui NI le non (un faux oui ouvre un enrôlement, un faux
+  // non mémorise un refus définitif — seule une réponse claire passe).
+  const { ecoute, demarrer: demarrerCommandes, arreter: arreterCommandes } = useCommandesVocales<ReponseOuiNon>();
+  const ouiActionRef = useRef<() => void>(() => {});
+  const nonActionRef = useRef<() => void>(() => {});
   const prenom = (user?.firstName || (user as any)?.prenoms || (user as any)?.prenom || '').toString().trim();
 
   useEffect(() => {
@@ -72,7 +82,26 @@ export function PropositionReconnaissance() {
     const t = setTimeout(() => {
       setVisible(true);
       if (guidageVocal()) {
-        void direAccueilMarchand('reconnaissanceProposition');
+        void (async () => {
+          try {
+            const r = await direAccueilMarchand('reconnaissanceProposition');
+            // RIEN N'EST SORTI → RIEN NE S'OUVRE : pas de micro derrière une
+            // question que l'oreille n'a pas entendue.
+            if (!r.lu) return;
+            const c = await direAccueilMarchand('reconnaissanceConsigneVoix');
+            if (!c.lu) return;
+          } catch { return; }
+          demarrerCommandes({
+            grammaire: intentionOuiNon,
+            dureeMs: 8_000,
+            surCommande: (rep) => {
+              // « oui » → l'enrôlement ; « non » → le refus (mémorisé). Le
+              // micro est DÉJÀ rendu (le hook arrête l'écoute avant d'appeler).
+              if (rep === 'oui') void ouiActionRef.current();
+              else nonActionRef.current();
+            },
+          });
+        })();
       }
     }, 1500);
     return () => clearTimeout(t);
@@ -82,6 +111,7 @@ export function PropositionReconnaissance() {
   const repondreOui = async () => {
     if (enCours) return;
     setEnCours(true);
+    arreterCommandes();
     try {
       const r = await registerWebAuthn();
       if (r.etat === 'ok') {
@@ -112,16 +142,21 @@ export function PropositionReconnaissance() {
   // « Non » — la seule sortie qui mémorise un refus. Deliberate : elle a lu
   // (ou entendu) la question et répond. « Une seule proposition » tient.
   const repondreNon = () => {
+    arreterCommandes();
     try { noterRefusProposition(window.localStorage, phoneRef.current); } catch { /* ignore */ }
     if (guidageVocal()) void direAccueilMarchand('reconnaissanceRefus');
     setVisible(false);
   };
+  // LA VOIX COMMANDÉE RESTE AUSSI À JOUR QUE LE DOIGT.
+  ouiActionRef.current = () => { void repondreOui(); };
+  nonActionRef.current = repondreNon;
 
   // AUTH-05 — ESC, « Fermer », tap sur le fond : fermeture SANS refus. Elle
   // n'a pas dit non — un tap manqué ou une touche pressée par accident ne
   // doit pas lui fermer la porte pour toujours. La proposition reviendra au
   // prochain lancement ; le jour où elle répond « Non », elle s'arrête.
   const fermerSansRepondre = () => {
+    arreterCommandes();
     setVisible(false);
   };
 
@@ -191,6 +226,7 @@ export function PropositionReconnaissance() {
                     Non
                   </button>
                   <button ref={ouiRef} type="button" onClick={repondreOui} disabled={enCours}
+                    className={ecoute && !enCours ? 'login-cue-clignote' : undefined}
                     style={{ flex: 1.4, padding: '15px 0', borderRadius: 16, fontWeight: 800, fontSize: 15, color: '#fff', background: enCours ? '#CBB9A8' : 'linear-gradient(135deg, #EE8E3C, var(--commerce-action))', border: 'none', cursor: enCours ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
                     {enCours ? 'Un instant…' : 'Oui, je veux'}
                   </button>

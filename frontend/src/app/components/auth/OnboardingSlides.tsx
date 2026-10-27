@@ -32,6 +32,11 @@ import { stopIntro } from '../../services/onboardingVoix';
 import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexion';
 import { tParle } from '../../i18n/voice/runtime';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
+import { recoWebDispo } from '../../voice-offline/webReco';
+import { offlineModelReady } from '../../voice-offline/offlineStt';
+import { intentionEntree, type CommandeEntree } from '../../voice-offline/commandesEntree';
+import { useCommandesVocales } from '../../hooks/useCommandesVocales';
+import { ENTREE_VOICE_CLIPS, direEntreeTexte } from '../../services/entreeVoix';
 
 /**
  * ── TNT-01 — CET ÉCRAN ÉTAIT MUET, ET SON BOUTON « RÉÉCOUTER » AUSSI ───────
@@ -54,11 +59,14 @@ import { parlerAvantConnexion } from '../../services/paroleEntree';
  * remet au moteur audio directement. Le muet global reste respecté : il vit
  * dans `audioManager`, pas dans la garde de rôle.
  */
-function direOuLire(cle: 'histoire1' | 'bravo', id: 'TANTIE_PRESENTATION' | 'TANTIE_BRAVO'): Promise<void> {
+function direOuLire(cle: 'histoire1' | 'bravo', id: 'TANTIE_PRESENTATION' | 'TANTIE_BRAVO'): Promise<boolean> {
+  // RENDE LE SON — le résultat dit si UN SON est réellement sorti (`lu`, ou le
+  // texte émis sans exception) : c'est la garde qui décide si l'écran peut
+  // ouvrir son micro après (jamais d'oreille dans le noir).
   return direEntreeAvantConnexion(cle)
     // AKW-02 — même voie nommée que l'écran 1 : la permission se demande.
-    .then((r) => (r.doitDireLeTexte ? parlerAvantConnexion('onboarding', tParle(id)).then(() => undefined) : undefined))
-    .catch(() => { /* une voix qui casse ne bloque jamais l'entrée */ });
+    .then(async (r) => (r.doitDireLeTexte ? parlerAvantConnexion('onboarding', tParle(id)) : r.lu))
+    .catch(() => false); /* une voix qui casse ne bloque jamais l'entrée */
 }
 
 interface OnboardingSlidesProps {
@@ -68,6 +76,16 @@ interface OnboardingSlidesProps {
 export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const doneRef = useRef(false); // évite d'entrer deux fois dans l'app
+
+  // ── SECOND VOLET DE L'AUDIT (Patrick, 26/10) : CET ÉCRAN S'ÉCOUTE ────────
+  // « Le parcours est audio-guidé, mais pas entièrement commandable à la
+  // voix » : après la présentation, l'écran dit login-83 (« pour continuer,
+  // dis entrer ») puis ÉCOUTE — « entrer »/« oui » avance, « répète » rejoue
+  // la présentation (grammaire déclarée `intentionEntree`). Le micro ne
+  // s'ouvre QUE si un son est réellement sorti de la présentation.
+  const { ecoute, demarrer: demarrerCommandes, arreter: arreterCommandes } = useCommandesVocales<CommandeEntree>();
+  const terminerRef = useRef<() => void>(() => {});
+  const redireRef = useRef<() => void>(() => {});
 
   // Niveau de voix : tant que le mode n'est pas explicitement choisi (Paramètres),
   // on accompagne à fond → « voix ». Le choix du mode n'existe plus à l'entrée.
@@ -85,11 +103,36 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   // La présentation démarre sur le geste « Écouter et entrer » de Welcome et
   // accompagne cet écran. La relancer ici par autoplay la ferait bloquer sur
   // certains navigateurs, ou couperait le début déjà en cours.
+  // APRÈS ELLE : la consigne (login-83), puis l'écoute des commandes.
   const direTata = useCallback(() => {
     if (niveauVoix() === 'lecture') return; // lectrice : silence
     setIsSpeaking(true);
-    void direOuLire('histoire1', 'TANTIE_PRESENTATION').finally(() => setIsSpeaking(false));
-  }, [niveauVoix]);
+    void (async () => {
+      let sonSorti = false;
+      try { sonSorti = await direOuLire('histoire1', 'TANTIE_PRESENTATION'); } catch { /* ignore */ }
+      setIsSpeaking(false);
+      if (!sonSorti || doneRef.current) return; // rien n'est sorti → pas de micro dans le noir
+      const moteurPret = (() => { try { return recoWebDispo() || offlineModelReady(); } catch { return false; } })();
+      if (!moteurPret) return;
+      try {
+        const consignePassee = await parlerAvantConnexion('onboarding', ENTREE_VOICE_CLIPS.onboardingConsigneVoix.texte, direEntreeTexte);
+        if (!consignePassee || doneRef.current) return;
+      } catch { return; }
+      demarrerCommandes({
+        grammaire: intentionEntree,
+        dureeMs: 8_000,
+        surCommande: (cmd) => {
+          // « entrer »/« continuer »/« oui » → on entre ; « répète » → la
+          // présentation de nouveau (consigne et écoute relancées avec).
+          if (cmd === 'entrer') terminerRef.current();
+          else redireRef.current();
+        },
+      });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [niveauVoix, demarrerCommandes]);
+  // LA VOIX COMMANDÉE RESTE AUSSI À JOUR QUE LE DOIGT.
+  redireRef.current = direTata;
 
   useEffect(() => {
     const img = new Image(); img.src = tataAccueil;
@@ -116,6 +159,7 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
   // si l'audio ne se termine pas).
   const terminer = useCallback(() => {
     if (doneRef.current) return;
+    arreterCommandes();
     const go = () => { if (!doneRef.current) { doneRef.current = true; onComplete?.(); } };
     if (niveauVoix() === 'lecture') { stopLocal(); go(); return; }
     setIsSpeaking(true);
@@ -124,7 +168,9 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
     // marchande dehors.
     void direOuLire('bravo', 'TANTIE_BRAVO').finally(go);
     setTimeout(go, 6000);
-  }, [niveauVoix, onComplete, stopLocal]);
+  }, [niveauVoix, onComplete, stopLocal, arreterCommandes]);
+  // LA VOIX COMMANDÉE RESTE AUSSI À JOUR QUE LE DOIGT.
+  terminerRef.current = terminer;
 
   // Un tap n'importe où continue ; les commandes précises coupent la propagation.
   return (
@@ -186,12 +232,13 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
               {isSpeaking ? <VolumeX style={{ width: 26, height: 26 }} /> : <Volume2 style={{ width: 26, height: 26 }} />}
             </motion.button>
 
-            {/* Action : continuer (flèche = « avancer », compréhensible sans lire) */}
+            {/* Action : continuer (flèche = « avancer », compréhensible sans lire).
+                CLIGNOTE quand l'écran écoute la réponse vocale. */}
             <motion.button
               onClick={(e) => { e.stopPropagation(); terminer(); }}
               whileTap={{ scale: 0.92 }}
               aria-label="Continuer"
-              className="grid place-items-center rounded-full shadow-2xl onboarding-continue"
+              className={`grid place-items-center rounded-full shadow-2xl onboarding-continue${ecoute ? ' login-cue-clignote' : ''}`}
               style={{ width: 68, height: 68 }}
             >
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>

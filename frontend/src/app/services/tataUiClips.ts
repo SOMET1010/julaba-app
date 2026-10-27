@@ -354,6 +354,19 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/login-79.mp3", text: "D'accord, je vérifie ton numéro." },
   { file: "/voix/tata/login-80.mp3", text: "D'accord, dis ton numéro encore." },
   { file: "/voix/tata/login-81.mp3", text: "Voilà les chiffres. Tape ton numéro ici." },
+  // ── CLIPS 82-85 — L'ENTRÉE S'ÉCOUTE (second volet), 26/10/2026 ───────────
+  // Audit Patrick : l'entrée et l'onboarding ne se commandaient pas à la voix,
+  // le micro du numéro ne démarrait qu'au toucher, la proposition de
+  // reconnaissance ne s'entendait pas répondre. 82/83 : « entrer » ouvre
+  // (commandesEntree.intentionEntree), « répète » rejoue. 84 : la dictée du
+  // numéro démarre toute seule après le bip (bipEntree.ts). 85 : la
+  // proposition de reconnaissance s'entend répondre (intentionOuiNon).
+  // Texte = EXACTEMENT ce que l'écran affiche et fait entendre. Mêmes specs :
+  // Denise fr-FR, 24 kHz mono 96 kbps, −16 LUFS.
+  { file: "/voix/tata/login-82.mp3", text: "Dis entrer, ou touche la flèche pour commencer." },
+  { file: "/voix/tata/login-83.mp3", text: "Pour continuer, dis entrer. Tu peux aussi toucher la flèche." },
+  { file: "/voix/tata/login-84.mp3", text: "Dis ton numéro après le bip, ou touche le micro." },
+  { file: "/voix/tata/login-85.mp3", text: "Dis oui ou non, ou touche un bouton." },
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },

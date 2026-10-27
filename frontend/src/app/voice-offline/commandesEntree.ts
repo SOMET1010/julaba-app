@@ -85,3 +85,74 @@ export function intentionConfirmationNumero(
   if (CLAVIER.test(t)) return 'clavier';
   return null;
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// LES COMMANDES DE L'ENTRÉE — écrans 1 et 2 du parcours (Akwaba, présentation
+// de Tantie). Le second volet du même audit (rapport Patrick, 26/10) : « il
+// n'existe pas de commande vocale du type "Entrer", "Commencer", "Continuer" »
+// — l'accueil se disait mais ne S'ÉCOUTAIT pas ; une personne qui ne sait pas
+// lire devait deviner quel bouton toucher. L'écran d'entrée ne connaît que
+// DEUX réponses : AVANCER (entrer/commencer/continuer — et « oui » déclaré,
+// l'acquiescement faisant déjà foi) et FAIRE REJOUER (répète/réécouter).
+// « Non » ne mène nulle part ici : elle ne veut pas encore avancer — l'écoute
+// se poursuit jusqu'au bout de la fenêtre, le bouton reste là.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Ce que l'écran d'entrée peut faire quand la réponse est comprise. */
+export type CommandeEntree = 'entrer' | 'repeter';
+
+// Avancer — large mais SANS ambiguïté : les verbes de l'action nommée dans
+// le clip (« entrer »), les variantes naturelles de la même intention.
+const AVANCER = /\b(entree?|entrer|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
+
+// Faire rejouer — le même parti pris que REDIRE : se tromper de côté coûte
+// une écoute de plus, jamais une avancée fausse. « encore » seul → rejouer,
+// MAIS « pas encore » ne rejoue RIEN (le refus déclaré gagne — même fil que
+// « c'est pas mon numéro ») : le lookbehind retire ce piège-là seul.
+const REJOUER = /\b(repete[rz]?|repete|reecoute[rz]?|rejoue[rz]?|(?<!pas )encore|redis|redire|refais|refaire|recommence[rz]?)\b/;
+
+/**
+ * « entrer » / « continuer » / « oui » → `entrer` ; « répète » / « réécouter »
+ * → `repeter` ; le doute (une phrase du marché, un « non » seul) → `null`,
+ * l'écoute continue. L'ORDRE ENCODE LA DOCTRINE : rejouer d'abord —
+ * « non, répète » veut dire REJOUER, jamais avancer.
+ */
+export function intentionEntree(texte: string, locale?: LocaleCode): CommandeEntree | null {
+  const brut = (texte || '').trim();
+  if (!brut) return null;
+  const t = normaliser(brut);
+  if (REJOUER.test(t)) return 'repeter';
+  const reponse = acquiescement(brut, locale);
+  if (reponse === 'oui') return 'entrer';
+  if (AVANCER.test(t)) return 'entrer';
+  return null;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// LA RÉPONSE À UNE QUESTION FERMÉE — la proposition de reconnaissance
+// (« Veux-tu que ton téléphone te reconnaisse la prochaine fois ? »). La
+// question se DIT (accueil marchand) ; la réponse doit pouvoir se DIRE aussi.
+// ICI LE DOUTE NE PROFITE NI AU OUI NI AU NON : un faux « oui » ouvre un
+// enrôlement inutile ; un faux « non » mémorise un refus DÉFINITIF
+// (`propositionRefusee`) — le pire des deux. Seule une réponse claire passe.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** La réponse claire à une question fermée. */
+export type ReponseOuiNon = 'oui' | 'non';
+
+// Le refus, dit avec des mots — même fil que le lot A : « pas maintenant »,
+// « jamais », une annulation. Vérifié AVANT le oui (« oui mais pas
+// maintenant » ne doit pas enrôler).
+const REFUS_MOTS = /\b(non|jamais|pas maintenant|pas besoin|pas envie|pas aujourd hui|annule[rz]?|arrete[rz]?)\b/;
+
+export function intentionOuiNon(texte: string, locale?: LocaleCode): ReponseOuiNon | null {
+  const brut = (texte || '').trim();
+  if (!brut) return null;
+  const reponse = acquiescement(brut, locale);
+  if (reponse === 'non') return 'non';
+  const t = normaliser(brut);
+  const refusClair = REFUS_MOTS.test(t);
+  if (reponse === 'oui') return refusClair ? null : 'oui';
+  if (refusClair) return 'non';
+  return null;
+}
