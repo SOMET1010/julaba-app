@@ -376,6 +376,26 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     // écrit, avec sa propre file hors ligne, exactement comme le bouton.
     confirmationBypassIntents: ['vendre', ...INTENTIONS_ENCAISSEMENT],
     offlineLocalIntents: ['vendre', ...INTENTIONS_ENCAISSEMENT],
+    // LES REFUS DU MICRO S'ENTENDENT — reproduction navigateur du 27/10/2026.
+    //
+    // useVoiceCore est inégal devant l'échec : les chemins « moteur » disent
+    // leur cause (le catch de processAudio, l'erreur d'enregistrement), mais
+    // les chemins MICRO — micro refusé, réseau indisponible, micro non
+    // accessible, micro introuvable — ne font qu'écrire (`setError` + le seul
+    // `if (onError) onError(message)`), et personne ne branchait `onError`
+    // ici : micro refusé = bandeau visible, ZÉRO mot dit.
+    //
+    // Le remède est l'extension point prévue par le hook (`onError?`, ligne
+    // des options) — pas une entaille dans le fichier gelé. Même motif que
+    // `DepenseForm` (onError → speak) ; `direEtRetenir` garde en plus la
+    // phrase pour le bouton « réécouter ». La cause est celle du code : on ne
+    // dit jamais « vérifie le réseau » quand c'est le micro qui manque.
+    //
+    // Preuve navigateur (harnais webReco faux, onerror('network') injecté) :
+    // AVANT — l'erreur s'affiche ([role=alert]) et aucun TTS_APPEL ne part ;
+    // APRÈS — le journal voix enregistre TTS_APPEL « La voix sur le navigateur
+    // a besoin d'internet… » → TTS_DEMANDE → TTS_DEBUT → TTS_FIN (dit, vraiment).
+    onError: (message) => direEtRetenir(message),
     onAction: async (data) => {
       // L'ENCAISSEMENT N'EST PAS À MOI. Transmis à la caisse, et on s'arrête :
       // pas de vente, pas de rafraîchissement, rien. Tout ce qui suit dans ce
