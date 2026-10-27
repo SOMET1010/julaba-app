@@ -15,7 +15,7 @@ import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
 import { useMontantsPrives } from '../../hooks/useMontantsPrives';
-import { direAccueilMarchand } from '../../services/accueilMarchandVoix';
+import { direAccueilMarchand, reserverVoixAccueil } from '../../services/accueilMarchandVoix';
 import { etatCaisseAccueil, caisseDigneDEtreDite } from '../../services/etatCaisseAccueil';
 import { useLectureHistorique } from '../../hooks/useLectureHistorique';
 import { useLectureSessionCaisse } from '../../hooks/useLectureSessionCaisse';
@@ -129,6 +129,10 @@ function MarchandAccueilVoiceInner() {
   // Une lecture COUPÉE (muet, navigation) ne rattrape rien : ce silence-là est
   // voulu. Preuve : services/accueilVoixUneSeuleSortie.test.mts.
   const direBonjour = () => {
+    // TOUR DE PAROLE (26/10) : chaque prise de parole de l'accueil RÉSERVE son
+    // créneau — la question de la reconnaissance attendra derrière (Patrick :
+    // « la question ne joue pas », elle partait PILE sur la phrase de caisse).
+    reserverVoixAccueil();
     void direAccueilMarchand('comptoir').then((r) => {
       if (r.doitDireLeTexte) speakMessage('ACCUEIL_COMPTOIR');
     });
@@ -137,6 +141,8 @@ function MarchandAccueilVoiceInner() {
   /** Ce que la caisse a le droit de DIRE — exactement ce qu'elle affiche.
    *  Montants masqués : on ne prononce pas un chiffre que l'œil a caché. */
   const direCaisse = () => {
+    // Même créneau pour la phrase d'argent (cf. direBonjour ci-dessus).
+    reserverVoixAccueil();
     if (!soldeVisible) { direBonjour(); return; }
     if (etatCaisse.type === 'connue') speakMessage('ACCUEIL_CAISSE_CONNUE', { caisse: etatCaisse.montant });
     else if (etatCaisse.type === 'partielle') speakMessage('ACCUEIL_CAISSE_PARTIELLE', { caisse: etatCaisse.montant });

@@ -96,6 +96,40 @@ export function accueilMarchandClipUrl(key: AccueilMarchandVoiceKey): string | n
   return clip.lotA || prototypesVoixActifs() ? clip.file : null;
 }
 
+// ── LE TOUR DE PAROLE DE L'ACCUEIL (Patrick, 26/10 : « la question ne joue pas ») ──
+//
+// LE FAIT (journal d'un vrai téléphone, recette 26/10) : la question de la
+// reconnaissance part 1,5 s après le montage, PILE pendant la phrase de la
+// caisse (« Ta caisse aujourd'hui : … », priorité 'user' elle aussi) — une
+// preuve de parole coupe l'autre, et l'oreille ne garde qu'un fragment.
+// C'est la MÊME course que le rappel login-09 coupait login-06 (e5ebc902),
+// côté accueil : la règle « les rappels attendent leur tour » s'applique ici
+// avec le miroir en plus — la caisse peut arriver TARD (réseau réel : les
+// transactions mettent 2 à 5 s), donc la question doit (a) attendre AVANT de
+// parler et (b) laisser la place si la caisse se réserve PENDANT sa question.
+//
+// Le protocole est un CRENEAU, pas une promesse : `speakMessage` ne rend pas
+// sa fin (contrat i18n, non modifiable ici), donc l'accueil RÉSERVE une
+// fenêtre généreuse à chaque prise de parole, et le demandeur interroge
+// `tourVoixAccueilLibre()`. Six secondes couvrent la phrase de caisse (UNE
+// phrase, ACC-01 : « Ta caisse aujourd'hui : N francs » ≈ 3-4 s dites, marge
+// ×1,5-2) sans faire traîner la question — elle part au plus tard ~7,5 s
+// après l'arrivée. Jamais plus tôt que le créneau, quel que soit le réseau.
+let tourVoixJusquA = 0;
+
+/** L'accueil prend la parole (phrase de caisse, bonjour) : il RÉSERVE son
+ *  créneau. Appeler AVANT de parler — c'est le créneau que la question de la
+ *  reconnaissance doit respecter. Idempotent : la réservation la plus
+ *  récente gagne, jamais un raccourcissement. */
+export function reserverVoixAccueil(ms = 6_000): void {
+  tourVoixJusquA = Math.max(tourVoixJusquA, Date.now() + ms);
+}
+
+/** Le créneau de l'accueil est-il rendu ? (pur, testable sans navigateur) */
+export function tourVoixAccueilLibre(maintenant: number = Date.now()): boolean {
+  return maintenant >= tourVoixJusquA;
+}
+
 /**
  * CE QUI S'EST RÉELLEMENT PASSÉ — et non ce qu'on avait l'intention de faire.
  *

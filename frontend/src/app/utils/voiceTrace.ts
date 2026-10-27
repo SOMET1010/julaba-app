@@ -199,6 +199,31 @@ export function ttsMoteur(moteur: 'native-sherpa' | 'navigateur' | 'clip', detai
   tracer('TTS_MOTEUR', { moteur, ...d });
 }
 
+/**
+ * VOIX-05, LA LECTURE (26/10 — Patrick : « la question ne joue pas ») — le
+ * lecteur de clips écrit `issue: 'play-accepte' | 'play-refuse'` à CHAQUE
+ * tentative de `audio.play()`, mais le résultat meurt DANS l'audioManager :
+ * `playClip` rend `Promise<void>` (dette ACC-05, figée par VOICE-01), donc
+ * `direAccueilMarchand` rapporte « joué » pour un son que le téléphone a
+ * REFUSÉ (autoplay hors geste). Ce lecteur relit le journal — la preuve
+ * existe déjà, écrite par le lecteur lui-même — et rend la DERNIÈRE issue
+ * connue pour cette URL, ou `null` (aucune tentative tracée : clip jamais
+ * joué, fichier absent avant tout `play()`).
+ *
+ * Lecture seule : aucune écriture, aucune modification de l'audioManager —
+ * la garde VOICE-01 reste entière.
+ */
+export function derniereIssuePlayClip(url: string): 'play-accepte' | 'play-refuse' | null {
+  for (let i = tampon.length - 1; i >= 0; i--) {
+    const e = tampon[i];
+    if (e.ev !== 'TTS_MOTEUR') continue;
+    const d = (e.d || {}) as Record<string, unknown>;
+    if (d.url !== url) continue;
+    if (d.issue === 'play-accepte' || d.issue === 'play-refuse') return d.issue;
+  }
+  return null;
+}
+
 /** Fin d'un morceau (durée réelle par moteur). */
 export function ttsMorceauFin(moteur: string, chunk: string, depuis: number, resultat?: string): void {
   tracer('TTS_MORCEAU_FIN', { moteur, chunk: court(chunk), dureeMs: maintenant() - depuis, resultat: resultat ?? null });

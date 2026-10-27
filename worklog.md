@@ -1472,3 +1472,28 @@ Stage Summary:
 - L'écran de connexion ne montre plus la pastille « Aide vocale » ; la voix du guide reste entière sur le bouton rond — RIEN ne se tait, seul le doublon disparaît
 - La chaîne vocale du 26/10 (96acd15e) est intacte : entrer/continuer/répète, dictée après le bip, oui/non de la reconnaissance
 - À noter pour l'équipe : 2 rouges CONNUS préexistants (enum-check-phone, i18n-source) + voix-trace-source à retirer de CONNUS dans verify-tout.mjs
+
+---
+Task ID: question-reconnaissance-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « "Awa, veux-tu que Tantie Nanti Lou te reconnaisse la prochaine fois ?" ne joue pas, on doit cliquer d'abord sur le HP » — la question de la reconnaissance doit se jouer toute seule
+
+Work Log:
+- Garde anti-course OK (0 commit nouveau ; HEAD 44e09c0f — mon commit « Aide vocale » retirée)
+- REPRODUCTION AU JOURNAL AVANT TOUT CODE (doctrine preuve avant croyance) : parcours complet 0700000010 → pavé → code 1234 → accueil ; journal julaba_journal_voix — caisse TTS « Ta caisse aujourd'hui : zéro francs » à 0,9 s, question playClip à 2,4 s, ended 4 661 ms, consigne ended 3 285 ms : en headless AVEC gestes, la chaîne passe — le défaut est donc conditionnel
+- RACINES TROUVÉES DANS LE CODE : (a) la question part à 1,5 s fixe, PILE sur la phrase de caisse (deux priorités 'user' → hardStop mutuel ; réseau réel = caisse TARDIVE qui coupe la question) ; (b) realStartClip : play() refusé → done('failed') → le résultat meurt dans playClip (Promise<void>) → direAccueilMarchand rapporte lu:TRUE (dette ACC-05 documentée, audioManager figé par VOICE-01) → sur vrai téléphone (autoplay hors geste) la modale reste muette et le journal ment
+- FIX 1 (course) : accueilMarchandVoix.ts gagne reserverVoixAccueil(6 s)/tourVoixAccueilLibre — créneau posé dans direCaisse/direBonjour ; la question attend le créneau (poll 1,5 s, plafond ~20 s) puis SE REDIT si la caisse s'est réservée pendant (2 tentatives max) — miroir de e5ebc902
+- FIX 2 (honnêteté) : voiceTrace.ts gagne derniereIssuePlayClip (LECTURE du journal VOIX-05, aucune écriture — VOICE-01 intacte) ; la proposition vérifie l'issue : play-refuse → setSonRefuse → la modale affiche « Touche le haut-parleur pour écouter la question » (role=status) et n'ouvre PAS le micro
+- FIX 3 (abandon propre) : closRef posé par TOUTES les sorties (Oui/Non/Fermer/ESC/fond) — la chaîne en attente ne parle plus après la réponse ; vivant=false au démontage
+- TEST : services/tourVoixAccueil.test.mts (13 assertions — créneau pur : libre par défaut, fenêtre, Math.max ; lecteur : null avant lecture, refus relu, ended ne masque pas, accepte devient la vérité, isolation par URL) + script test:tour-voix + rattachement maillons-verify.json
+- E2E 1 (AVEC gestes) : la question part à la FIN exacte du créneau (5,3 s) — ended 4 661 ms — consigne ended 3 285 ms — zéro TTS_COUPEE
+- E2E 2 (recharge SANS geste = conditions APK) : question refusée (issue play-refuse au journal) → nudge AU DOM (p[role=status], vérifié innerText) → clic HP → question ended 4,6 s → nudge disparu — la boucle Patrick est fermée des deux bouts
+- Batteries : tsc 0 ; eslint 0 (5 fichiers) ; test:tour-voix 13/13 ; auth-charte, voix-trace 34/34, audio, voix-trace-source verts ; verify 153 vert / 3 rouge / 156
+- MÉNAGE PRESRIT PAR LE GARDE (commit séparé) : INVENTAIRE-VOIX régénéré (437=437 — rouge connu depuis 96acd15e) ; voix-trace-source sorti des CONNUS (vert de première main) ; test:commandes-entree + test:indicatifs-dits rattachés (orphelins VER-02 depuis 8ebe8647)
+
+Stage Summary:
+- La question de la reconnaissance S'ENTEND TOUTE SEULE quand le téléphone accepte le son, et NOMME LE GESTE quand il le refuse — plus jamais une modale muette qui ment par son silence
+- La phrase d'argent reste la PREMIÈRE parole de l'accueil (ACC-01 intacte) ; la question attend son tour derrière, comme login-09 derrière login-05→06→07
+- audioManager n'a pas bougé d'un pixel (VOICE-01) ; la dette ACC-05 reste ouverte mais elle n'aveugle plus ce parcours
+- Observations laissées à l'équipe (pas de ce lot) : la modale se repropose à chaque remontage de l'accueil tant qu'elle n'est pas répondue (remontages ~60 s observés au journal) ; le titre écran (« Awa, veux-tu que Tantie Nanti Lou… ») diffère du texte du clip (« Veux-tu que ton téléphone… ») — un nom variable ne peut pas être un clip figé, arbitrage produit à trancher
+- Task 2 de Patrick (saisie vocale stock, création au nom libre) : test E2E à suivre dans le prochain volet
