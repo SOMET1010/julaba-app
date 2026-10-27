@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 261,
-    "clips_mappes": 253,
+    "fichiers_mp3": 265,
+    "clips_mappes": 257,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -3155,6 +3155,58 @@
       "sha256": "ed32e520cd3f783408e200610651d08c7c85df5b1d086ead1957819339b6a08e",
       "octets": 57068,
       "duree_ms": 4728
+    },
+    {
+      "id": "login-82",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Dis entrer, ou touche la flèche pour commencer.",
+      "fichier": "/voix/tata/login-82.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "39c25e9af9f84dc20b0c91cf5e7a01feba250d3a8f4ac25697ee2299332cb778",
+      "octets": 47852,
+      "duree_ms": 3960
+    },
+    {
+      "id": "login-83",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Pour continuer, dis entrer. Tu peux aussi toucher la flèche.",
+      "fichier": "/voix/tata/login-83.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "b3a120555d51f30085a750b76e3633f706d629a20f3c24f407924e9c8d9c25e5",
+      "octets": 71180,
+      "duree_ms": 5904
+    },
+    {
+      "id": "login-84",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Dis ton numéro après le bip, ou touche le micro.",
+      "fichier": "/voix/tata/login-84.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "03c68852388976d877c528435cfcf2910fbe9ec645f46cde4740711186b6b774",
+      "octets": 48140,
+      "duree_ms": 3984
+    },
+    {
+      "id": "login-85",
+      "locale": "fr-CI",
+      "role": "guide-ivoirienne",
+      "texte_exact": "Dis oui ou non, ou touche un bouton.",
+      "fichier": "/voix/tata/login-85.mp3",
+      "criticite": "a_classer",
+      "validation_humaine": "a_documenter",
+      "consentement": "a_relier_au_dossier_de_production",
+      "sha256": "b7f9034832287ed6e4befe0022986b61f1829fb1f4421a31e5505a9d04e87390",
+      "octets": 39500,
+      "duree_ms": 3264
     },
     {
       "id": "stk-02",

@@ -5,6 +5,10 @@ export type AccueilMarchandVoiceKey =
   | 'comptoir'
   | 'caisse'
   | 'reconnaissanceProposition'
+  // SECOND VOLET DE L'AUDIT (Patrick, 26/10) : la proposition s'entend
+  // RÉPONDRE — la consigne (login-85) dit « dis oui ou non » après la
+  // question, et l'écran écoute (commandesEntree.intentionOuiNon).
+  | 'reconnaissanceConsigneVoix'
   | 'reconnaissanceReussie'
   | 'reconnaissanceSession'
   | 'reconnaissanceErreur'
@@ -53,6 +57,15 @@ export const ACCUEIL_MARCHAND_VOICE_CLIPS: Record<AccueilMarchandVoiceKey, Accue
   reconnaissanceProposition: {
     file: `${BASE}/tata-reconnaissance-proposition.mp3`,
     texte: 'Veux-tu que ton téléphone te reconnaisse la prochaine fois ? Ce sera plus rapide.',
+    prototype: true,
+    lotA: true,
+  },
+  // SECOND VOLET (26/10) : après la question, le geste vocal se NOMME. Le
+  // clip vit dans la série login (mêmes specs lot A : Denise, −16 LUFS) et
+  // est partagé avec l'index d'entrée (`entreeVoix.propositionConsigneVoix`).
+  reconnaissanceConsigneVoix: {
+    file: '/voix/tata/login-85.mp3',
+    texte: 'Dis oui ou non, ou touche un bouton.',
     prototype: true,
     lotA: true,
   },
