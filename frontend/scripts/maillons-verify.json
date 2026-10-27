@@ -121,6 +121,7 @@
     "test:etal-marchande",
     "test:premier-produit",
     "test:montant-dit",
+    "test:unite-dite",
     "test:produit-dit",
     "test:sections-bo",
     "test:charte-marchande",

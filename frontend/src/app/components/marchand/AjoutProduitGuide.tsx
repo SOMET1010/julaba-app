@@ -39,6 +39,7 @@ import {
 import type { CaisseProduct } from '../../contexts/CaisseContext';
 import { BoutonDirePrix } from './BoutonDirePrix';
 import { BoutonDireNom } from './BoutonDireNom';
+import { BoutonDireUnite } from './BoutonDireUnite';
 import { ClavierQuantite } from './ClavierQuantite';
 import { ComplementEtal } from './ComplementEtal';
 
@@ -368,6 +369,21 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           </p>
           {!uniteLibre ? (
             <>
+              {/* VOIX-06 — LA QUESTION ÉCOUTE. La question est DITE (STK-23) ;
+                  la réponse existait en boutons écrits seulement : la seule
+                  étape du parcours où une non-lectrice devait LIRE pour
+                  répondre. Le micro s'ouvre tout seul (arbitrage de Patrick,
+                  VOX-03), lit SON mot par la règle pure `uniteDite`, et la
+                  grille reste dessous — la voix est le geste par défaut, pas
+                  le seul. L'unité posée est relit (TATA_UNITE_CHOISIE) : elle
+                  entend ce qui a été écrit, comme au doigt. */}
+              <BoutonDireUnite
+                ouvrirToutSeul
+                question={`${nom}, tu le vends comment ?`}
+                dire={dire}
+                proposees={unitesProposees(sesUnites)}
+                onUnite={(u) => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+              />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {unitesProposees(sesUnites).map(u => (
                   <motion.button key={u} type="button" whileTap={{ scale: 0.95 }}
