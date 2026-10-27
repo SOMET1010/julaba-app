@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **438** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 455 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **437** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 453 |
 | — littéraux (phrase fixe en dur) | 200 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 98 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 96 |
 | — relais (`dire = (t) => speak(t)`) | 23 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 62 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
 | Dont dynamiques (avec variables) | 72 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **58** |
-| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **506** |
+| Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **520** |
 | Fichiers avec au moins un site d'appel | 85 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 322 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 321 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -32,9 +32,9 @@
 | `components/marchand/AjoutProduitGuide.tsx` | autre | 17 | 0 | 0 | 2 | 1 | 14 | 0 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 17 | 9 | 0 | 7 | 2 | 0 | 1 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
-| `components/auth/LoginPassword.tsx` | auth | 14 | 6 | 0 | 10 | 0 | 0 | 0 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
+| `components/auth/LoginPassword.tsx` | auth | 13 | 6 | 0 | 8 | 0 | 0 | 0 |
 | `components/marchand/GestionStock.tsx` | stock | 13 | 8 | 4 | 1 | 1 | 0 | 3 |
 | `components/marchand/MicroVenteCaisse.tsx` | vente | 11 | 0 | 0 | 3 | 2 | 7 | 0 |
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
@@ -122,7 +122,7 @@
 | stock | 39 | 38 | 4 |
 | caisse | 36 | 0 | 0 |
 | wallet | 36 | 37 | 19 |
-| auth | 29 | 15 | 0 |
+| auth | 28 | 15 | 0 |
 | vente | 28 | 0 | 0 |
 | autre | 24 | 3 | 0 |
 | cooperative | 21 | 19 | 4 |
@@ -179,22 +179,20 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 259 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesAccueil.texte |  |  |
-| 259 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
-| 391 | `parle` | dynamique | error |  |  |
-| 439 | `parle` | dynamique | suggestion.texte |  |  |
-| 447 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
-| 450 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
-| 651 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verifVoix.texte |  |  |
-| 723 | `parle` | dynamique | ENTREE_VOICE_CLIPS.numeroConfirmation.texte |  |  |
-| 894 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesEchec.texte |  |  |
-| 947 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verrouCinqMinutes.texte |  |  |
-| 947 | `parle` | dynamique | ENTREE_VOICE_CLIPS.tropDEssais.texte |  |  |
-| 971 | `parle` | dynamique | ENTREE_VOICE_CLIPS.dernierEssai.texte |  |  |
-| 972 | `parle` | dynamique | ENTREE_VOICE_CLIPS.mauvaisCodeAttention.texte |  |  |
-| 1175 | `parle` | literal | Tu es en train d'effacer le numéro ! |  |  |
-| 1187 | `parle` | literal | C'est effacé net. |  |  |
-| 1507 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 300 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesAccueil.texte |  |  |
+| 300 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
+| 465 | `parle` | dynamique | error |  |  |
+| 528 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
+| 531 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
+| 740 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verifVoix.texte |  |  |
+| 851 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRecue.texte |  |  |
+| 860 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRefus.texte |  |  |
+| 867 | `parle` | dynamique | ENTREE_VOICE_CLIPS.clavierSurCommande.texte |  |  |
+| 903 | `parle` | dynamique | clipRappel.texte |  |  |
+| 1097 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesEchec.texte |  |  |
+| 1389 | `parle` | literal | Tu es en train d'effacer le numéro ! |  |  |
+| 1401 | `parle` | literal | C'est effacé net. |  |  |
+| 1708 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
 
 ### `components/auth/UnregisteredPhone.tsx` — auth
 
@@ -428,11 +426,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 133 | `speakMessage` | cle_i18n | ACCUEIL_COMPTOIR |  |  |
-| 141 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_CONNUE |  |  |
-| 142 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_PARTIELLE |  |  |
-| 143 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_ILLISIBLE |  |  |
-| 388 | `speakMessage` | cle_i18n | ACCUEIL_JOURNEE_ROUVERTE |  |  |
+| 137 | `speakMessage` | cle_i18n | ACCUEIL_COMPTOIR |  |  |
+| 147 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_CONNUE |  |  |
+| 148 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_PARTIELLE |  |  |
+| 149 | `speakMessage` | cle_i18n | ACCUEIL_CAISSE_ILLISIBLE |  |  |
+| 394 | `speakMessage` | cle_i18n | ACCUEIL_JOURNEE_ROUVERTE |  |  |
 
 ### `components/marchand/MarchandAlertes.tsx` — marchand_autre
 
@@ -1025,7 +1023,7 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ; les gabarits gardent leurs variables `{…}`.
 
-### `services/tataUiClips.ts` — clips Tata enregistrés (137 fichiers ui-*.mp3) — appariés par TEXTE exact (233)
+### `services/tataUiClips.ts` — clips Tata enregistrés (137 fichiers ui-*.mp3) — appariés par TEXTE exact (247)
 
 | Ligne | Nature | Phrase | Variables |
 |---:|---|---|---|
@@ -1249,19 +1247,33 @@ Tableaux, records et fonctions de phrases. Ce sont les textes EXACTS du source ;
 | 326 | literal | Crée ton mot de passe. Au moins 4 caractères. |  |
 | 327 | literal | Ton mot de passe est trop court. Il faut au moins 4 caractères. |  |
 | 328 | literal | On ne te reconnaît pas bien, là. Reconnecte-toi pour continuer. |  |
-| 329 | literal | Quel produit vivrier tu veux faire entrer dans le stock ? |  |
-| 330 | literal | Tout ton stock est bien chargé, y'a pas de manque. |  |
-| 331 | literal | Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice. |  |
-| 332 | literal | Appuie sur moi et puis dis-moi ce que tu as vendu au marché. |  |
-| 333 | literal | Je n'ai pas bien capté. Rapproche le téléphone de ta bouche et puis parle doucement. |  |
-| 334 | literal | C'est rentré dans le panier. Tu ajoutes encore ou bien on encaisse l'argent ? |  |
-| 335 | literal | D'accord, on laisse tomber ça. Ton panier n'a pas bougé. |  |
-| 336 | literal | Ma voix ne sort pas là. Tape ta vente sur le clavier, je suis avec toi. |  |
-| 337 | literal | Et puis c'est à combien ? |  |
-| 338 | literal | Tu n'as pas encore fait de vente aujourd'hui. Y'a pas problème, le marché va s'ouvrir ! |  |
-| 339 | literal | L'argent est tombé pile, y'a pas de monnaie. |  |
-| 340 | literal | Ton argent est caché |  |
-| 341 | literal | Ton argent est affiché |  |
+| 339 | literal | Ce n'est pas le bon code. Attention : encore 2 essais, après il faudra attendre. |  |
+| 340 | literal | Ce n'est pas le bon code. Attention : encore 1 essai, après il faudra attendre. |  |
+| 341 | literal | Trop de tentatives incorrectes. Réessaie dans 15 minutes. |  |
+| 342 | literal | Trop de tentatives incorrectes. Réessaie dans 1 heure. |  |
+| 343 | literal | Vérifie ton numéro : touche le micro pour redire, ou corrige. |  |
+| 344 | literal | Il manque des chiffres : touche le micro pour redire, ou complète. |  |
+| 353 | literal | C'est bien ton numéro ? Dis oui, ou appuie sur le bouton qui clignote. |  |
+| 354 | literal | D'accord, je vérifie ton numéro. |  |
+| 355 | literal | D'accord, dis ton numéro encore. |  |
+| 356 | literal | Voilà les chiffres. Tape ton numéro ici. |  |
+| 366 | literal | Dis entrer, ou touche la flèche pour commencer. |  |
+| 367 | literal | Pour continuer, dis entrer. Tu peux aussi toucher la flèche. |  |
+| 368 | literal | Dis ton numéro après le bip, ou touche le micro. |  |
+| 369 | literal | Dis oui ou non, ou touche un bouton. |  |
+| 370 | literal | Quel produit vivrier tu veux faire entrer dans le stock ? |  |
+| 371 | literal | Tout ton stock est bien chargé, y'a pas de manque. |  |
+| 372 | literal | Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice. |  |
+| 373 | literal | Appuie sur moi et puis dis-moi ce que tu as vendu au marché. |  |
+| 374 | literal | Je n'ai pas bien capté. Rapproche le téléphone de ta bouche et puis parle doucement. |  |
+| 375 | literal | C'est rentré dans le panier. Tu ajoutes encore ou bien on encaisse l'argent ? |  |
+| 376 | literal | D'accord, on laisse tomber ça. Ton panier n'a pas bougé. |  |
+| 377 | literal | Ma voix ne sort pas là. Tape ta vente sur le clavier, je suis avec toi. |  |
+| 378 | literal | Et puis c'est à combien ? |  |
+| 379 | literal | Tu n'as pas encore fait de vente aujourd'hui. Y'a pas problème, le marché va s'ouvrir ! |  |
+| 380 | literal | L'argent est tombé pile, y'a pas de monnaie. |  |
+| 381 | literal | Ton argent est caché |  |
+| 382 | literal | Ton argent est affiché |  |
 
 ### `services/tataVoice.ts` — clips Tata par CLÉ (vente_enregistree, hors_ligne…) (8)
 
@@ -1720,7 +1732,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (322)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (321)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
