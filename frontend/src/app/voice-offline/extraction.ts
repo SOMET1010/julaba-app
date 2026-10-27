@@ -52,6 +52,14 @@ export const UNITES: Record<string, number> = {
   'soixante-et-onze': 71,
 };
 
+// VOIX-06 (26/10/2026) — LES COMPOSÉS HYPHÉNÉS DE 22 À 69, fusionnés dans
+// DIZAINES ci-dessous. La dictée fr-FR les rend hyphénés (« vingt-cinq »),
+// et les tables ne connaissaient que les composés en « -et-un » et la
+// famille quatre-vingt/soixante-dix : « vingt-cinq sacs » ne se lisait PAS —
+// un stock de 25 restait muet. Un SURENSEMBLE PUR : les phrases déjà lues ne
+// changent pas de valeur, il y a juste PLUS de phrases qui se lisent. (Ne
+// pas « simplifier » en découpant les hyphens : « quatre-vingt-dix » dépend
+// du trait d'union, le découper vaudrait 24, pas 90.)
 export const DIZAINES: Record<string, number> = {
   vingt: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
   'soixante-dix': 70,
@@ -69,6 +77,17 @@ export const DIZAINES: Record<string, number> = {
   'quatre-vingt-quatorze': 94, 'quatre-vingt-quinze': 95,
   'quatre-vingt-seize': 96, 'quatre-vingt-dix-sept': 97,
   'quatre-vingt-dix-huit': 98, 'quatre-vingt-dix-neuf': 99,
+  // VOIX-06 — les composés hyphénés de 22 à 69 (voir le commentaire au-dessus).
+  'vingt-deux': 22, 'vingt-trois': 23, 'vingt-quatre': 24, 'vingt-cinq': 25,
+  'vingt-six': 26, 'vingt-sept': 27, 'vingt-huit': 28, 'vingt-neuf': 29,
+  'trente-deux': 32, 'trente-trois': 33, 'trente-quatre': 34, 'trente-cinq': 35,
+  'trente-six': 36, 'trente-sept': 37, 'trente-huit': 38, 'trente-neuf': 39,
+  'quarante-deux': 42, 'quarante-trois': 43, 'quarante-quatre': 44, 'quarante-cinq': 45,
+  'quarante-six': 46, 'quarante-sept': 47, 'quarante-huit': 48, 'quarante-neuf': 49,
+  'cinquante-deux': 52, 'cinquante-trois': 53, 'cinquante-quatre': 54, 'cinquante-cinq': 55,
+  'cinquante-six': 56, 'cinquante-sept': 57, 'cinquante-huit': 58, 'cinquante-neuf': 59,
+  'soixante-deux': 62, 'soixante-trois': 63, 'soixante-quatre': 64, 'soixante-cinq': 65,
+  'soixante-six': 66, 'soixante-sept': 67, 'soixante-huit': 68, 'soixante-neuf': 69,
 };
 
 type NumberToken = { value: number; start: number; end: number };

@@ -40,6 +40,7 @@ import type { CaisseProduct } from '../../contexts/CaisseContext';
 import { BoutonDirePrix } from './BoutonDirePrix';
 import { BoutonDireNom } from './BoutonDireNom';
 import { BoutonDireUnite } from './BoutonDireUnite';
+import { BoutonDireQuantite } from './BoutonDireQuantite';
 import { ClavierQuantite } from './ClavierQuantite';
 import { ComplementEtal } from './ComplementEtal';
 
@@ -494,6 +495,22 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
           <div aria-live="polite" style={{ minHeight: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: `2px solid ${quantite ? VERT : 'var(--commerce-gray-100)'}`, borderRadius: 14, fontSize: 26, fontWeight: 800, color: 'var(--encre)' }}>
             {quantite ? `${Number(quantite).toLocaleString('fr-FR')} ${unite}` : '—'}
           </div>
+          {/* VOIX-06 — LA QUESTION ÉCOUTE. « Tu en as combien ? Si tu ne sais
+              pas, passe. » était DITE (STK-04) et n'écoutait pas : pavé et
+              bouton. La phrase disait elle-même qu'on pouvait passer — rien
+              n'écoutait le mot. Le micro lit SON nombre (zéro compris : son
+              zéro est une réponse) et son « passe » déclenche EXACTEMENT le
+              geste du bouton « Je ne sais pas » : stock INCONNU, jamais un
+              zéro inventé. Le nombre posé est relit (STOCK_072). Le pavé et
+              le bouton restent ; le ✓ vert reste le geste qui enregistre —
+              rien n'avance seul (décision du 24/09). */}
+          <BoutonDireQuantite
+            ouvrirToutSeul
+            question="Tu en as combien ?"
+            dire={dire}
+            onNombre={(n) => { setQuantite(String(n)); direMessage('STOCK_072', { nombre: n, unite }); }}
+            onPasse={() => { void poser(null); }}
+          />
           <ClavierQuantite valeur={quantite} onChange={setQuantite}
             onValider={() => { void poser(); }} enCours={enCours} />
           <button type="button" onClick={() => { void poser(null); }} disabled={enCours}
