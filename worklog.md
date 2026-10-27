@@ -1589,3 +1589,21 @@ Stage Summary:
 - RÉPONSE À PATRICK : OUI — tout fonctionne après le pull ; la preuve E2E a été refaite sur le code fraîchement synchronisé, de la dictée du numéro à la vente enregistrée (201), 100% voix sauf les deux gestes iconiques (code secret tapé, billet touché) conformes aux arbitrage B5/pilote
 - 1 défaut trouvé et fermé : le micro nu d'Akoun-dev (sonde) — la garde a servi exactement à ça ; d001146a poussé sous Akoun-dev après sync guard RETARD=0
 - Captures : .zlogs/check-entree.png, .zlogs/check-vente-succes.png
+
+---
+Task ID: relance-preview-27-10
+Agent: Z.ai Code (session Patrick)
+Task: « lance la preview » — relance de la stack complète après redémarrage du conteneur
+
+Work Log:
+- Le bac à sable avait REDÉMARRÉ (uptime 19 min) : les trois services étaient morts ; le travail local avait été remis à un point ancien (2521e907) par la session parallèle — sync guard RETARD=21, mais origine/dev contient tout (FF-POSSIBLE) → pull --ff-only vers c1d51643, arbre propre
+- PG embarqué : binaires @embedded-postgres disparus (nettoyage node_modules) → npm install dans mini-services/postgres-service → up.ts OK (base julaba_dev recréée, seed rechargé au boot backend)
+- DÉCOUVERTE MAJEURE : le nouveau bac à sable REAPERT tout process enfant direct des shells d'outil entre deux appels (test prouvé : sleep 600 et node -e meurent ; Vite, nest --watch, node dist/main.js aussi — 4 morts silencieuses, log toujours propre). SEUL survivant : postgres, petit-fils DÉTACHÉ spawné par bun (PPID=1). Parade : .zlogs/detache.mjs — lanceur qui spawn le serveur détaché (node:child_process detached+unref) puis sort ; le serveur devient orphelin comme postgres
+- Stack relancée via detache.mjs : node dist/main.js (backend 3001, build one-shot npx nest build — le mode --watch n'est plus nécessaire en preview) + npm run dev (Vite 3000). Survie prouvée sur PLUSIEURS appels successifs (ss+curl re-vérifiés 3 fois)
+- PREUVE NAVIGATEUR (390×844) : entrée rendue, connexion clavier 0700000009 → 1234 → accueil « Ton comptoir est prêt » (auth réelle sur la base fraîche), écran Vendre affiche le stock démo (Banane 40 · Riz 10 · Tomate 50) via GET /api/v1/caisse/* en 200 (proxy Vite OK), zéro erreur console
+- Captures : .zlogs/preview-relancee-entree.png, .zlogs/preview-relancee-vendre.png
+
+Stage Summary:
+- RÉPONSE À PATRICK : preview relancée et prouvée de bout en bout sur le conteneur redémarré — PG 5432 / backend 3001 (node dist, sans watch) / Vite 3000, tous détachés via .zlogs/detache.mjs pour survivre au reaper du bac à sable
+- À RETENIR POUR TOUTE RELANCE FUTURE : ne JAMAIS lancer un service directement (setsid nohup meurt entre les appels) — passer par bun .zlogs/detache.mjs <cwd> <log> <cmd...> ; backend en node dist/main.js après npx nest build si dist absent
+- Aucun commit : aucun fichier du dépôt changé (detache.mjs vit dans .zlogs, hors dépôt)
