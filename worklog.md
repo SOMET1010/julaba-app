@@ -1515,3 +1515,17 @@ Stage Summary:
 - RÉPONSE À PATRICK : OUI — l'utilisatrice ajoute ses produits à volonté, le dictionnaire ne bloque RIEN ; un nom inconnu du lexique et de son étal s'ajoute tel qu'elle l'a dit, avec le parcours en trois questions (unité, prix, quantité facultative) derrière
 - AUCUN code changé : la règle existait (STK-25, lot d'avant) — c'est une PREUVE, pas un correctif ; commit docs only (ce journal)
 - Limite honnête : unité/prix/quantité validés au pavé (le micro prix exige un vrai device) ; sur vrai téléphone la dictée est le même chemin webReco/sherpa que le numéro, déjà recetté
+
+---
+Task ID: identite-push-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « à partir de maintenant fais les push nom de Akoun-dev » — bascule de l'identité de commit
+
+Work Log:
+- Garde anti-course OK (0 commit nouveau) ; auteurs de l'historique relevés : Akoun-dev <aboa.akoun40@gmail.com> (1 commit) vs Z User <z@container> (9 commits)
+- git config (dépôt local) : user.name = Akoun-dev, user.email = aboa.akoun40@gmail.com — l'identité exacte déjà utilisée par Akoun-dev, pour que l'attribution GitHub pointe le même compte
+- CE commit est le premier signé du nouveau nom : preuve vivante dans `git log --format='%an <%ae>'`
+
+Stage Summary:
+- À partir de ce commit, tous les commits/pushs de cette session portent le nom Akoun-dev — décision de Patrick, réversible par `git config user.name/user.email`
+- Les commits antérieurs (Z User) ne sont pas réécrits : l'historique reste intact
