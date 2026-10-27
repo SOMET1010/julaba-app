@@ -20,11 +20,13 @@ interface SubPageLayoutProps {
    *  semibold. Par défaut, l'en-tête sombre de tous les autres sous-écrans :
    *  cette prop ne change RIEN pour eux. */
   variante?: 'defaut' | 'caisse';
+  /** Pleine largeur sur web/desktop (sans décalage sidebar) */
+  fullWidth?: boolean;
 }
 
 export function SubPageLayout({
   role, title, subtitle, rightContent, headerChildren,
-  bottomAction, noPadding = false, children, onBackOverride, variante = 'defaut'
+  bottomAction, noPadding = false, children, onBackOverride, variante = 'defaut', fullWidth = false
 }: SubPageLayoutProps) {
   const navigate = useNavigate();
   const config = getRoleConfig(role);
@@ -34,13 +36,13 @@ export function SubPageLayout({
   const clair = variante === 'caisse';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: bgWarm }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: bgWarm, width: '100%' }}>
       {/* ZONE 1 : HEADER FIXE */}
       <div
         style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
           background: clair ? 'var(--caisse-ivoire)' : 'var(--commerce-sidebar)',
           borderBottom: clair ? '1px solid var(--commerce-line)' : 'none' }}
-        className="lg:pl-[280px]"
+        className={fullWidth ? '' : 'lg:pl-[280px]'}
       >
         <div style={{ height: clair ? 12 : 16 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: clair ? '0 16px 12px' : '0 16px 18px' }}>
@@ -78,12 +80,13 @@ export function SubPageLayout({
       <div
         style={{
           flex: 1,
+          width: '100%',
           paddingTop: headerChildren ? 116 : 86,
           paddingBottom: pbContent,
           paddingLeft: noPadding ? 0 : 16,
           paddingRight: noPadding ? 0 : 16,
         }}
-        className="lg:pl-[296px]"
+        className={fullWidth ? '' : 'lg:pl-[296px]'}
       >
         {children}
       </div>
@@ -94,7 +97,7 @@ export function SubPageLayout({
           style={{ position: 'fixed', bottom: 80, left: 0, right: 0,
             padding: '8px 16px', background: bgWarm,
             borderTop: `1px solid ${primaryColor}22`, zIndex: 30 }}
-          className="lg:pl-[296px]"
+          className={fullWidth ? '' : 'lg:pl-[296px]'}
         >
           {bottomAction}
         </div>
