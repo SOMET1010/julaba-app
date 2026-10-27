@@ -60,7 +60,11 @@ const { maillons } = JSON.parse(
 //     19-20/10 (821cc12, 82c7471, 2ba6c01, f3d42a7). La liste CONNUS doit
 //     maigrir quand un rouge guérit — sinon elle dort.
 const CONNUS = new Map([
-  ['test:voix-trace-source', 'VOICE-01 — 4 empreintes figées, refigeage réservé à Patrick'],
+  // test:voix-trace-source EN SORTI le 26/10 — redevenu vert de première main
+  // (constaté à dev@44e09c0f, relance exit 0) : le lecteur VOIX-05 ajoute une
+  // LECTURE du journal (derniereIssuePlayClip), les 4 empreintes figées sont
+  // intactes. La liste CONNUS doit maigrir quand un rouge guérit — sinon elle
+  // dort (même règle que test:i18n-empreintes-argent ci-dessous).
   ['test:garde-argent', 'état de référence 4 entrés / 14 perdues'],
 ]);
 
