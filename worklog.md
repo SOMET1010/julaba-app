@@ -1431,3 +1431,27 @@ Stage Summary:
 - L'audit voix de la connexion entre dans le cockpit : .ai/AUDITS/LOT-50-CONNEXION-VOIX-2026-10-26.md
 - La doctrine est écrite noir sur blanc : les écarts ①/③ sont fermés (preuve E2E 8ebe8647), le silence du code secret est une DÉCISION B5 — on ne prétend pas « 100 % vocal », on prétend « tout se dit, sauf le secret »
 - Prochaine piste notée sans engagement : biométrie du code (§4), dioula des clips 78-81 (règle lot B)
+---
+Task ID: entree-ecoute-26-10
+Agent: Z.ai Code (session Patrick)
+Task: « Reglons ces autres soucis » — le second volet du rapport : l'entrée et l'onboarding ne se commandaient pas à la voix, le micro du numéro ne partait qu'au toucher, la proposition de reconnaissance ne s'entendait pas répondre
+
+Work Log:
+- Garde anti-course OK (0 commit nouveau) ; node_modules disparus (reset environnement) → npm install racine + PG embarque relances (cluster neuf, seed OK, backend :3001 + Vite :3000)
+- LECTURE PREUVE D'ABORD : Welcome/OnboardingSlides (la porte AKW-02, direOuLire), commandesEntree (grammaire du lot A), useCommandesVocales (rouage MIC-01), PropositionReconnaissance (la proposition WebAuthn EXISTAIT déjà — c'est SA réponse vocale qui manquait), paroleEntree.test (garde « une seule porte »)
+- GRAMMAIRE : intentionEntree (entrer/commencer/continuer/oui → avancer ; répète/réécouter/recommence → rejouer ; « pas encore » ne rejoue PAS — lookbehind, le refus déclaré gagne) + intentionOuiNon (doute ne profite NI au oui NI au non ; « oui mais pas maintenant » → NON, l'acquiescement déclaré voit le refus d'abord — ajusté sur le test, pas sur le code)
+- ROUAGE généralisé : useCommandesVocales<C> prend grammaire en cfg (défaut = confirmation du numéro, zéro changement d'appel)
+- ÉCRANS 1-2 : après le bonjour/la présentation — consigne login-82/83 puis écoute 7-8 s ; le micro ne s'ouvre QUE si un son est réellement sorti (`lu` de direEntreeAccueil / retour de parlerAvantConnexion) ; bouton porteur login-cue-clignote pendant l'écoute
+- ÉCRAN NUMÉRO : la chaîne 05→06→07 gagne login-84 (« dis ton numéro après le bip ») QUAND tout est réuni (guidage + moteur + geste de session + numéro vide + pavé fermé + pas de suggestion), puis BIP WebAudio (bipEntree.ts : 880 Hz, 0,35 s, sans AudioContext ça se tait — test:bip-entree), puis dicterNumero() TOUT SEUL ; parleSuite REND DÉSORMAIS les résultats (tousJoues = filet « pas de micro dans le noir »)
+- DÉFAUT TROUVÉ EN CONCEVANT : le geste noté au MOUNT de LoginPassword ratait TOUJOURS le clic de Welcome → listener déplacé AU NIVEAU MODULE (GESTE_SESSION_VU, premier geste du bundle) ; le filet décisif reste tousJoues
+- PROPOSITION : question + consigne login-85 (« dis oui ou non ») puis écoute — oui → registerWebAuthn (existant), non → refus mémorisé, fermeture → arreterCommandes partout ; B5 intouché
+- CLIPS 82-85 : edge-tts fr-FR-DeniseNeural -10 % → loudnorm -16 LUFS, 24 kHz mono 96 kbps (ffprobe) ; double enregistrement (tataUiClips + entreeVoix ; 85 aussi dans accueilMarchandVoix) ; registre 257 ; référence voix-trace régénérée (16 appels, --regenerer délibéré après revue : seul tataUiClips avait bougé)
+- E2E NAVIGATEUR (faux moteur SpeechRecognition injecté — TOUTE la chaîne câblée, clips RÉELS, SW bloqué après 2 recharges sauvages) : chargement sans geste → play-refuse NotAllowedError → AUCUNE écoute (la garde du noir PRUVEE par le journal) ; clic Tata → login-82 ended 3,9 s → écoute + clignote → « entrer » → écran 2 ; présentation + login-83 ended 5,9 s → « répète » → REJOUÉ + ré-écoute → « continuer » → numéro ; 05→06→07→84 + bip → dictée auto (started=3, ZÉRO toucher) → « 0700000009 » → rempli → rappel login-78 → « oui » → check-phone → étape code → pavé 1234 → /marchand « Bonjour Awa » ; proposition → login-85 → « non » → modale fermée + propositionRefusee:true en storage
+- Batterie : tsc 0 ; eslint 0 erreur ; 20 gardes exit=0 (commandes-entree étendue sections 8-13, voix-trace 34/34, voix-trace-source, parole-entree, entree-numero-voix, voix-connexion-lot-a, akwaba-voix, registre-voix 257, clips-embarques, auth-charte, cible-tactile, retour-frappe, verrou-connexion, entree-unique, lien-activation, login-images-repli, guidage 7/7, audio-unlock, micro-contraint, acquiescement) + test:bip-entree (nouveau)
+- Preuves : .zlogs/entree-ecoute-marchand-non-memorise.png (/marchand après parcours voix) ; journal julaba_journal_voix (play-refuse au noir, ended des clips, 5 fenêtres d'écoute)
+
+Stage Summary:
+- Les trois blocages restants du rapport sont FERMÉS et PROUVÉS au navigateur : l'entrée se commande (« entrer »), le numéro se dicte après le bip sans toucher le micro, la reconnaissance s'entend répondre (« oui »/« non »)
+- La phrase juste du LOT-50 reste entière : tout se dit SAUF le secret — B5 n'a pas bougé d'un pixel
+- Doctrine confirmée deux fois : le refus déclaré gagne (« pas encore », « oui mais pas maintenant ») ; le doute ne profite jamais — ni à l'avancée, ni à l'enrôlement
+- Limite honnête : la reco Réelle (sherpa APK / SpeechRecognition Chrome) est le moteur du navigateur ; l'E2E prouve le câblage complet avec un faux moteur, les scénarios §8 du rapport restent À RECETTER sur vrai téléphone
