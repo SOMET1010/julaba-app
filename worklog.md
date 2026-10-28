@@ -1657,3 +1657,22 @@ Stage Summary:
 - RÉPONSE À PATRICK : backend/package-lock.json est commité et poussé (ff19b1ae) — le build Docker du backend (deploy.yml → rsync + COPY + npm ci) a désormais ce qui lui manquait ; preuve npm ci + nest build rejouée sur l'arbre exact du lock
 - Le fichier est GÉNÉRÉ, pas écrit à la main : pour le régénérer après une évolution des deps backend, reproduire le contexte isolé (copie de backend/package.json hors du monorepo + npm install --package-lock-only) — jamais npm install dans backend/ lui-même (absorbé par le workspace racine)
 - Non prouvé ici : le run deploy.yml RÉEL (exige les secrets SSH du serveur) — la preuve locale couvre COPY + npm ci + nest build ; la chaîne ssh/docker compose reste à valider par un vrai run
+
+---
+Task ID: etapes-ajout-voix-28-10
+Agent: Z.ai Code (session Patrick)
+Task: « Quand je veux ajouter un produit, pour chaque étape, il passe pas — par exemple "Tu le vends combien", ne parle pas, ainsi que les autres steps »
+
+Work Log:
+- DIAGNOSTIC PAR ÉLIMINATION, preuves à l'appui : (a) l'APK pilote c4ff644 contient TOUTE la voix hors-ligne — log du run 40705384528 lu ligne à ligne : AAR sherpa-onnx ✓, STT kroko-fr (68 M) ✓, TTS piper-siwis-fr (79 M) ✓, « Voix hors-ligne prête » ; (b) le code du parcours AjoutProduitGuide est sain : E2E 100 % voix rejoué au harnais AVANT tout correctif (gombo → au kilo → cinq cents francs → dix → POST 201 → « C'est sur ton étal » dit)
+- Le web marche, l'APK bloque → les défauts vivaient dans le TIMING device :
+  1. LE DÉLAI FIXE 1 400 ms (VOX-05a jamais appliqué aux parcours) : AjoutProduitGuide et SaisieGuidee passent un `dire` qui ne rend pas la promesse de speak → les BoutonDire* retombent sur la devinette → sur un vrai téléphone la question (2-3 s en voix piper) est COUPÉE en plein mot (journal device du 03/10 : TTS_COUPEE depuisMs:1393 — le mécanisme, déjà documenté, n'avait jamais été fermé ici)
+  2. L'ÉTAPE DU NOM N'AVAIS PAS DE MICRO AUTO : BoutonDireNom sans ouvrirToutSeul — la première chose que fait Tantie (parler) tombait dans un micro fermé ; les 3 autres étapes écoutaient seules
+- FIX 4bbdb5df : `dire` rend la promesse (fin réelle + 250 ms) dans AjoutProduitGuide ET SaisieGuidee ; BoutonDireNom reçoit ouvrirToutSeul + question (même mécanique que ses trois sœurs) ; inventaire i18n régénéré (446)
+- PREUVE NAVIGATEUR (390×844, harnais) : les 4 micros s'ouvrent SEULS (reco comptés 2→5), attiéké → au kilo → cinq cents francs → dix → POST 201 → « attiéké, cinq cents francs le kg. C'est sur ton étal. » DIT ; branches bonus vues : A1 « gombo, tu en as déjà. Combien de kg tu ajoutes ? » + dégradé APK simulé (sans reco web ni sherpa : « Le micro ne répond pas. Touche comment tu le vends. » dit + affiché, boutons gardés)
+- Gardes : verify 157 verts / 1 rouge CONNU ; test:micro-contraint vert ; tsc 0 ; lint 0 (fichiers hors périmètre eslint racine) ; check racine = rouge backend PRÉEXISTANT prouvé par stash (2 suites, identiques sur l'arbre propre)
+
+Stage Summary:
+- RÉPONSE À PATRICK : le parcours d'ajout écoute maintenant AUX QUATRE étapes et le micro n'ouvre plus pendant que Tantie parle — un nouvel APK est nécessaire (dispatch lancé) ; sur le téléphone, vérifier aussi que Tantie n'est pas en mode muet (bouton haut-parleur, clé julaba_voice_muted)
+- ⚠️ OBSERVATION POUR L'ÉQUIPE (préexistant, pas de ce fix) : 2 suites backend rouges sur dev — stocks-rest.idempotency (un PATCH avec même idempotency_key appliqué 3 fois au lieu de 2 — SENSIBLE À L'ARGENT, à traiter vite) et telephones-tests-uniques (13 doublons) ; le CI « Tests unitaires backend » sera rouge jusqu'à correction
+- SI L'APK RESTE MUET APRÈS ÇA : le journal (🐞 Rapport) nommera le moteur mort — TTS_MOTEUR 'navigateur' sur APK = synthèse native en panne (repli speechSynthesis muet dans la WebView Android)
