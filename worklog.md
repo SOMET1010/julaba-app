@@ -1638,3 +1638,22 @@ Work Log:
 Stage Summary:
 - RÉPONSE À PATRICK : APK pilote régénéré sur le dernier dev (c4ff6446) — téléchargeable dans GitHub Releases → pilote-latest (julaba-latest.apk) ; APK de debug signé clé debug, installable « sources inconnues », hors store (périmètre pilote du 15/09)
 - Rappel du workflow : la voix dioula reste ÉTEINTE par défaut (licence MMS non distribuable) — ne l'allumer que pour un build de mesure
+
+---
+Task ID: lockfile-backend-build-28-10
+Agent: Z.ai Code (session Patrick)
+Task: « le package-lock.json qui manque dans le dossier backend pour le build »
+
+Work Log:
+- Diagnostic : le dépôt est un monorepo npm workspaces avec UN SEUL lock à la racine (« Les sous-dossiers n'ont pas de lock » — ci.yml) — MAIS le Dockerfile backend fait `COPY package.json package-lock.json` puis `npm ci` (stage build) ET `npm ci --omit=dev` (stage runtime), et deploy.yml rsync backend/package-lock.json vers le serveur : le build Docker du conteneur runtime était cassé faute de fichier
+- PIÈGE npm : `npm install --package-lock-only` lancé DANS backend/ ne crée RIEN (« up to date » en 2 s) — npm détecte le workspace parent et opère à la racine. Parade : générer le lock dans un contexte backend ISOLÉ (/tmp/lockgen, package.json seul) — exactement le contexte que voit le build Docker, qui ne copie jamais la racine
+- Le lock généré applique les overrides de sécurité déjà présents dans backend/package.json (multer, ws, qs, uuid, lodash, tmp, glob, minimatch, js-yaml, fast-csv + picomatch) — backend/package.json INCHANGÉ, un seul fichier ajouté
+- PREUVE (doctrine) : dans le contexte isolé — `npm ci` depuis le nouveau lock → 0 ; `nest build` → 0 ; dist/main.js émis (8 572 o). C'est le stage 1 du Dockerfile rejoué à l'identique
+- Cohérence : @nestjs/common = @nestjs/core = 11.2.8 (la garde anti-500 tient) ; 970 packages, lockfileVersion 3 ; DIFF acceptables avec le lock racine (résolutions plus fraîches : core 11.2.8 vs 11.1.28 racine) — légitime, les deux arbres d'installation sont indépendants par construction
+- Commit ff19b1ae (fix(deploy)), sync guard RETARD=0, push sous Akoun-dev
+- Observé au passage : backend/node_modules est un SYMLINK local (artefact sandbox, affiché untracked) — ne JAMAIS le committer ; ajouter uniquement le lockfile
+
+Stage Summary:
+- RÉPONSE À PATRICK : backend/package-lock.json est commité et poussé (ff19b1ae) — le build Docker du backend (deploy.yml → rsync + COPY + npm ci) a désormais ce qui lui manquait ; preuve npm ci + nest build rejouée sur l'arbre exact du lock
+- Le fichier est GÉNÉRÉ, pas écrit à la main : pour le régénérer après une évolution des deps backend, reproduire le contexte isolé (copie de backend/package.json hors du monorepo + npm install --package-lock-only) — jamais npm install dans backend/ lui-même (absorbé par le workspace racine)
+- Non prouvé ici : le run deploy.yml RÉEL (exige les secrets SSH du serveur) — la preuve locale couvre COPY + npm ci + nest build ; la chaîne ssh/docker compose reste à valider par un vrai run
