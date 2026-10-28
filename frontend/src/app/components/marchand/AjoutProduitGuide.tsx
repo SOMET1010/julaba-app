@@ -102,7 +102,13 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const [valide, setValide] = useState(false);
   const [enCours, setEnCours] = useState(false);
 
-  const dire = (t: string) => { if (guidageVocal()) speak(t); };
+  /** VOX-05a — LE DIRE REND LA PROMESSE de speak. Les micros qui s'ouvrent
+   *  tout seul (BoutonDire*) attendent la FIN RÉELLE de la parole avant
+   *  d'écouter (+ 250 ms de marge). En rendant `undefined`, le micro retombait
+   *  sur le délai fixe de 1 400 ms — mesuré sur l'APK (journal du 03/10) :
+   *  « TTS_COUPEE depuisMs:1393 ». La question était coupée en plein mot sur
+   *  le téléphone, et le micro se refermait sur la voix de Tantie. */
+  const dire = (t: string): void | Promise<void> => { if (guidageVocal()) return speak(t); };
   /** Une CLÉ du catalogue, résolue dans la langue active, PUIS rendue par le
    *  contrat audio — qui choisit la forme PARLÉE. Passer par le catalogue ne
    *  suffit pas : `.texte` est la forme ÉCRAN, avec son espace fine, et la
@@ -329,6 +335,12 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               conservé — jamais jeté (STK-25), jamais suffisant pour avancer
               seul : c'est toujours elle qui appuie sur « C'est bon ».
 
+              LE MICRO S'OUVRE TOUT SEUL (retour Patrick, 28/10 : « pour chaque
+              étape, il passe pas » — elle parlait dans un micro fermé). Même
+              arbitrage que l'unité, le prix et la quantité (VOX-03) : la
+              question est dite, puis le micro écoute. Le champ reste là pour
+              qui préfère taper.
+
               LA CORRECTION PASSE PAR L'OREILLE : le nom transcrit est relu
               (STOCK_059). Si c'est faux, TROIS gestes, une seule règle :
               REMPLACER — redire (le micro reste là), corriger À LA VOIX
@@ -337,6 +349,8 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               ce qui reste est son produit), ou corriger mot à mot au clavier
               dans le champ ci-dessus, qui reste éditable. */}
           <BoutonDireNom
+            ouvrirToutSeul
+            question="Quel produit tu veux ajouter ?"
             sesProduits={(products || []).map(p => ({ nom: p.nom }))}
             dire={dire}
             nomActuel={nom}

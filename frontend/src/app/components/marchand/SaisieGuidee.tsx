@@ -104,9 +104,13 @@ export function SaisieGuidee({ etal, onValider, apparier, initialProduit, initia
   // (muet seulement si elle a choisi « je lis ») ; réécouter parle toujours.
   const { speak } = useApp();
   const dernierePhraseRef = useRef('');
-  const dire = (t: string) => {
+  // VOX-05a — rend la PROMESSE de speak : le micro qui s'ouvre tout seul
+  // (BoutonDireProduit) attend la FIN RÉELLE de la parole, pas un délai fixe
+  // qui coupait la question en plein mot sur l'APK (journal du 03/10 :
+  // « TTS_COUPEE depuisMs:1393 »).
+  const dire = (t: string): void | Promise<void> => {
     dernierePhraseRef.current = t;
-    if (guidageVocal()) speak(t);
+    if (guidageVocal()) return speak(t);
   };
   // Même règle, pour une CLÉ du catalogue i18n : résolue dans la langue
   // active, retenue pour « réécouter », remise au rendu vocal (défaut : speak).

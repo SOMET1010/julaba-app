@@ -61,12 +61,18 @@ interface Props {
   sesProduits: readonly { nom: string }[];
   /** Reçoit ce qu'elle a donné, dès que c'est lisible. Rien d'inventé. */
   onNom: (lu: EcouteProduit) => void;
-  /** Fait parler l'écran (le guidage vocal de la caisse). */
-  dire?: (texte: string) => void;
+  /** Fait parler l'écran (le guidage vocal de la caisse). Une promesse = le
+   *  micro attend la fin réelle de la parole (VOX-05a). */
+  dire?: (texte: string) => void | Promise<void>;
   /** Le nom affiché dans le champ — celui qu'elle peut RÉFUTER à la voix
    *  (« non, pas kasso, gombo »). Sans lui, la correction mot à mot garde
    *  quand même les marqueurs de réfutation hors du nom. */
   nomActuel?: string;
+  /** Vrai pour ouvrir le micro de lui-même dès l'arrivée sur l'écran du nom —
+   *  le même arbitrage que l'unité, le prix et la quantité (VOX-03). */
+  ouvrirToutSeul?: boolean;
+  /** Dit avant d'écouter. Rien n'est écouté tant que Tantie parle. */
+  question?: string;
 }
 
 /** Une seule clé pour un refus : l'écran l'affiche et la voix le dit. */
@@ -74,12 +80,13 @@ const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
   void rendreMessage(resoudreMessage(id), (t) => dire?.(t));
 };
 
-export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel }: Props) {
+export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutSeul, question }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
   const arretRef = useRef<null | (() => Promise<void>)>(null);
   const fluxRef = useRef<MediaStream | null>(null);
   const minuteurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const demarreRef = useRef(false);
 
   const fermer = async () => {
     if (minuteurRef.current) { clearTimeout(minuteurRef.current); minuteurRef.current = null; }
@@ -152,6 +159,37 @@ export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel }: Props) {
   };
 
   useEffect(() => () => { void fermer(); }, []);
+
+  useEffect(() => {
+    if (!ouvrirToutSeul || demarreRef.current) return;
+    demarreRef.current = true;
+    // Tantie pose la question, PUIS on écoute. L'inverse lui ferait entendre
+    // sa propre question et transcrire n'importe quoi.
+    //
+    // VOX-05a — ON ATTEND LA FIN RÉELLE, PLUS UN DÉLAI FIXE (même mécanique
+    // que BoutonDirePrix) : le `dire` qui rend une promesse est attendu, sinon
+    // le délai de 1 400 ms revient — et avec lui la question coupée en plein
+    // mot sur l'APK (TTS_COUPEE depuisMs:1393, journal du 03/10).
+    let annule = false;
+    let minuteur: ReturnType<typeof setTimeout> | null = null;
+    const ouvrir = () => { if (!annule) void ecouter(); };
+
+    if (question && dire) {
+      const parle = dire(question) as unknown;
+      if (parle && typeof (parle as Promise<void>).then === 'function') {
+        void (parle as Promise<void>).then(
+          () => { minuteur = setTimeout(ouvrir, 250); },
+          () => { minuteur = setTimeout(ouvrir, 250); },
+        );
+      } else {
+        minuteur = setTimeout(ouvrir, 1400);
+      }
+    } else {
+      minuteur = setTimeout(ouvrir, 250);
+    }
+    return () => { annule = true; if (minuteur) clearTimeout(minuteur); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule ouverture par écran
+  }, []);
 
   if (indisponible) {
     return (
