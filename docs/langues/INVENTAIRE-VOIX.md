@@ -8,11 +8,11 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **445** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 461 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **446** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 462 |
 | — littéraux (phrase fixe en dur) | 200 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 98 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 99 |
 | — relais (`dire = (t) => speak(t)`) | 27 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 64 |
 | Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
@@ -76,6 +76,7 @@
 | `components/auth/UnregisteredPhone.tsx` | auth | 2 | 0 | 0 | 2 | 0 | 0 | 0 |
 | `components/backoffice/BOLayout.tsx` | backoffice | 2 | 1 | 1 | 0 | 0 | 0 | 0 |
 | `components/backoffice/BOProfil.tsx` | backoffice | 2 | 1 | 0 | 0 | 1 | 0 | 0 |
+| `components/marchand/BoutonDireNom.tsx` | autre | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/BoutonDirePrix.tsx` | autre | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/BoutonDireQuantite.tsx` | autre | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/BoutonDireUnite.tsx` | autre | 2 | 0 | 0 | 1 | 1 | 0 | 0 |
@@ -99,7 +100,6 @@
 | `components/cooperative/FinancesCooperative.tsx` | cooperative | 1 | 0 | 1 | 0 | 0 | 0 | 1 |
 | `components/layout/Sidebar.tsx` | partage | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | `components/marchand/BesoinMarchand.tsx` | marchand_autre | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
-| `components/marchand/BoutonDireNom.tsx` | autre | 1 | 0 | 0 | 0 | 1 | 0 | 0 |
 | `components/marchand/ChoixUnite.tsx` | caisse | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/MarchandAlertes.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
 | `components/marchand/ProtectionSociale.tsx` | marchand_autre | 1 | 0 | 0 | 1 | 0 | 0 | 0 |
@@ -124,7 +124,7 @@
 | stock | 39 | 38 | 4 |
 | caisse | 36 | 0 | 0 |
 | wallet | 36 | 37 | 19 |
-| autre | 31 | 3 | 0 |
+| autre | 32 | 3 | 0 |
 | vente | 29 | 0 | 0 |
 | auth | 28 | 15 | 0 |
 | cooperative | 21 | 19 | 4 |
@@ -298,25 +298,25 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 105 | `speak` | relais | t |  |  |
-| 182 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 200 | `direMessage` | cle_i18n | STOCK_047 |  |  |
-| 201 | `direMessage` | cle_i18n | STOCK_048 |  |  |
-| 202 | `direMessage` | cle_i18n | STOCK_049 |  |  |
-| 203 | `direMessage` | cle_i18n | STOCK_054 |  |  |
-| 210 | `direMessage` | cle_i18n | STOCK_055 |  |  |
-| 222 | `direMessage` | cle_i18n | STOCK_058 |  |  |
-| 228 | `direMessage` | cle_i18n | STOCK_057 |  |  |
-| 229 | `direMessage` | cle_i18n | STOCK_056 |  |  |
-| 233 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 256 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
-| 267 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
-| 273 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
-| 281 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 351 | `direMessage` | cle_i18n | STOCK_059 |  |  |
-| 395 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
-| 400 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
-| 520 | `direMessage` | cle_i18n | STOCK_072 |  |  |
+| 111 | `speak` | relais | t |  |  |
+| 188 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 206 | `direMessage` | cle_i18n | STOCK_047 |  |  |
+| 207 | `direMessage` | cle_i18n | STOCK_048 |  |  |
+| 208 | `direMessage` | cle_i18n | STOCK_049 |  |  |
+| 209 | `direMessage` | cle_i18n | STOCK_054 |  |  |
+| 216 | `direMessage` | cle_i18n | STOCK_055 |  |  |
+| 228 | `direMessage` | cle_i18n | STOCK_058 |  |  |
+| 234 | `direMessage` | cle_i18n | STOCK_057 |  |  |
+| 235 | `direMessage` | cle_i18n | STOCK_056 |  |  |
+| 239 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 262 | `direMessage` | dynamique | PHRASE_DU_REFUS[refus] |  |  |
+| 273 | `direMessage` | cle_i18n | TATA_PRODUIT_POSE |  |  |
+| 279 | `direMessage` | cle_i18n | TATA_VENTE_ECHEC |  |  |
+| 287 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 365 | `direMessage` | cle_i18n | STOCK_059 |  |  |
+| 409 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 414 | `direMessage` | cle_i18n | TATA_UNITE_CHOISIE |  |  |
+| 534 | `direMessage` | cle_i18n | STOCK_072 |  |  |
 
 ### `components/marchand/BesoinMarchand.tsx` — marchand_autre
 
@@ -328,7 +328,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 74 | `dire` | relais | t |  |  |
+| 80 | `dire` | relais | t |  |  |
+| 178 | `dire` | dynamique | question |  |  |
 
 ### `components/marchand/BoutonDirePrix.tsx` — autre
 
@@ -563,8 +564,8 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 918 | `direMessage` | cle_i18n | TATA_TOTAL |  |  |
 | 1060 | `speak` | dynamique | relectureAffichee |  |  |
 | 1096 | `direMessage` | cle_i18n | TATA_MONNAIE_A_RENDRE |  |  |
-| 1192 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
-| 1757 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
+| 1193 | `direMessage` | cle_i18n | TATA_AJOUTE_PRODUITS_D_ABORD |  |  |
+| 1758 | `direMessage` | cle_i18n | TATA_AMBIGUITE |  |  |
 
 ### `components/marchand/ProtectionSociale.tsx` — marchand_autre
 
@@ -583,13 +584,13 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 109 | `speak` | relais | t |  |  |
-| 133 | `dire` | dynamique | questionEtape |  |  |
-| 157 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
-| 158 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
-| 164 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
-| 357 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
-| 357 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
+| 113 | `speak` | relais | t |  |  |
+| 137 | `dire` | dynamique | questionEtape |  |  |
+| 161 | `direMessage` | cle_i18n | TATA_MONTANT_DEVISE |  |  |
+| 162 | `direMessage` | cle_i18n | TATA_PRIX_EFFACE |  |  |
+| 168 | `dire` | dynamique | quantiteAvecUnite(q, uniteProduit) |  |  |
+| 361 | `direMessage` | cle_i18n | TATA_PRIX_D_UN_SEUL |  |  |
+| 361 | `direMessage` | cle_i18n | TATA_PRIX_DU_TOUT |  |  |
 
 ### `components/marchand/TontineDetail.tsx` — marchand_autre
 
