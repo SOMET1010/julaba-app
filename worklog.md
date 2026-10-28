@@ -1676,3 +1676,20 @@ Stage Summary:
 - RÉPONSE À PATRICK : le parcours d'ajout écoute maintenant AUX QUATRE étapes et le micro n'ouvre plus pendant que Tantie parle — un nouvel APK est nécessaire (dispatch lancé) ; sur le téléphone, vérifier aussi que Tantie n'est pas en mode muet (bouton haut-parleur, clé julaba_voice_muted)
 - ⚠️ OBSERVATION POUR L'ÉQUIPE (préexistant, pas de ce fix) : 2 suites backend rouges sur dev — stocks-rest.idempotency (un PATCH avec même idempotency_key appliqué 3 fois au lieu de 2 — SENSIBLE À L'ARGENT, à traiter vite) et telephones-tests-uniques (13 doublons) ; le CI « Tests unitaires backend » sera rouge jusqu'à correction
 - SI L'APK RESTE MUET APRÈS ÇA : le journal (🐞 Rapport) nommera le moteur mort — TTS_MOTEUR 'navigateur' sur APK = synthèse native en panne (repli speechSynthesis muet dans la WebView Android)
+
+---
+Task ID: apk-dispatch-branche-28-10
+Agent: Z.ai Code (session Patrick)
+Task: re-dispatch de l'APK après le fix des étapes d'ajout — deux échecs, vraie cause trouvée
+
+Work Log:
+- Deux runs APK en échec (40775846222, 40777550927) : « No workspaces found: --workspace=frontend » à « Construire le front », install de 1488 paquets (au lieu de 1434)
+- FAUSSE PISTE fermée honnêtement : le lock backend imbriqué a d'abord été suspecté (fix fb994d1d : rm des locks avant npm ci) — le run 40777550927 l'a RÉFUTÉ (lock retiré, 1488 quand même) → revert d637d585 avec la vraie explication
+- VRAIE CAUSE : apk.yml checkout `inputs.branche` dont le DÉFAUT est `main` (REL-01, « la seule auditée »). Mes dispatchs passaient `ref:"dev"` (le déclencheur) mais PAS l'entrée `branche` → le workflow a construit MAIN : arbre sans workspaces racine (1488 paquets), d'où l'erreur. Le head_sha du run API (dev) est une MÉTADONNÉE du dispatch — le checkout, lui, a pris main. Le run qui marchait (14:24) passait `branche: dev` explicitement (worklog apk-pilote-28-10 : « dispatch sur branche dev » = L'ENTRÉE, pas le ref)
+- Run 40778387685 avec `branche: "dev"` + api_url Render + voix dioula/clips éteints → SUCCESS ; release pilote-latest mise à jour : julaba-d637d58.apk (263,0 Mio, 22:15:53Z) + alias julaba-latest.apk — embarque le fix des étapes d'ajout (4bbdb5df)
+- Avertissement : le CI ci.yml reste rouge sur dev (Tests unitaires backend — 2 suites préexistantes, cf. etapes-ajout-voix-28-10) ; l'APK n'exécute pas ces tests
+
+Stage Summary:
+- RÈGLE POUR TOUT DISPATCH APK FUTUR : TOUJOURS passer `"branche":"dev"` dans inputs (le défaut est main, volontaire — REL-01) ; ne jamais se fier au head_sha du run API pour savoir ce qui a été construit
+- L'APK d637d58 remis à Patrick : les quatre étapes d'ajout écoutent, le micro attend la fin réelle des questions ; si le téléphone reste muet, le 🐞 Rapport nommera le moteur mort (TTS_MOTEUR 'navigateur' sur APK = synthèse native en panne)
+- Mon correctif fb994d1d reposait sur une hypothèse réfutée — il a été revert le jour même ; le lock backend reste dans le dépôt (le build Docker en a besoin) et le CI l'a toléré 3 fois sur 3
