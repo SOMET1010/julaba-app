@@ -115,8 +115,19 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
+      # UN SEUL LOCK À LA RACINE — la règle du dépôt (cf. ci.yml). Le lockfile
+      # du backend vit pourtant dans le dépôt : le build Docker du conteneur
+      # runtime en a besoin (deploy.yml → Dockerfile : COPY package-lock.json
+      # + npm ci, contexte limité au dossier backend). À la racine, npm
+      # workspaces ne doit JAMAIS le voir : avec lui, l'install a déraillé
+      # (1488 paquets au lieu de 1434, puis « No workspaces found » au build
+      # front — run 40775846222). On l'écarte le temps de l'install racine ;
+      # le Docker du backend ne passe jamais par ce chemin, et rien en aval
+      # de ce workflow n'a besoin du lock backend.
       - name: Install (workspaces, racine)
-        run: npm ci
+        run: |
+          rm -f backend/package-lock.json frontend/package-lock.json
+          npm ci
 
       # VITE_API_URL est lue AU BUILD, pas à l'exécution. Omise, le bundle
       # appelle sa propre origine, le serveur renvoie l'index.html en repli et
