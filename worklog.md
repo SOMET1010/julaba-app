@@ -1607,3 +1607,18 @@ Stage Summary:
 - RÉPONSE À PATRICK : preview relancée et prouvée de bout en bout sur le conteneur redémarré — PG 5432 / backend 3001 (node dist, sans watch) / Vite 3000, tous détachés via .zlogs/detache.mjs pour survivre au reaper du bac à sable
 - À RETENIR POUR TOUTE RELANCE FUTURE : ne JAMAIS lancer un service directement (setsid nohup meurt entre les appels) — passer par bun .zlogs/detache.mjs <cwd> <log> <cmd...> ; backend en node dist/main.js après npx nest build si dist absent
 - Aucun commit : aucun fichier du dépôt changé (detache.mjs vit dans .zlogs, hors dépôt)
+
+---
+Task ID: recup-dernier-push-28-10
+Agent: Z.ai Code (session Patrick)
+Task: « recupere le dernier push » — tirer origin/dev et tenir la preview dessus
+
+Work Log:
+- Sync guard : le local avait été REFLAGGÉ à 2521e907 (2e fois — la session parallèle ou le sandbox remet la branche) ; origin/dev contenait tout, FF-POSSIBLE → pull --ff-only vers d012deeb, arbre propre
+- ZÉRO changement backend entre 2521e907 et d012deeb (49 fichiers = frontend voix + docs) → dist/ courant, pas de rebuild
+- MAIS le conteneur avait de nouveau redémarré (uptime 1 min) pendant l'opération : .zlogs perdu (detache.mjs recréé), node_modules du mini-service PG ET cache .vite du frontend disparus → réinstallés (npm install ×2) ; Vite relancé, page blanche initiale guérie (ENOENT deps_temp connu)
+- Stack re-tombée via detache.mjs : PG 5432 (base recréée + seed), backend node dist/main.js 3001 (401), Vite 3000 (200) — survie re-prouvée entre appels ; entrée rendue au navigateur, zéro erreur
+
+Stage Summary:
+- RÉPONSE À PATRICK : le dernier push (d012deeb) est tiré et LA PREVIEW TOURNE DESSUS — la procédure de relance du worklog (detache.mjs + npm install si node_modules amputés) a été rejouée telle quelle et tient
+- 2e redémarrage conteneur en une heure : la procédure de relance est désormais ÉPROUVÉE deux fois ; les node_modules amputés après redémarrage sont le point de vigilance n°1 (mini-service PG, cache .vite)
