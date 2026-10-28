@@ -1622,3 +1622,19 @@ Work Log:
 Stage Summary:
 - RÉPONSE À PATRICK : le dernier push (d012deeb) est tiré et LA PREVIEW TOURNE DESSUS — la procédure de relance du worklog (detache.mjs + npm install si node_modules amputés) a été rejouée telle quelle et tient
 - 2e redémarrage conteneur en une heure : la procédure de relance est désormais ÉPROUVÉE deux fois ; les node_modules amputés après redémarrage sont le point de vigilance n°1 (mini-service PG, cache .vite)
+
+---
+Task ID: apk-pilote-28-10
+Agent: Z.ai Code (session Patrick)
+Task: « regnere moi le APK » — régénérer l'APK pilote depuis le dernier dev
+
+Work Log:
+- Le bac à sable n'a pas de SDK Android : l'APK se construit par le workflow « APK pilote — construction à la demande » (.github/workflows/apk.yml, workflow_dispatch) — procédure du 20/10 reprise
+- Sync guard RETARD=0 (dev=c4ff6446) → dispatch via l'API GitHub (token du remote, jamais affiché) sur branche dev, entrées par défaut du pilote : api_url Render, voix dioula éteinte (CC BY-NC), clips prototypes éteints
+- Run 40705384528 : in_progress 3,5 min → completed/success ; job « Construire l'APK de debug » success (npm ci, build Vite, cap sync, vérif URL API dans le bundle, installer-voix.sh, gradlew assembleDebug, apksigner verify)
+- Release pilote-latest mise à jour : julaba-c4ff644.apk (263,0 Mio) + alias julaba-latest.apk, tous deux estampillés 2026-10-28T14:26:06Z — le SHA nommé est celui réellement construit (pas github.sha, garde du workflow)
+- Ce b embarque TOUT dev : vente 100% voix, refus du micro dits à la caisse, sonde de permission au réglage commun, w-full caisse
+
+Stage Summary:
+- RÉPONSE À PATRICK : APK pilote régénéré sur le dernier dev (c4ff6446) — téléchargeable dans GitHub Releases → pilote-latest (julaba-latest.apk) ; APK de debug signé clé debug, installable « sources inconnues », hors store (périmètre pilote du 15/09)
+- Rappel du workflow : la voix dioula reste ÉTEINTE par défaut (licence MMS non distribuable) — ne l'allumer que pour un build de mesure
