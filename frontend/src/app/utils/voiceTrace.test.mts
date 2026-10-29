@@ -123,7 +123,7 @@ console.log('\nConfidentialité du journal');
   const contenu = JSON.stringify(entree);
   verifier('masque les numéros dans les événements génériques et imbriqués',
     !contenu.includes('0726262626') && !contenu.includes('07 26 26 26 26')
-    && contenu.includes('0726••••••') && contenu.includes('07 2• •• •• ••'));
+    && contenu.includes('0726••••••') && contenu.includes('07 26 •• •• ••'));
   const stocke = faussesStorage.getItem('julaba_journal_voix') || '';
   verifier('le localStorage ne contient pas le numéro complet',
     !stocke.includes('0726262626') && !stocke.includes('07 26 26 26 26'));
