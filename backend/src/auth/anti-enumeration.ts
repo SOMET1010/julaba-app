@@ -1,5 +1,3 @@
-import { randomInt } from 'node:crypto';
-
 // AUTH-07 (audit UI auth 05/10/2026) — outils anti-énumération côté serveur.
 //
 // LE CONSTAT. L'audit UI auth a laissé deux dettes serveur, écrites en clair
@@ -99,6 +97,15 @@ export function estTelephoneTest(phone: string | null | undefined): boolean {
 // identiques côté « existe » et côté « inconnu », donc moyenner des sondes
 // n'apprend rien. Valeurs : un plancher bien au-dessus du pire findOne local
 // (mesures dev : < 20 ms), une gigue qui rend les durées non singées.
+// Tirage via node:crypto (randomInt), PAS Math.random — deux raisons :
+//   1. la règle SEC-07 (garde pin-jamais-rendu) interdit tout générateur non
+//      cryptographique dans les modules sensibles, sans exception à arbitrer ;
+//   2. le PRNG de V8 partage un état entre toutes les requêtes du processus —
+//      un attaquant qui sonde la route pourrait théoriquement corréler ses
+//      propres durées avec celles des autres. Un CSPRNG coupe court à toute
+//      cette classe de soucis, pour le même coût.
+import { randomInt } from 'node:crypto';
+
 const PLANCHER_MS = 300;
 const GIGUE_MS = 80;
 
@@ -107,9 +114,7 @@ const GIGUE_MS = 80;
  * travail, puis appelle ceci juste avant de retourner la réponse.
  */
 export async function repondreAEcheanceUniforme(debut: number): Promise<void> {
-  // `randomInt` plutôt que `Math.random` : la gigue n'est pas un secret, mais
-  // le banc SEC-07 (pin-jamais-rendu.spec.ts) refuse tout `Math.random` dans
-  // backend/src/auth — on s'y plie au lieu de lui ouvrir une exemption.
+  // randomInt(max) → entier uniforme dans [0, max), comme le tirage précédent.
   const echeance = debut + PLANCHER_MS + randomInt(GIGUE_MS);
   const reste = echeance - Date.now();
   if (reste > 0) await new Promise((resoudre) => setTimeout(resoudre, reste));

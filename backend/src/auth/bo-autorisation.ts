@@ -6,7 +6,7 @@
 // la généralisation à tout le back-office relève des lots suivants (BO-3).
 //
 // Résolution d'une permission : copie EXACTE de `hasPermission` du front
-// (frontend_src/src/app/contexts/BackOfficeContext.tsx) pour que l'écran et le
+// (frontend/src/app/contexts/BackOfficeContext.tsx) pour que l'écran et le
 // serveur disent la même chose :
 //   1. super_admin : toujours vrai ;
 //   2. sinon, si le compte porte un objet `boPermissions`, il fait seul foi ;
@@ -25,7 +25,14 @@ const DEFAUTS_PAR_ROLE: Record<string, readonly string[]> = {
   admin_general: ['acteurs.read', 'acteurs.write', 'acteurs.delete', 'acteurs.suspend', 'enrolement.read', 'enrolement.write', 'enrolement.validate', 'supervision.read', 'supervision.write', 'supervision.freeze', 'zones.read', 'zones.write', 'missions.read', 'missions.write', 'mutations.read', 'mutations.write', 'moderation.read', 'moderation.write', 'audit.read', 'utilisateurs.read', 'utilisateurs.write', 'utilisateurs.delete', 'parametres.read', 'parametres.write', 'academy.read', 'academy.write'],
   admin_national: ['acteurs.read', 'acteurs.write', 'acteurs.suspend', 'enrolement.read', 'enrolement.write', 'enrolement.validate', 'supervision.read', 'supervision.write', 'supervision.freeze', 'zones.read', 'zones.write', 'missions.read', 'missions.write', 'mutations.read', 'mutations.write', 'moderation.read', 'moderation.write', 'audit.read', 'utilisateurs.read', 'parametres.read', 'academy.read'],
   gestionnaire_zone: ['acteurs.read', 'acteurs.write', 'enrolement.read', 'enrolement.validate', 'supervision.read', 'zones.read', 'missions.read', 'mutations.read', 'mutations.write', 'moderation.read', 'moderation.write', 'audit.read', 'academy.read'],
-  operateur_terrain: ['acteurs.read', 'acteurs.write', 'acteurs.suspend', 'enrolement.read', 'enrolement.validate', 'supervision.read', 'supervision.write', 'supervision.freeze', 'zones.read', 'missions.read', 'mutations.read', 'mutations.write', 'moderation.read', 'moderation.write', 'audit.read', 'academy.read'],
+  // C-12 (19/10/2026) : `enrolement.validate` RETIRÉ à operateur_terrain — les
+  // opérateurs/identificateurs terrain ne valident PAS les dossiers d'enrôlement
+  // (machine à états du statut : identifications/statuts-identification.ts +
+  // identifications.controller). Divergence VOLONTAIRE avec la copie front
+  // BO_SCREEN_PERMISSIONS (frontend/src/app/contexts/BackOfficeContext.tsx,
+  // ligne operateur_terrain) qui doit être alignée de son côté — sinon l'UI
+  // proposerait des boutons de validation qui recevront 403.
+  operateur_terrain: ['acteurs.read', 'acteurs.write', 'acteurs.suspend', 'enrolement.read', 'supervision.read', 'supervision.write', 'supervision.freeze', 'zones.read', 'missions.read', 'mutations.read', 'mutations.write', 'moderation.read', 'moderation.write', 'audit.read', 'academy.read'],
 };
 
 interface CompteAutorise {

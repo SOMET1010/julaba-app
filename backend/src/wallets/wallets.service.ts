@@ -52,13 +52,30 @@ export class WalletsService {
    * Récupérer le wallet d'un utilisateur
    */
   async getByUserId(userId: string): Promise<Wallet> {
-    const wallet = await this.walletRepository.findOne({
+    let wallet = await this.walletRepository.findOne({
       where: { userId },
       relations: ['user'],
     });
 
     if (!wallet) {
-      throw new NotFoundException('Wallet introuvable');
+      // Création paresseuse : tout compte existant doit avoir un wallet, même
+      // s'il a été créé hors signup (seed démo, comptes admin/back-office —
+      // ces chemins insèrent users directement sans createForUser). Sans cela,
+      // GET /wallets/me renvoie 404 « Wallet introuvable » en boucle pour
+      // chaque compte seedé. ON CONFLICT (user_id unique) : sûre sous
+      // concurrence. Solde 0 : aucun mouvement d'argent n'est inventé ici.
+      await this.walletRepository.query(
+        `INSERT INTO wallets (user_id, solde, solde_bloque, currency)
+         VALUES ($1, 0, 0, 'XOF') ON CONFLICT (user_id) DO NOTHING`,
+        [userId],
+      );
+      wallet = await this.walletRepository.findOne({
+        where: { userId },
+        relations: ['user'],
+      });
+      if (!wallet) {
+        throw new NotFoundException('Wallet introuvable');
+      }
     }
 
     // Sécurité : la relation `user` chargée ci-dessus embarque l'entité User
@@ -506,6 +523,72 @@ export class WalletsService {
       this.logger.log(`${montant} XOF remboursés sur wallet ${userId}`);
 
       return wallet;
+    });
+  }
+
+  /**
+   * Rembourser un retrait mobile money refusé par l'opérateur (C-01).
+   *
+   * Un retrait Keiwa → mobile money débite le wallet AVANT l'appel opérateur.
+   * Si l'opérateur refuse le cashin (explicitement ou révélé plus tard par
+   * check-status / webhook / cron), l'argent débité doit revenir au wallet —
+   * EXACTEMENT UNE FOIS, quelle que soit la voie qui découvre l'échec
+   * (rollback synchrone du contrôleur, webhook B-Pay, cron de réconciliation).
+   *
+   * Idempotence : la transition `PENDING_WITHDRAW → REFUNDED` est une écriture
+   * conditionnelle (`WHERE status='PENDING_WITHDRAW' RETURNING id`) dans la
+   * MÊME transaction SQL que le crédit du wallet. Deux appelants concurrents
+   * ne peuvent pas tous deux gagner la course : le perdant n'écrit rien.
+   *
+   * Compte suspendu : `creditWallet` lève (assertCompteActif) → la transaction
+   * entière est annulée, y compris la bascule de statut — le retrait reste
+   * PENDING_WITHDRAW et la réconciliation retentera après déblocage.
+   * L'argent d'un retrait refusé n'est JAMAIS perdu (même logique que la
+   * recharge réconciliée, en miroir).
+   *
+   * @param tx ligne brute `bpay_transactions` (SELECT * : snake_case)
+   * @param bpayStatut statut brut opérateur qui motive le remboursement
+   * @param source 'controller' | 'cron' | 'webhook' (traçabilité)
+   * @returns true si CET appel a effectué le remboursement (le gagnant de la
+   *          course), false si le retrait n'était plus à rembourser
+   */
+  async rembourserRetraitBpay(
+    tx: { id: string; user_id: string; amount: number; provider: string; merchant_tx_id: string },
+    bpayStatut: string,
+    source: string,
+  ): Promise<boolean> {
+    const montant = Number(tx.amount);
+    if (!montant || montant <= 0) {
+      this.logger.warn(
+        `[RETRAIT] remboursement refusé : montant invalide (${tx.amount}) bpay_tx=${tx.id}`,
+      );
+      return false;
+    }
+    if (montant > 10_000_000) {
+      throw new BadRequestException('Montant dépasse le plafond autorisé (10 000 000 XOF)');
+    }
+    return this.dataSource.transaction(async (em) => {
+      const updated = await em.query(
+        `UPDATE bpay_transactions
+            SET status = 'REFUNDED', bpay_status = $1, source = $2, updated_at = NOW()
+          WHERE id = $3 AND status = 'PENDING_WITHDRAW'
+          RETURNING id`,
+        [bpayStatut || null, source, tx.id],
+      );
+      if (!updated || updated.length === 0) {
+        return false;
+      }
+      await this.creditWallet(
+        tx.user_id,
+        montant,
+        `Remboursement retrait refusé vers ${tx.provider}`,
+        { refundOf: tx.merchant_tx_id, bpayStatus: bpayStatut || null, source },
+        em,
+      );
+      this.logger.log(
+        `[RETRAIT] remboursé ${montant} XOF → userId=${tx.user_id} (bpay_tx=${tx.id}, source=${source}, statut opérateur=${bpayStatut || 'n/a'})`,
+      );
+      return true;
     });
   }
 }

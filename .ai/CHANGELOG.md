@@ -3,7 +3,363 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Ajouté — A11Y-001 pas 2 : SharedModal passe sous Radix, le focus trap vient du socle (2026-10-29)
+
+« Passe aux prochains rangs » (Patrick). Le rang dédié inscrit au rang 6 :
+l'adoption Radix de `SharedModal` — la promesse du pas 1 était « le focus
+TRAP viendra avec l'unification Radix, pas réinventé à la main ».
+
+1. **Le socle est Radix Dialog** (`2cfe20f9`) — le fait-maison part : ESC,
+   trap, focus initial sur la carte, retour au déclencheur et portail sont
+   portés par Radix. L'API publique est inchangée (aucun consommateur ne
+   change), le contrat ModalContext est conservé (BottomBar, scroll lock —
+   Radix ne le connaît pas), le rendu est inchangé (pattern forceMount +
+   AnimatePresence déjà en production dans UniversalModalBO). Contrats
+   affinés et écrits dans l'en-tête : `disableBackdropClick` interdit
+   backdrop ET Escape (le bouton Fermer reste explicite) ; un clic sur les
+   marges ferme désormais (standard Radix) ; un dialogue sans `title` doit
+   passer la prop additive `ariaLabel` — le warning Radix est un garde
+   voulu.
+2. **Le harnais axe reflète le socle réel** (`2cfe20f9`) — jsdom possède
+   MutationObserver : il manquait à l'exposer en global ; Event/CustomEvent
+   du realm jsdom exposés aussi (sans ça, un `new Event(...)` reçoit
+   l'Event de Node et jsdom refuse le dispatch) ; ResizeObserver stubbé
+   minimal. Le socle réel (react-remove-scroll, DismissableLayer) tourne
+   dans le banc.
+3. **ScoreOnboardingModal reçoit son nom** (`b8ab2448`) — le trou que le
+   pas 1 laissait passer : ce dialogue ne passe pas de `title` (chaque
+   étape porte son h2), il rendait donc un dialogue SANS nom accessible,
+   invisible d'axe car le cas inscrit en passait un. Il s'appelle
+   « Ton Score Jùlaba », stable à travers les étapes. Zéro changement
+   visuel.
+
+Preuves : tsc -b 0 ; harnais axe vert sur les 6 cas (le cas « SharedModal
+ouvert » rend 1995 caractères sous Radix, 0 violation) ; check --rapide
+identique sur l'arbre propre et sur l'arbre du lot (les 3 refus
+garde-argent préexistent, informatifs — aucun écart introduit). Restes
+d'A11Y-001 : les portails disséminés (WalletPage ; NotificationToast/
+NotificationsPanel à arbitrer comme catégorie distincte).
+
+### Corrigé — Le rang du banc unitaire est clos : les invariants redeviennent lisibles (2026-10-29)
+
+« Passe aux prochains rangs » (Patrick). Le plan de correction avait consigné
+un rang dédié : deux suites unitaires échouaient sur l'arbre propre
+d'origin/dev. En les réparant, la troisième préoccupation est apparue : un
+invariant flaky en groupe. Trois commits, trois préoccupations, un banc
+complètement vert.
+
+1. **Le garde unitaire suit le réassort tracé** (`21221d3a`) —
+   `stocks-rest.idempotency` comptait 2 requêtes dans la transaction d'un
+   PATCH marchand ; le contrôleur en fait 3 depuis STK-04 (`964697ce`) :
+   l'ancien stock est lu SOUS VERROU avant l'UPDATE pour tracer le réassort
+   en achat dans le ledger. Le contrôleur est la vérité (invariant STK-04
+   4/4), le test — né le 11/09, avant STK-04 — a suivi. Stock mocké 12→12 :
+   delta 0, aucune ligne d'achat inventée, le garde reste focalisé sur
+   l'idempotence (premier passage 3 requêtes, rejeu exactement 1).
+2. **Les suites cessent de se marcher sur les téléphones** (`fd5f33b5`) —
+   le garde `telephones-tests-uniques` détectait **11 collisions** entre
+   suites d'invariants : une base partagée pour toute l'exécution, le 2e
+   inscrit répond 409, la suite passe SEULE et échoue EN GROUPE. Cinq paires
+   levées (un fichier par paire, blocs contigus conservés) ; l'allotissement
+   des plages est écrit dans le garde (08xx m6-m8, 09xx bloc IDENT/sécurité,
+   078888xx ARGENT/PROD, prochains libres 0931-0999) — le renvoi « cf. le
+   garde-fou » de prod-05 pointait vers une table qui n'existait pas ; elle
+   existe maintenant.
+3. **ident-02 prouve la neutralité sur SON sujet** (`668f7ef1`) — découverte
+   du rang : il passait seul et échouait EN GROUPE sans collision de numéro.
+   Son assertion comptait les wallets de TOUS les identificateurs de la base
+   partagée alors que `auth.service.signup` crée un wallet pour TOUT rôle ;
+   m6-m8 (qui signe un identificateur par l'API) le contaminait selon l'ordre
+   de jest. Deux tirages, deux ordres, un échec puis des passes :
+   reproductible, non déterministe. Assertion bornée à l'ident seedé par le
+   test. **Ligne ARG-16 ouverte au registre maître** (révision 39) : les
+   lignes wallet fantômes des rôles exclus (signup + backfill DbInit)
+   restent en place — aucun parcours ne change, les 403 précèdent toute
+   lecture ; l'alignement sur la whitelist est une question de doctrine à
+   arbitrer.
+
+Preuves : unitaires 310/310 (avant 308/310) ; 6 suites invariants — dont
+m6-m8, le contaminateur — lancées deux fois dans des ordres différents →
+6/6 à chaque tirage (42/42). Registre dette recompté par script : 119 lignes
+— 49 F / 7 H / 63 O. Restes du banc : aucun — le rang dédié est clos.
+
+### Ajouté — Le rang 6 de l'audit voice-first est clos côté code : l'accessibilité a ses gardes (2026-10-29)
+
+« Passes aux Prochains rangs » (Patrick). Rang 6 du plan de correction
+(LOT-A11Y-OUTILS, P2-2 de l'audit) : entre la session parallèle (skip-link
+`138a2630`) et ce lot, six commits, un registre rattrapé sur la vérité du
+code, et surtout : **une régression d'accessibilité bloque désormais
+`verify`**.
+
+1. **Le registre A11Y dit la vérité** (`b0426ca2`) — A11Y-004 fermé un jour
+   après son correctif ; inventaires remesurés : 5 systèmes de modales réels
+   (pas 7, et UniversalModalBO est DÉJÀ sur Radix), 1750 `console.*` dans 93
+   fichiers, 4240 hexadécimaux dans 542 (hors commentaires/bancs).
+2. **Le harnais axe-core** (`eeb22683`, A11Y-002) — axe injecté dans un jsdom,
+   composants RÉELS montés sous la pile complète des providers de App.tsx
+   (ordre exact de production, zéro mock réseau — le hors-ligne est catché
+   par l'app elle-même). Maillon `test:a11y-axe`. Au fil du lot : 6 cas
+   (BottomBar ×2 états, Sidebar marchand + producteur, SupportContact,
+   SharedModal ouvert), 0 violation, 13-21 règles passent par cas. tsx ne
+   sait pas lire les .png/.webp : un `module.registerHooks` n'interpose le
+   stub QUE dans le banc — build Vite et tsconfig intacts.
+3. **La console du build livré se tait** (`594e2df0`, A11Y-007) — esbuild
+   `pure` sous `command === "build"` : preuve par build RÉEL, 0
+   console.log/info/debug dans dist (contre ~1411 dans les sources), 347
+   warn/error conservés (diagnostic légitime). Garde `test:console-prod`.
+4. **La dette hexadécimale est figée** (`767ea138`, A11Y-006) —
+   `test:charte-globale` : base 4240, toute hausse refusée, chaque baisse
+   DOIT descendre la constante avec sa preuve. La remise au token reste un
+   chantier de rangs, à la baisse uniquement.
+5. **Les retours muets parlent** (`8b9536b4`, A11Y-005) — vérification route
+   par route des 11 routes sans BottomBar : 6 écrans déjà corrects
+   (SubPageLayout ×5, MarchandDepenses), 3 boutons retour MUETS réparés
+   (SupportContact, UniversalAcademy ×2). Tableau de vérité `.ai/A11Y_CLAVIER.md`.
+6. **SharedModal devient un dialogue qui se raconte** (`2bc2ed66`, A11Y-001
+   pas réversible n°1) — role=dialog, aria-modal, titre/description associés,
+   Fermer nommé, ESC (contrat disableBackdropClick respecté), focus initial +
+   retour au déclencheur. Gardé par axe OUVERT. Le focus TRAP vient avec
+   l'adoption Radix — pas réinventé à la main.
+
+Restes écrits et tracés : A11Y-001 (unification Radix, rang dédié),
+A11Y-003 (i18n UI, lot dédié), la remise au token (A11Y-006, à la baisse),
+la recette terrain (rang 7). Au passage : `test:offline-producteur`
+(BUG-008, `382c31be`) était orphelin d'aucune chaîne — entré dans `verify`
+(`bc6e3770`, la garde orphelins l'a attrapé).
+
+### Corrigé — Ajouter un produit s'entend de bout en bout : chaque question écoute sa réponse (2026-10-26)
+
+Recette Patrick : « Assure-toi qu'elle puisse ajouter des produits entièrement
+à l'aide de commandes vocales, avec des instructions audio claires et une
+navigation simple, sans dépendre du texte. » Mesuré au navigateur avant le lot :
+sur les quatre questions du parcours guidé, DEUX n'écoutaient pas (unité,
+quantité — réponses en boutons écrits seulement), le micro du prix était mort
+sur le web (Sherpa seul), sa panne s'affichait en silence, le silence du micro
+ne relançait rien, et la quantité déjà dictée (« Ajoute dix kassos ») était
+jetée. Corrigé en cinq lots (VOIX-06) :
+
+1. **Le prix se dit sur le web** — dictée web branchée dans `BoutonDirePrix`
+   (même motif que le nom et le produit), pannes DITES (STOCK_063/064),
+   relance à la voix quand rien n'est lu (STOCK_065). STK-22 complet.
+2. **L'unité écoute** — `uniteDite` (pur, testé) + `BoutonDireUnite` : sa voix
+   écrit l'étiquette qu'elle aurait touchée (« au sac », « en sacs », « au
+   kilo » → « kg »), son mot du marché reste son mot (« au bol »), le reste
+   est relancé (STOCK_066/067/068). STK-25 appliqué aux unités.
+3. **La quantité écoute** — `quantiteDite` + `BoutonDireQuantite` : la
+   grammaire de l'application lit SON nombre, son zéro est une réponse
+   (STK-04), « passe »/« je ne sais pas » déclenchent EXACTEMENT le geste du
+   bouton (stock INCONNU) ; relance (STOCK_069/070/071) et accusé relu
+   (STOCK_072). Les composés hyphénés 22-69 (« vingt-cinq ») entrent dans la
+   grammaire des nombres — surensemble pur.
+4. **Ce qu'elle a dit d'avance n'est plus jeté** — la quantité de la dictée du
+   nom voyage dans le `brouillon` et préremplit sa question (qui reste posée :
+   elle confirme d'un geste — rien n'avance seul, décision du 24/09).
+5. **Le stock qu'elle n'a pas donné n'est pas zéro** — mesuré en base :
+   « je ne sais pas » s'enregistrait 0 avec seuil 10 et déclenchait une alerte
+   rupture sur un stock jamais donné. Le null explicite traverse maintenant
+   `addProduct` ET le chargement (`Number(null)` ne mensonge plus), le type
+   `CaisseProduct.stock` est `number | null`, et le compteur d'alertes comme
+   la voix de Tantie excluent les non-suivis.
+
+Preuve navigateur (390×844, harnais micro+reco) : « Ajoute trois gommes » →
+« euh ben attends » → relance parlée → « au sac » → « cinq cents » → ✓ →
+« dix » → ✓ → « Gommes, cinq cents francs le sac. C'est sur ton étal. » —
+produit EN BASE (500 F, stock 10, sac), 0 erreur console. Deux scénarios
+complémentaires : quantité dictée d'avance préremplie (« Ajoute sept pagnes »
+→ « 7 sac »), et « je ne sais pas » → stock null en base, carte « ◌ Stock non
+suivi — QUANTITÉ À RENSEIGNER », compteur d'alertes honnête.
+
+Gardes : test:unite-dite (36), test:quantite-dite (33) nouvelles ;
+test:montant-dit, test:produit-dit, test:premier-produit,
+test:parcours-guide-parle étendues. Inventaire 444=444.
+
+### Corrigé — La question de la reconnaissance attend son tour et ne ment plus (2026-10-26)
+
+Recette vrai téléphone (Patrick) : « la question ne joue pas, on doit cliquer
+d'abord sur le HP ». Deux écueils prouvés au journal, fermés ensemble :
+
+1. LA COURSE — la question partait 1,5 s après le montage, PILE sur la phrase
+   de caisse (deux priorités 'user' : une preuve coupait l'autre ; sur réseau
+   réel la caisse arrive TARD et coupait la question). L'accueil RÉSERVE
+   maintenant un créneau à chaque prise de parole (`reserverVoixAccueil`), la
+   question attend derrière et se REDIT si la caisse la coupe en route — la
+   règle « les rappels attendent leur tour » (e5ebc902) appliquée côté
+   accueil, avec son miroir.
+2. LE SILENCE MENTEUR — un `play()` hors geste refusé par le téléphone
+   (autoplay) mourait dans l'audioManager qui rapportait « joué » (dette
+   ACC-05, figée par VOICE-01). Le lecteur VOIX-05 se lit maintenant :
+   `derniereIssuePlayClip` relit la preuve écrite par le lecteur lui-même —
+   refus → la chaîne s'arrête honnêtement et la modale NOMME le geste :
+   « Touche le haut-parleur pour écouter la question ». Le haut-parleur part
+   d'un vrai doigt : il joue toujours.
+
+Preuves navigateur (recharge SANS geste = conditions APK) : question refusée
+→ nudge affiché ; clic HP → question `ended 4,6 s` → nudge disparu. Avec
+geste : la question part à la fin exacte du créneau caisse et se joue
+entière (ended 4 661 ms), la consigne suit (ended 3 285 ms), zéro
+TTS_COUPEE. Toute sortie de la modale (« Oui », « Non », Fermer, ESC, fond)
+abandonne la chaîne vocale en attente — on ne pose plus une question après
+qu'on y a répondu. Garde nouvelle : `test:tour-voix` (13 assertions).
+
+### Retiré — La pastille « Aide vocale » quitte l'écran de connexion (2026-10-26)
+
+Demande écrite de Patrick (« retire moi "Aide vocale" de la page de connexion »).
+La pastille haut-gauche (maquette du 12/10) ne portait AUCUNE voix nouvelle :
+elle appelait la MÊME `ecouterTata` que le bouton rond de relecture. La
+relecture du guide reste donc entière sur le bouton rond — rien ne se tait,
+seul le doublon disparaît. La maquette annonçait déjà la pastille
+« révocable par écrit » : la révocation est tracée en commentaire daté dans
+`LoginPassword.tsx`. La chaîne vocale du 26/10 (entrer/continuer/répète,
+dictée après le bip, oui/non de la reconnaissance) est intacte.
+
+### Ajouté — La connexion écoute : commandes vocales de confirmation (2026-10-26)
+
+Audit Patrick (« qui ne sait pas lire/écrire puisse se connecter à la voix »,
+rapport complet `.ai/AUDITS/LOT-50-CONNEXION-VOIX-2026-10-26.md`) : la chaîne
+se disait pas à pas mais la confirmation du numéro exigeait un toucher et
+aucune commande vocale n'existait. Fermé dans `8ebe8647` : après le rappel
+(login-78, qui nomme les deux gestes), l'écran ÉCOUTE — « oui » (acquiescement
+par locale + phrases du numéro, le doute ne profite jamais au oui) vaut le
+bouton « C'est mon numéro », « recommencer » redicte, « utiliser les chiffres »
+ouvre le pavé. Rouage double web/sherpa, garde anti-écho 600 ms, fenêtre 10 s,
+micro rendu avant chaque action ; le rappel se ré-arme après chaque dictée
+réussie. Clips 78-81 (Denise, −16 LUFS), registre 253, garde
+`test:commandes-entree` (35 assertions). Preuve navigateur sans les mains :
+« oui » → étape code → 1234 → /marchand, zéro toucher. Le code secret reste
+au pavé : décision B5 (11/08) — un secret ne se dit pas ; la phrase juste est
+« tout se dit, sauf le secret ».
+
+### Modifié — Le marchand crée son produit au nom libre depuis la caisse (2026-10-19)
+
+Demande Patrick : « le marchand doit pouvoir ajouter ses produits sans aucun
+catalogue prédéfini ». Audit `.ai/AUDITS/AUDIT-CATALOGUE-PRODUITS-2026-10-19.md`
+: la dictée savait déjà créer un produit réel au nom libre ; le TACTILE de la
+caisse n'offrait qu'une ligne synthétique `libre-*` (jamais persistée) et
+imposait la référence du catalogue maître homonyme. Corrigé dans `POSCaisse` :
+création réelle via `addProduct` (le back n'a jamais consulté de catalogue),
+bouton à trois états, la référence maître devient une suggestion avec sortie
+« Non — je crée mon produit », et la recherche de références propose toujours
+« Créer « X » comme nouveau produit ». `addProduct` renvoie désormais le
+produit créé (CaisseContext) pour poser la vraie ligne au panier.
+
+### Ajouté — Micro de dictée au bout de la ligne numéro (2026-10-12, 7ᵉ session)
+
+Demande du 12/10 sur la maquette validée : un bouton micro en FIN de la
+carte du numéro (🇨🇮 +225 •• •• … [œil] [micro]) pour dicter sans
+chercher la carte ni le pavé. Même contrat voix que les surfaces
+existantes : handler `dicterNumero` réutilisé (zéro appel de parole
+nouveau), visibilité seulement moteur vocal prêt (aucun micro trompeur),
+pastille verte qui pulse quand le micro écoute. La marge des paires
+passe en classe `.login-paire` pour laisser la ligne respirer
+(paliers ≤430/≤360 px, vérifié 390 et 320 px sans débordement). Étapes
+code/reconnaissance, carte dictée et pavé inchangés. Gardes : voix-trace
+15/15 identiques, charte EXIT 0, tsc EXIT 0, 0 erreur console.
+
+### Modifié — Écran de connexion : « Ton numéro de téléphone » au design validé (2026-10-12, 6ᵉ session)
+
+Sur demande utilisateur (maquette 12/10, « ajoute toutes les fonctionnalités présentes sur ce design ») — refonte VISUELLE de l'étape numéro (75c869d), fonctionnalités 100 % conservées :
+
+- Signature de marque (« L'allié des commerçants »), titre complet + promesse « carnet de caisse »
+- Carte Tata nommée : Tantie Nanti Lou · badge Guilde · « Aide-toi ici en boutique. Dioula & FR » · bouton Écouter (mêmes handlers)
+- Numéro 🇨🇮 +225 en CINQ paires toujours rendues (positions vides pointées) + 10 points de progression + relecture haptique AUTH-04
+- Pavé téléphone à LETTRES (2 ABC… 0 +) et micro de dictée en bas-gauche QUAND le moteur vocal est prêt — empreinte sinon (aucun micro trompeur) ; carte « Dicter mon numéro » avec badge d'état « MICRO OUVERT / EN VEILLE »
+- Étapes code et reconnaissance intactes ; zéro appel de parole modifié (voix-trace 15/15), zéro hex nouveau (charte 24/26), tsc + 10 bancs de garde verts, vérifié au navigateur
+
+### Vérifié — Variables d'environnement et composants : rien de mort restant (2026-10-12, 5ᵉ session)
+
+Sur demande utilisateur (« verifie si il ne sont pas mort ainsi que ses composants ») — passe de vérification REVIEW-008 :
+
+- **7 noms libérés en 122aedb : mort confirmée** (0 canal de lecture, 0 déclaration résiduelle) ; les homonymes de code (constantes TS feedbak-sms/voice, Symbol ODOO_CLIENT) sont des composants vivants.
+- **Toutes les déclarations restantes sont vivantes** : 61 clés backend/.env.example (process.env, config.get<type>, helper env.X), 24 clés render.yaml, 17 clés du POC odoo (compose/scripts), VITE_API_URL / VITE_WS_URL (WebSocketTransport) / VITE_JULABA_MODULES_HORS_PILOTE (modulesPilote) / VITE_CLOUDINARY_* (CommandesProducteurPage).
+- **Composants hôtes tous vivants** : modules backend câblés dans app.module.ts, sentry.ts/instrument.ts chargés, WebSocketTransport consommé, 12 workflows → scripts tous existants (y compris android/scripts/installer-voix.sh via working-directory), 8 secrets référencés, render.yaml/deploy.yml/infra-odoo-poc/Caddyfile en place.
+- **Clôture point ouvert REVIEW-007** : VITE_CLOUDINARY_URL/PRESET désormais typées dans vite-env.d.ts (c912d8a) — tsc -b EXIT 0.
+- Gels ci/*.json intacts, chaîne test:ci non touchée, vite-env.d.ts hors empreintes garde-argent.
+
+### Nettoyé — Libération des variables d'environnement mortes (2026-10-12, 4ᵉ session)
+
+Sur demande utilisateur (« regarde dans le projet complet, les variables d'environnements qui ne sont plus utilisées, libère tout ») — audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis libération :
+
+- **backend/.env.example** −5 clés jamais lues : BPAY_RECONCILIATION (le cron passe par le registre CRON_JOB_BPAY_RECONCILIATION), FEEDBAK_SMS_TEMPLATES / VOICE_PROVIDERS / VOICE_METRIC_LABELS (constantes de code homonymes, env jamais lue), ODOO_CLIENT (symbole d'injection NestJS ; la bascule = ODOO_CLIENT_MODE)
+- **render.yaml + infra/odoo-poc/backend-poc/docker-compose.yml** : TTS_DISABLE_CLOUD retirée (jamais lue ; le flag réel = VOICE_LOCAL_TTS)
+- **frontend/src/vite-env.d.ts** : type VITE_SENTRY_DSN retiré (jamais lu, jamais posé ; DSN en dur dans sentry.ts)
+- 10 lignes supprimées, 4 fichiers, zéro code touché ; inventaire utilisé-mais-non-déclaré documenté dans REVIEW-007 (VITE_CLOUDINARY_*, AUTH_TELEPHONES_TEST, outillage BANC_*/RECETTE_* — délibéré)
+- Vérifications : typecheck EXIT 0, test:ci EXIT 0 (chaîne gelée intacte), enum-check-phone EXIT 0, garde-argent = baseline héritée exacte (3 refus connus, aucun fichier touché impliqué)
+
+### Fusionné — retours terrain PIE 07/10 + cadre CI racine (main → dev, 2026-10-07, 3ᵉ session)
+
+Sur demande utilisateur (« regarde les derniers push de main, fais un audit et fais un merge des dernières améliorations ») — audit REVIEW-006 puis fusion sur dev en worktree isolé (main jamais poussé) :
+
+- **Retours terrain PIE 07/10** : A1 stock sans doublon (ComplementEtal — un produit déjà sur l'étal se complète ; ClavierQuantite ; premierProduit), A2 file hors ligne rejouable sans relancer l'appli (offlineCaisse + banc rejeuDeclencheurs, manifest Android), A3 « encaisser » coupé par l'ASR fait parler la caisse (encaisserFormesDites)
+- **Profil & activation** : photo par caméra/galerie (ChoixPhotoCarte + banc), commune et marché issus du back-office (lieuxMarchands, marches-api), bouton « J'ai un code de mon agent » vers /activation (UX-02)
+- **Correctifs RC backend** : Modération (jointures CAST varchar↔uuid), BO-Zones (varchar = uuid), Institutions (statut↔actif traduit aux bords), BO-Missions (types/statuts inconnus), Enrôlement (statut canonique), coopérative (adhésion retrouvée), producteur (commandes/plantation avec id), SEC-07 (gigue randomInt), « mes ventes » dit ouvre Ventes passées
+- **Cadre CI racine de main** : `ci/check.mjs` (tout exécuter puis conclure, outil absent ≠ succès), scripts racine check/lint/mort/duplication, devDeps eslint/knip/jscpd, `.githooks/pre-push`, agents `.claude/agents/*`, STATUS.md, CLAUDE.md — chemins traduits vers `frontend/` (arbre renommé dev)
+- **Chaîne verify étendue** (+6 maillons verts : modules-pilote, lieux-marchands, photo-carte, lien-activation, rejeu-declencheurs, encaisser-formes-dites) + assertion verrou restaurée ; `test:i18n-source` mis au vert (4 phrases dites héritées de dev enregistrées au catalogue `a_migrer`, INVENTAIRE régénéré 425 sites)
+- **Intégrité** : gels `ci/PERIMETRE-ARGENT.json`/`ci/EMPREINTE-GARDES.json` intacts, chaîne `test:ci` gelée intouchée, swagger 11.4.7 inchangé, zéro résidu `frontend_src/`, batteries complètes vertes ou aux baselines exactes (détail REVIEW-006)
+
+### Ajouté — Audit UX marchand/producteur/vente vocale + lots UX-7 « La voix dit vrai » et UX-8 « Argent marchand sous la garde » (2026-10-07, 2ᵉ session)
+Sur demande utilisateur (« améliorer l'UX marchand et producteur, meilleur UX pour la vente vocale ») — audit re-état puis exécution :
+- **Audit** : `docs/audit/AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` — 3 explorations parallèles (marchand, producteur, vente vocale), re-état des constats du 06/10 (la majorité corrigée, preuves `dev@5e773ae`), carte du pipeline voix, frictions F-V1..F-V7, plan UX-7..UX-10, 5 décisions à trancher (Patrick). Faux positif documenté : « erreur de syntaxe TantieSagesseModal:73 » = artefact de transport `[m` avalé à l'affichage (vérifié grep-pattern + tsc vert).
+- **UX-7 (voix)** : T7 caisse — l'échec générique d'encaissement S'ÉCRIT (`e780436`) ; T7 marchand — MesCommandes/DepenseForm/hors-ligne s'écrivent (`4ab3452`) ; Tontines — trois situations trois phrases + Réessayer (`14662b9`) ; T7 producteur — plus aucun message serveur brut ni UUID dictés, `messageUtilisateur` + toasts appariés (`eba2380`) ; ARG-17 — montants dictés en toutes lettres (`nombreEnMotsFr`, `1f44736`) ; encaissement producteur — même phrase dit/écrite + triple canal vibrerSucces/vibrerErreur (`5a56cb3`) ; le muet §8.1 devient lisible — réglage « Voix coupée » dans les Paramètres (`48b868f`)
+- **UX-8 (argent marchand)** : MarchéVirtuel — verrou synchrone anti double-tap (commandes dupliquées impossibles, BUG-011) + PIN honnête (« Confirmer la commande ») + fermeture refusée pendant l'envoi (`968c454`) ; TransfertPage — recherche destinataire trois situations (404 ≠ panne ≠ hors ligne + Réessayer, M-P1-1) + échec d'envoi dit et écrit (`56c0293`) ; PIN conditionnel dans la relecture — **M-P0-3 COMPLET** (`34f8c0a`)
+- Vérifications : `tsc -b` front 0, `tsc --noEmit` back 0, `test:charte-marchande` EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = EXACTEMENT les 4 rouges héritées connues (0 nouveau — AppContext reste verte), garde-argent = EXACTEMENT les 3 refus attendus (re-gel humain Patrick en attente)
 ## [Non publié]
+
+### Corrigé — Les deux rouges hors `CONNUS` sont fermés (2026-10-21)
+
+- **Phrase du coût absente du catalogue** — `frontend/src/app/components/marchand/GestionStock.tsx:511` dit « Le montant du coût n'est pas valide » en dur ; la phrase n'était pas au catalogue vocal, et `docs/langues/INVENTAIRE-VOIX.md` comptait 432 sites d'appel pour 433 en source (la phrase et le décalage viennent de `964697ce`, 20/10, STK-04). Correction : la phrase entre au catalogue (`STOCK_COUT_INVALIDE`, `statut: a_migrer`, `critiqueArgent: true` — un coût de réapprovisionnement est de l'argent), l'inventaire est régénéré (433 sites, 244 phrases distinctes), et le CSV remis à Manus est ré-exporté (il était en retard de 74 lignes de catalogue). Preuves : `npm run test:i18n-source`, `npm run test:i18n-locales`, `npm run test:i18n-argent`, `npm run test:niveau-voix`, `npm run test:i18n-empreintes-argent` — EXIT 0.
+- **Liste de recette non déclarée en local** — un `backend/.env` présent doit porter `AUTH_TELEPHONES_TEST` aligné sur le miroir (garde `test:enum-check-phone`) ; sans elle, le serveur journalise un numéro que l'écran n'accepte pas. Les numéros ne sont pas recopiés dans un fichier du dépôt : `.env.example` explique la règle, le `.env` local porte la liste. Preuve : `npm run test:enum-check-phone` — EXIT 0.
+
+### Ajouté — Primitives d'argent maison T8 (2026-10-07)
+Suite des corrections de l'audit UX (REVIEW-001, actions R1-2..R1-5) — les deux primitives obligatoires pour tout mouvement d'argent existent désormais UNE fois et sont inévitables pour les nouveaux parcours :
+- **`RelectureArgent`** (`components/argent/`) : l'écran de relecture sur Radix Dialog (focus trap, ESC, AUTH-05) — relecture **dite et affichée depuis la même source** (montant nombre → « FCFA » à l'écran, « francs » à la voix, ARG-17), **vibration d'attente** (90 ms, motif maison POSCaisse) pendant l'envoi, fermeture refusée tant que l'irréversible est en vol, verrou synchrone conservé chez l'appelant. Migrée dans TransfertPage (transfert keiwa) et MaCooperative (cotisation)
+- **`PinArgent`** (`components/argent/`) : le champ PIN 4 chiffres (contrôlé, erreur `role="alert"`) — la vérification `/auth/pin/verify` reste chez l'appelant, avant le POST d'argent
+- **Triple canal complété** : `vibrerSucces()`/`vibrerErreur()` ajoutés aux issues du transfert et de la cotisation (haptique.ts)
+- **TransfertPage 562 → 499 lignes** (R1-2) : `genererCleIdempotence` extraite vers `utils/idempotence.ts` (contrat réutilisable), catalogue des moyens vers `methodsTransfert.ts` ; **MaCooperative 440 → 382 lignes**
+- MarcheVirtuel garde son modal PIN historique (`montantsMasqués` + `speakSilent`) — migration tracée comme lot à part
+- Vérifications : `tsc -b` 0, charte EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = les 4 rouges hérités (0 nouveau), garde-argent = les 3 refus attendus
+
+
+
+### Corrigé — Corrections des revues (2026-10-07)
+Exécution des corrections restantes des REVIEW-001/002/003, sur ordre explicite de l'utilisateur (« Continues les corrections ») — hors re-gel humain (Patrick) et hors chaîne `test:ci` (gelée, décision humaine en attente) :
+- **B3-3 fermé — suite de tests backend ressuscitée** : les majeures non prouvées sont retirées (`jest` ^30.5.2 → ^29.7.0, `@types/jest` ^30 → ^29.5.14, `@nestjs/swagger` ^12.0.2 → ^11.4.7 — backend ET racine, retour byte-identique à `dffe705` vérifié). Preuves : suite unitaire **33 suites / 251 tests EXIT 0**, `tsc --noEmit` 0, `nest build` EXIT 0, versions installées vérifiées (jest 29.7.0 / ts-jest 29.4.14 / swagger 11.4.7). Preuve nouvelle : l'upgrade swagger 12 était **irrésoluble** — `@nestjs/swagger@12.0.2` exige un peer `@nestjs/common@^12` contre common 11.2.6 (ERESOLVE npm) — la recette swagger 12 demandée en REVIEW-003/action 4 est morte-non-lieu : l'upgrade est retiré, pas prouvé. Les invariants (Postgres jetable) restent l'affaire de la CI (aucun Postgres dans le sandbox). Un maillon backend dans `test:ci` n'a PAS été ajouté : la chaîne est GELÉE (refus 2 du garde-argent, décision humaine en attente)
+- **R1-1 fermé — le montant cotisation ne vit plus qu'à un endroit** : `COTISATION_MONTANT_LIBELLE` dérivé de `COTISATION_MONTANT` dans `MaCooperative.tsx` (bouton « Payer ma cotisation » + récap du modal) — rendu byte-identique prouvé (`25\u00A0000 FCFA`, insécables préservés) ; la promesse « une seule ligne à changer à la bascule API » tient désormais aussi pour l'affichage
+- **R2-2 fermé — newline final `AppContext.tsx`** + fixture `parole-3917bb7.json` re-bénie PAR LE GARDE en liste blanche (seule l'empreinte `contexts/AppContext.tsx` change, les 3 divergences héritées restent volontairement rouges — diff fixture = 1 ligne)
+- **R2-1 fermé par traçage — CODE-NEW-7** dans `DEBT_REPORT.md` : écrans orphelins `IdentificateurStats.tsx` + `IdentificateurDashboard.tsx` (orphelinat re-vérifié mécaniquement : 0 route, 0 import) — la suppression reste le geste de la fusion §8.5 définitive (producteur)
+- Vérifications : `tsc -b` front 0, `tsc --noEmit` back 0, `test:charte-marchande` EXIT 0, `test:ci` EXIT 0 (622 assertions vertes, 0 croix), `test:parole-entree` EXIT 0, `test-voix-trace-source` = les 4 rouges hérités connus (0 nouveau), garde-argent = les 3 refus attendus (re-gel humain en attente), `npm run test:unit` backend 251/251
+
+
+
+### Corrigé — Actions correctives REVIEW-003/REVIEW-004 (2026-10-06)
+Exécution des actions demandées par la revue — hors re-gel humain (Patrick) et hors `backend/package.json` (B3-3, périmètre producteur) :
+- **Verrou de schéma CI restauré** (REVIEW-004/B4-1) : `scripts/schema-pilote.mjs` et `scripts/check-nest-versions.mjs` revenus à l'état `dffe705` — `check:nest-versions` EXIT 0 (« @nestjs cohérent, major 11 »), l'appel de `.github/workflows/schema-pilote.yml` redevient valide
+- **Gels garde-argent restaurés à `dffe705`** (REVIEW-003/Act-1, INC-001) : restauration de fichiers (pas un gel) — retour mécanique aux **3 refus attendus** (périmètre 55 sortis : chemins `frontend_src` morts du renommage `628ef4e` ; chaîne test:ci gelée, pré-existante ; empreinte : 131 gardes débranchées) — le re-gel avec `racinesScannees` → `frontend/src` reste le geste humain de Patrick
+- **Gardes voix réécrites pour encoder les décisions nouvelles avec historique** (REVIEW-004/B4-2) : `paroleEntree.test.mts` §[7] encode désormais §8.1 (voix ouverte aux 3 rôles, muet = LA borne, l'ancien garde et sa trace ne reviennent pas en silence, décision consignée sur site) ; `test-voix-trace-source.mjs` A/C : refus muet = borne unique §8.1, Rapport de test = surface unique Paramètres (retrait `1c2f914` arbitré) ; fixture `parole-3917bb7.json` : seule l'entrée `contexts/AppContext.tsx` re-bénie (§8.1), les 3 divergences héritées (useVoiceCore, AppLayout, ObjectifContext) restent volontairement rouges
+- **BUGS.md** : compteur réconcilié avec le contenu (8 bugs, 5 résolus, 3 ouverts) + BUG-006/007 réservés (REVIEW-004/Act-3)
+- Vérifications : `tsc -b` 0, `tsc --noEmit` backend 0, `test:ci` 44 maillons EXIT 0, charte marchande verte, `test:parole-entree` vert, `test:voix-trace-source` = les 4 rouges hérités connus (0 nouveau), `test:maillons-orphelins` vert, `check:nest-versions` EXIT 0, garde-argent = les 3 refus attendus (re-gel humain en attente)
+
+
+### Corrigé — Lots UX-2 « Voix pour tous » et UX-6 « IA/routing » (2026-10-06)
+Suite du suivi de l'audit UX (même source que UX-1) — périmètre marchand/identificateur/transversal (l'agent UX producteur couvre le sien) :
+- **Voix ouverte aux 3 rôles** (décision §8.1, T1 P0) : le garde `role !== 'marchand'` d'`AppContext.speak` est retiré — ~40 appels producteur reprennent vie, le bouton Tata ne meurt plus pour l'identificateur ; le muet utilisateur reste la borne
+- **Parité Tata dans IdentificateurLayout** : `TantieSagesseModal` montée + `onMicClick` passé à Sidebar/BottomBar (comme AppLayout)
+- **Porte keiwa marchand restaurée** (décision §8.3, M-P1-2) : tuile « Mon argent » de retour sur l'accueil vers `/marchand/keiwa` — porte unique, conforme au commentaire d'UniversalProfil ; l'historique (retrait Patrick 24/09, écran verrouillé muet) est consigné et supersedé dans le code
+- **Routes identificateur** (T5/I-P1-4/I-P1-5) : `/identification` → `/fiche-identification`, `/acteurs` → `/identifications`, orphelines `/statistiques` et `/dashboard` → `/rapports` ; onglet « Suivi » ouvre enfin SuiviIdentifications (`/suivi`) ; titre d'écran « Acteurs » aligné sur l'onglet ; `useScoreJULABA` pointe la route canonique
+- **BUG-005** : `/paiement/failed` affichait « Paiement effectué ✅ » (détection `includes('error')` seulement) — corrigé (`/error|failed/`)
+- Vérifications : `tsc -b` 0, garde charte marchande vert, `test:ci` 44 maillons 0, garde-argent = les 3 refus attendus (gels humains en attente)
+### Ajouté — Revue audit UX des trois rôles (2026-10-06)
+- Revue du commit `060c333` et de `AUDIT-UX-ROLES-2026-10-06.md`.
+- Lots UX-2/3/4/5/6 réconciliés dans `TASKS.md` : les corrections sont partielles et restent soumises aux validations QA, a11y, performance et Tech Lead.
+ - Trois reliquats P1 enregistrés dans `BUGS.md` : mutations producteur hors ligne sans outbox (`BUG-008`), annulation producteur sans confirmation (`BUG-009`), revenu incluant les commandes non livrées (`BUG-010`).
+- Un reliquat performance P2 est tracé : polling producteur sans suspension hors ligne (`PERF-007`).
+
+### Corrigé — Lot UX-1 « Promesses d'argent » (2026-10-06)
+Suivi de l'audit UX des 3 rôles (`docs/audit/AUDIT-UX-ROLES-2026-10-06.md`) — décisions §8 tranchées, lot UX-1 exécuté (BUG-001..004) :
+- **Paiements services (Keiwa)** : plus de « Payer maintenant » sans backend — page masquée derrière `PAIEMENTS_SERVICES_ACTIFS`, porte retirée du wallet, route redirigée (BUG-001, `68149f2`)
+- **Transfert keiwa** : relecture obligatoire « Tu envoies X à Y — tu confirms ? » + verrou synchrone anti double-tap (BUG-002, `f7e9544`)
+- **Marché virtuel** : annonce « Commande passée — à régler à la livraison » au lieu de « Paiement effectué avec succès » (aucun mouvement wallet à la création, invariant B2) ; modal succès « Montant à régler / rien n'est encore débité » (BUG-003, `67f72ef`)
+- **Cotisation coopérative (25 000 F)** : relecture + PIN conditionnel (`pinSecurityEnabled`, /auth/pin/verify) + verrou synchrone + erreurs affichées ET parlées (BUG-004, `41b6671`)
+- Vérifications : `tsc -b` 0, garde charte marchande vert, `vite build` 0 (21,9 s), `test:ci` 44 maillons 0, garde-argent = les 3 refus attendus (gels humains en attente), aucun refus nouveau
 
 ### Ajouté — Système multi-agents (2026-09-28)
 - Initialisation du dossier `.ai/` avec 30+ fichiers de pilotage
@@ -46,6 +402,61 @@
 - 33 dettes FERMÉES (registre révision 20)
 - SCHEMA-07 trouvé par `schema-pilote.yml` avant le terrain
 - Incident 18/09/2026 : `caisse_transaction_status_enum already exists` → `DB_MIGRATIONS_RUN=false` en prod
+
+## Suivi des corrections — session du 2026-10-19
+
+Chaque entrée conserve la cause observée, le périmètre modifié et la preuve de
+validation. Les redémarrages locaux du backend sont consignés comme incidents
+d'exécution, pas comme corrections de code.
+
+### Connexion et voix
+
+- **Éléments retirés de l'écran de connexion** — `frontend/src/app/components/auth/LoginPassword.tsx` : suppression de « Rapport de test », de la version, de « By Icône Solution » et de « Revoir le tutoriel ». Imports et commentaires obsolètes nettoyés.
+- **Annonce du code incorrect restaurée** — même composant : le fallback silencieux `codeErreur` (clip prototype) est remplacé par les clips livrés `mauvaisCodeAttention` et `dernierEssai`, selon le nombre d'essais restant. Preuves : `npm run typecheck`, `npm run test:verrou-connexion`.
+- **Effacement du numéro annoncé** — même composant : chaque suppression réelle d'un chiffre du numéro déclenche l'annonce « Mmmh… Tu es en train d'effacer le numéro, un ? Hein ! » — le texte EXACT du clip certifié `AUTH_41` (`login-41.mp3`), mot pour mot : `direEntreeTexte` retrouve le clip par le texte, un mot d'écart et l'écran redevient muet. Aucune voix machine en repli : pas de clé, pas de parole. Une suppression sur champ vide ne parle pas. Preuves : `npm run typecheck`, `npm run test:voix-connexion-lot-a`.
+- **Numéro centré dans la vue du code secret** — même composant : le numéro confirmé est centré sur toute la carte ; l'icône de validation reste ancrée à gauche et le bouton « Modifier » à droite. Preuves : `npm run typecheck`, `git diff --check`.
+- **Proposition de reconnaissance audible** — `frontend/src/app/services/accueilMarchandVoix.ts` : le clip existant `tata-reconnaissance-proposition.mp3` est marqué `lotA` et devient disponible hors mode preview, sans activer les autres prototypes. Preuves : `npm run typecheck`, `accueilVoixUneSeuleSortie`.
+
+### Navigation et identité (2026-10-21)
+
+- **Identité retirée de la navigation** — `frontend/src/app/components/layout/Sidebar.tsx` n'affiche plus le nom complet dans le bloc utilisateur ; les initiales, le téléphone, le rôle et les actions de navigation restent disponibles. Pour un `cooperateur`, ce bloc affichait le nom de la **coopérative** à côté du téléphone de la **personne** : deux sujets pour une seule identité. Le nom de la personne reste affiché là où on lui parle à elle (« Bonjour {prénom} » sur l'accueil, `RoleDashboard.tsx:255`). Décision : `docs/DECISIONS.md` (2026-10-21). Preuve : `npm run typecheck`.
+
+### Dictée de vente sur le web
+
+- **Cause** : Sherpa STT est correctement limité au plugin natif Capacitor Android (`nativeStt.ts`). Le web passait donc dans `offlineModelReady() === false` et affichait « La dictée n'est disponible que dans l'application ».
+- **Correction** — `frontend/src/app/hooks/useVoiceCore.ts` : ajout du chemin `SpeechRecognition`/`webkitSpeechRecognition` en navigateur (`fr-FR`), avec résultats intermédiaires, arrêt propre et réutilisation du même `sendText`/`intentLocal` que l'APK. Sherpa Android reste inchangé.
+- **Preuves** : `npm run typecheck`, `npm run test:voice-confirmation-bypass`, `npm run test:offline-voice-hook`, `git diff --check`.
+
+### Correction en cours — ligne provisoire de vente vocale (2026-10-19)
+
+- **Cause auditée** : `vendreVocalUnifie` ajoutait directement au panier et
+  `MicroVenteCaisse` bypassait la confirmation de `vendre`, contrairement à
+  `docs/SPEC_VENTE_VOCALE.md`.
+- **Correction appliquée** : `MicroVenteCaisse` capture maintenant la vente
+  vocale dans `ligneVocale`, l'affiche via `ConfirmationLigne`, et n'appelle le
+  vrai `addToCart` qu'après `onConfirmer`. Le service accepte explicitement le
+  crochet `proposerLigne` ; l'unité `VoiceAction.unite` est typée.
+- **Preuve ajoutée** : `vendreVocalUnifie.test.mts` vérifie qu'avec
+  `proposerLigne`, aucun appel panier n'a lieu avant confirmation et que le
+  produit, la quantité et le total exact sont conservés.
+- **État** : le P0 « mutation avant confirmation » est fermé sur le câblage
+  réel ; les corrections vocales `non, deux`, la persistance/reprise et
+  l'adoption guidée du produit inconnu restent à traiter avant clôture globale.
+- **Correction Web du bouton produit** — `BoutonDireProduit.tsx` appelait
+  directement `startLiveDictation` (Sherpa natif) après ouverture du micro ; sur
+  navigateur, il tombait donc sur « Le micro ne répond pas ». Il utilise
+  désormais `demarrerRecoWeb` quand `SpeechRecognition` est disponible et
+  conserve Sherpa sur Capacitor. Preuves : `npm run typecheck`,
+  `npm run test:web-reco`, `git diff --check`.
+- **Catalogue vocal non limitatif** — `venteAuCatalogue.ts` expose désormais
+  `nomProduitLibre` pour conserver le nom d'un article absent du vocabulaire
+  statique ; `MicroVenteCaisse` le transmet à la ligne libre/proposition de
+  catalogue au lieu de rejeter la phrase. Le vocabulaire codé en dur reste un
+  secours d'interprétation, pas une liste autorisée de produits.
+
+### Incidents d'exécution locaux
+
+- **Backend absent sur le port proxy `3001`** : les réponses `500` vides de `/api/v1/health`, `/auth/check-phone` et `/auth/login` venaient du proxy Vite sans backend actif. Backend relancé et vérifié : health `200`, check-phone `200`, login `401` JSON pour identifiants invalides. Aucun fichier backend modifié.
 
 ## Historique antérieur
 

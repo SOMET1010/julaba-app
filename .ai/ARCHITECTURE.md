@@ -96,7 +96,7 @@
 ## 3. Frontend -- structure
 
 ```
-frontend_src/
+frontend/
 +- src/
 |  +- app/
 |  |  +- routes.tsx               # 95 routes, lazy-loadees via L()

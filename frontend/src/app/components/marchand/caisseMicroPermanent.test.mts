@@ -1,0 +1,217 @@
+/**
+ * Garde-fou de source — LE MICRO NE QUITTE PLUS LA VENTE (VOIX-01, lot B).
+ * Lancer : npm run test:caisse-micro   (tsx, sans DOM)
+ *
+ * CE QU'ON FERME. La voix savait commencer une vente, jamais la terminer :
+ * elle vivait dans un écran séparé qui, la ligne une fois au panier, renvoyait
+ * vers la caisse — où il n'y avait plus aucun micro. Deux démarrages pour un
+ * seul parcours, et une marchande qui ne lit pas se retrouvait, au moment de
+ * l'argent, devant un écran muet.
+ *
+ * VOIE RETENUE (arbitrage du 20/09/2026) : la caisse devient l'unique surface
+ * de vente. Le moteur vocal y CONVERGE au lieu d'être abstrait pour alimenter
+ * deux surfaces.
+ *
+ * POURQUOI LIRE LE SOURCE. Les cinq preuves demandées portent sur du CÂBLAGE :
+ * un produit qui voyage d'un écran à l'autre, un bouton qui mène à une route,
+ * un moteur monté au-dessus d'un bouton. Rien de tout cela ne casse
+ * bruyamment. Un micro débranché s'affiche très bien — c'est précisément le
+ * défaut que `POSCaisse` documentait : « il y en avait un, purement
+ * décoratif ; elle parlait, et rien n'arrivait ».
+ */
+import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
+const ici = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
+const lire = (rel: string) => readFileSync(ici(rel), "utf8");
+
+const micro = lire("./MicroVenteCaisse.tsx");
+const caisse = lire("./POSCaisse.tsx");
+const stock = lire("./GestionStock.tsx");
+const accueil = lire("./MarchandAccueilVoice.tsx");
+
+let failures = 0;
+function ok(cond: boolean, label: string) {
+  if (cond) console.log("  ✅", label);
+  else { console.log("  ❌", label); failures++; }
+}
+
+// Sans les commentaires : ces composants RACONTENT l'ancien écran, et ces
+// phrases feraient passer (ou échouer) des tests pour de mauvaises raisons.
+//
+// L'ORDRE COMPTE, et il m'a déjà piégé. Retirer d'abord les commentaires JSX
+// `{/* … */}` par la forme « accolade, commentaire, accolade » fait matcher
+// AUSSI un `interface Props {` suivi d'un JSDoc : le non-gourmand court
+// jusqu'à la première accolade fermante qui suit un `*/`, et emporte tout ce
+// qu'il y a entre les deux — ici 10 000 caractères, moteur vocal compris. On
+// retire donc les blocs `/* … */` EN PREMIER, quelle que soit leur position ;
+// les accolades JSX restées vides ne gênent aucune de ces assertions.
+const sansCommentaires = (s: string) => s
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+const codeMicro = sansCommentaires(micro);
+const codeCaisse = sansCommentaires(caisse);
+const codeStock = sansCommentaires(stock);
+const codeAccueil = sansCommentaires(accueil);
+
+console.log("\n[1] « Vendre » depuis Mon stock ouvre la caisse AVEC le bon produit");
+// Le produit voyage par l'ÉTAT DE ROUTE — explicite et relisible. Une variable
+// globale ou un état caché passerait inaperçu jusqu'au jour où il casse.
+const navStock = codeStock.match(/navigate\('\/marchand\/caisse',\s*\{\s*state:\s*\{\s*produitPreselectionne:[\s\S]{0,400}?\}\s*\}\s*\}\s*\)/);
+ok(navStock !== null,
+  "GestionStock navigue vers /marchand/caisse en passant `produitPreselectionne` dans l'état de route");
+for (const champ of ["nom", "prix", "unite"]) {
+  ok(navStock !== null && new RegExp(`${champ}:`).test(navStock[0]),
+    `le produit transmis porte son « ${champ} »`);
+}
+ok(/location\.state[\s\S]{0,200}produitPreselectionne/.test(codeCaisse),
+  "la caisse LIT cet état de route (sinon le produit partirait dans le vide)");
+ok(/<MicroVenteCaisse\s+produitPreselectionne=\{produitPreselectionne\}/.test(codeCaisse),
+  "et le passe au micro, qui s'en sert pour sa question d'ouverture");
+// LE POINT QUI MANQUAIT AU LOT B (contre-audit, lot B2). Le produit arrivait
+// bien à l'écran — question d'ouverture, repli tactile — mais le MOTEUR
+// recevait toujours `action.produit` seul. Elle touchait Tomate, disait
+// « trois tas », et Tata redemandait un prix que l'application connaissait
+// déjà. L'écran savait ; la voix avait oublié.
+// CAT-01 (28/09) — la source du NOM a changé, pas la règle. `vente` est la
+// relecture au catalogue de la marchande quand elle a reconnu un de SES
+// produits, et l'action du moteur sinon. Le présélectionné, lui, est passé
+// exactement comme avant : c'est ce que cette garde protège.
+// L'assertion est RENFORCÉE, pas affaiblie : elle exige en plus que le nom
+// vienne de `vente` — sans quoi on retomberait sur `action.produit`, qui est
+// `undefined` pour les 111 produits hors lexique, et la vente repartirait en
+// « Produit vocal ». C'est le défaut que la recette navigateur a trouvé.
+ok(/vendreUnifie\(produitPourVente\(vente\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+  "la vente dictée passe le produit présélectionné au moteur (produitPourVente)");
+// 821cc12 a renommé `vente` en `venteBase` — le nom libre dicté (STK-25) est
+// fusionné APRÈS, et jamais sur un produit que SON catalogue a reconnu.
+// L'ordre protégé ici ne bouge pas : son catalogue, PUIS le moteur.
+ok(/const venteBase = reluAuCatalogue \?\? \(corrige \? \{ \.\.\.action, \.\.\.corrige \} : action\);/.test(codeMicro),
+  "et le nom vient d'ABORD du catalogue de la marchande, le moteur en repli");
+ok(/const vente = !venteBase\.produit && nomLibre\s*\? \{ \.\.\.venteBase, produit: nomLibre \}\s*: venteBase;/.test(codeMicro),
+  "et le nom libre ne comble qu'une absence — il n'écrase jamais un nom de SON catalogue");
+// CAT-02 — et quand elle nomme ce qu'elle ne vend pas, le nombre orphelin est
+// une quantité, pas un prix : aucune ligne « Produit vocal » à 2 F.
+ok(/const corrige = reluAuCatalogue \? null : venteSansProduit\(action, data\.transcript \|\| ''\);/.test(codeMicro),
+  "un produit nommé mais inconnu ne devient jamais une ligne à N francs");
+ok(/vendreUnifie\(produitPourVente\(r\.action\.produit,\s*produitPreselectionne\)/.test(codeMicro),
+  "un raccourci résolu en vente s'en souvient aussi — c'est le même acte métier");
+
+console.log("\n[2] « Vendre » depuis l'accueil arrive sur la caisse");
+ok(/const allerCaisse = \(\) => navigate\('\/marchand\/caisse'\)/.test(codeAccueil),
+  "l'accueil sait aller à la caisse");
+ok(/onClick=\{allerCaisse\}\s+aria-label="Vendre"/.test(codeAccueil),
+  "le bouton « Vendre » y mène DIRECTEMENT (plus d'écran vocal intermédiaire)");
+
+console.log("\n[3] Le micro est CÂBLÉ, pas seulement affiché");
+ok(/useVoiceCore\(\{/.test(codeMicro),
+  "le composant du micro monte lui-même le moteur vocal (useVoiceCore)");
+// VOX-02 — ASSERTION REMPLACÉE PAR UNE PLUS FORTE, PAS RETIRÉE.
+//
+// Elle exigeait `onClick={handleMicClick}` en direct. Or `handleMicClick` (dans
+// `useVoiceCore`, figé par VOICE-01) ne traite pas l'état `confirming` : en
+// exiger l'appel DIRECT, c'était exiger le trou qui a bloqué le téléphone de
+// Patrick le 23/09. L'écran passe désormais par `toucherLeMicro`, qui consulte
+// une règle EXHAUSTIVE sur les sept états et appelle le moteur ensuite.
+//
+// La nouvelle exigence est plus forte : le bouton doit mener au moteur ET par
+// une règle qui ne peut pas oublier un état.
+ok(/onClick=\{toucherLeMicro\}/.test(codeMicro),
+  "le bouton micro passe par la règle des sept états — pas un gestionnaire décoratif");
+ok(/gesteDuMicro\(/.test(codeMicro) && /handleMicClick\(\)/.test(codeMicro),
+  "et cette règle mène BIEN au moteur vocal (handleMicClick), pas dans le vide");
+// useObjectif()/useRaccourcis() ne LÈVENT PAS d'erreur sans provider : ils
+// retombent sur des valeurs nulles. On obtiendrait un micro qui a l'air de
+// marcher, c'est-à-dire exactement la dette qu'on ferme.
+ok(/<RaccourcisProvider>/.test(codeCaisse) && /<ObjectifProvider ventes=/.test(codeCaisse),
+  "la caisse monte les providers dont le moteur a besoin (Raccourcis, Objectif)");
+ok(/<POSCaisseInner \/>/.test(codeCaisse),
+  "elle les monte AU-DESSUS de l'écran, donc au-dessus du micro");
+// Deux micros dont un inerte : rien ne les distingue pour qui ne lit pas.
+const micsDansCaisse = (codeCaisse.match(/<Mic\b/g) || []).length;
+ok(micsDansCaisse === 0,
+  `POSCaisse ne dessine aucun micro de son côté (${micsDansCaisse} trouvé(s)) : le seul micro de l'écran est celui qui marche`);
+
+console.log("\n[4] Le micro est présent aux TROIS moments de la vente");
+const rendus = (codeCaisse.match(/<MicroVenteCaisse\b/g) || []).length;
+ok(rendus === 1, `le micro est rendu une seule fois (${rendus})`);
+// « Présent aux trois moments » se prouve en montrant qu'il n'est conditionné
+// par RIEN : ni panier vide, ni panier plein, ni encaissement ouvert.
+const ligneRendu = codeCaisse.split("\n").find(l => l.includes("<MicroVenteCaisse produitPreselectionne"));
+// `onIntentionEncaissement` (lot C) est une prop de plus sur la MÊME ligne :
+// le micro transmet l'encaissement à la caisse, il ne l'exécute pas.
+ok(!!ligneRendu && /^\s*<MicroVenteCaisse produitPreselectionne=\{produitPreselectionne\} onIntentionEncaissement=\{onIntentionEncaissement\} \/>\s*$/.test(ligneRendu || ""),
+  "il est rendu seul sur sa ligne, sans garde `&&` ni ternaire");
+const ligneAvant = (codeCaisse.slice(0, codeCaisse.indexOf("<MicroVenteCaisse")).trimEnd().split("\n").pop() || "").trim();
+ok(!/(&&|\?|:)$/.test(ligneAvant),
+  `la ligne qui le précède n'ouvre aucune condition (« ${ligneAvant.slice(-40)} »)`);
+ok(!/return null/.test(codeMicro),
+  "le composant du micro ne se retire jamais de lui-même (aucun `return null`)");
+
+console.log("\n[5] L'ancien écran vocal n'a plus aucun appelant");
+ok(!existsSync(ici("./VenteVocaleModal.tsx")),
+  "VenteVocaleModal.tsx est supprimé — pas de composant fantôme gardé « au cas où »");
+const fichiers: string[] = [];
+(function parcourir(dir: string) {
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) parcourir(p);
+    else if (/\.(ts|tsx|mts)$/.test(e)) fichiers.push(p);
+  }
+})(ici("../../.."));
+const importeurs = fichiers.filter(f => /from\s+['"][^'"]*VenteVocaleModal['"]/.test(readFileSync(f, "utf8")));
+ok(importeurs.length === 0,
+  `aucun fichier ne l'importe (${importeurs.length} trouvé(s)${importeurs.length ? " : " + importeurs.join(", ") : ""})`);
+
+console.log("\n[6] VOX-06 — le premier mot se SENT, une fois et une seule");
+// LE DÉFAUT QU'ON FERME. `vibrerTic` n'était appelé QUE par `PaveMontant` :
+// au clavier. Dans le flux vocal, entre le moment où elle parle et la réponse
+// de Tantie, il ne se passait RIEN — pas de son (le micro est ouvert, Tantie
+// se tait exprès), pas de texte (c'est la règle : « PENDANT L'ÉCOUTE, AUCUN
+// TEXTE »), pas de vibration. Devant un appareil muet, on répète ou on crie,
+// et la reconnaissance se dégrade : le silence fabriquait l'échec.
+//
+// POURQUOI LIRE LA SOURCE. La règle elle-même est rejouée sur le module pur
+// par `ecouteCaisse.test.mts` (section VOX-06) : une vibration par écoute,
+// aucune si le seuil n'est jamais franchi. Ce qui ne se prouve qu'ICI, c'est
+// que l'écran tient CETTE version-là — un ref, pas un état, au bon endroit de
+// la boucle. Rien de tout cela ne casse bruyamment : un tic manquant ne lève
+// aucune erreur, il laisse juste une marchande dans le vide.
+ok(/import \{ vibrerSucces, vibrerTic \} from '\.\.\/\.\.\/utils\/haptique'/.test(codeMicro),
+  "le flux vocal tire le tic du répertoire haptique commun (pas un `navigator.vibrate` écrit ici)");
+const ticsMicro = (codeMicro.match(/vibrerTic\(\)/g) || []).length;
+ok(ticsMicro === 1,
+  `vibrerTic n'est appelé qu'à UN seul endroit du micro (${ticsMicro} trouvé(s)) : deux points d'appel, c'est deux vibrations`);
+// LE POINT D'APPEL EXACT. Il doit être SOUS le test de franchissement du
+// seuil — celui qui sait déjà quand une voix porte — et SOUS le drapeau qui
+// dit qu'on l'a déjà saluée. Le relevé bat toutes les 250 ms : un tic hors du
+// drapeau, c'est un téléphone qui tremble en continu.
+// MIC-01 complété (29/10/2026) : le franchissement est porté par `elleParle`
+// (deux organes — le niveau APK et la dictée web qui grandit). L'ancre
+// tolère un commentaire entre le `if` de franchissement et le drapeau : le
+// JSDoc VOX-06 vit là, et un commentaire n'a jamais changé un comportement.
+ok(/if \(elleParle\(niveauRef\.current, seuilRef\.current, dicteeRef\.current\)\) \{\s*(?:\/\*[\s\S]*?\*\/\s*)?if \(!aParleRef\.current\) \{\s*try \{ vibrerTic\(\); \} catch/.test(codeMicro),
+  "le tic part au PREMIER franchissement du seuil (niveau APK ou dictée web — elleParle), sous le drapeau `aParleRef` — jamais à chaque relevé");
+// UN REF, PAS UN ÉTAT. Deux relevés espacés de 30 ms liraient tous les deux
+// l'ancienne valeur d'un `useState` et vibreraient deux fois : c'est la
+// régression déjà vécue sur `BoutonDirePrix` (la question partait en boucle).
+ok(/const aParleRef = useRef\(false\)/.test(codeMicro),
+  "le drapeau est un `useRef` : un `useState` se lirait en retard entre deux relevés");
+ok(!/useState\([^)]*\)[^\n]*[Vv]ibr/.test(codeMicro),
+  "et aucun état React ne double ce drapeau");
+// REMIS À ZÉRO À CHAQUE OUVERTURE, SINON LE TIC NE SE PRODUIT PLUS JAMAIS
+// APRÈS LA PREMIÈRE PHRASE DE LA JOURNÉE : micro refermé, et micro rouvert.
+const remises = (codeMicro.match(/aParleRef\.current = false;/g) || []).length;
+ok(remises === 2,
+  `le drapeau retombe aux DEUX remises à zéro de l'écoute (${remises} trouvée(s)) : chaque ouverture du micro est une écoute neuve`);
+// UN APPAREIL SANS VIBREUR NE DOIT RIEN CASSER. `haptique` avale déjà l'absence
+// d'API, mais la boucle qui FERME le micro passe par ici : si quoi que ce soit
+// remontait, le micro resterait ouvert. Même précaution que `PaveMontant` et
+// `ChangePasswordScreen`.
+ok(/try \{ vibrerTic\(\); \} catch/.test(codeMicro),
+  "l'appel est protégé : un téléphone sans vibreur n'emporte pas la fermeture du micro");
+
+console.log(failures === 0 ? "\nTous les tests sont verts ✅\n" : `\n${failures} échec(s) ❌\n`);
+if (failures > 0) process.exit(1);

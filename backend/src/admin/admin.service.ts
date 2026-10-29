@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
-import { WalletTransaction } from '../wallets/entities/wallet-transaction.entity';
+import { CaisseTransaction } from '../caisse-rest/caisse-transaction.entity';
+import { bilanVentesDeCaisse, conditionVenteRetenue, montantLisible } from '../commun/vente-de-caisse';
 import { DataSource } from 'typeorm';
 import { AuditLog } from '../audit-rest/audit-log.entity';
 
@@ -21,60 +22,29 @@ export class AdminService {
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectRepository(Cooperative) private coopsRepo: Repository<Cooperative>,
-    @InjectRepository(WalletTransaction) private txRepo: Repository<WalletTransaction>,
     @InjectRepository(AuditLog) private auditRepo: Repository<AuditLog>,
     private dataSource: DataSource,
   ) {}
 
+  // Une erreur sort en erreur (5xx) : elle rendait des zéros, indiscernables
+  // d'une plateforme sans activité.
   async getStats() {
-    try {
-      const [totalActeursRaw, totalCoops, nouveauxRaw] = await Promise.all([
-        this.dataSource.query(`
-          SELECT COUNT(*) as cnt FROM users u
-          WHERE (
-            u.role NOT IN ('marchand', 'producteur', 'cooperateur')
-            OR EXISTS (
-              SELECT 1 FROM identifications i
-              WHERE i.acteur_id::text = u.id::text
-                AND i.statut IN ('approuve', 'validee', 'en_attente', 'complement', 'rejete')
-            )
-          )
-        `),
-        this.coopsRepo.count(),
-        this.dataSource.query(`
-          SELECT COUNT(*) as cnt FROM users u
-          WHERE u.created_at >= NOW() - INTERVAL '7 days'
-            AND (
-              u.role NOT IN ('marchand', 'producteur', 'cooperateur')
-              OR EXISTS (
-                SELECT 1 FROM identifications i
-                WHERE i.acteur_id::text = u.id::text
-                  AND i.statut IN ('approuve', 'validee', 'en_attente', 'complement', 'rejete')
-              )
-            )
-        `),
-      ]);
-      const totalActeurs = parseInt(totalActeursRaw[0]?.cnt || 0, 10);
-      const nouveaux = parseInt(nouveauxRaw[0]?.cnt || 0, 10);
-
-      const [txToday, txHour, volumeTotal, caisseTotals] = await Promise.all([
-        this.txRepo.createQueryBuilder('t')
-          .where("t.created_at >= CURRENT_DATE").getCount(),
-        this.txRepo.createQueryBuilder('t')
-          .where("t.created_at >= NOW() - INTERVAL '1 hour'").getCount(),
-        this.txRepo.createQueryBuilder('t')
-          .select('SUM(t.montant)', 'total')
-          .getRawOne(),
-        // Le filtre `type='vente'` était là ; celui sur `statut` manquait —
-        // une vente annulée comptait donc dans le volume affiché. ARGENT-2.
-        this.dataSource.query(
-          "SELECT COUNT(*) as nb, COALESCE(SUM(montant),0) as total FROM caisse_transactions WHERE type='vente' AND statut <> 'annulee'"
-        ),
-      ]);
-
-      const activeUsersRaw = await this.dataSource.query(`
+    const [totalActeursRaw, totalCoops, nouveauxRaw] = await Promise.all([
+      this.dataSource.query(`
         SELECT COUNT(*) as cnt FROM users u
-        WHERE u.status = 'actif'
+        WHERE (
+          u.role NOT IN ('marchand', 'producteur', 'cooperateur')
+          OR EXISTS (
+            SELECT 1 FROM identifications i
+            WHERE i.acteur_id::text = u.id::text
+              AND i.statut IN ('approuve', 'validee', 'en_attente', 'complement', 'rejete')
+          )
+        )
+      `),
+      this.coopsRepo.count(),
+      this.dataSource.query(`
+        SELECT COUNT(*) as cnt FROM users u
+        WHERE u.created_at >= NOW() - INTERVAL '7 days'
           AND (
             u.role NOT IN ('marchand', 'producteur', 'cooperateur')
             OR EXISTS (
@@ -83,26 +53,47 @@ export class AdminService {
                 AND i.statut IN ('approuve', 'validee', 'en_attente', 'complement', 'rejete')
             )
           )
-      `).catch(() => [{ cnt: 0 }]);
-      const activeUsers = parseInt(activeUsersRaw[0]?.cnt || 0, 10);
+      `),
+    ]);
+    const totalActeurs = parseInt(totalActeursRaw[0]?.cnt || 0, 10);
+    const nouveaux = parseInt(nouveauxRaw[0]?.cnt || 0, 10);
 
-      return {
-        total_acteurs: totalActeurs,
-        total_transactions: txToday + parseInt(caisseTotals[0]?.nb || 0),
-        transactions_heure: txHour,
-        total_cooperatives: totalCoops,
-        montant_total: Number(volumeTotal?.total || 0) + Number(caisseTotals[0]?.total || 0),
-        nouveaux_acteurs_semaine: nouveaux,
-        utilisateurs_actifs: activeUsers,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (e) {
-      return {
-        total_acteurs: 0, total_transactions: 0, transactions_heure: 0,
-        total_cooperatives: 0, montant_total: 0, nouveaux_acteurs_semaine: 0,
-        utilisateurs_actifs: 0, timestamp: new Date().toISOString(),
-      };
-    }
+    // « Transactions » et « volume » = LES VENTES DE CAISSE, définition
+    // unique (commun/vente-de-caisse.ts). Ce calcul additionnait le
+    // portefeuille Keiwa (hors pilote) aux ventes de caisse_transactions :
+    // l'écran Rapports et l'écran Supervision donnaient deux volumes.
+    const ventes = this.dataSource.getRepository(CaisseTransaction).createQueryBuilder('t');
+    const [bilan, bilanHeure] = await Promise.all([
+      bilanVentesDeCaisse(ventes, 't'),
+      bilanVentesDeCaisse(ventes.clone().where("t.created_at >= NOW() - INTERVAL '1 hour'"), 't'),
+    ]);
+
+    const activeUsersRaw = await this.dataSource.query(`
+      SELECT COUNT(*) as cnt FROM users u
+      WHERE u.status = 'actif'
+        AND (
+          u.role NOT IN ('marchand', 'producteur', 'cooperateur')
+          OR EXISTS (
+            SELECT 1 FROM identifications i
+            WHERE i.acteur_id::text = u.id::text
+              AND i.statut IN ('approuve', 'validee', 'en_attente', 'complement', 'rejete')
+          )
+        )
+    `);
+    const activeUsers = parseInt(activeUsersRaw[0]?.cnt || 0, 10);
+
+    return {
+      total_acteurs: totalActeurs,
+      total_transactions: bilan.nombre_ventes,
+      transactions_heure: bilanHeure.nombre_ventes,
+      total_cooperatives: totalCoops,
+      // Illisible => null, jamais 0 (ACC-03).
+      montant_total: bilan.volume_ventes,
+      montants_illisibles: bilan.montants_illisibles,
+      nouveaux_acteurs_semaine: nouveaux,
+      utilisateurs_actifs: activeUsers,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   private async queryActivitySource(
@@ -717,8 +708,9 @@ export class AdminService {
       await this.usersRepo.query('SELECT 1');
       const dbLatency = Date.now() - start;
       const [txCount, errorCount] = await Promise.all([
-        this.txRepo.createQueryBuilder('t')
-          .where("t.created_at >= NOW() - INTERVAL '1 hour'").getCount(),
+        this.dataSource.getRepository(CaisseTransaction).createQueryBuilder('t')
+          .where("t.created_at >= NOW() - INTERVAL '1 hour'")
+          .andWhere(conditionVenteRetenue('t')).getCount(),
         this.auditRepo.createQueryBuilder('a')
           .where("a.created_at >= NOW() - INTERVAL '1 hour'")
           .andWhere("a.action ILIKE '%error%'").getCount().catch(() => 0),
@@ -742,24 +734,26 @@ export class AdminService {
     }
   }
 
+  // Même définition que /admin/stats : ventes de caisse, pas le portefeuille.
   async getTransactionsTimeline() {
-    try {
-      const raw = await this.txRepo.createQueryBuilder('t')
-        .select("date_trunc('minute', t.created_at)", 'minute')
-        .addSelect('COUNT(*)', 'count')
-        .addSelect('SUM(t.montant)', 'volume')
-        .where("t.created_at >= NOW() - INTERVAL '2 hours'")
-        .groupBy("date_trunc('minute', t.created_at)")
-        .orderBy("minute", 'ASC')
-        .getRawMany();
+    const raw = await this.dataSource.getRepository(CaisseTransaction).createQueryBuilder('t')
+      .select("date_trunc('minute', t.created_at)", 'minute')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(t.montant)', 'volume')
+      .where("t.created_at >= NOW() - INTERVAL '2 hours'")
+      .andWhere(conditionVenteRetenue('t'))
+      .groupBy("date_trunc('minute', t.created_at)")
+      .orderBy('minute', 'ASC')
+      .getRawMany();
 
-      return raw.map(r => ({
+    return raw.map(r => {
+      // Illisible => null, jamais 0 (ACC-03).
+      const volume = montantLisible(r.volume);
+      return {
         time: new Date(r.minute).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
         transactions: Number(r.count),
-        volume: Math.round(Number(r.volume || 0) / 1000),
-      }));
-    } catch {
-      return [];
-    }
+        volume: volume === null ? null : Math.round(volume / 1000),
+      };
+    });
   }
 }

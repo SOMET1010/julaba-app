@@ -1,0 +1,504 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
+import { motion } from 'motion/react';
+import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { useApp } from '../../contexts/AppContext';
+import { useBackOfficeOptional } from '../../contexts/BackOfficeContext';
+import { getBoAccessToken } from '../../services/backoffice-api';
+import { lireCodeActuel } from '../../services/codeActuelMemoire';
+import { API_URL } from '../../utils/api';
+import { normalizeRole, ROLE_ROUTES } from '../../types/constants';
+import { glyphePourChiffre } from '../../services/clavierImage';
+import { tataUiClipForText } from '../../services/tataUiClips';
+import { speakClipOrText } from '../../services/audioManager';
+import { guidageVocal } from '../../utils/accessMode';
+import { vibrerErreur, vibrerSucces } from '../../utils/haptique';
+import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
+// AUTH-14 — le diagnostic technique se tait dans le build livré (DEV seulement).
+import { warnDev } from '../../utils/warnDev';
+
+// Rôles qui se connectent avec un CODE À 4 CHIFFRES (pavé, glyphes images,
+// voix). Le back-office garde un vrai mot de passe texte : on ne ramène pas
+// l'accès d'un super_admin à quatre chiffres pour une question d'ergonomie.
+const ROLES_A_CODE = ['marchand', 'producteur', 'cooperateur', 'cooperative'];
+
+const ROLE_COLORS: Record<string, { primary: string; bg: string; border: string }> = {
+  // AUTH-08 — l'action commerce se LIT (token commerce.css), elle ne se
+  // recopie plus : un seul endroit décide de la teinte.
+  marchand: { primary: 'var(--commerce-action)', bg: 'rgba(255,247,237,0.9)', border: 'rgba(198,106,44,0.3)' },
+  producteur: { primary: '#4CAF50', bg: 'rgba(240,253,244,0.9)', border: 'rgba(76,175,80,0.3)' },
+  cooperateur: { primary: '#2E7D32', bg: 'rgba(232,245,233,0.9)', border: 'rgba(46,125,50,0.3)' },
+  identificateur: { primary: '#8B5CF6', bg: 'rgba(245,243,255,0.9)', border: 'rgba(139,92,246,0.3)' },
+  institution: { primary: '#2563EB', bg: 'rgba(239,246,255,0.9)', border: 'rgba(37,99,235,0.3)' },
+  admin: { primary: '#374151', bg: 'rgba(249,250,251,0.9)', border: 'rgba(55,65,81,0.3)' },
+  super_admin: { primary: '#374151', bg: 'rgba(249,250,251,0.9)', border: 'rgba(55,65,81,0.3)' },
+};
+
+export function ChangePasswordScreen() {
+  const navigate = useNavigate();
+  const { user, setUser } = useApp();
+  const bo = useBackOfficeOptional();
+  // Le code que la personne VIENT de taper pour ouvrir sa session. L'écran de
+  // connexion nous le passe : lui redemander « ton mot de passe actuel » cinq
+  // secondes après l'avoir saisi n'apporte aucune sécurité (la session est
+  // déjà ouverte) et bloque net quelqu'un qui ne lit pas.
+  //
+  // AUTH-02 — PAR LE CANAL MÉMOIRE, PLUS PAR history.state. L'ancienne lecture
+  // `location.state?.codeActuel` couplait ce code à l'entrée d'historique du
+  // navigateur, où il SURVIVAIT au rechargement, lisible sur le téléphone
+  // laissé au comptoir. Le canal mémoire (services/codeActuelMemoire) est
+  // ONE-SHOT : la lecture ci-dessous l'efface — il ne réapparaît ni en
+  // avançant, ni en reculant dans l'historique, ni après un reload.
+  const codeDeConnexion = lireCodeActuel();
+  const [oldPassword, setOldPassword] = useState(codeDeConnexion);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  // LE CHAMP FAUTIF clignote (indicateur visuel de la revue « tout encore ») :
+  // 'old' | 'new' | 'confirm' | null — la voix DIT le problème, le clignotement
+  // le MONTRE (même famille que le pavé et les boutons login-cue-clignote).
+  const [champEnErreur, setChampEnErreur] = useState<'old' | 'new' | 'confirm' | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  // Parcours à 4 chiffres (acteurs) : on saisit, puis on redit pour confirmer.
+  const [etape, setEtape] = useState<'nouveau' | 'confirme'>('nouveau');
+  const [pin, setPin] = useState('');
+  const [premierPin, setPremierPin] = useState('');
+  const [pinEnImages, setPinEnImages] = useState<boolean>(() => {
+    // MÊME clé que l'écran de connexion : si elle a choisi les images pour
+    // entrer, elle les retrouve pour choisir son nouveau code. Une seule
+    // source de vérité, pas une préférence de plus.
+    try { return localStorage.getItem('julaba_pin_images') === '1'; } catch { return false; }
+  });
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // BackOfficeContext ne peuple son user que pour les rôles BO (après
+  // l'évènement julaba:bo-login) ; AppContext porte le rôle acteur. Un login
+  // BOLogin ne peuple jamais AppContext, donc se fier uniquement à `user` ici
+  // faisait retomber tout compte BO sur le rôle par défaut 'marchand' et
+  // renvoyait la redirection post-changement vers /marchand au lieu de
+  // /backoffice/dashboard (écran qui semblait « rester bloqué »).
+  const role = bo?.user?.role || user?.role || 'marchand';
+  const boRoles = ['super_admin', 'admin'];
+  const palette = ROLE_COLORS[role] || ROLE_COLORS.marchand;
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
+  }, []);
+
+  // ── CHAQUE ÉVENTUALITÉ SE DIT — « toutes les éventualités », 26/10 ────────
+  // LE DÉFAUT FERMÉ ICI. Avant ce lot, cet écran n'avait AUCUN effet sur
+  // `error` ni sur `success` : les échecs (validation, ancien code refusé,
+  // réseau) partaient à setError() et se TAISAIENT — le succès non plus ne
+  // disait rien. La voix part par direSuite, qui retrouve le clip par le
+  // TEXTE (lot login-53-67) ; sans clip, la synthèse prend le relais —
+  // jamais le silence. Le texte affiché EST le texte dit.
+  useEffect(() => {
+    if (!error) return;
+    vibrerErreur();
+    void direSuite(error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
+
+  useEffect(() => {
+    if (!success) return;
+    try { vibrerSucces(); } catch { /* ignore */ }
+    void direSuite("C'est bon, ton code secret est changé.");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [success]);
+
+
+  const estRoleACode = ROLES_A_CODE.includes(normalizeRole(String(role))) || ROLES_A_CODE.includes(String(role));
+
+  // Tata dit d'abord une phrase RÉELLEMENT ENREGISTRÉE (garantie audible même
+  // si la synthèse est muette dans l'APK), puis la précision par synthèse.
+  // Les prises de parole s'enchaînent : audioManager ne sert qu'un créneau à
+  // la fois et toute nouvelle demande annule la précédente.
+  const direSuite = async (...textes: (string | null | undefined)[]) => {
+    if (!guidageVocal()) return;
+    for (const texte of textes) {
+      if (!texte) continue;
+      let clip: string | null = null;
+      try { clip = tataUiClipForText(texte); } catch { /* ignore */ }
+      try { await speakClipOrText({ clipUrl: clip ?? undefined, text: texte }); } catch { /* ignore */ }
+    }
+  };
+
+  // L'ENVOI PREND SES VALEURS EN PARAMÈTRE, jamais dans l'état : le parcours à
+  // 4 chiffres conclut dans la foulée d'un setState, dont la valeur n'est pas
+  // encore lisible. Lire l'état ici enverrait le code précédent.
+  const envoyerChangement = async (ancien: string, nouveau: string) => {
+    setLoading(true);
+    setError('');
+    try {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      // En-tête Authorization en secours du cookie de session : sur julaba-web/
+      // julaba-api (domaines différents), le cookie cross-domaine est bloqué
+      // par défaut par plusieurs navigateurs même correctement configuré côté
+      // serveur — un login BO qui « réussissait » (écran suivant affiché) était
+      // ensuite rejeté en 401 sur ce premier appel authentifié, affiché à tort
+      // comme « mot de passe actuel incorrect ».
+      const boToken = getBoAccessToken();
+      const res = await fetch(`${API_URL}/auth/change-password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(boToken ? { Authorization: `Bearer ${boToken}` } : {}),
+        },
+        body: JSON.stringify({ oldPassword: ancien, newPassword: nouveau }),
+        signal: abortRef.current.signal,
+      });
+      if (!res.ok) {
+        let backendMsg = '';
+        try {
+          const d = await res.json();
+          backendMsg = typeof d?.message === 'string' ? d.message : '';
+        } catch (err) {
+          warnDev('[ChangePasswordScreen] error response parse failed:', err instanceof Error ? err.message : err);
+        }
+        // Chaque message affiché est le TEXTE D'UN CLIP (mot pour mot) :
+        // ancien code refusé → login-65, trop de tentatives → login-30 (lot A,
+        // déjà enregistré), panne générale → login-48. La synthèse ne prend le
+        // relais que sur les messages du serveur qui n'ont pas de clip.
+        let userMsg: string;
+        if (res.status === 401) {
+          userMsg = "Ce n'est pas ton ancien code. Regarde bien et recommence.";
+          setOldPassword('');
+          setNewPassword('');
+          setConfirm('');
+          setPin(''); setPremierPin(''); setEtape('nouveau');
+        } else if (res.status === 400) {
+          userMsg = backendMsg || "Ça n'a pas marché comme il faut. Reprends depuis le début.";
+        } else if (res.status === 429) {
+          userMsg = "Tu as trop forcé. Patiente un peu d'abord avant de réessayer.";
+        } else if (res.status >= 500) {
+          userMsg = "Ça n'a pas marché comme il faut. Reprends depuis le début.";
+        } else {
+          userMsg = "Ça n'a pas marché comme il faut. Reprends depuis le début.";
+        }
+        setError(userMsg);
+        setLoading(false);
+        return;
+      }
+      const data = await res.json();
+      if (data.success) {
+        setUser(prev => prev ? { ...prev, mustChangePassword: false } : prev);
+        setOldPassword('');
+        setNewPassword('');
+        setConfirm('');
+        setSuccess(true);
+        if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+        successTimeoutRef.current = setTimeout(() => {
+          if (role === 'cooperative' || role === 'cooperateur') {
+            navigate('/cooperative');
+            return;
+          }
+          const normalizedRole = normalizeRole(String(role));
+          const target = ROLE_ROUTES[normalizedRole]
+            ?? (boRoles.includes(normalizedRole) ? '/backoffice/dashboard' : '/');
+          navigate(target);
+        }, 2000);
+      } else {
+        // ── LA REVUE « TOUT ENCORE », 26/10 : LE VRAI CHEMIN DU MAUVAIS CODE ──
+        // Le serveur ne renvoie JAMAIS 401 ici : HTTP 200 + { success:false,
+        // message:'Ancien code incorrect' } (contrat réel, prouvé par la
+        // requête E2E). Le branchement login-65 sur res.status===401 était
+        // donc du code mort : l'échec le plus fréquent de cet écran tombait
+        // sur le message générique, faux pour quelqu'un qui ne lit pas. On
+        // mappe maintenant le message du SERVEUR sur le clip exact.
+        const messageServeur = typeof data?.message === 'string' ? data.message : '';
+        if (messageServeur.includes('ncien code incorrect')) {
+          setOldPassword(''); setNewPassword(''); setConfirm('');
+          setPin(''); setPremierPin(''); setEtape('nouveau');
+          setError(ENTREE_VOICE_CLIPS.ancienCodeIncorrect.texte);
+        } else {
+          setError("Ça n'a pas marché comme il faut. Reprends depuis le début.");
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      warnDev('[ChangePasswordScreen] change-password failed:', err instanceof Error ? err.message : err);
+      setError('La connexion ne passe pas pour le moment. Attends un peu, puis réessaie.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Formulaire texte (back-office) : mêmes contrôles qu'avant, un seul envoi.
+  // ── LA REVUE « TOUT ENCORE », 26/10 : CE FORMULAIRE SE DIT AUSSI ──────────
+  // Le lot 53-67 n'avait couvert que le PAVÉ à 4 chiffres ; le formulaire
+  // texte du back-office restait muet avec ses messages en registre formel
+  // (« Veuillez… ») — une autre voix que Tata, et pas de clip du tout.
+  // Les 3 textes sont maintenant EXACTEMENT ceux des clips (login-68, 70 et
+  // login-62) : la voix part par l'effet `error → direSuite(error)`, et le
+  // champ fautif clignote (`login-cue-clignote`, même famille que le pavé).
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!oldPassword.trim()) { setChampEnErreur('old'); setError(ENTREE_VOICE_CLIPS.ancienCodeManquant.texte); return; }
+    if (!newPassword.trim() || newPassword.length < 4) { setChampEnErreur('new'); setError(ENTREE_VOICE_CLIPS.motDePasseTropCourt.texte); return; }
+    if (newPassword !== confirm) { setChampEnErreur('confirm'); setError(ENTREE_VOICE_CLIPS.activationCodesDifferents.texte); return; }
+    setChampEnErreur(null);
+    setError('');
+    await envoyerChangement(oldPassword, newPassword);
+  };
+
+  // ── Parcours à 4 chiffres ────────────────────────────────────────────────
+  // Deux temps : elle choisit son code, puis le redit. La double saisie n'est
+  // pas un zèle — un code mal tapé qu'on ne peut plus récupérer, c'est la
+  // caisse perdue (aucun « code oublié » n'existe aujourd'hui).
+  const toucheChiffre = (d: string) => {
+    if (loading || pin.length >= 4) return;
+    const suite = pin + d;
+    setPin(suite);
+    setError('');
+    if (suite.length < 4) return;
+    if (etape === 'nouveau') {
+      setPremierPin(suite);
+      setNewPassword(suite);
+      setPin('');
+      setEtape('confirme');
+      try { vibrerSucces(); } catch { /* ignore */ }
+      void direSuite('Entre ton code secret à 4 chiffres', 'Redis le même code, pour être sûre.');
+      return;
+    }
+    if (suite !== premierPin) {
+      try { vibrerErreur(); } catch { /* ignore */ }
+      setPin(''); setPremierPin(''); setEtape('nouveau');
+      // Le texte affiché EST le texte du clip (login-66) : la voix part par
+      // l'effet `error → direSuite(error)` — pas d'appel de parole en double.
+      setError("Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code.");
+      return;
+    }
+    try { vibrerSucces(); } catch { /* ignore */ }
+    void envoyerChangement(oldPassword, suite);
+  };
+
+  // Tata annonce l'écran. On arrive ici APRÈS une connexion réussie, donc un
+  // geste a forcément eu lieu : l'audio n'est pas bloqué, pas besoin du filet
+  // de rattrapage utilisé sur les écrans qui peuvent être les premiers d'une
+  // page fraîchement chargée.
+  useEffect(() => {
+    if (!estRoleACode) return;
+    void direSuite('Entre ton code secret à 4 chiffres', 'Choisis ton nouveau code, celui que tu utiliseras tous les jours.');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estRoleACode]);
+
+  // LE FORMULAIRE TEXTE S'ANNONCE AUSSI (revue « tout encore ») : les rôles
+  // non-code (back-office) arrivaient ici EN SILENCE — le seul accueil posé
+  // couvrait le pavé à 4 chiffres. Même clip que l'écran affiche en titre :
+  // « Crée ton mot de passe. Au moins 4 caractères. » (login-69).
+  useEffect(() => {
+    if (estRoleACode) return;
+    void direSuite(ENTREE_VOICE_CLIPS.motDePasseAccueil.texte);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estRoleACode]);
+
+  const effacerChiffre = () => { if (!loading) { setPin((v) => v.slice(0, -1)); setError(''); } };
+
+  const basculerImages = () => {
+    setPinEnImages((v) => {
+      const next = !v;
+      try { localStorage.setItem('julaba_pin_images', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  if (success) return (
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: palette.bg }}>
+      <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center" role="status" aria-live="polite">
+        <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
+        <h2 className="text-2xl font-black text-gray-900">Mot de passe mis à jour !</h2>
+        <p className="text-gray-500 mt-2">Redirection en cours...</p>
+      </motion.div>
+    </div>
+  );
+
+  // ÉCRAN À 4 CHIFFRES — défaut remonté en recette le 16/09/2026 : juste après
+  // une connexion entièrement pensée pour qui ne lit pas (pavé, glyphes
+  // images, voix, vibration), l'application servait TROIS champs de texte
+  // libre en français, dont le mot de passe qu'elle venait de taper. Toute
+  // marchande nouvellement identifiée passe par cet écran à sa première
+  // connexion : elle s'y arrêtait avant d'avoir vu sa caisse.
+  if (estRoleACode) return (
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: palette.bg }}>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: palette.border }}>
+            <Lock className="w-10 h-10" style={{ color: palette.primary }} />
+          </div>
+          <h1 id="change-pwd-title" className="text-2xl font-black text-gray-900">
+            {etape === 'nouveau' ? 'Ton nouveau code' : 'Redis ton code'}
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm">
+            {etape === 'nouveau' ? 'Quatre chiffres, ceux que tu utiliseras tous les jours.' : 'Une deuxième fois, pour être sûre.'}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-3xl p-6 shadow-xl border-2" style={{ borderColor: palette.border }}>
+          {/* Les ronds se remplissent : le seul retour lisible sans savoir lire. */}
+          <div className="flex justify-center gap-3 mb-6" role="status" aria-live="polite"
+            aria-label={`${pin.length} chiffre${pin.length > 1 ? 's' : ''} sur 4`}>
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} style={{
+                width: 18, height: 18, borderRadius: 9,
+                background: i < pin.length ? palette.primary : 'transparent',
+                border: `2px solid ${palette.primary}`, display: 'inline-block',
+              }} />
+            ))}
+          </div>
+
+          {error && (
+            <p className="text-center text-sm font-bold mb-4" style={{ color: '#B91C1C' }} role="alert">{error}</p>
+          )}
+
+          {/* Indice visuel (décision Patrick 26/10) : le geste à faire
+              CLIGNOTE à l'arrivée — 6 clignements puis silence. */}
+          <div className="login-cue-clignote grid grid-cols-3 gap-3">
+            {['1','2','3','4','5','6','7','8','9'].map((d) => (
+              <button key={d} type="button" disabled={loading}
+                onPointerDown={(e) => e.preventDefault()} onClick={() => toucheChiffre(d)}
+                aria-label={pinEnImages ? glyphePourChiffre(d, true) : `Chiffre ${d}`}
+                style={{ minHeight: 56, borderRadius: 16, fontSize: 24, fontWeight: 800,
+                  background: '#fff', border: `2px solid ${palette.border}`, color: '#1f2937' }}>
+                {glyphePourChiffre(d, pinEnImages)}
+              </button>
+            ))}
+            <span />
+            <button type="button" disabled={loading}
+              onPointerDown={(e) => e.preventDefault()} onClick={() => toucheChiffre('0')}
+              aria-label={pinEnImages ? glyphePourChiffre('0', true) : 'Chiffre 0'}
+              style={{ minHeight: 56, borderRadius: 16, fontSize: 24, fontWeight: 800,
+                background: '#fff', border: `2px solid ${palette.border}`, color: '#1f2937' }}>
+              {glyphePourChiffre('0', pinEnImages)}
+            </button>
+            <button type="button" disabled={loading} onClick={effacerChiffre} aria-label="Effacer le dernier chiffre"
+              style={{ minHeight: 56, borderRadius: 16, fontSize: 22, fontWeight: 800,
+                background: '#fff', border: `2px solid ${palette.border}`, color: '#1f2937' }}>
+              ⌫
+            </button>
+          </div>
+
+          {/* Elle a choisi son code avec des images : elle doit pouvoir en
+              choisir un nouveau de la même façon. Même préférence que l'écran
+              de connexion (julaba_pin_images), pas un réglage de plus. */}
+          <button type="button" onClick={basculerImages}
+            aria-label={pinEnImages ? 'Revenir aux chiffres' : 'Afficher des images à la place des chiffres'}
+            style={{ display: 'block', margin: '18px auto 0', minHeight: 44, padding: '0 12px',
+              background: 'transparent', border: 'none', fontWeight: 700, color: palette.primary }}>
+            {pinEnImages ? '🔢 Revenir aux chiffres' : '🍅 Utiliser des images'}
+          </button>
+
+          {loading && <p className="text-center text-sm text-gray-500 mt-4">Enregistrement…</p>}
+        </div>
+      </motion.div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: palette.bg }}>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: palette.border }}>
+            <Lock className="w-10 h-10" style={{ color: palette.primary }} />
+          </div>
+          <h1 id="change-pwd-title" className="text-2xl font-black text-gray-900">
+            Définissez votre mot de passe
+          </h1>
+          <p className="text-gray-500 mt-2 text-sm">
+            Choisissez un mot de passe d’au moins 4 caractères pour sécuriser votre compte.
+          </p>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          aria-labelledby="change-pwd-title"
+          className="bg-white rounded-3xl p-6 shadow-xl border-2 space-y-4"
+          style={{ borderColor: palette.border }}
+        >
+          <div>
+            <label htmlFor="change-pwd-old" className="block text-sm font-bold text-gray-700 mb-2">Mot de passe actuel</label>
+            {/* AUTH-11 — le champ SUIT son état : aria-invalid quand l'envoi a
+                échoué, aria-describedby vers l'erreur associée, et l'
+                autoComplete adapté à chaque champ (au lieu d'aucun). */}
+            <input
+              id="change-pwd-old"
+              type="password"
+              autoComplete="current-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'change-pwd-erreur' : undefined}
+              value={oldPassword}
+              onChange={e => { setOldPassword(e.target.value); if (champEnErreur === 'old') setChampEnErreur(null); }}
+              placeholder="Mot de passe actuel"
+              className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'old' ? ' login-cue-clignote' : ''}`}
+              style={{ borderColor: palette.border }}
+            />
+          </div>
+          <div>
+            <label htmlFor="change-pwd-new" className="block text-sm font-bold text-gray-700 mb-2">Nouveau mot de passe</label>
+            <div className="relative">
+              <input
+                id="change-pwd-new"
+                type={showPwd ? 'text' : 'password'}
+                autoComplete="new-password"
+                aria-invalid={error ? true : undefined}
+                aria-describedby={error ? 'change-pwd-erreur' : undefined}
+                value={newPassword}
+                onChange={e => { setNewPassword(e.target.value); if (champEnErreur === 'new') setChampEnErreur(null); }}
+                placeholder="Nouveau mot de passe (minimum 4 caractères)"
+                className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'new' ? ' login-cue-clignote' : ''}`}
+                style={{ borderColor: palette.border }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd(!showPwd)}
+                aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-pressed={showPwd}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                {showPwd ? <EyeOff className="w-5 h-5 text-gray-400" /> : <Eye className="w-5 h-5 text-gray-400" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="change-pwd-confirm" className="block text-sm font-bold text-gray-700 mb-2">
+              Confirmer le mot de passe
+            </label>
+            <input
+              id="change-pwd-confirm"
+              type={showPwd ? 'text' : 'password'}
+              autoComplete="new-password"
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? 'change-pwd-erreur' : undefined}
+              value={confirm}
+              onChange={e => { setConfirm(e.target.value); if (champEnErreur === 'confirm') setChampEnErreur(null); }}
+              placeholder="Confirmez le mot de passe"
+              className={`w-full px-4 py-4 rounded-2xl border-2 border-gray-200 focus:outline-none text-lg font-bold tracking-widest${champEnErreur === 'confirm' ? ' login-cue-clignote' : ''}`}
+              style={{ borderColor: palette.border }}
+            />
+          </div>
+          {error && (
+            <p id="change-pwd-erreur" role="alert" aria-live="assertive" className="text-red-500 text-sm font-semibold">
+              {error}
+            </p>
+          )}
+          <motion.button
+            type="submit"
+            disabled={loading}
+            className="w-full py-4 rounded-2xl font-black text-white text-lg disabled:opacity-50"
+            style={{ backgroundColor: palette.primary }}
+            whileHover={loading ? {} : { scale: 1.02 }}
+            whileTap={loading ? {} : { scale: 0.98 }}
+          >
+            {loading ? 'Enregistrement...' : 'Confirmer'}
+          </motion.button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}

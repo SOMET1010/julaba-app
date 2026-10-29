@@ -198,6 +198,102 @@ export class StockReservationService {
   }
 
   /**
+   * PROD-03 — Compte la LIVRAISON en quantité : quand une commande CONFIRMÉE
+   * passe à `livree`, la récolte liée voit son `stock_livre` augmenté de la
+   * quantité commandée. Livré ⊆ vendu : on ne touche NI stock_disponible NI
+   * stock_vendu (invariant I-C du spec stock-reservation reste vrai).
+   *
+   * Idempotent PAR LE LEDGER (convention du service : une fois par
+   * commande_id), pas seulement par le garde de l'appelant — un rejeu est
+   * sans effet même si le garde est contourné. Verrou récolte FOR UPDATE.
+   */
+  async compterLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    // Idempotent PAR LE LEDGER (convention du service) : la ligne de
+    // réservation porte la transition convertie -> livree ; un rejeu voit
+    // déjà 'livree' et sort sans effet, quel que soit le garde de l'appelant.
+    const res = await manager.query(
+      `SELECT quantite, statut, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      [commandeId],
+    );
+    if (res.length === 0) return;
+    const row = res[0];
+    if (row.statut !== 'convertie') return; // active (pas confirmée), liberee, ou déjà livree
+    const q = Number(row.quantite);
+    if (!(q > 0)) return;
+
+    // Récolte cible : réservation directe (vente directe) OU via la publication.
+    let recolteId = row.recolte_id as string | null;
+    if (!recolteId && row.publication_id) {
+      const pub = await manager.query(
+        `SELECT recolte_id FROM publications WHERE id = $1`,
+        [row.publication_id],
+      );
+      recolteId = pub[0]?.recolte_id ?? null;
+    }
+    if (!recolteId) return;
+
+    await manager.query(
+      `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
+      [recolteId],
+    );
+    await manager.query(
+      `UPDATE stock_reservations SET statut = 'livree', updated_at = NOW() WHERE commande_id = $1`,
+      [commandeId],
+    );
+    await manager.query(
+      `UPDATE recoltes
+         SET stock_livre = stock_livre + $1, updated_at = NOW()
+       WHERE id = $2`,
+      [q, recolteId],
+    );
+  }
+
+  /**
+   * PROD-03 — Restitue la livraison : si une commande DÉJÀ LIVRÉE retombe en
+   * `annulee` ou `litige`, le volume livré est retiré de stock_livre (borné à
+   * 0). Idempotent par le ledger, comme compterLivraison.
+   */
+  async annulerLivraison(manager: EntityManager, commandeId: string): Promise<void> {
+    // Idempotent PAR LE LEDGER : n'agit que sur une réservation 'livree' (la
+    // restitution remet 'convertie' — la vente reste ferme, seul le LIVRÉ
+    // revient). Un rejeu voit 'convertie' et sort sans effet.
+    const res = await manager.query(
+      `SELECT quantite, statut, recolte_id, publication_id FROM stock_reservations WHERE commande_id = $1 FOR UPDATE`,
+      [commandeId],
+    );
+    if (res.length === 0) return;
+    const row = res[0];
+    if (row.statut !== 'livree') return;
+    const q = Number(row.quantite);
+    if (!(q > 0)) return;
+
+    let recolteId = row.recolte_id as string | null;
+    if (!recolteId && row.publication_id) {
+      const pub = await manager.query(
+        `SELECT recolte_id FROM publications WHERE id = $1`,
+        [row.publication_id],
+      );
+      recolteId = pub[0]?.recolte_id ?? null;
+    }
+    if (!recolteId) return;
+
+    await manager.query(
+      `SELECT id FROM recoltes WHERE id = $1 FOR UPDATE`,
+      [recolteId],
+    );
+    await manager.query(
+      `UPDATE stock_reservations SET statut = 'convertie', updated_at = NOW() WHERE commande_id = $1`,
+      [commandeId],
+    );
+    await manager.query(
+      `UPDATE recoltes
+         SET stock_livre = GREATEST(0, stock_livre - $1), updated_at = NOW()
+       WHERE id = $2`,
+      [q, recolteId],
+    );
+  }
+
+  /**
    * Libere la reservation active d'une commande (annulation) : restitue le
    * disponible et marque la ligne 'liberee'. Idempotent : n'agit que sur une
    * reservation 'active' (ne restitue jamais une vente deja convertie).

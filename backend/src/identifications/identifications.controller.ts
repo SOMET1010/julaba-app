@@ -1,6 +1,6 @@
 import { SkipThrottle } from '@nestjs/throttler';
 import { buildMeta, parsePagination } from '../common/paginate';
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, ForbiddenException, NotFoundException, BadRequestException, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, Request, ForbiddenException, NotFoundException, BadRequestException, ConflictException, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,8 +14,10 @@ import { ActivationService } from '../auth/activation.service';
 import { User, UserStatus } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { CreateActeurDto } from '../auth/dto/create-acteur.dto';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { aPermissionBO } from '../auth/bo-autorisation';
+import { exigerTransitionStatut } from './statuts-identification';
 
 @UseGuards(JwtAuthGuard)
 @SkipThrottle()
@@ -48,13 +50,23 @@ export class IdentificationsController {
     filters: { region?: string; role?: string; statut?: string },
   ): Promise<Record<string, unknown>[]> {
     const user = req.user;
-    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national', 'gestionnaire_zone', 'operateur_terrain'].includes(user?.role);
+    // IDENT-01 / DGE-12 (20/10/2026) : `gestionnaire_zone` est le bras de
+    // terrain de la DGE (il porte `enrolement.validate` par défaut —
+    // auth/bo-autorisation.ts — et l'UI BO lui affiche l'écran Enrôlement).
+    // SCOPÉ À SA ZONE : il ne voit la carte que des dossiers de SA zone
+    // (fail-closed : sans zone affectée, il ne voit que les siens — aucun).
+    const zoneGZ = user?.role === 'gestionnaire_zone' ? (user?.zoneId ?? null) : null;
+    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role) || !!zoneGZ;
     const conditions: string[] = ['i.latitude IS NOT NULL', 'i.longitude IS NOT NULL'];
     const params: unknown[] = [];
     let p = 1;
     if (!isAdmin) {
       conditions.push(`i.identificateur_id = $${p}`);
       params.push(String(user.id));
+      p += 1;
+    } else if (zoneGZ) {
+      conditions.push(`i.zone_id::text = $${p}`);
+      params.push(String(zoneGZ));
       p += 1;
     }
     if (filters.region) {
@@ -93,17 +105,35 @@ export class IdentificationsController {
     const { page, limit } = parsePagination(query);
     const skip = (page - 1) * limit;
     const user = req.user;
-    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
+    // IDENT-01 / DGE-12 (20/10/2026) : `gestionnaire_zone` accède à la branche
+    // admin SCOPÉ À SA ZONE (identifications.zone_id = users.zone_id) —
+    // avant ce correctif il tombait dans la branche « ses propres dossiers »
+    // et sa liste d'enrôlements à traiter était VIDE. Fail-closed : sans zone
+    // affectée, la liste reste vide plutôt que de lui donner tout le pays.
+    const zoneGZ = user?.role === 'gestionnaire_zone' ? (user?.zoneId ?? null) : null;
+    const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role) || !!zoneGZ;
     if (isAdmin) {
+      const filtreZone = zoneGZ ? `WHERE i.zone_id::text = $3::text` : '';
+      // IDENT-11 (20/10/2026) : JOIN sur l'ACTEUR (l'utilisateur enrôlé) — la
+      // liste embarque téléphone/photo/activité/marché du dossier. Avant : le
+      // front re-consultait GET /users/:id pour CHAQUE dossier (N+1 rejoué par
+      // son polling 30 s). Une page de 50 dossiers = 51 requêtes ; désormais 1.
       const rows = await this.dataSource.query(`
         SELECT i.*,
           TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS identificateur_nom,
+          TRIM(CONCAT(COALESCE(a.first_name,''), ' ', COALESCE(a.last_name,''))) AS acteur_nom_user,
+          COALESCE(a.phone, '') AS acteur_telephone,
+          a.photo_url AS acteur_photo,
+          COALESCE(a.activity, '') AS acteur_activite,
+          COALESCE(a.market, '') AS acteur_marche,
           COUNT(*) OVER() AS total_count
         FROM identifications i
         LEFT JOIN users u ON u.id::text = i.identificateur_id
+        LEFT JOIN users a ON a.id::text = i.acteur_id
+        ${filtreZone}
         ORDER BY i.created_at DESC
         LIMIT $1 OFFSET $2
-      `, [limit, skip]);
+      `, zoneGZ ? [limit, skip, String(zoneGZ)] : [limit, skip]);
       const total = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
       const data = rows.map(({ total_count, ...r }: any) => r);
       return { data, meta: buildMeta(page, limit, total) };
@@ -111,9 +141,15 @@ export class IdentificationsController {
     const rows = await this.dataSource.query(`
       SELECT i.*,
         TRIM(CONCAT(COALESCE(u.first_name,''), ' ', COALESCE(u.last_name,''))) AS identificateur_nom,
+        TRIM(CONCAT(COALESCE(a.first_name,''), ' ', COALESCE(a.last_name,''))) AS acteur_nom_user,
+        COALESCE(a.phone, '') AS acteur_telephone,
+        a.photo_url AS acteur_photo,
+        COALESCE(a.activity, '') AS acteur_activite,
+        COALESCE(a.market, '') AS acteur_marche,
         COUNT(*) OVER() AS total_count
       FROM identifications i
       LEFT JOIN users u ON u.id::text = i.identificateur_id
+      LEFT JOIN users a ON a.id::text = i.acteur_id
       WHERE i.identificateur_id = $1
       ORDER BY i.created_at DESC
       LIMIT $2 OFFSET $3
@@ -129,7 +165,12 @@ export class IdentificationsController {
     const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
     const identification = await this.repo.findOne({ where: { id } });
     if (!identification) throw new NotFoundException('Identification introuvable');
-    if (!isAdmin && String(identification.identificateur_id) !== String(user.id)) {
+    // IDENT-01 : un gestionnaire de zone lit le dossier SI et SEULEMENT s'il
+    // est de sa zone (scopage identique au GET de liste).
+    const dansSaZoneGZ = user?.role === 'gestionnaire_zone'
+      && !!user?.zoneId
+      && String((identification as any).zone_id ?? '') === String(user.zoneId);
+    if (!isAdmin && !dansSaZoneGZ && String(identification.identificateur_id) !== String(user.id)) {
       
       throw new ForbiddenException('Accès refusé');
     }
@@ -301,6 +342,32 @@ export class IdentificationsController {
       throw new BadRequestException('Body invalide: acteur et identification requis');
     }
 
+    // IDENT-09 (20/10/2026) — IDEMPOTENCE DE LA SOUMISSION. Le client génère
+    // UNE clé par soumission (persistée avec le brouillon) et la rejoue telle
+    // quelle après une coupure réseau. Si la clé existe déjà, la première
+    // soumission a RÉUSSI : on renvoie le dossier EXISTANT (même id, même
+    // acteur, ni doublon ni SMS ni notification) avec le flag `dejaSoumis`.
+    // La réponse ressemble à un succès — parce que c'en est un. Sans clé :
+    // comportement inchangé (rétrocompatibilité).
+    const idempotencyKey =
+      typeof body?.idempotencyKey === 'string' && body.idempotencyKey.trim()
+        ? body.idempotencyKey.trim()
+        : (typeof body?.idempotency_key === 'string' && body.idempotency_key.trim()
+            ? body.idempotency_key.trim()
+            : null);
+    if (idempotencyKey) {
+      const existant = await this.repo.findOne({ where: { idempotency_key: idempotencyKey } as any });
+      if (existant) {
+        return {
+          success: true,
+          dejaSoumis: true,
+          user: existant.acteur_id ? { id: existant.acteur_id } : undefined,
+          identification: existant,
+          activationCode: null,
+        };
+      }
+    }
+
     const acteurData: CreateActeurDto & Record<string, any> = { ...body.acteur };
     const identificationData = { ...body.identification };
 
@@ -372,6 +439,10 @@ export class IdentificationsController {
         latitude: identificationData.latitude || null,
         longitude: identificationData.longitude || null,
         documents: identificationData.documents || null,
+        // IDENT-09 : la clé est posée DANS la transaction — si la création
+        // réussit, la clé est définitivement consommée ; un rejeu plus tard
+        // est un rejeu qui trouve le dossier existant.
+        idempotency_key: idempotencyKey,
         commission_payee: false,
         date_identification: new Date(),
       };
@@ -488,14 +559,48 @@ export class IdentificationsController {
     const isAdmin = ['admin_general', 'super_admin', 'operateur_terrain', 'admin_national'].includes(user?.role);
     const existing = await this.repo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Identification introuvable');
-    if (!isAdmin && String(existing.identificateur_id) !== String(user?.id)) {
+    const estProprietaire = String(existing.identificateur_id) === String(user?.id);
+    // IDENT-01 / DGE-12 : le gestionnaire de zone passe la porte d'entrée
+    // SCOPÉ À SA ZONE uniquement. La validation elle-même reste ensuite régie
+    // par la permission `enrolement.validate` (qu'il porte par défaut —
+    // auth/bo-autorisation.ts) et par la machine à états ; C-12 n'est pas
+    // touché (le propriétaire du dossier ne s'auto-approuve toujours pas).
+    const dansSaZoneGZ = user?.role === 'gestionnaire_zone'
+      && !!user?.zoneId
+      && String((existing as any).zone_id ?? '') === String(user.zoneId);
+    if (!isAdmin && !dansSaZoneGZ && !estProprietaire) {
       throw new ForbiddenException('Accès refusé');
     }
+
+    // C-12 (19/10/2026) — autorisation de VALIDATION d'enrôlement.
+    // Qui peut muter `statut` ? Uniquement un compte BO portant la permission
+    // serveur `enrolement.validate`, résolue comme le front (auth/
+    // bo-autorisation.ts : super_admin toujours, sinon boPermissions du compte,
+    // sinon défaut du rôle). Le propriétaire terrain du dossier (identificateur)
+    // et l'operateur_terrain NE valident PAS : la self-approbation d'un dossier
+    // (commissions/statistiques faussées, circuit 24-48 h contourné) est le
+    // constat C-12, corrigé ici.
+    const peutValider = aPermissionBO(user, 'enrolement.validate');
+
+    // Toute tentative de poser un statut par un compte non habilité est refusée
+    // AVANT même le filtrage des champs — 403 métier explicite : un
+    // identificateur ne peut plus approuver/rejeter son propre dossier par
+    // appel API direct.
+    if (body?.statut !== undefined && body?.statut !== null && !peutValider) {
+      throw new ForbiddenException(
+        "Le statut d'un dossier d'identification ne peut être modifié que par un agent habilité (permission enrolement.validate). Le propriétaire du dossier ne peut pas s'auto-approuver (C-12).",
+      );
+    }
+
+    // Allow-list de champs (garde existante préservée). `statut` n'y figure
+    // que pour un agent habilité ; le propriétaire conserve l'édition de ses
+    // autres champs (correction de formulaire, complément, géolocalisation…).
     const allowedFields = [
-      'statut', 'acteur_nom', 'commune', 'notes',
+      'acteur_nom', 'commune', 'notes',
       'etape_validation', 'motif_rejet', 'date_validation',
       'current_step', 'form_data',
       'latitude', 'longitude', 'region', 'documents',
+      ...(peutValider ? ['statut'] : []),
     ];
     const normalized = {
       ...body,
@@ -506,6 +611,38 @@ export class IdentificationsController {
     const safeBody = Object.fromEntries(
       Object.entries(normalized).filter(([k]) => allowedFields.includes(k))
     );
+
+    // ── Machine à états serveur (C-12) ─────────────────────────────────────
+    // Statut actuel du dossier (source : la ligne lue plus haut).
+    const ancienStatut = String(existing.statut ?? '');
+    // Statut cible demandé par un agent habilité (chaîne vide/null ⇒ pas de
+    // changement demandé).
+    let statutCible: string | undefined =
+      typeof safeBody.statut === 'string' && safeBody.statut.trim() !== ''
+        ? safeBody.statut.trim()
+        : undefined;
+    // Resoumission du complément : le PROPRIÉTAIRE (non habilité) ne poste
+    // jamais de statut — quand il re-soumet un dossier en 'complement'
+    // (formulaire complété, sans clé statut dans le body), le SERVEUR repasse
+    // seul le dossier en revue ('en_attente') et journalise le changement :
+    // le circuit annoncé à l'écran (revue BO sous 24-48 h) reste vrai.
+    let sourceStatut: 'agent_habilite' | 'resoumission_proprietaire' = 'agent_habilite';
+    if (!statutCible && estProprietaire && !peutValider && ancienStatut === 'complement') {
+      statutCible = 'en_attente';
+      sourceStatut = 'resoumission_proprietaire';
+    }
+    if (statutCible) {
+      // Transition hors mappe (ou depuis un statut inconnu) → 409. Réécrire la
+      // MÊME valeur est un no-op autorisé (idempotence des clients).
+      if (statutCible !== ancienStatut) {
+        exigerTransitionStatut(ancienStatut, statutCible);
+      }
+      safeBody.statut = statutCible;
+    } else {
+      delete safeBody.statut;
+    }
+
+    // Garde existante PRÉSERVÉE : motif obligatoire pour un rejet.
     if (safeBody.statut === 'rejete' && !safeBody.motif_rejet) {
       throw new BadRequestException('Le motif de rejet est obligatoire');
     }
@@ -521,8 +658,38 @@ export class IdentificationsController {
     const prenom = actor?.first_name || existing?.acteur_nom?.split?.(' ')?.[0] || 'Utilisateur';
     const telephone = actor?.phone || body?.telephone || body?.phone || '';
 
-    const result = await this.repo.update(id, safeBody);
-    if (safeBody.statut === 'rejete') {
+    // Mise à jour + entrée d'audit DANS LA MÊME TRANSACTION (motif repris
+    // d'admin-wallets.service) : impossible d'écrire un changement de statut
+    // sans sa trace, et une panne du journal annule la mutation (C-12 /
+    // ADMINNAT-04 — l'ancien PATCH n'écrivait AUCUN audit).
+    const statutEffectif: string | null = statutCible ?? null;
+    const result = await this.dataSource.transaction(async (em) => {
+      let res: any = { affected: 0, raw: [], generatedMaps: [] };
+      if (Object.keys(safeBody).length > 0) {
+        res = await em.update(Identification, id, safeBody);
+      }
+      if (statutEffectif && statutEffectif !== ancienStatut) {
+        await em.query(
+          `INSERT INTO audit_logs (user_id, action, entite, entite_id, details) VALUES ($1,$2,'identification',$3,$4)`,
+          [
+            user?.id ?? user?.userId ?? null,
+            'IDENTIFICATION_STATUT_MODIFIE',
+            id,
+            JSON.stringify({
+              ancien_statut: ancienStatut,
+              nouveau_statut: statutEffectif,
+              motif: safeBody.motif_rejet ?? null,
+              source: sourceStatut,
+            }),
+          ],
+        );
+      }
+      return res;
+    });
+    // Les branches SMS ci-dessous regardent le statut RÉELLEMENT appliqué
+    // (statutEffectif) — posé par un agent habilité, ou par le serveur pour la
+    // resoumission du complément ('en_attente' : aucun SMS, comme avant).
+    if (statutEffectif === 'rejete') {
       if (phone) {
         try {
           await this.feedbakSmsService.notifyDossierRejete(String(phone), String(prenom), String(safeBody.motif_rejet || 'Non précisé'));
@@ -531,7 +698,7 @@ export class IdentificationsController {
         }
       }
     }
-    if (safeBody.statut === 'approuve' || safeBody.statut === 'valide') {
+    if (statutEffectif === 'approuve' || statutEffectif === 'valide') {
       if (phone) {
         try {
           // P0.0 (ADR-002) : le template DOSSIER_VALIDE ("connectez-vous avec 0000")
@@ -564,7 +731,7 @@ export class IdentificationsController {
         }
       }
     }
-    if (safeBody.statut === 'complement') {
+    if (statutEffectif === 'complement') {
       if (phone) {
         try {
           await this.feedbakSmsService.notifyComplementRequis(String(phone), String(prenom));

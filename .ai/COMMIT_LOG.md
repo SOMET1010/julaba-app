@@ -22,7 +22,7 @@ Format : `<type>(<scope>): <sujet>`
 - 1 commit = 1 préoccupation
 - Pas de `git add .` (ajout explicite par fichier)
 - Pas de commits géants injustifiés
-- Convention formalisée dans `coordination/README.md`
+- Convention historiquement formalisée dans `coordination/README.md` (dossier supprimé le 06/10/2026)
 
 ## Historique récent (5 derniers commits)
 
@@ -33,6 +33,61 @@ e17992a Merge pull request #246 from SOMET1010/claude/clever-allen-dnr8by (Claud
 96c7b64 merge(UI-03, UI-02): premier ecran — zone voix 260 px          (Claude, ~22/09/2026)
 62636e6 style(caisse): UI-03 hierarchie du premier ecran + UI-02 recu  (Claude, ~22/09/2026)
 ```
+
+## 06/10/2026 — Lots UX-2 « Voix pour tous » et UX-6 « IA/routing » (agent Z.ai Code)
+
+```
+fix(roles): UX-2/T1 — la voix Tata parle aux trois rôles (gate speak retiré, parité Tata IdentificateurLayout)
+fix(marchand): UX-6/M-P1-2 — la tuile « Mon argent » restore la porte keiwa (porte unique accueil, arbitrage §8.3)
+fix(identificateur): UX-6/T5 — routes canoniques + redirects + onglet Suivi + titre Acteurs + useScoreJULABA
+fix(wallet): BUG-005 — /paiement/failed affichait un succès (détection /error|failed/)
+docs: journaux .ai + worklog Task 16
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+> NB rebase (16-bis) : ces commits ont été rebasés sur `060c333` (agent UX producteur, arrivé en parallèle) — hash finaux `2e12cf6`, `0c026aa`, `7699927`, `65c1783`, `5d27f63`. Le commit « voix » rebasé ne porte plus que le commentaire doctrinal + la note `disabledRoles` : la substance du gate vit dans `060c333`. Détail : worklog Task 16-bis.
+
+## 12/10/2026 — Sandbox : PG embarqué auto, seed BO connectable, testeur de rôles (agent Z.ai Code)
+
+```
+chore(infra): démarrage auto du PostgreSQL embarqué au npm run dev
+fix(seed): mot de passe back-office lu à l'exécution
+feat(auth): bouton de test des rôles <> sur la connexion (DEV)
+docs: registres session 12/10 — commits tâches 29-32 + push dev
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 12/10/2026 — Stack docker autoportante + audit comptable des acteurs (agent Z.ai Code)
+
+```
+chore(infra): postgres dans la stack docker + env            (tâche 34)
+docs(audit): audit comptable des 10 acteurs                  (tâche 35)
+docs: registres session 12/10 — tâches 34-35                 (tâche 36)
+```
+
+- `chore(infra)` : `docker-compose.yml` gagne le service `postgres` (16-alpine — version de référence CI, healthcheck `pg_isready`, volume `julaba_pgdata`, port hôte 127.0.0.1:5433) et `backend` attend `service_healthy` ; nouveau `backend/.env.production.example` tracké (`DB_HOST=postgres`, 3 secrets fail-fast documentés) ; `docker compose up -d` devient autoportant ; VPS non cassé (`--env-file` du deploy.yml = interpolation seule).
+- `docs(audit)` : `.ai/AUDITS/AUDIT-COMPTA-ACTEURS-2026-10-12.md` — matrice 10 rôles × 9 opérations monétaires, 6 chaînes d'argent scorées, 7 constats critiques (C-01…C-07, dont 5 vérifiés de première main) + 10 majeurs + 9 mineurs, 7 chantiers P1, verdict global **62/100** (conforme pilote espèces marchande ; non prêt mobile money / crédit / coopérative / marketplace).
+- Batteries : YAML compose ×2 parseurs OK ; check-ignore (`.env.production.example` trackable, `backend/.env` ignorée) ; tsc frontend vert sur l'arbre audité (Task 35) ; aucun fichier TS modifié dans les 3 commits.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 12/10/2026 — C-01 : réconciliation des retraits mobile money (agent Z.ai Code)
+
+```
+fix(wallets): C-01 — réconciliation des retraits mobile money   (tâche 37)
+fix(wallet): C-01 — le retrait Keiwa annonce la réconciliation   (tâche 37)
+docs: registres session 12/10 — tâches 36-37                    (tâche 37)
+```
+
+- `fix(wallets)` : chantier P1 n°1 de l'audit comptable (C-01) — référence `RET-<uuid>` servante aussi de `pay_token` (fin du `RET-TEMP-Date.now()` introuvable), `COMPLETED` jamais posé sur la seule HTTP 200 (re-vérification check-status), primitive `rembourserRetraitBpay` (transition unique `PENDING_WITHDRAW → REFUNDED` + crédit dans la même transaction), cron étendu à `PENDING_WITHDRAW` (+ alerte ERROR > 24 h), webhook reconnaît les retraits. Invariant `bpay-retrait-reconciliation.spec.ts` : 6/6 sur vrai postgres (remboursement unique sous course controller/webhook/cron, compte suspendu = remboursement retenu puis effectué).
+- `fix(wallet)` : `WithdrawWalletModal` — FAILED et timeout disent la vérité (remboursement automatique, solde rafraîchi) — fin de l'« échec silencieux » ; parcours masqué en pilote (keiwa hors pilote, garde RootLayout) : écrans prêts pour l'entrée au pilote.
+- Batteries : invariant C-01 6/6 + régression B3/B2/K1/T1/tontines 18/18 (vrai postgres embarqué) ; tsc frontend/backend 0 erreur ; lint racine 0 erreur ; test vivant sandbox (retrait 1000 F → 400 + remboursement gardé + trace REFUNDED + debit/credit liés par `refundOf`). Aucun garde assoupli (renforcement pur).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+> NB sandbox : travail des Tasks 29-32 balé par le superviseur dans des auto-commits UUID sur `main` locale (dont 1544 binaires pgdata ajoutés puis désindexés) → commits reconstruits depuis l'arbre final, JAMAIS de cherry-pick des UUID, push `origin/dev` uniquement (jamais main, jamais force). Rebase sur `2b23bef` (fix(auth) amont « supprimer les éléments de contexte dev », arrivé en parallèle) — hunks `LoginPassword.tsx` sans chevauchement, badge Tata « Guide » amont conservé ; hash finaux `870701f`, `02153dd`, `a6a9eff` + commit docs. Détail : worklog Tasks 29-33.
 
 ## Statistiques Git (snapshot 2026-09-28)
 
@@ -61,7 +116,121 @@ e17992a Merge pull request #246 from SOMET1010/claude/clever-allen-dnr8by (Claud
 - **Liens** : TASKS.md INIT-XXX, ADR-XXX, BUG-XXX, etc.
 ```
 
-## Commits à venir (planifiés)
+## Commits du 2026-10-06 (système multi-agents — lot UX-1)
+
+```
+68149f2 fix(wallet): T2 — la page Paiements services ne promet plus un paiement qui n'existe pas (BUG-001)   (JULABA, 06/10/2026)
+f7e9544 fix(wallet): T8/M-P0-3 — le transfert keiwa passe par une relecture avant l'irréversible (BUG-002)   (JULABA, 06/10/2026)
+67f72ef fix(marchand): T2 — le marché virtuel annonce une COMMANDE, jamais un paiement réussi (BUG-003)      (JULABA, 06/10/2026)
+41b6671 fix(marchand): T8/M-P0-2 — la cotisation coopérative (25 000 F) passe par relecture + PIN (BUG-004)  (JULABA, 06/10/2026)
+```
+
+- **Atomicité** : ✅ 4 commits, 1 préoccupation chacun (1 bug = 1 commit), fichiers ajoutés explicitement (pas de `git add .`)
+- **Tests** : ✅ verts — `tsc -b` 0, garde charte marchande 0, `vite build` 0 (21,9 s), `test:ci` 44 maillons EXIT 0, garde-argent = les 3 refus attendus (gels humains en attente, aucun refus nouveau)
+- **Revue** : ⏳ auto-revue orchestrateur (spot-checks + relecture des diffs) — revue Reviewer indépendante à planifier
+- **Détail** : BUGS.md BUG-001..004 · source audit `docs/audit/AUDIT-UX-ROLES-2026-10-06.md`
+
+## 2026-10-06 — Actions correctives REVIEW-003/REVIEW-004 (restaurations CI + gels, gardes voix, registres)
+
+**Commits** :
+```txt
+d9f08ad fix(ci): REVIEW-003/004 Act-1 — restaurer schema-pilote + check-nest-versions et les gels dffe705 (retour aux 3 refus attendus)  (JULABA, 06/10/2026)
+4eb6471 test(voix): REVIEW-004 Act-2 — encoder §8.1 et l'arbitrage Rapport de test dans les gardes voix, historique consigné  (JULABA, 06/10/2026)
+(ce commit) docs: REVIEW-003/004 — suivi des actions exécutées, INC-001 atténué, BUGS.md réconcilié, CHANGELOG, worklog 19  (JULABA, 06/10/2026)
+```
+
+- **Atomicité** : ✅ 3 commits, 1 préoccupation chacun (restauration CI / gardes voix / registres), fichiers ajoutés explicitement (pas de `git add .`)
+- **Tests** : ✅ verts — `tsc -b` 0, `tsc --noEmit` backend 0, `test:ci` 44 maillons EXIT 0, charte marchande verte, `test:parole-entree` vert, `test:voix-trace-source` = les 4 rouges hérités connus (0 nouveau), `test:maillons-orphelins` vert, `check:nest-versions` EXIT 0, garde-argent = les 3 refus attendus (re-gel humain en attente, voulu)
+- **Revue** : ✅ actions DEMANDÉES par REVIEW-003/REVIEW-004, exécutées par le reviewer-agissant-orchestrateur — preuves mécaniques dans REVIEW_LOG, section « Suivi des actions correctives » ; B4-1 et B4-2 levés, INC-001 atténué
+- **Détail** : scripts/schema-pilote.mjs + scripts/check-nest-versions.mjs (état `dffe705`) · ci/PERIMETRE-ARGENT.json + ci/EMPREINTE-GARDES.json (état `dffe705` — restauration, PAS un gel) · paroleEntree.test.mts §[7] (7 assertions §8.1) · test-voix-trace-source.mjs A/C + en-têtes · fixture parole-3917bb7.json (liste blanche : seule contexts/AppContext.tsx re-bénie) · BUGS.md 8/5/3 + BUG-006/007 réservés
+
+## 07/10/2026 — Corrections des revues REVIEW-001/002/003 (agent Z.ai Code)
+
+```
+c7e2715 fix(backend): REVIEW-003/B3-3 — retire les majeures non prouvées (jest 29.7.0, @types/jest 29.5.14, swagger 11.4.7, backend + racine, retour dffe705)
+6db87ed fix(marchand): REVIEW-001/R1-1 — le libellé cotisation dérive de COTISATION_MONTANT (bouton + récap modal)
+c292812 chore(voix): REVIEW-002/R2-2 — newline AppContext + fixture re-bénie par le garde (liste blanche) ; docs: R2-1 CODE-NEW-7
+docs: journaux .ai + worklog Task 21
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+- **B3-3** : preuve par exécution — suite unitaire backend **33 suites / 251 tests EXIT 0** (la suite morte ressuscitée), `tsc --noEmit` 0, `nest build` EXIT 0 ; preuve nouvelle : l'upgrade swagger 12 était **irrésoluble** (peer `@nestjs/common ^12` vs common 11.2.6 — ERESOLVE npm), la « recette swagger 12 » est morte-non-lieu (upgrade retiré, pas prouvé)
+- **R1-1** : rendu byte-identique prouvé (`25\u00A0000 FCFA`) ; **R2-2** : diff fixture = 1 ligne (hash AppContext seul) ; **R2-1** : orphelinat re-vérifié mécaniquement (0 référence externe) avant traçage
+- Détail : worklog Task 21 (REVIEW_LOG, section « Suivi des corrections »)
+
+## 07/10/2026 — Lot primitives d'argent T8 (agent Z.ai Code)
+
+```
+dcc6716 refactor(argent): REVIEW-001/R1-3 — primitives maison RelectureArgent + PinArgent (une seule copie) ; R1-4 voix sur relectures (même source, ARG-17) + vibrerAttente ; R1-5 Radix Dialog (AUTH-05) ; R1-2 TransfertPage 499 l. (idempotence extraite, méthodes vers methodsTransfert) ; MaCooperative 382 l.
+docs: journaux .ai + worklog Task 22
+```
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+- **Nouveaux fichiers** : `components/argent/RelectureArgent.tsx` (199 l.), `components/argent/PinArgent.tsx` (47 l.), `utils/idempotence.ts` (17 l.), `components/wallet/methodsTransfert.ts` (29 l.)
+- **Fichiers migrés** : TransfertPage (562→499), MaCooperative (440→382) — comportement métier inchangé (mêmes endpoints, verrous, textes)
+- **Détail** : worklog Task 22 (REVIEW_LOG, « Suivi des corrections — 2e session ») ; batteries vertes, garde-argent aux 3 refus attendus
+
+## 07/10/2026 — Merge des dernières améliorations de main dans dev (agent Z.ai Code)
+
+Audit REVIEW-006 (PR #261→#272 : cadre CI racine, correctifs RC, retours terrain PIE A1/A2/A3, profil/activation) puis fusion sur dev en worktree isolé. `main` jamais poussé. Gels et chaîne `test:ci` intacts.
+
+1. `265062e` — `Merge main dans dev — retours terrain PIE 07/10 et cadre CI racine` : 63 commits fusionnés ; rename-follow git (frontend_src→frontend suivi : 32 modifiés auto-fusionnés, 14 ajouts relocalisés) ; conflits résolus (.gitignore union, anti-enumeration même-fix SEC-07 → version dev, package.json workspaces `frontend` + scripts main, package-lock régénéré) ; 6 occurrences frontend_src traduites dans l'outillage main
+2. `1b32929` — `fix(i18n): intégration de la chaîne verify de main sur l'arbre renommé dev` : banc rejeuDeclencheurs (chemin frontend), 4 phrases dites héritées enregistrées au catalogue (MARCH_COTISATION_PAYEE/ECHEC, PROD_COMMANDE_ACCEPTEE, PROD_DEMANDE_DETAIL — a_migrer, motif PIE), INVENTAIRE-VOIX régénéré (425/242) ; test:i18n-source/-argent/-locales/-empreintes verts
+3. Registres : REVIEW_LOG (REVIEW-006), CHANGELOG (Fusionné 07/10), COMMIT_LOG (cette entrée), worklog 24
+
+Batteries finales : tsc ×2 = 0 ; charte 0 ; test:ci 0 ; parole-entree 0 ; voix-trace = 4 hérités ; garde-argent = 3 refus attendus ; jest 251/251 ; nest build 0 ; 6 bancs main + verrou + i18n verts.
+
+## 12/10/2026 — Libération des variables d'environnement mortes (agent Z.ai Code)
+
+Audit REVIEW-007 (double inventaire usages↔déclarations, tous canaux) puis nettoyage sur dev en worktree isolé. `main` jamais poussé. Gels et chaîne `test:ci` intacts.
+
+1. `122aedb` — `chore(env): libère 8 variables d'environnement jamais lues (audit complet)` : backend/.env.example −5 (BPAY_RECONCILIATION, FEEDBAK_SMS_TEMPLATES, VOICE_PROVIDERS, VOICE_METRIC_LABELS, ODOO_CLIENT — homonymes = constantes de code, env jamais lue) ; render.yaml + compose odoo-poc −TTS_DISABLE_CLOUD (flag réel = VOICE_LOCAL_TTS) ; vite-env.d.ts −VITE_SENTRY_DSN (DSN en dur dans sentry.ts)
+2. Registres : REVIEW_LOG (REVIEW-007), CHANGELOG (section Nettoyé), COMMIT_LOG (cette entrée), worklog 25
+
+Batteries : typecheck EXIT 0 ; test:ci EXIT 0 (chaîne gelée intacte) ; enum-check-phone EXIT 0 ; garde-argent = baseline héritée exacte (3 refus connus, aucun fichier touché impliqué).
+
+## 12/10/2026 — Vérification « pas morts » variables + composants (agent Z.ai Code)
+
+Passe de vérification REVIEW-008 sur dev (worktree isolé, main jamais poussé) : preuve de mort des 7 noms libérés (122aedb), vivacité des 102 déclarations restantes (61 .env.example + 24 render.yaml + 17 POC), audit des composants hôtes (modules app.module, sentry/instrument, WebSocketTransport, 12 workflows → scripts, secrets, render/deploy/POC/Caddyfile) — **aucune variable ni composant mort restant**.
+
+1. `c912d8a` — `chore(env-types): type VITE_CLOUDINARY_URL/PRESET dans vite-env.d.ts` : clôture du point ouvert REVIEW-007 (type seul, +4 lignes)
+2. Registres : REVIEW_LOG (REVIEW-008), CHANGELOG (section Vérifié), COMMIT_LOG (cette entrée), worklog 26
+
+Batteries : `tsc -b` frontend EXIT 0 ; gels ci/*.json intacts (diff bb9052a vide) ; vite-env.d.ts hors empreintes garde-argent.
+
+## 12/10/2026 — Refonte de l'étape numéro de la connexion au design validé (agent Z.ai Code)
+
+Maquette 12/10 appliquée à l'écran de connexion (75c869d, dev en worktree isolé, main jamais poussé) : signature de marque, titre complet + promesse, carte Tata nommée avec Écouter, numéro 🇨🇮 +225 en paires à positions pointées, pavé à lettres avec micro de dictée (empreinte en repli), carte « Dicter mon numéro » + badge MICRO OUVERT/EN VEILLE. Étapes code/reconnaissance intactes.
+
+Gardes : voix-trace LoginPassword 15/15 appels identiques (ordre + arguments) ; auth-charte 24/26 hex, zéro nouveau ; verrou/canal/entrée-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande EXIT 0 ; tsc -b EXIT 0. Vérifié au navigateur (Vite + agent-browser) : rendu, saisie, progression, étape code, 0 erreur console.
+
+## 12/10/2026 — Micro de dictée au bout de la ligne numéro (agent Z.ai Code)
+
+Demande du 12/10 (`7b146b4`, dev en worktree isolé, main jamais poussé) : bouton micro en fin de la carte numéro, même contrat que la carte dictée et la touche du pavé (handler réutilisé, visible seulement moteur vocal prêt, pastille qui pulse). Paires de chiffres passées en classe `.login-paire` + paliers responsive ≤430/≤360 px (ligne à trois gestes sans débordement, vérifié 390 et 320 px).
+
+Gardes : voix-trace LoginPassword 15/15 appels identiques ; auth-charte EXIT 0 (zéro hex nouveau TSX) ; verrou/canal/entrée-unique/enum/coffre/cible-tactile/parole-entree/lien-activation/charte-marchande/entree-numero-voix EXIT 0 ; tsc -b EXIT 0. Vérifié au navigateur (Vite + agent-browser) : micro 44×44 en bout de ligne, œil avant micro, repli honnête sans moteur, 0 erreur console.
+
+## Commits à venir (planifiés)## 07/10/2026 — Audit UX marchand/producteur/voix + lots UX-7/UX-8 (agent Z.ai Code)
+
+| Commit | Type | Contenu (1 préoccupation = 1 commit) |
+|---|---|---|
+| `e780436` | fix(caisse) | T7 — l'échec générique d'encaissement/ajout s'écrit aussi (POS Caisse, AjoutProduitGuide, MicroVenteCaisse) |
+| `4ab3452` | fix(marchand) | T7 — MesCommandes (6 handlers + 2 négos + hors-ligne) et DepenseForm s'écrivent |
+| `14662b9` | fix(marchand) | Tontines — trois situations trois phrases + Réessayer (M-P1-5) |
+| `968c454` | fix(argent) | MarchéVirtuel — verrou anti double-tap + PIN honnête (BUG-011) |
+| `56c0293` | fix(argent) | TransfertPage — trois situations 404/panne/hors-ligne + échec dicté (M-P1-1, T7) |
+| `34f8c0a` | fix(argent) | TransfertPage — PIN conditionnel dans la relecture ; M-P0-3 COMPLET |
+| `eba2380` | fix(voix) | T7 producteur — messageUtilisateur + toasts appariés + UUID retirés (9 sites + RecolteForm) |
+| `1f44736` | fix(voix) | ARG-17 — montants dictés en toutes lettres (4 sites, nombreEnMotsFr) |
+| `5a56cb3` | fix(voix) | Encaissement producteur — parité dit/écrit + triple canal (haptique) |
+| `48b868f` | fix(voix) | Le muet §8.1 lisible — réglage « Voix coupée » dans les Paramètres |
+| (ce commit) | docs | Audit `AUDIT-UX-MARCHAND-PRODUCTEUR-VOIX-2026-10-07.md` + BUGS 011-014 + DEBT CODE-NEW-8/9 + CHANGELOG + COMMIT_LOG + worklog 23 |
+
+Batteries rejetées sur l'état final : tsc front/back 0 · charte EXIT 0 · test:ci EXIT 0 (622 vertes) · parole-entree EXIT 0 · voix-trace-source = les 4 rouges héritées exactes · garde-argent = les 3 refus attendus.
+
+
 
 ### P0 — Gouvernance (à commiter dès validation)
 1. `docs(readme): créer README.md racine point d'entrée universel` (INIT-001)
@@ -78,3 +247,128 @@ e17992a Merge pull request #246 from SOMET1010/claude/clever-allen-dnr8by (Claud
 ## Commits rejetés (historique)
 
 *(Aucun commit rejeté pour le moment — système initialisé)*
+
+## 12/10/2026 — Vérification C-01 + resynchronisation (agent Z.ai Code)
+
+```
+docs: registres session — vérification C-01, resync arbre     (tâche 38)
+```
+
+- Session de reprise après coupure de contexte : le résumé périmé annonçait C-01 « à faire » alors que la tâche 37 l'avait déjà poussé. Aucun code produit : attestation de première main du fix (controller/service/cron/webhook conformes à la prescription audit :157), re-jeu des gates sur le contenu poussé (tsc front/back 0 · lint racine 0), resynchronisation de l'arbre principal sur origin/dev (worklog + COMMIT_LOG + LoginPassword.tsx du fix amont f739a66), nettoyage du bruit de modes 644→755 (2049 fichiers, 0 ligne).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 12/10/2026 — Déploiement PM2 (agent Z.ai Code)
+
+```
+chore(deploy): PM2 hôte — julaba-dev.ansut.ci (backend :3004, statique :8080)   (tâche 39)
+docs: registres session — déploiement PM2 (tâche 39)                            (tâche 39)
+```
+
+- `chore(deploy)` : ecosystem.config.cjs (backend PM2 en fork strict, .env.production chargé via dotenv — précédence identique à env_file du compose) + docs/DEPLOIEMENT-PM2.md (guide 11 sections calé sur l'infra réelle : nginx 443 julaba-dev.ansut.ci → /api + socket.io sur 127.0.0.1:3004, statique sur 8080 ; BD compose postgres 5433 ou système ; migrations typeorm hoisté ; redéploiement zéro downtime ; 6 pièges repo — fork non cluster, secrets fail-fast, .env.production jamais commité, non-cumul Docker/PM2).
+- Batteries : eslint sur ecosystem.config.cjs exit 0 ; 0 fichier TypeScript modifié (aucune gate tsc requise) ; doc vérifiée de première main (dotenv + typeorm hoistés, PORT lu à main.ts:270/:277, health /api/v1/health du compose).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`).
+
+## 2026-10-19 — audit catalogue produits + correctif caisse tactile
+
+1. `docs(audit): catalogue produits — ce qui bloque encore le marchand (caisse tactile)` — `.ai/AUDITS/AUDIT-CATALOGUE-PRODUITS-2026-10-19.md` (preuves fichier:ligne, 4 catalogues cartographiés, C-A1/C-A2/C-A3/C-C1, recette).
+2. `fix(caisse): le marchand crée son produit au nom libre depuis « Autre article »` — POSCaisse.tsx (creerProduitDepuisFeuille, bouton 3 états, sortie d'adoption, ligne « Créer X ») + CaisseContext.tsx (addProduct renvoie le produit créé). Gates : tsc -b ✅, 5 tests unitaires purs ✅.
+
+## 2026-10-20 — lot « Continue les corrections » : dictée du nom dans le parcours guidé + gardes héritées (agent Z.ai Code)
+
+1. `82c7471` — `fix(voix): la dictée web préserve le nom libre comme l'APK (STK-25)` : BoutonDireProduit chemin web — le repli nomLibreDicte n'existait que sur Sherpa ; « ajoute dix kassos » était jeté sur web, gardé sur APK. Même règle aux deux oreilles.
+2. `2ba6c01` — `fix(voix): le nom du produit se dicte dans le parcours guidé (audit 20/10 §5.3)` : BoutonDireNom.tsx (nouveau) + AjoutProduitGuide — bloc dictée à l'étape « nom », orthographe de son étal, unité/prix dits en même temps conservés, relecture vocale du nom transcrit (STOCK_059), refus dits (STOCK_060/061, une seule source), STOCK_046 migre. Correction d'une non-lectrice par l'oreille : redire REMPLACE + champ mot à mot.
+3. `f3d42a7` — `fix(i18n): les phrases restées en dur rejoignent le catalogue (couverture)` : STOCK_062 (dictée web 821cc12) + WALLET_009 (retrait Keiwa, C-01 ef419c4) inscrites ; INVENTAIRE-VOIX régénéré (430 sites / 241 phrases) — 3 échecs hérités de test:i18n-source fermés.
+4. `ab6da32` — `test(voix): gardes recalées sur le code actuel — rouges hérités du 19/10` : vente-sans-prix (bouton 3 états e3e3a63), caisse-micro + CAT-01 vente-au-catalogue (renommage venteBase 821cc12, gardes RENFORCÉES : le nom libre n'écrase jamais un nom de son catalogue).
+5. (ce commit) — `docs(audit)`: AUDIT-VENTE-SAISIE-VOIX §5.3 FERMÉ + §5.4 rouges hérités hors périmètre + worklog 47.
+
+Batteries : tsc -b front EXIT 0 (--force, code réel) ; 15 suites audit + produit-dit/premier-produit/montant-dit/i18n-argent ✅ ; gardes bouton-dire-produit/parcours-guide-parle/refus-parle/charte-marchande/vente-sans-prix/caisse-micro/vente-au-catalogue/i18n-locales/i18n-source EXIT 0 ; verify complet 146 vert / 6 rouge / 152 — 0 rouge nouveau dû au lot, 5 rouges hérités fermés ; eslint 0 erreur ; gels ci/ intacts.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`) ; messages via `git commit -F`.
+
+## 2026-10-20 — « Passe a la suite des corrections » : fin des rouges héritées (agent Z.ai Code)
+
+1. `test(commandes): le banc refuse-hors-ligne espionne aussi l'ÉCRIT (toast)` — refusHorsLigneCommande.test.mts : le banc extrait le VRAI source (eval) ; le toast sonner du source était absent du scope → ReferenceError. Espion toast + assertions d'écrit (B4-1/2/3 : l'écrit est humain et porte la MÊME phrase que le dit — T7). La garde ressort plus forte.
+2. `test(accueil): la garde recale la porte Keiwa sur la décision du 06/10` — accueilHonnete.test.mts §PILOTE : conflit 24/09 (tuile retirée) vs 06/10 (restaurée, arbitrage §8.3 AUDIT-UX-ROLES, commit UX-6/M-P1-2 — preuve COMMIT_LOG.md:41). Assertions inversées, via code actif (lire() filtre les commentaires), historique conservé.
+3. `fix(auth): effacer un numéro dit le clip login-24, plus une phrase sans clip` — LoginPassword.tsx:1048 : « Tu es en train d'effacer le numéro hein ! » = aucun clip (direEntreeTexte cherche par le TEXTE → muet sans erreur), canal machine, et nommait « numéro » (violait lot A §5). Remplacé par parle("C'est effacé net.") = AUTH_24/login-24.mp3 mot pour mot. INVENTAIRE-VOIX régénéré (430→431 sites, 241→242 phrases).
+4. `test(pilote): le plancher d'argent passe de 40 à 38 routes (retrait voulu du 19/10)` — modulesPilote.test.mts : IDENTIFICATEUR-16 (b91f6a8) a retiré les 6 routes keiwa de l'identificateur ; les autres assertions de la section [5] restent vertes (toutes couvertes, rien supprimé). Le plancher continue de traquer l'érosion.
+5. `chore(verify): i18n-empreintes-argent sort des CONNUS — il est guéri` — verify-tout.mjs : redevu vert (relance exit 0 à dev@3c4bc40), historique de la guérison dans le commentaire. Restent 2 CONNUS (voix-trace-source, garde-argent).
+6. `docs(audit): fin des rouges héritées — les cinq sont verts, C-C1 intacte` — AUDIT-CORRECTIONS-ROUGES-2026-10-20.md + correction méthodologique (le script réel est test:prix-marchande, DÉJÀ VERT — la dette C-C1 est documentée dans le test lui-même, décision Patrick requise pour vider les prix) + COMMIT_LOG + worklog 47-bis.
+
+Batteries : tsc -b front exit 0 (--force) ; eslint 0 erreur sur les 5 fichiers ; 15 suites vertes relancées (refus-hors-ligne, accueil-honnete, voix-connexion-lot-a, modules-pilote, i18n-source, i18n-locales, i18n-empreintes-argent, web-reco, lien-activation, auth-charte, charte-marchande, retour-frappe, micro-contraint, parole-entree, fcfa) ; **verify complet : 150 vert / 2 rouge / 152 — les 2 rouges sont les 2 CONNUS assumés, 0 rouge non-documenté** (l'audit consolidé du matin était 146/6).
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier (pas de `git add .`) ; messages via `git commit -F` (jamais /tmp) ; UN seul heredoc par commande bash.
+
+## 2026-10-20 — « Vas-y corrigé tout » : C-C1 vidée + mot à mot + Rapport (agent Z.ai Code)
+
+1. `fix(catalogue): les prix inventés sont vidés — décision C-C1 (Patrick, 20/10)` — catalogue-produits.ts : interface sans prix, 38 entrées vidées, doctrinal STK-02 ; garde prixDeLaMarchande [5] recalée en verrouillage INVERSE (interdit tout prix). Aucune lecture active re-vérifiée avant de toucher.
+2. `feat(stock): la correction du nom se dit mot à mot — « non, pas kasso, kako »` — produitDit.ts (nomLibreDicte texte, nomRefute? : MOTS_REFUTATION toujours hors du nom, nom réfuté sort si la phrase le réfute, elisions à une lettre filtrées) ; BoutonDireNom reçoit nomActuel, AjoutProduitGuide passe nomActuel={nom} ; banc produitDit exécute LA LECTURE DU COMPOSANT.
+3. `fix(auth): le pied de page outils revient — « 🐞 Rapport de test » (main@24b40b3)` — LoginPassword.tsx : pied de page devMode verbatim main (tutoriel, By Icône Solution, version dite, Rapport via vlogPartager) ; inventaire voix régénéré (432 sites).
+4. `docs(audit)`: LOT-48-CORRECT-TOUT-2026-10-20.md + COMMIT_LOG + worklog 48.
+
+Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 17 suites vertes ; verify complet 150 vert / 2 rouge / 152 (2 CONNUS) — 0 rouge nouveau. Seule ouverture restante : recette appareil P3.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via git commit -F ; UN seul heredoc par commande bash.
+
+## 2026-10-20 — Rapport détaillé de la campagne de corrections (agent Z.ai Code)
+
+1. `docs(audit): rapport détaillé de la campagne — 18 commits, preuves à chaud` — RAPPORT-DETAILLE-CORRECTIONS-2026-10-20.md : les 18 commits du 20/10 reconstitués en 4 lots (A audit+fixes initiaux 01:00-01:32 ; B Task 47 02:15-02:21 ; C Task 47-bis 08:27 ; D Task 48 08:55), chaque correction avec sa preuve `fichier:ligne` dans le HEAD actuel (LoginPassword.tsx:1036-1049 et 1541-1553, catalogue-produits.ts:20-27, produitDit.ts:210/284, verify-tout.mjs:62-65, accueilHonnete.test.mts:158-159, refusHorsLigneCommande.test.mts:116-118, modulesPilote.test.mts:133, MarchandAccueilVoice.tsx:225, MesCommandes.tsx:22/191/194/208, INVENTAIRE-VOIX 432 sites) + APK prouvé par l'API GitHub.
+
+Batteries re-jouées À CHAUD sur b94b7b3 (preuves de première main, pas de citation) : tsc -b --force EXIT 0 ; eslint sur les 11 fichiers des lots C+D : 0 erreur (11 warnings préexistants) ; verify-tout complet : **150 vert / 2 rouge (2 CONNUS) / 152** — 106 s, 3e trace cohérente du jour (08:25, 08:53, à chaud). APK : run « APK pilote — construction à la demande » sur b94b7b3 success (08:56:52 ; job « Construire l'APK de debug » 08:56:56→08:59:24) ; release pilote-latest : julaba-b94b7b3.apk (272 979 241 o) + julaba-latest.apk (alias) créés 08:59:04Z ; run précédent c7d23c1 (19/10 21:45) aussi success.
+
+Atomicité : docs only — rapport + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F`.
+
+## 2026-10-20 — « La voix de l'effacement + la dictée web » (lot 49, agent Z.ai Code)
+
+1. `fix(voix): chaque effacement du numéro se dit — « Mmmh… Hein ! » (décision 20/10)` — AUTH_41 (login-41.mp3, TTS 5,9 s, atteste:false) joué à CHAQUE effacement du numéro via parle() dans handleKeyDelete ; texte aux 5 endroits (entreeVoix+EntreeVoiceKey, écran, script AUTH_41, catalogue, TATA_UI_CLIPS) ; effacement du CODE reparle (AUTH_24, était muet — écart §3.5 fermé) ; garde lot A [5] recalée sur la décision ; INVENTAIRE 433/244 ; registre vocal régénéré.
+2. `fix(voix): sur le web sans SpeechRecognition, la cause dite est la vraie` — useVoiceCore.ts:975 : le message hérité (« disponible que dans l'application ») était devenu FAUX depuis la décision webReco du 19/10 ; il ne sort plus que si sherpa ABSENT ET recoWebDispo() FAUX, et dit la vraie cause (navigateur sans oreille → Chrome ou le toucher). Sherpa = correctement implémenté (plugin Android uniquement, par décision du 11/08).
+3. `docs(voix): lot 49` — LOT-49-VOIX-EFFACEMENT-WEB-2026-10-20.md + COMMIT_LOG + worklog 49. Réponse « dictionnaire produits » : lexique 28 formes → SON étal → création au nom libre (aucun défaut trouvé).
+
+Batteries : tsc -b exit 0 ; eslint 0 erreur (7 fichiers) ; 12 suites vertes ; **verify complet : 150 vert / 2 rouge (2 CONNUS) / 152 — 0 rouge nouveau**.
+
+Atomicité : 1 préoccupation = 1 commit ; ajout explicite par fichier ; messages via `git commit -F` ; UN seul heredoc par commande bash.
+
+## 2026-10-26 — « L'audit voix de la connexion entre au cockpit » (lot 50, agent Z.ai Code)
+
+1. `docs(voix): lot 50 — l'audit voix de la connexion entre au cockpit .ai` — LOT-50-CONNEXION-VOIX-2026-10-26.md : l'audit Patrick (26/10, « qui ne sait pas lire/écrire puisse se connecter à la voix ») ; les trois écarts notés ; les écarts ①/③ FERMÉS par 8ebe8647 (« oui » vaut le bouton, « recommencer » redicte, « utiliser les chiffres » ouvre le pavé — preuve E2E zéro toucher jusqu'à /marchand) ; le code secret = DÉCISION B5 (11/08, « un secret ne se dit pas »), pas un trou ; la phrase juste écrite : « tout se dit, sauf le secret ». CHANGELOG : entrée « La connexion écoute » en tête. + worklog maj-docs-ai-26-10.
+
+Batteries : lot DOCUMENTAIRE — 0 fichier code touché (diff = .md uniquement) ; les gardes citées (tsc 0, eslint 0, 21 gardes, test:commandes-entree 35 assertions) sont celles des commits 339306c0 / 3d420d22 / e5ebc902 / 8ebe8647, preuves de première main dans leurs messages.
+
+Atomicité : docs only — rapport LOT-50 + CHANGELOG + COMMIT_LOG + worklog ; ajout explicite par fichier ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.
+
+## 2026-10-26 — « Retrait de la pastille Aide vocale » (agent Z.ai Code)
+
+1. `fix(connexion): retire la pastille « Aide vocale » — la relecture reste sur le bouton rond` — LoginPassword.tsx : le bouton haut-gauche (maquette du 12/10) est démonté sur demande écrite de Patrick ; il n'appelait AUCUNE voix nouvelle (la MÊME `ecouterTata` que le bouton rond de relecture) ; `ecouterTata`, `tataSpeaking`, `Volume2` restent utilisés par la relecture — rien de mort ; décision tracée en commentaire daté (la maquette était « révocable par écrit »).
+
+Batteries : tsc -b exit 0 ; test:auth-charte vert ; verify — les 2 rouges (test:enum-check-phone : backend/.env AUTH_TELEPHONES_TEST ; test:i18n-source : inventaire 438 ≠ 437) PROUVÉS préexistants par stash sur l'arbre propre — 0 rouge nouveau. REDEVENUS VERTS (test:voix-trace-source à retirer de CONNUS) = ménage du commit d'entrée s'écoute, pas touché ici.
+
+Atomicité : 1 préoccupation = 1 commit ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.
+
+## 2026-10-26 — « La question de la reconnaissance attend son tour » (agent Z.ai Code)
+
+1. `fix(voix): la question de la reconnaissance attend son tour — le refus de play() nomme le haut-parleur` — Patrick (recette vrai téléphone) : « la question ne joue pas, on doit cliquer d'abord sur le HP ». Deux écueils fermés : (a) LA COURSE — la question (1,5 s après montage) partait PILE sur la phrase de caisse, deux priorités 'user' se coupaient, et la caisse arrive TARD sur réseau réel ; l'accueil réserve un créneau (`reserverVoixAccueil`, 6 s, Math.max — la plus longue gagne) dans accueilMarchandVoix.ts, la question attend derrière (poll 1,5 s, plafond ~20 s) et se REDIT si la caisse la coupe en route — miroir de la règle « les rappels attendent leur tour » (e5ebc902) ; (b) LE SILENCE MENTEUR — un play() refusé (autoplay hors geste) mourait dans playClip (Promise<void>, dette ACC-05 figée par VOICE-01 : audioManager INTOUCHÉ) et direAccueilMarchand rapportait « joué » ; `derniereIssuePlayClip` (voiceTrace.ts, LECTURE seule du journal VOIX-05) relit la preuve — refus → chaîne stoppée, modale affiche « Touche le haut-parleur pour écouter la question » (nudge role=status). Toute sortie de modale pose closRef → la chaîne en attente est abandonnée (plus de question posée après réponse). Garde nouvelle `test:tour-voix` (13 assertions : créneau pur + lecteur d'issue) + banc rattaché à maillons-verify.json.
+
+Preuves navigateur (390×844) : recharge SANS geste (conditions APK) → question refusée à 5,3 s (issue play-refuse au journal) → nudge affiché (p[role=status] au DOM) → clic HP → question ended 4,6 s → nudge disparu. Avec geste : la question part à la FIN exacte du créneau (5,3 s) et se joue entière (ended 4 661 ms), consigne ended 3 285 ms, zéro TTS_COUPEE.
+
+2. `chore(gardes): rattrapage prescrit par verify — inventaire régénéré, voix-trace-source sorti des CONNUS, 2 bancs orphelins rattachés` — INVENTAIRE-VOIX.md régénéré (437 = 437, rouge connu depuis 96acd15e — la commande prescrite par le garde lui-même) ; test:voix-trace-source sorti de CONNUS (redevenu vert de première main à 44e09c0f : le lecteur VOIX-05 ajoute une LECTURE, les 4 empreintes figées intactes) ; test:commandes-entree (35 assertions, 8ebe8647) et test:indicatifs-dits rattachés à maillons-verify.json — orphelins depuis leurs commits, VER-02 « une garde qui ne s'exécute pas rassure à tort ».
+
+Batteries : tsc -b exit 0 ; eslint 0 erreur (5 fichiers) ; test:tour-voix 13/13 ; test:auth-charte, test:voix-trace 34/34, test:audio, test:voix-trace-source verts ; verify 153 vert / 3 rouge / 156 — les 3 rouges : enum-check-phone (backend/.env, prouvé préexistant au stash sur arbre propre), i18n-source (corrigé par le régén de ce lot), maillons-orphelins (corrigé par le rattachement).
+
+Atomicité : 1 préoccupation = 1 commit (le fix, puis le rattrapage mécanique) ; message via `git commit -F` ; garde anti-course rev-list = 0 avant push.
+## 2026-10-26 — « Ajouter un produit s'entend de bout en bout » (VOIX-06, agent Z.ai Code)
+
+Demande de Patrick : « Assure-toi qu'elle puisse ajouter des produits entièrement à l'aide de commandes vocales, avec des instructions audio claires et une navigation simple, sans dépendre du texte. »
+
+1. `fix(voix): le prix se dit aussi sur le web — et le micro annonce ses pannes` — dictée web dans BoutonDirePrix (même motif que nom/produit, même lecture montantDit) ; STOCK_063/064 (pannes DITES, la phrase en dur muette remplacée par la clé qu'elle affiche) ; STOCK_065 relance le silence ; cheminRef pour ne jamais doubler la relance. test:montant-dit +9.
+2. `feat(voix): la question de l'unité écoute la réponse` — uniteDite (pur : étiquette touchée = étiquette écrite, accent ignoré pour l'appariement, bigrammes, synonymes vers l'écran, mot du marché = son mot, reste → null) + BoutonDireUnite (web puis sherpa, ouvrirToutSeul, STOCK_066/067/068). normalise d'extraction exportée. test:unite-dite (36).
+3. `feat(voix): la question de la quantité écoute la réponse` — quantiteDite (extraire ; zéro = réponse STK-04 ; passe-liste étroite, « ça passe pas » ≠ passe) + BoutonDireQuantite (passe = poser(null), STOCK_069/070/071/072) ; composés hyphénés 22-69 dans DIZAINES (surensemble pur). test:quantite-dite (33).
+4. `fix(voix): ce qu'elle a dit d'avance n'est plus jeté — le dix arrive à sa question` — depart.quantite (l'état préremplit un nombre positif), garde STK-23 à la 4e question (règle « prefixe » : l'oreille ne reçoit jamais moins que l'œil).
+5. `fix(stock): le stock qu'elle n'a pas donné n'est pas zéro — STK-04 jusqu'au bout` — TROUVÉ PAR LA PREUVE : « je ne sais pas » (voix ou bouton) s'enregistrait 0 (addProduct `stock || 0`), fausse alerte rupture ; 2e coerceur au chargement (`Number(p.stock)`). Null explicite traverse partout, types `.stock: number | null`, stockComplete refuse une base inconnue, compteur d'alertes + voix « alerte » excluent les non-suivis. Garde premier-produit §6b.
+6. `docs(worklog): ajout-produit-100-voix-26-10 — chaque question écoute sa réponse, prouvé au navigateur` — ce journal + CHANGELOG.
+
+Preuves navigateur (390×844, micro mocké + faux SpeechRecognition) : Kassos 2 000 F ×10 (valeur 184 000 = 164 000 + 20 000) ; « sept pagnes » prérempli « 7 sac » ; « je ne sais pas » → stock null EN BASE + carte « ◌ Stock non suivi | — » ; « trois gommes » → relance parlée sur « euh ben attends » → « cinq cents » → « dix » → Gommes 500 F / 10 sac en base, 0 erreur console.
+
+Batteries : tsc -b exit 0 ; verify 157 vert / 1 rouge CONNU (garde-argent, état de référence) ; enum-check-phone revenu vert (backend/.env du sandbox avait perdu AUTH_TELEPHONES_TEST — ligne restaurée depuis le miroir TEST_PHONES) ; inventaire 444 = 444.
+
+Dette notée : produits créés avant le fix avec « je ne sais pas » portent un faux 0 en base (Pagnes démo) — migration de données à arbitrer. Observations : libellé « Chercher en parlant » (le micro ne cherche pas), double énoncé des questions (composant + effet), page stock muette à l'arrivée, navigation accueil→stock tactile seule.

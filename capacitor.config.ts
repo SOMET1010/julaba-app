@@ -18,9 +18,9 @@ const config: CapacitorConfig = {
   // deux semaines avec de l'argent réel, c'est inacceptable.
   appId: 'com.julaba.app',
   appName: 'julaba-app',
-  // Vite construit dans ../frontend_src/vite.config.ts (build.outDir: "../frontend/dist")
+  // Vite construit dans ../frontend/vite.config.ts (build.outDir: "../frontend/dist")
   // → à la racine du dépôt (où vit android/), le web build est donc "frontend/dist",
-  // PAS "frontend_src/dist" (qui n'est jamais peuplé). L'ancienne valeur portait de
+  // PAS "frontend/dist" (qui n'est jamais peuplé). L'ancienne valeur portait de
   // plus une faute de syntaxe ("webDir=..." collé dans la chaîne) qui empêchait tout
   // sync Android de trouver les assets.
   webDir: 'frontend/dist',

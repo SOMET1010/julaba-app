@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   InternalServerErrorException,
   Param,
@@ -23,10 +24,11 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { CaisseTransaction, TransactionStatus } from '../caisse-rest/caisse-transaction.entity';
 import { paginate } from '../common/paginate';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 import { UpdateTransactionStatusDto } from './dto/update-transaction-status.dto';
 import { TransactionsExportService } from './transactions-export.service';
 import { restituerStock } from '../caisse-rest/stock-restitution';
+import { bilanVentesDeCaisse } from '../commun/vente-de-caisse';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -55,6 +57,10 @@ export class TransactionsRestController {
 
     const qb = this.createAdminTransactionsQuery(user, query);
     const total = await qb.getCount();
+    // Le chiffre de l'écran (« volume ») se calcule ICI, sur TOUT le filtre et
+    // avec la définition unique des ventes de caisse — pas en additionnant la
+    // page reçue, qui mêle dépenses et ventes annulées et s'arrête à `limit`.
+    const resume = await bilanVentesDeCaisse(qb, 't');
     const { entities, raw } = await qb.skip(skip).take(limit).getRawAndEntities();
 
     const data = this.mergeRawTransactionData(entities, raw);
@@ -62,6 +68,7 @@ export class TransactionsRestController {
     return {
       data,
       total,
+      resume,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
@@ -253,8 +260,15 @@ export class TransactionsRestController {
   }
 
   private applyZoneRestriction(qb: SelectQueryBuilder<CaisseTransaction>, user: User): void {
-    if (user.role === 'gestionnaire_zone' && (user as any).zoneId) {
-      qb.andWhere('u.zone_id = :zoneId', { zoneId: (user as any).zoneId });
+    // GESTZONE-05 (fail-closed) : un gestionnaire_zone sans zone attribuée ne
+    // doit jamais basculer en vue NATIONALE silencieuse (avant : `&& zoneId`
+    // laissait passer tout le pays). On refuse la requête au lieu de filtrer.
+    if (user.role === 'gestionnaire_zone') {
+      const zoneId = (user as any).zoneId;
+      if (!zoneId) {
+        throw new ForbiddenException("Votre compte n'est associé à aucune zone : accès refusé");
+      }
+      qb.andWhere('u.zone_id = :zoneId', { zoneId });
     }
   }
 

@@ -75,7 +75,7 @@ export default tseslint.config(
 
   // ── Le code de production : c'est lui qu'on tient ───────────────────────
   {
-    files: ['frontend_src/src/**/*.{ts,tsx}', 'backend/src/**/*.ts'],
+    files: ['frontend/src/**/*.{ts,tsx}', 'backend/src/**/*.ts'],
     ignores: ['**/*.test.*', '**/*.spec.*'],
     languageOptions: {
       parser: tseslint.parser,
@@ -111,7 +111,7 @@ export default tseslint.config(
     },
     settings: {
       'import/resolver': {
-        typescript: { project: ['frontend_src/tsconfig.json', 'backend/tsconfig.json'] },
+        typescript: { project: ['frontend/tsconfig.json', 'backend/tsconfig.json'] },
       },
     },
   },

@@ -94,10 +94,10 @@ partout, données du scénario démo cohérentes à l'écran :
 ## Séance 4 — 15/08/2026 : boucle ESPÈCES marchand de bout en bout
 
 Recette **reproductible** (pas seulement un compte rendu) : harnais e2e
-committé sous `frontend_src/e2e/` (`run-recette.sh` + `recette-caisse-especes.mjs`
+committé sous `frontend/e2e/` (`run-recette.sh` + `recette-caisse-especes.mjs`
 + `proxy.mjs`). Vraie stack bootée localement — PostgreSQL vierge → backend
 NestJS (`synchronize` + seed démo) → `frontend/dist` servi même-origine →
-Chromium piloté 390×844. Rejouable : `bash frontend_src/e2e/run-recette.sh`.
+Chromium piloté 390×844. Rejouable : `bash frontend/e2e/run-recette.sh`.
 
 Ferme la boucle sécurisée par R-A (#114, backend seul maître du stock),
 crédit-off #16-B (#115), R7 (#116, remise en stock à l'annulation), mobile money

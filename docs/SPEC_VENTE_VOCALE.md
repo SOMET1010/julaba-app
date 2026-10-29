@@ -155,7 +155,7 @@ Règles :
 | Canal | Comportement |
 |---|---|
 | APK (avec plugin sherpa, cf. REPONSE_SHERPA.md) | Parcours complet ci-dessus, hors-ligne compris. |
-| Web / PWA | PAS de reconnaissance (fait établi). Le micro affiche le message honnête et bascule vers la vente TACTILE. Les répétitions/confirmations parlées de Tata fonctionnent (clips + synthèse). |
+| Web / PWA | Reconnaissance via `SpeechRecognition`/`webkitSpeechRecognition` quand le navigateur la fournit, sinon message honnête et repli tactile. Le navigateur peut utiliser son propre service de reconnaissance ; aucune promesse d'offline Sherpa n'est faite sur Web. Les répétitions/confirmations parlées de Tata fonctionnent (clips + synthèse). |
 | APK sans plugin (état ACTUEL) | Identique au Web — d'où le point bloquant sherpa à lever AVANT de promettre ce parcours. |
 
 ## 9. Plan de tests

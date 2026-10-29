@@ -1,6 +1,6 @@
 # Ajouter une langue à JULABA — en moins de quinze minutes
 
-> Lot langues, 20/09/2026. Architecture : `frontend_src/src/app/i18n/voice/`.
+> Lot langues, 20/09/2026. Architecture : `frontend/src/app/i18n/voice/`.
 > Aucun composant métier ne connaît un code de langue : ajouter une langue est
 > un **ajout de données**, jamais une modification de logique.
 
@@ -32,7 +32,7 @@ de la locale demandée. Une langue vide ne change donc rien à l'argent.
 
 ### 1. Ajouter un manifest de langue (ingénierie, 2 minutes)
 
-Créer `frontend_src/src/app/i18n/voice/locales/<code>/index.ts` sur le modèle
+Créer `frontend/src/app/i18n/voice/locales/<code>/index.ts` sur le modèle
 de `locales/bci/index.ts` :
 
 ```ts

@@ -48,9 +48,9 @@ Le dépôt porte **trois chaînes de déploiement**, aux rôles désormais disti
 ## Ce que le filet vérifie
 
 1. **Install reproductible** — `npm ci` à la **racine** (npm workspaces + lock
-   racine ; les sous-dossiers `frontend_src/` et `backend/` n'ont pas de lock).
+   racine ; les sous-dossiers `frontend/` et `backend/` n'ont pas de lock).
 2. **Build** — frontend (`vite build`) et backend (`nest build`).
-3. **Tests frontend** — 11 harnais `tsx` (`npm run test:ci -w frontend_src`).
+3. **Tests frontend** — 11 harnais `tsx` (`npm run test:ci -w frontend`).
 4. **Déterminisme du manifeste voix** — auto-activant : régénère et vérifie que
    `docs/voix/` est inchangé, **quand** `voix:manifest` est présent (après merge
    de Studio Voix). S'ignore proprement sinon.
@@ -117,7 +117,7 @@ node ci/garde-argent.mjs                       périmètre + gardes + test:ci ge
 node ci/garde-argent.mjs --base <ref>          + détection sur le diff
 node ci/garde-argent.mjs --base <ref> --liste-invariants   (requête, pour la CI)
 node ci/garde-argent.mjs --base <ref> --preuve <fichier>   (verdict)
-npm run test:garde-argent -w frontend_src      les 8 scénarios, sur dépôts jetables
+npm run test:garde-argent -w frontend      les 8 scénarios, sur dépôts jetables
 ```
 
 ## `--figer-perimetre` / `--figer-gardes` — **humain seulement**

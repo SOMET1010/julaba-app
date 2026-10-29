@@ -30,7 +30,7 @@ n'écrire rien du tout**.
 Le code les attend déjà, sous ces noms exacts. Leur absence est la cause du
 silence des deux premiers écrans — les tout premiers qu'une marchande voit.
 
-À déposer dans `frontend_src/public/voix/tata/`.
+À déposer dans `frontend/public/voix/tata/`.
 
 | Fichier | Texte à dire |
 |---|---|
@@ -83,6 +83,61 @@ imprécis : on ne dit pas qu'il s'agit de **choisir** un code, ni qu'il faut le
 | `code-choisir.mp3` | Choisis ton nouveau code, celui que tu utiliseras tous les jours. |
 | `code-redire.mp3` | Redis le même code, pour être sûre. |
 | `code-different.mp3` | Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code. |
+
+## 4 — L'écran de récupération (priorité haute — le parcours est muré sans eux)
+
+Écrit le 29/10/2026, avec l'écran de récupération (LOT-RECOVERY). Le parcours
+complet existe désormais — trois marches guidées, elle ne tape jamais
+(`RecuperationCompte.tsx`, spec `SPEC-ECRAN-RECUPERATION.md`) — mais **toutes
+ses phrases passent par le moteur de synthèse**, et dans l'APK le moteur est
+muet : tant que ces clips n'existent pas, la marche à suivre existe sans voix,
+donc sans elle. Les textes sont les ids du catalogue (`frontend/src/app/i18n/
+voice/catalog.ts`, famille `RECOUV_*`) ; à déposer dans
+`frontend/public/voix/tata/`.
+
+| Fichier | Id catalogue | Texte à dire |
+|---|---|---|
+| `recouv-entree.mp3` | RECOUV_ENTREE | Si tu as perdu ton accès, touche le bouton rond en dessous : on t'aidera à rentrer. |
+| `recouv-accueil.mp3` | RECOUV_ACCUEIL | Tu as perdu ton accès ? Pas de souci. Donne le téléphone à la personne qui t'aide. Elle tape le code, et toi, tu poses ton doigt. |
+| `recouv-code-refuse.mp3` | RECOUV_CODE_REFUSE | Le numéro ou le code n'est pas bon. Fais-le vérifier, puis recommence. |
+| `recouv-attente.mp3` | RECOUV_ATTENTE | Trop d'essais. Attends un peu, puis on recommence. |
+| `recouv-session-expiree.mp3` | RECOUV_SESSION_EXPIREE | Session expirée. Reprends du début. |
+| `recouv-hors-ligne.mp3` | RECOUV_HORS_LIGNE | Pas de réseau. Connecte-toi puis réessaie. |
+| `recouv-consigne-presence.mp3` | RECOUV_CONSIGNE_PRESENCE | C'est ton moment : maintiens ton doigt sur le gros bouton jusqu'au son. |
+| `recouv-presence-trop-courte.mp3` | RECOUV_PRESENCE_TROP_COURTE | Encore un peu : maintiens jusqu'au son. |
+| `recouv-consigne-doigt.mp3` | RECOUV_CONSIGNE_DOIGT | C'est bien ça. Maintenant pose ton doigt sur le capteur. C'est ton nouveau téléphone. |
+| `recouv-doigt-encore.mp3` | RECOUV_DOIGT_ENCORE | Ce n'est rien. Pose ton doigt encore. |
+| `recouv-succes.mp3` | RECOUV_SUCCES | C'est bon, tu es revenue. Bienvenue chez toi. |
+
+> Les phrases sont câblées via `speakClipOrText` : une fois les fichiers
+> déposés, il faudra brancher chaque id sur son fichier (même petit travail
+> de code que pour les chiffres, section 2). D'ici là, la règle tient :
+> **une phrase sans clip est un silence dans l'APK.**
+
+## 5 — L'écran d'activation (priorité haute — le geste est muré sans eux)
+
+Écrit le 29/10/2026, avec le refonte de l'activation (LOT-ACTIVATION).
+L'écran est passé de trois champs de texte à un parcours guidé : le code
+reçu, le secret choisi sur le pavé, puis LE geste (« C'est mon compte »,
+toucher long ≥ 800 ms) qui déclenche l'activation — le serveur horodate
+(ACTIV_CONSENTEMENT). Toutes ses phrases passent encore par la synthèse :
+dans l'APK, un écran muet. Les ids sont au catalogue (`frontend/src/app/
+i18n/voice/catalog.ts`, famille `ACTIV_*`) ; à déposer dans
+`frontend/public/voix/tata/`.
+
+| Fichier | Id catalogue | Texte à dire |
+|---|---|---|
+| `activ-accueil.mp3` | ACTIV_ACCUEIL | Bienvenue chez toi ! Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. |
+| `activ-code-manquant.mp3` | ACTIV_CODE_MANQUANT | Saisis d'abord le code que tu as reçu. |
+| `activ-consigne-choisir.mp3` | ACTIV_CONSIGNE_CHOISIR | Choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître. |
+| `activ-consigne-redis.mp3` | ACTIV_CONSIGNE_REDIS | Redis le même code, pour être sûre. |
+| `activ-code-different.mp3` | ACTIV_CODE_DIFFERENT | Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code. |
+| `activ-code-trop-simple.mp3` | ACTIV_CODE_TROP_SIMPLE | Ce code est trop simple. Choisis-en un autre. |
+| `activ-consigne-presence.mp3` | ACTIV_CONSIGNE_PRESENCE | C'est ton compte. Maintiens ton doigt sur le gros bouton jusqu'au son. |
+| `activ-presence-trop-courte.mp3` | ACTIV_PRESENCE_TROP_COURTE | Encore un peu : maintiens jusqu'au son. |
+| `activ-code-refuse.mp3` | ACTIV_CODE_REFUSE | Ce code ne marche pas ou il est expiré. Demande un nouveau code. |
+| `activ-hors-ligne.mp3` | ACTIV_HORS_LIGNE | Pas de réseau. Connecte-toi puis réessaie. |
+| `activ-succes.mp3` | ACTIV_SUCCES | C'est bon, ton compte est à toi ! Tu peux maintenant te connecter avec ton code. |
 
 ## Comment enregistrer
 

@@ -84,14 +84,14 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
 
     const marchand: any = await repo.save(repo.create({
       phone: '+2250700059002', firstName: 'Marchand', lastName: 'Neg', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchandId = marchand.id;
     marchandToken = await signFor(marchand);
 
     const marchand2: any = await repo.save(repo.create({
       phone: '+2250700059003', firstName: 'Marchand2', lastName: 'Neg', genre: 'femme',
-      role: UserRole.MARCHAND, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
     } as any));
     marchand2Id = marchand2.id;
     marchand2Token = await signFor(marchand2);
@@ -126,6 +126,87 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
     api().post('/api/v1/commandes/negociation').set('Authorization', `Bearer ${token}`).send({
       vendeurId, produit: 'Igname', quantite, prixOriginal: 400, prixPropose, unite: 'kg', publicationId: pubId,
     });
+
+  it('refuse une négociation du marché sans publicationId', async () => {
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg' });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('publicationId requis');
+  });
+
+  it('refuse une négociation si la publication appartient à un autre vendeur', async () => {
+    const pub = await creerPublication(20);
+    const repo = ds.getRepository(User);
+    const autreVendeur: any = await repo.save(repo.create({
+      phone: '+2250700059099', firstName: 'Autre', lastName: 'Vendeur', genre: 'homme',
+      role: UserRole.PRODUCTEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId: autreVendeur.id, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: pub });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('ne correspond pas');
+  });
+
+  it('refuse une négociation si la publication est inactive', async () => {
+    const pub = await creerPublication(20);
+    await ds.query('UPDATE publications SET active = false WHERE id = $1', [pub]);
+    const response = await proposer(marchandToken, pub, 5, 350);
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain('plus disponible');
+  });
+
+  it('refuse les circuits détaillant → producteur et demi-grossiste → producteur', async () => {
+    const repo = ds.getRepository(User);
+    for (const [index, sousProfil] of ['detaillant', 'demi_grossiste'].entries()) {
+      const buyer: any = await repo.save(repo.create({
+        phone: `+22507000591${index}1`, firstName: 'Acheteur', lastName: sousProfil, genre: 'femme',
+        role: UserRole.MARCHAND, sousProfilMarchand: sousProfil, status: UserStatus.ACTIF,
+        passwordHash: await bcrypt.hash('1234', 10),
+      } as any));
+      const token = await jwt.signAsync({ sub: buyer.id, phone: buyer.phone, role: buyer.role }, { secret: process.env.JWT_SECRET });
+      const pub = await creerPublication(20);
+      const response = await api().post('/api/v1/commandes/negociation')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ vendeurId, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: pub });
+      expect(response.status).toBe(403);
+      expect(response.body.message).toContain('Circuit de négociation non autorisé');
+    }
+  });
+
+  it('refuse le circuit coopérative → grossiste', async () => {
+    const repo = ds.getRepository(User);
+    const grossiste: any = await repo.save(repo.create({
+      phone: '+2250700059198', firstName: 'Vendeur', lastName: 'Grossiste', genre: 'homme',
+      role: UserRole.MARCHAND, sousProfilMarchand: 'grossiste', status: UserStatus.ACTIF,
+      passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const cooperative: any = await repo.save(repo.create({
+      phone: '+2250700059197', firstName: 'Acheteur', lastName: 'Coop', genre: 'femme',
+      role: UserRole.COOPERATEUR, status: UserStatus.ACTIF, passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const token = await jwt.signAsync({ sub: cooperative.id, phone: cooperative.phone, role: cooperative.role }, { secret: process.env.JWT_SECRET });
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ vendeurId: grossiste.id, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: 'publication-inexistante' });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('Circuit de négociation non autorisé');
+  });
+
+  it('refuse le circuit grossiste → détaillant', async () => {
+    const repo = ds.getRepository(User);
+    const detaillant: any = await repo.save(repo.create({
+      phone: '+2250700059196', firstName: 'Vendeur', lastName: 'Détaillant', genre: 'homme',
+      role: UserRole.MARCHAND, sousProfilMarchand: 'detaillant', status: UserStatus.ACTIF,
+      passwordHash: await bcrypt.hash('1234', 10),
+    } as any));
+    const response = await api().post('/api/v1/commandes/negociation')
+      .set('Authorization', `Bearer ${marchandToken}`)
+      .send({ vendeurId: detaillant.id, produit: 'Igname', quantite: 5, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId: 'publication-inexistante' });
+    expect(response.status).toBe(403);
+    expect(response.body.message).toContain('Circuit de négociation non autorisé');
+  });
 
   it('I-NEG-1 : négociation acceptée réserve ET convertit le stock de sa publication d\'origine', async () => {
     const pub = await creerPublication(100);

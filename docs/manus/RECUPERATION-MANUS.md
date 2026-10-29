@@ -305,13 +305,13 @@ correction du lot F, pas à la place.
 explicite de Patrick.*
 
 ### C1. Modification de la chaîne `test:ci`
-`frontend_src/package.json` : 12 scripts ajoutés **en tête de la chaîne gelée**.
+`frontend/package.json` : 12 scripts ajoutés **en tête de la chaîne gelée**.
 → La chaîne `test:ci` reste identique à `f0c965c`, valeur contre valeur. Les 12 tests sont
 verts et statiques : ils entrent dans `verify` (voir A8). C'est la modification de la
 chaîne qui est refusée, pas les tests.
 
 ### C2. Déploiement Netlify branché sur l'API de production
-`frontend_src/public/_redirects` (proxy `/api/v1/*` vers `julaba-api.onrender.com`),
+`frontend/public/_redirects` (proxy `/api/v1/*` vers `julaba-api.onrender.com`),
 `scripts/test-netlify-auth-proxy.mjs`, et la preview publique associée.
 → Une prévisualisation publique ne pointe pas la production, et le dépôt ne porte pas un
 troisième mode de déploiement à côté de Render et de l'APK. Si une recette en ligne est

@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, NotFoundException } from "@nestjs/common";
+import { InjectRepository, InjectDataSource } from "@nestjs/typeorm";
+import { Repository, DataSource } from "typeorm";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { User } from "../users/entities/user.entity";
@@ -9,7 +9,10 @@ import { Recolte, RecolteQualite, RecolteStatut } from "../producteur/recoltes/e
 @UseGuards(JwtAuthGuard)
 @Controller("recoltes")
 export class RecoltesRestController {
-  constructor(@InjectRepository(Recolte) private repo: Repository<Recolte>) {}
+  constructor(
+    @InjectRepository(Recolte) private repo: Repository<Recolte>,
+    @InjectDataSource() private dataSource: DataSource,
+  ) {}
 
   @Get()
   async findAll(@CurrentUser() user: User, @Query("page") page = 1, @Query("limit") limit = 20) {
@@ -30,6 +33,38 @@ export class RecoltesRestController {
   async findOne(@Param("id") id: string, @CurrentUser() user: User) {
     const recolte = await this.repo.findOne({ where: { id, userId: user.id } });
     return { recolte };
+  }
+
+  // PROD-02 — les quantités COMMANDÉES deviennent visibles. Le journal
+  // stock_reservations (une ligne par commande : active / convertie / liberee)
+  // était écrit depuis B2 mais AUCUN endpoint ne le lisait — la barre
+  // « Réservé » de l'écran récolte était branchée sur un champ jamais
+  // alimenté (toujours 0), pendant que le marché seul voyait le décrément.
+  // Fail-closed : la récolte doit appartenir à l'appelant.
+  @Get(":id/reservations")
+  async reservations(@Param("id") id: string, @CurrentUser() user: User) {
+    const recolte = await this.repo.findOne({ where: { id, userId: user.id } });
+    if (!recolte) throw new NotFoundException("Récolte introuvable");
+
+    const lignes = await this.dataSource.query(
+      `SELECT sr.id, sr.commande_id, sr.publication_id, sr.recolte_id, sr.quantite,
+              sr.statut, sr.created_at,
+              c.produit, c.statut AS commande_statut, c.acheteur_nom
+         FROM stock_reservations sr
+         LEFT JOIN publications p ON p.id::text = sr.publication_id::text
+         LEFT JOIN commandes c ON c.id::text = sr.commande_id::text
+        WHERE (p.recolte_id::text = $1 OR sr.recolte_id::text = $1)
+        ORDER BY sr.created_at DESC`,
+      [id],
+    );
+    const n = (v: unknown) => Number(v) || 0;
+    const reserveActive = lignes
+      .filter((l: any) => l.statut === 'active')
+      .reduce((s: number, l: any) => s + n(l.quantite), 0);
+    const reserveConvertie = lignes
+      .filter((l: any) => l.statut === 'convertie')
+      .reduce((s: number, l: any) => s + n(l.quantite), 0);
+    return { data: lignes, meta: { reserveActive, reserveConvertie } };
   }
 
   @Post()

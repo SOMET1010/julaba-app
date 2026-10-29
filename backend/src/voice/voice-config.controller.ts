@@ -9,7 +9,7 @@ import { VoiceConfigUpdateDto } from './dto/voice-config-update.dto';
 const TEST_PHRASE = "Bonjour, ceci est un test de la voix Julaba. Un, deux, trois.";
 
 // Admin-only : configuration des fournisseurs TTS (ElevenLabs / Azure Speech)
-// consommée par Studio Voix > onglet Clonage (frontend_src/src/app/pages/StudioVoix.tsx).
+// consommée par Studio Voix > onglet Clonage (frontend/src/app/pages/StudioVoix.tsx).
 // La clé API n'est JAMAIS renvoyée en clair par ces routes — seulement
 // "configuré : oui/non" + les 4 derniers caractères (voir VoiceConfigService.toStatus).
 @Roles('ADMIN')

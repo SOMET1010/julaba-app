@@ -1,5 +1,5 @@
 import { paginate, parsePagination, buildMeta } from '../common/paginate';
-import { Controller, Get, Patch, Body, Param, UseGuards, Query, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param, UseGuards, Query, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -78,6 +78,19 @@ export class ActeursRestController {
     const sanitized: any = {};
     for (const key of autorises) {
       if (present(key)) sanitized[key] = body[key];
+    }
+    // DGE-07 — FIN DU NO-OP SILENCIEUX. Avant ce correctif, un champ demandé
+    // mais hors allow-list (ex. `statut`) retournait {success:true} SANS
+    // écrire quoi que ce soit : le front affichait « Acteur suspendu » alors
+    // que rien n'avait changé. Une demande non modifiable est maintenant une
+    // ERREUR explicite (fail-honest) — elle nomme les champs ignorés.
+    const ignores = Object.keys(body || {})
+      .filter((k) => k !== 'is_active')
+      .filter((k) => !autorises.includes(k));
+    if (ignores.length > 0) {
+      throw new BadRequestException(
+        `Champs non modifiables par cette route : ${ignores.join(', ')} — statut : passer par PATCH /users/:id`,
+      );
     }
     if (Object.keys(sanitized).length === 0) return { success: true };
     return this.repo.update(id, sanitized);

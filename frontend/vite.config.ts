@@ -1,0 +1,221 @@
+import { defineConfig, type Plugin } from "vite"
+import tailwindcss from "@tailwindcss/vite"
+import react from "@vitejs/plugin-react"
+import path from "path"
+import { execSync } from "node:child_process"
+import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+// Version APPLICATIVE à 4 chiffres (MAJEUR.MINEUR.CORRECTIF.LIVRAISON, voir
+// docs/VERSIONING.md) : portée par `appVersion` — le champ `version` npm reste
+// un semver valide à 3 chiffres (npm refuse 4 segments).
+const pkg = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf-8")) as { version?: string; appVersion?: string }
+const appVersion = pkg.appVersion ?? pkg.version ?? "1.0.0"
+
+let gitHash = "unknown"
+try {
+  gitHash = execSync("git rev-parse --short HEAD").toString().trim()
+} catch {
+  /* pas de repo git en CI ou environnement restreint */
+}
+
+// ── LES DEUX DRAPEAUX DE CONSTRUCTION DU DIOULA ────────────────────────────
+// Éteints par défaut : un build ordinaire ne change pas d'un octet.
+//
+//   JULABA_VOIX_DYU=1    voix MMS dioula embarquée (le MÊME interrupteur que
+//                        android/scripts/installer-voix.sh), « Dioula »
+//                        sélectionnable, locale `dyu-ci` peuplée du décor de
+//                        travail du dépôt. L'ARGENT RESTE EN FRANÇAIS.
+//   JULABA_DYU_ARGENT=1  EN PLUS, et seulement avec le premier : les montants
+//                        peuvent être dits en dioula. Pour juger le SON,
+//                        jamais le COMPTE — jamais dans un build remis à une
+//                        marchande.
+//
+// POURQUOI DES `define` ET PAS DES VARIABLES LUES AU RUNTIME : ce sont des
+// constantes de BUILD. Elles n'existent dans aucun processus Node, donc ni
+// `verify`, ni `test:ci`, ni la CI ne les voient : le garde B7 continue de
+// mesurer la configuration LIVRABLE, intact. Il interdit de LIVRER une demi-
+// langue, pas de la tester. Raisonnement complet :
+// src/app/i18n/voice/drapeauxDeTest.ts
+const voixDyu = process.env.JULABA_VOIX_DYU === "1"
+const dyuArgent = voixDyu && process.env.JULABA_DYU_ARGENT === "1"
+if (voixDyu) {
+  console.warn("[vite] BUILD D'ESSAI : voix dioula MMS embarquée (CC-BY-NC-4.0, non commerciale) — ne pas distribuer.")
+  if (dyuArgent) console.warn("[vite] BUILD D'ESSAI : les MONTANTS seront dits en DIOULA (nombres non validés) — ne JAMAIS remettre cet APK à une marchande.")
+}
+
+// Date de build (AAAA-MM-JJ HH:mm en UTC) — lisible par un humain.
+const buildDate = new Date().toISOString().slice(0, 16).replace("T", " ")
+// Identifiant de version compact injecté partout : « <hash> · <date> ».
+const buildId = `${gitHash} · ${buildDate}`
+
+// Tamponne l'identifiant de build dans le service worker COPIÉ dans dist, ET y
+// injecte la liste des chunks de route à PRÉ-CHARGER pour le HORS-LIGNE.
+//
+// Sans ça : (1) sw.js ne change jamais entre deux déploiements → l'appli reste
+// coincée sur l'ancienne version ; (2) les pages sont chargées à la demande
+// (import dynamique) → hors-ligne, une page jamais ouverte ne se charge pas et
+// l'appli plante (« Oops, une erreur est survenue »). On pré-cache donc tous les
+// petits chunks (< 200 Ko : les pages marchand, etc.). Les gros paquets communs
+// (index, recharts, modèle vocal) sont chargés à la 1ʳᵉ visite et mis en cache
+// normalement.
+const PRECACHE_MAX_BYTES = 200 * 1024
+
+function stampServiceWorker(outDir: string): Plugin {
+  return {
+    name: "julaba-stamp-sw",
+    apply: "build",
+    closeBundle() {
+      try {
+        const assetsDir = join(outDir, "assets")
+        let precache: string[] = []
+        try {
+          precache = readdirSync(assetsDir)
+            .filter((f) => f.endsWith(".js") || f.endsWith(".css"))
+            .filter((f) => {
+              try { return statSync(join(assetsDir, f)).size <= PRECACHE_MAX_BYTES } catch { return false }
+            })
+            .map((f) => `/assets/${f}`)
+          // LES POLICES ENTRENT AU PRÉ-CACHE — B6, 21/09/2026.
+          //
+          // Sans elles, un PREMIER lancement hors ligne — le cas d'une marchande
+          // qui installe au marché, réseau mort — s'affiche dans la police de
+          // repli du téléphone. Tout le travail de lisibilité (mode soleil,
+          // tailles de texte, cibles tactiles) est réglé sur Inter : la page
+          // change de métrique, les libellés débordent ou rétrécissent.
+          //
+          // Le coût est MESURÉ, pas supposé : 10 fichiers, 271 Ko, soit 2,7 % du
+          // pré-cache existant. Elles sont hachées et immuables comme le reste
+          // d'`assets/`, donc jamais re-téléchargées. `check:precache-budget`
+          // tient le compte et refuse le dépassement.
+          //
+          // CE QU'ON N'AJOUTE PAS, et c'est l'essentiel du lot : le « tout
+          // précacher ». Les 4 gros chunks volontairement exclus pèsent 1,84 Mo,
+          // et la reprise telle quelle aurait porté l'installation à 13–18 Mo
+          // sur des données mobiles.
+          precache = precache.concat(
+            readdirSync(assetsDir)
+              .filter((f) => /\.(woff2?|ttf|otf)$/i.test(f))
+              .map((f) => `/assets/${f}`),
+          )
+        } catch (e) {
+          console.warn("[stamp-sw] liste de pré-cache indisponible:", (e as Error)?.message)
+        }
+        // Clips de la VOIX de Tata Nanti Lou (public/voix/tata/*.mp3) : c'est l'ADN
+        // vocal de l'appli. On les PRÉ-CACHE à l'installation du service worker pour
+        // qu'une marchande hors-ligne DÈS LE PREMIER JOUR entende quand même Tata.
+        // ~7 Mo, fichiers immuables → aucun coût récurrent, servis ensuite sans réseau.
+        let voicePrecache: string[] = []
+        try {
+          const voiceDir = join(outDir, "voix", "tata")
+          voicePrecache = readdirSync(voiceDir)
+            .filter((f) => f.endsWith(".mp3"))
+            .map((f) => `/voix/tata/${f}`)
+        } catch (e) {
+          console.warn("[stamp-sw] liste de pré-cache voix indisponible:", (e as Error)?.message)
+        }
+        const swPath = join(outDir, "sw.js")
+        const src = readFileSync(swPath, "utf-8")
+        const stamped = src
+          .replace(/__SW_BUILD__/g, buildId)
+          .replace(/__PRECACHE_JSON__/g, JSON.stringify(precache))
+          .replace(/__PRECACHE_VOICE_JSON__/g, JSON.stringify(voicePrecache))
+        writeFileSync(swPath, stamped)
+        console.log(`[stamp-sw] ${precache.length} chunks + ${voicePrecache.length} clips voix pré-cachés pour le hors-ligne`)
+      } catch (e) {
+        console.warn("[stamp-sw] impossible de tamponner sw.js:", (e as Error)?.message)
+      }
+    },
+  }
+}
+
+export default defineConfig(({ command }) => ({
+  plugins: [react(), tailwindcss(), stampServiceWorker(path.resolve(__dirname, "../frontend/dist"))],
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __BUILD_HASH__: JSON.stringify(gitHash),
+    __BUILD_DATE__: JSON.stringify(buildDate),
+    __BUILD_ID__: JSON.stringify(buildId),
+    __JULABA_VOIX_DYU__: JSON.stringify(voixDyu),
+    __JULABA_DYU_ARGENT__: JSON.stringify(dyuArgent),
+  },
+  // ── A11Y-007 — LA CONSOLE DU BUILD LIVRÉ SE TAIT ──────────────────────────
+  // Le dépôt contenait 1750 appels console.* (dont 1410 console.log) : du
+  // bruit en production, de la taille morte dans l'APK, et un indice pour
+  // qui sonde le téléphone. `pure` marque ces appels sans effet de bord :
+  // au BUILD, rollup retire du bundle tout appel dont personne ne lit le
+  // résultat (toujours, console.log rend undefined). En DEV, aucun strip :
+  // le diagnostic complet reste le quotidien du développement.
+  //
+  // POURQUOI warn/error RESTENT. Ce sont des diagnostics légitimes en prod
+  // (Sentry, journal de recette). AUTH-14 avait déjà taillé les console.warn
+  // auth au profit du robinet utils/warnDev.ts — ce garde-ci est le filet
+  // général, pas un retour en arrière sur ce choix.
+  //
+  // PREUVE DU 29/10 (commit de ce garde) : vite build → `grep -c "console\."
+  // dist/assets/*.js` = 0 sur log/info/debug, build vert, aucune source
+  // modifiée. La garde test:console-prod verrouille la présence du robinet.
+  esbuild: command === "build"
+    ? { pure: ["console.log", "console.info", "console.debug"] }
+    : {},
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  // ── SERVEUR DE DÉVELOPPEMENT (sandbox) ────────────────────────────────────
+  // Le frontend écoute sur 3000 (port unique exposé par la passerelle du
+  // sandbox) et proxifie /api vers le backend NestJS (port 3001) : même
+  // origine, donc pas de CORS à gérer en dev.
+  server: {
+    host: true,
+    port: 3000,
+    strictPort: true,
+    // Le panneau de prévisualisation du sandbox accède à l'app via un domaine
+    // externe (…fcapp.run) : Vite 6 bloque par défaut les hosts inconnus.
+    // `allowedHosts: true` autorise tous les hosts (dev sandbox uniquement).
+    allowedHosts: true,
+    // Le sandbox plafonne fs.inotify.max_user_watches à 8192 (non modifiable
+    // sans root) : Vite dépasse la limite au démarrage → ENOSPC. Le polling
+    // contourne proprement la limite, au prix d'un peu de CPU.
+    watch: {
+      usePolling: true,
+      interval: 800,
+    },
+    proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      // Temps réel : le gateway socket.io NestJS (namespace /ws) est porté par
+      // le backend :3001. Le client socket.io du front parle sur le chemin
+      // /socket.io/ DEPUIS L'ORIGINE COURANTE (même origine → pas de CORS).
+      // ws:true laisse passer la poignée de main WebSocket upgrade.
+      "/socket.io": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
+      },
+    },
+  },
+  build: {
+    outDir: "../frontend/dist",
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-router": ["react-router"],
+          "vendor-leaflet": ["leaflet"],
+          "vendor-lucide": ["lucide-react"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-recharts": ["recharts"],
+          "vendor-ui": ["sonner"],
+        },
+      },
+    },
+  },
+}))

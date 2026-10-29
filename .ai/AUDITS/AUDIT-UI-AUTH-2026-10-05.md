@@ -4,7 +4,7 @@
 
 - **Objet** : interface d'authentification frontend (parcours d'entrée complet)
 - **Type** : audit UI/UX + code statique + recette runtime (navigateur réel)
-- **Fichiers audités** : `frontend_src/src/app/components/auth/` (8 fichiers, 3 100 lignes) + supports (`comptesMemorises.ts`, `entreeVoix.ts`, `paroleEntree.ts`, `login.css`, `voiceTrace.ts`, `voiceDebug.ts`, scripts de garde)
+- **Fichiers audités** : `frontend/src/app/components/auth/` (8 fichiers, 3 100 lignes) + supports (`comptesMemorises.ts`, `entreeVoix.ts`, `paroleEntree.ts`, `login.css`, `voiceTrace.ts`, `voiceDebug.ts`, scripts de garde)
 - **Écrans couverts** : EntryGate (`/`), Welcome/OnboardingSlides, Ton numéro, Ton code secret, Activation (`/activation`), Changement de mot de passe (`/change-password`), Numéro non enregistré (`/non-enregistre`), PropositionReconnaissance (modale post-login)
 - **Référentiels** : `ACCESSIBILITY_GUIDE.md` (§4/§5/§6), `DESIGN_SYSTEM.md` (§9), `PROJECT_CONTEXT.md` (§1 doctrine voice-first, §8 règles critiques), `CONSTITUTION.md`
 - **Méthode** : lecture statique ligne à ligne (agent Audit) + exécution réelle des parcours dans un navigateur headless + exécution des gardes CI auth

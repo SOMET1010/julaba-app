@@ -77,4 +77,31 @@ describe('Invariant P0.0 — enrôlement inerte + activation (fin du takeover 00
     const code = await activation.issueForUser(userId, null);
     await expect(activation.activate(code, '0000')).rejects.toBeDefined();
   });
+
+  it('LOT-ACTIVATION — le consentement est TRACÉ : chaque activation écrit ACTIV_CONSENTEMENT horodaté', async () => {
+    const userId = (await ds.getRepository(User).findOne({ where: { phone: PHONE } }))!.id;
+    const code = await activation.issueForUser(userId, null);
+    const avant = await ds.query(
+      `SELECT count(*)::int AS n FROM audit_logs WHERE action = 'ACTIV_CONSENTEMENT' AND user_id = $1`, [userId],
+    );
+    await activation.activate(code, '7788');
+    const apres = await ds.query(
+      `SELECT count(*)::int AS n FROM audit_logs WHERE action = 'ACTIV_CONSENTEMENT' AND user_id = $1`, [userId],
+    );
+    // Le compte a gagné EXACTEMENT une trace de plus : le oui d'ELLE, horodaté.
+    expect(apres[0].n - avant[0].n).toBe(1);
+    const trace = await ds.query(
+      `SELECT entite, entite_id, details, created_at FROM audit_logs
+       WHERE action = 'ACTIV_CONSENTEMENT' AND user_id = $1 ORDER BY created_at DESC LIMIT 1`, [userId],
+    );
+    expect(trace.length).toBe(1);
+    expect(trace[0].entite).toBe('activation_code');
+    expect(trace[0].entite_id).toBeTruthy();
+    expect(trace[0].details).toBeTruthy();
+    expect(trace[0].details.horodatage).toBeTruthy();
+    expect(new Date(trace[0].created_at).getTime()).toBeGreaterThan(Date.now() - 60_000);
+    // Le compte est activé : la trace accompagne l'activation, elle ne la remplace pas.
+    const after = await ds.getRepository(User).findOne({ where: { phone: PHONE } });
+    expect(after!.status).toBe(UserStatus.ACTIF);
+  });
 });

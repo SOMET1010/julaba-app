@@ -8,10 +8,10 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **05/10/2026** |
+| relevé | **21/10/2026** |
 | branche par défaut | `main` |
-| branche en cours | `claude/cadre-de-travail` |
-| dernier commit | `1ae880d` — cadre de travail (3 commits) |
+| branche en cours | `dev` |
+| dernier commit | `adc66a99` — docs(backend) : la règle `AUTH_TELEPHONES_TEST` est écrite dans `.env.example` (lot du 21/10 : 2 rouges hors `CONNUS` fermés) |
 | dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
@@ -53,9 +53,141 @@ l'aperçu local**, pas sur une URL de preview.
 
 ## Livrable en cours
 
-**Aucun.** La session précédente a livré le Lot A (authentification d'agent) et
-l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
-« Proposition » plus bas.
+### Session 21/10 — l'historique de `dev` rendu véridique, les 2 rouges hors `CONNUS` fermés
+
+**Le blocage** : `dev` ne pouvait plus rien recevoir (`pull` bloqué sur un
+arbre sale) et son journal contenait un commit qui ne disait pas ce qu'il
+faisait (`2ed08e62`, « effacement en TTS français » : le code ne changeait
+rien). L'arbre a été réécrit sur `origin/dev` (`d6da2966`), le faux commit
+retiré, et les **3 modifications de travail** restées en suspens ont été
+reprises, une par une, dans des commits qui disent ce qu'ils font.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| `dev` reçoit de nouveau des commits (fast-forward) | ✅ | `git push origin dev` — base distante conservée, aucun commit perdu |
+| Le commit mensonger `2ed08e62` n'est plus dans l'historique | ✅ | `git log --oneline` : absent ; `LoginPassword.tsx` identique à `origin/dev` (texte `AUTH_41` conservé) |
+| Les 3 modifs de travail sont commitées, une par une | ✅ | `fb1a1c33` centrage du numéro · `a3aeda50` identité hors navigation · `de4229f8` catalogue |
+| Le journal `.ai/CHANGELOG.md` dit ce qui est VRAI | ✅ | les 3 entrées de la session 19/10 sont replacées dans leur section ; la décision est écrite |
+| **Les 2 rouges hors `CONNUS` sont FERMÉS (pas documentés)** | ✅ | `verify` : **150 vert / 2 rouge sur 152** — les 2 rouges restants sont les 🟠 connus ; **0 rouge nouveau** |
+| `npm run check` | ❌ rouge **préexistant** | 2 suites unitaires backend rouges **à l'HEAD sans mon lot** (prouvé par stash) — voir « Cassé / rouge » |
+
+**Les 2 rouges fermés, cause réelle (pas de whitelist)** :
+- `test:enum-check-phone` — le `.env` local n'avait pas `AUTH_TELEPHONES_TEST`.
+  Corrigé **localement** (jamais commité : `.env` est gitignoré) ; la règle
+  est écrite dans `backend/.env.example` (`adc66a99`), sans aucun numéro.
+- `test:i18n-source` — « Le montant du coût n'est pas valide »
+  (`GestionStock.tsx:511`, introduite par `964697ce` 20/10 STK-04) n'était
+  pas au catalogue. Entrée `STOCK_COUT_INVALIDE` ajoutée (`critiqueArgent:
+  true` — un coût de réassort est de l'argent), inventaire et CSV
+  Manus régénérés (`de4229f8`).
+
+**Signalé, non touché** : 2 suites unitaires backend rouges à l'HEAD
+(`telephones-tests-uniques.spec.ts`, `stocks-rest.idempotency.spec.ts`) —
+gardes d'argent à empreintes gelées, hors du périmètre de ce lot.
+
+### Session 19/10 — dictée vocale sur le WEB + corrections de session
+
+(branche `dev`, commit `55a8e0c0`, poussé — antérieur : `725caf7e` fix wallets).
+Arbitrage Patrick (19/10) : reconnaissance vocale **native du navigateur**
+(`SpeechRecognition`) sur tout le web ; sherpa-WASM écarté ; sherpa reste le
+seul moteur de l'APK. Trace : `docs/DECISIONS.md` 19/10.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| Dictée dispo sur navigateur : ventes **et** dictée du numéro | ✅ | `voice-offline/webReco.ts` ; branché dans `useVoiceCore`, `useDicteeLive`, `LoginPassword` (`voixEcouteDispo`) |
+| Un reset ne livre jamais un texte périmé (brouillon annulation corrigé) | ✅ | contrat `conclure()/annuler()` — `webReco.test.mts` [3][4] |
+| APK exclue de la reco navigateur (jamais deux moteurs) | ✅ | `webReco.test.mts` [2] |
+| Pavé clavier reste le filet partout ; aucun micro sur le code secret | ✅ | `webReco.test.mts` [1] ; `recoWebDispo()` gate |
+| Nouveau banc inscrit dans `verify` (règle : sinon orphelin) | ✅ | script `test:web-reco` + `maillons-verify.json` (152 maillons) ; `test:maillons-orphelins` vert |
+| Aucun rouge **nouveau** dans `verify` | ✅ | 144 vert / 8 rouge sur 152 : 2 connus + 6 **préexistants à l'HEAD** (prouvés par stash : les 6 sont rouges sans mon lot) |
+| VOICE-01 intact | ✅ | `test:voix-trace-source` : mêmes 5 échecs avant/après |
+| Typecheck + check | ✅ | `tsc -b` 0 ; `npm run check` vert (garde-argent informatif connu) |
+| **Vérifié à l'oreille / au micro réel** | ⬜ | à faire sur navigateur réel (Chrome/Safari) : dire un prix, vérifier la dictée et l'annulation |
+
+**Corrections livrées avec (trace `docs/DECISIONS.md` 19/10)** : `GET
+/wallets/me` crée le wallet manquant (+ backfill, 18 wallets) ; proxy Vite
+`/socket.io` → `localhost:3001` ; bouton « Retour » retiré de l'écran code
+secret.
+
+**Signalement, non touché** : `WalletContext.tsx` mappe `balance: w.solde || 0`
+— violation ACC-03 potentielle, arbitrage Patrick avant tout changement.
+
+### STK-25 (20/10) — ajouter un produit inconnu par la voix
+
+Ta demande : « les produits sont pré-enregistrés, alors que l'utilisateur peut
+ajouter tous les produits qu'il veut ». **Reproduit**, et le défaut était réel.
+
+| Ce qui marche | Preuve |
+|---|---|
+| **Vendre** un produit inconnu par la voix : possible depuis CAT-01/02 | `vendreVocalUnifie.ts:307` (ligne libre) ; reproduction : « je vends 3 kassos à 500 » → demande de prix, pas de « pas compris » |
+| **Ajouter** un produit inconnu par la voix : **ne marchait pas** | `BoutonDireProduit.tsx` : le nom absent du lexique ET de l'étal → `produitDit` `null` → « Je n'ai pas entendu de produit » |
+
+**Cause** (tracée, pas devinée) : la reconnaissance de produit a deux portes
+écrites à la main — `PRODUITS_FORMES` (28 formes) et l'étal de la marchande.
+Un troisième nom, même parfaitement transcrit, n'entrait nulle part ; le
+`catch` du bouton jetait le texte. La vente, elle, a une porte de plus (l'article
+libre).
+
+**Correction** : `produitDit.nomLibreDicte` (nom conservé tel quel, mots outils
+retirés par les listes de la caisse) + `BoutonDireProduit` s'en sert. Le parcours
+guidé garde unité et prix obligatoires ; un nombre orphelin reste une quantité.
+Banc `test:produit-dit` section [10] ; `verify` 144/152 — **8 rouges, les mêmes
+qu'avant** (2 connus + 6 préexistants à l'HEAD). Code mort retiré
+(`dicteeNomRef`).
+
+### Correctif cache produits (20/10) — un ajout ne disparaît plus
+
+Ta remarque : « j'ai l'impression qu'il y a un cache lors de l'ajout de
+produits, si c'est pas passé ». **Reproduit**, défaut réel.
+
+**Cause** : le cache du téléphone (`julaba_cache_produits_<id>`) n'était écrit
+que par `loadProducts`. `addProduct` / `updateProduct` / `deleteProduct`
+modifiaient l'écran **sans réécrire le cache**. Donc : ajout → `refreshProducts()`
+échoue (réseau) ou redémarrage hors ligne → `restaurerDepuisCache` écrase l'état
+par le cache **périmé** → **le produit disparaît**.
+
+**Correction** : `cleCacheProduits` factorisé + `ecrireCacheProduits` après
+**chaque** mutation réussie. Reproductions : `repro-cache.mts` (❌ perdu) /
+`repro-cache-fixe.mts` (✓ survit). Garde : 2 assertions dans
+`test-fusion-panier.mjs` (banc existant, aucun maillon nouveau) ; test négatif
+vérifié. `tsc -b` 0 ; `verify` 144/152, **mêmes 8 rouges**.
+
+---
+
+**Session 15/10 — Vue de connexion ramenée à celle de `main` + Rapport et Dev Mode
+réinstallés** (session 15/10, demande expresse du propriétaire).
+- `LoginPassword.tsx` = version de `main` (`24b40b3`) : le redesign maquette
+  12/10 (slogan, carte Tata, micro au bout de la ligne, pavé avec lettres) et
+  le menu `<>` des rôles sont **retirés** — retour volontaire à l'écran de main.
+- Revert de `e04fa73` : bouton 🐞 **Rapport** fixe dans `AppLayout` (tous les
+  écrans connectés, demande Patrick 28/09) + bouton « Rapport de test » au bas
+  de la connexion, et **ProfileSwitcher** (Dev Mode) rémonté sur les 6 écrans.
+- Preuve : `tsc` 0, `build` OK, `test:ci` vert, `verify` **identique au
+  départ** (7 rouges, tous préexistants — comparaison avant/après).
+- Écart à connaître : la 5e assertion de `test:voix-trace-source` —
+  « l'écran de connexion n'embarque plus le doublon (arbitré REVIEW-004) » —
+  tombe désormais ; le maillon est déjà 🟠 connu (VOICE-01), donc aucun rouge
+  nouveau. L'arbitrage REVIEW-004 est **contrarié** par cette demande.
+
+La session précédente a livré le Lot A (authentification d'agent) et l'a poussé.
+**Correctifs démo (12/10)** — branche `claude/correctifs-demo`, sans PR (Patrick : « oui fais lot de correctif »).
+Défauts trouvés en capturant l'écosystème pour la présentation Primature.
+
+| Critère | Statut | Preuve |
+|---|---|---|
+| Une seule définition du volume : ventes de caisse non annulées, Keiwa exclu | ✅ | `backend/src/commun/vente-de-caisse.ts` ; invariant `chiffres-ventes-de-caisse` 6 rouges → verts |
+| Tableau de bord institution : ventes de la zone, aucun zéro inventé | ✅ | unitaire 17/17 ; `test:accueil-institution` |
+| Tableau de bord BO : bonne base d'API, chiffres cohérents Rapports/Supervision/Acteurs | ✅ | `test:base-api-temps-reel`, `test:ventes-bo`, `test:compteurs-acteurs-bo` |
+| Images produits, débordements, fiche membre | ✅ | `test:image-produit`, `test:debordements-demo`, `test:fiche-membre` |
+| Validations | ✅ | jest-unit 268/268 · invariants 296/296 · check vert · garde-argent tient · verify 150/151 (seul rouge connu VOICE-01) |
+| Vérifié à l'écran | ⬜ | aucune preview ; à refaire sur stack locale ou après fusion |
+
+Relecture : 1re NON CONFORME (5 bloquants) → corrigés → 2e CONFORME.
+
+À DÉCIDER (Patrick) : retirer `test:garde-argent` et `test:i18n-empreintes-argent` de `CONNUS` (redevenus verts) ; « attiéké » ne mène plus au manioc (pas d'image attiéké).
+Backlog : `BOScoreFinancier.tsx` même chemin `/api/v1` relatif ; `RoleDashboard.tsx:706` `|| 0` ; `BODashboard.tsx:556` mois non mesuré affiché « aucune donnée » ; `alertesCritiquesActives: 0` en dur ; seed déjà peuplé garde « COOP-CACAO » (ON CONFLICT DO NOTHING).
+
+> **Fusion** : lot intégré dans `dev` le 19/10 (merge `claude/correctifs-demo` → `dev`), après résolution des conflits `frontend_src/` → `frontend/`. La vérification « à l'écran » reste à refaire sur la stack locale.
 
 ---
 
@@ -92,9 +224,11 @@ l'a poussé. Le prochain livrable attend l'arbitrage du propriétaire — voir
 | quoi | état |
 |---|---|
 | `test:voix-trace-source` | 🟠 **rouge voulu** — 4 empreintes VOICE-01. Attend `--regenerer` |
-| `test:i18n-empreintes-argent` | 🟠 empreinte `intentLocal` — diff établi : **14 phrases / 844, unité ajoutée, 0 franc déplacé**. Attend `--calculer` |
-| `test:garde-argent` | 🟠 **12 entrés / 14 perdues**. Attend `--figer-perimetre` |
+| `test:i18n-empreintes-argent` | ✅ **redevenu vert** (20/10) — plus dans la liste `CONNUS` |
+| `test:garde-argent` | 🟠 **7 entrés / 55 perdus** (mesuré le 21/10 ; l'étiquette « 12/14 » est périmée). Cause : le renommage `frontend_src` → `frontend` (172 gardes vues comme nouvelles). Attend `--figer-perimetre` |
 | `test:entree-unique`, `test:nom-tantie` | ❌ bancs **orphelins** découverts le 03/10, jamais exécutés avant. Hors `verify`, cause non diagnostiquée |
+| 2 suites unitaires **backend** rouges (`npm run check`) | ❌ **rouge préexistant à l'HEAD**, prouvé par stash le 21/10 : `telephones-tests-uniques.spec.ts` (12 numéros de recette inscrits par deux suites d'invariants à la fois) et `stocks-rest.idempotency.spec.ts` (le PATCH de stock fait 3 requêtes et non 2 depuis STK-04). **Non touché** : ce sont des gardes d'argent ; les corriger touche aux empreintes gelées du garde-argent → **lot à arbitrer à part** |
+| 6 rouges **nouveaux dans `verify`** (19/10) | ✅ **FERMÉS** : 4 corrigés par les commits du 20/10 ; `test:enum-check-phone` et `test:i18n-source` corrigés le 21/10 (`de4229f8`, `adc66a99`). `verify` : **150 vert / 2 rouge sur 152**, 0 rouge nouveau |
 
 ---
 

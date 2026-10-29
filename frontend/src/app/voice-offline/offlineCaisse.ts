@@ -1,0 +1,584 @@
+import type { LigneDeVente } from '../types/vente';
+// ──────────────────────────────────────────────────────────────────────────
+// File d'attente HORS-LIGNE des opérations de caisse (couche 2).
+//
+// Principe SÛR pour de l'argent : une seule source de vérité = le serveur.
+// Hors-ligne, on met la vente/dépense dans une file DURABLE (IndexedDB) et on la
+// REJOUE à la reconnexion. Chaque opération porte une clé d'idempotence (id
+// unique) : rejouée deux fois, elle ne compte qu'une fois (dédup backend).
+//
+// REJEU (lot « file hors-ligne 4xx ») — on classe l'échec par son STATUT :
+//   • 4xx (rejet métier PERMANENT, sauf 401/408/429) → lettre morte + on
+//     CONTINUE (ne bloque plus la file) ; l'échec est surfacé à l'UI ;
+//   • transitoire (hors-ligne, réseau, sans statut, 401, 408, 429, 5xx) → on
+//     incrémente `attempts` (UNIQUEMENT ici) et on ARRÊTE le tour (ordre
+//     préservé, on retentera) ; au-delà de CAP essais → lettre morte, SAUF
+//     pour une vente ou une dépense (ARG-03 : l'argent n'est jamais abandonné
+//     pour une coupure ; la relance espacée vit dans le contexte de caisse) ;
+//   • succès (2xx) → retiré.
+// Invariant d'atomicité : passer une op en lettre morte = UNE seule transaction
+// IndexedDB (put dead + delete active) → un crash ne peut ni la perdre ni la
+// rejouer indéfiniment.
+// ──────────────────────────────────────────────────────────────────────────
+
+const DB_NAME = 'julaba_offline';
+const STORE = 'caisse_outbox';
+const DEAD_STORE = 'caisse_dead';
+// v2 : ajout additif du store des lettres mortes.
+// v3 (BUG-008) : stores du PRODUCTEUR (récoltes/publications) dans la MÊME base
+// — une seule IndexedDB, un seul openDb, une migration purement additive qui
+// ne détruit jamais rien (même règle que v1→v2).
+const DB_VERSION = 3;
+
+/** Nombre d'essais transitoires avant de parquer une op en lettre morte. */
+export const REPLAY_CAP = 5;
+
+export type CaisseEndpoint = '/caisse/vente' | '/caisse/depense';
+export type StockEndpoint = `/stocks/${string}`;
+/** BUG-008 — les écritures du PRODUCTEUR (récolte, publication) rejoignent la
+ *  même discipline hors-ligne. Additif pur : la caisse et le stock n'en voient
+ *  aucune conséquence, ils n'émettent jamais ces points de terminaison. */
+export type ProducteurEndpoint = '/recoltes' | '/publications';
+export type OfflineEndpoint = CaisseEndpoint | StockEndpoint | ProducteurEndpoint;
+export type OfflineMethod = 'POST' | 'PATCH';
+
+/** Ce qu'une opération mise en file transporte : une VENTE, une DÉPENSE ou une
+ *  mise à jour de STOCK. Les trois portent une clé d'idempotence — c'est elle
+ *  qui empêche qu'une vente rejouée soit comptée deux fois.
+ *
+ *  Ce champ était `any`. C'est la donnée la plus exposée de l'application :
+ *  elle est écrite sur le téléphone, survit à une coupure, à une fermeture de
+ *  l'application, parfois à une mise à jour — et repart plus tard vers le
+ *  serveur sans que personne ne la relise. Un `any` ici, c'est une vente qui
+ *  peut partir déformée sans qu'aucun outil ne l'ait signalé. */
+export type PayloadOperation = {
+  idempotency_key?: string;
+  montant?: number;
+  produits?: LigneDeVente[];
+  details?: LigneDeVente[];
+  mode_paiement?: string;
+  notes?: string;
+  /** LE MOTIF D'UNE DÉPENSE, sous son nom canonique (DEP-01). La file écrivait
+   *  ce motif sous `notes`, que le serveur ne lisait pas : une dépense passée
+   *  hors ligne remontait muette. Les files DÉJÀ POSÉES sur les téléphones
+   *  installés portent encore `notes` ci-dessus — le serveur les accepte en
+   *  transition, le temps qu'elles se vident. */
+  description?: string;
+  prix_achat?: number;
+  prix_vente?: number;
+  source?: 'vocal' | 'kassa';
+  date_operation?: string;
+  /** Mise à jour de stock : quantité et prix de la ligne visée. */
+  quantite?: number;
+  prix_unitaire?: number;
+  seuil_alerte?: number;
+  categorie?: string;
+  date_peremption?: string | null;
+  /** BUG-008 — une récolte ou une publication mise en file transporte ses
+   *  champs à elle. Ici aussi, rien d'opaque : chaque champ est nommé, le
+   *  serveur les lit tels quels au rejeu. */
+  produit?: string;
+  unite?: string;
+  qualite?: string;
+  statut?: string;
+  date_recolte?: string;
+  cycle_id?: string | null;
+  recolte_id?: string | null;
+  parcelle?: string | null;
+  photo_url?: string | null;
+  culture?: string;
+  quantite_disponible?: number;
+  quantite_initiale?: number;
+  localisation?: string;
+  zone_livraison?: string[];
+  date_expiration?: string;
+  conditions_vente?: string;
+};
+
+export interface OperationCaisse {
+  id: string;                 // clé d'idempotence (uuid)
+  endpoint: OfflineEndpoint;
+  method?: OfflineMethod;
+  payload: PayloadOperation;
+  ts: number;
+  attempts?: number;          // essais TRANSITOIRES uniquement
+  // P0-1 : propriétaire de l'opération (l'utilisateur connecté au moment de la
+  // mise en file). Optionnel UNIQUEMENT pour lire des opérations posées avant ce
+  // correctif (terminal déjà en usage, file existante à ne pas perdre).
+  //
+  // IMPORTANT — une opération SANS userId (héritée) n'appartient à PERSONNE.
+  // Elle n'est JAMAIS adoptée par l'utilisateur courant : ce serait recréer
+  // exactement le risque de rejeu sous le mauvais compte que ce cloisonnement
+  // doit empêcher (terminal partagé : A quitte sans réseau, mise à jour, B se
+  // connecte — B n'a produit AUCUNE preuve d'être le propriétaire de l'op de
+  // A). Ces opérations sont mises à part (`operationsSansProprietaire`),
+  // jamais rejouées ni supprimées automatiquement — voir `synchroniser`.
+  userId?: string;
+}
+
+export interface LettreMorte extends OperationCaisse {
+  echec: { status: number | null; message: string; failedAt: number };
+}
+
+/** 4xx qui ne jugent PAS l'opération : session expirée (401), délai (408),
+ *  trop de requêtes (429). Elles passent ; l'opération reste valable. */
+const STATUTS_PASSAGERS = new Set([401, 408, 429]);
+
+/** Classe une erreur de rejeu. PERMANENT = 4xx de rejet métier. */
+export function estPermanent(error: unknown): boolean {
+  const s = (error as { status?: unknown } | null)?.status;
+  return typeof s === 'number' && s >= 400 && s < 500 && !STATUTS_PASSAGERS.has(s);
+}
+
+function statutDe(error: unknown): number | null {
+  const s = (error as { status?: unknown } | null)?.status;
+  return typeof s === 'number' ? s : null;
+}
+
+function uuid(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return 'op-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+}
+
+// ── Abstraction de stockage (injectable pour des tests purs et déterministes) ─
+export interface OutboxStore {
+  enqueue(op: OperationCaisse): Promise<void>;
+  list(): Promise<OperationCaisse[]>;              // actives, plus anciennes d'abord
+  remove(id: string): Promise<void>;
+  activeCount(): Promise<number>;
+  incrementAttempts(id: string): Promise<number>;  // renvoie le nouveau compteur
+  moveToDead(id: string, echec: LettreMorte['echec']): Promise<void>; // ATOMIQUE
+  deadCount(): Promise<number>;
+  deadList(): Promise<LettreMorte[]>;
+  deadRemove(id: string): Promise<void>;
+}
+
+// ── Implémentation IndexedDB (production) ────────────────────────────
+// Les magasins sont paramétrables : la CAISSE garde les siens par défaut,
+// le PRODUCTEUR (BUG-008) ouvre les SIENS dans la même base — un seul
+// openDb, une seule migration, deux files qui ne se voient jamais.
+export const STORE_PRODUCTEUR = 'producteur_outbox';
+export const DEAD_PRODUCTEUR = 'producteur_dead';
+
+function openDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      // Migration additive : ne détruit jamais les données existantes.
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(DEAD_STORE)) db.createObjectStore(DEAD_STORE, { keyPath: 'id' });
+      // v3 (BUG-008) : le producteur vit dans les MÊMES magasins logiques,
+      // sous des noms à lui — cloisonnement par domaine, pas par base.
+      if (!db.objectStoreNames.contains(STORE_PRODUCTEUR)) db.createObjectStore(STORE_PRODUCTEUR, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(DEAD_PRODUCTEUR)) db.createObjectStore(DEAD_PRODUCTEUR, { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function txDone(tx: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+function reqDone<T>(r: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+export function idbOutboxStore(storeActif: string = STORE, storeMort: string = DEAD_STORE): OutboxStore {
+  const ouvrir = openDb;
+  return {
+    async enqueue(op) {
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      tx.objectStore(storeActif).put(op);
+      await txDone(tx); db.close();
+    },
+    async list() {
+      const db = await ouvrir();
+      const all = await reqDone(db.transaction(storeActif, 'readonly').objectStore(storeActif).getAll());
+      db.close();
+      return (all as OperationCaisse[]).sort((a, b) => a.ts - b.ts);
+    },
+    async remove(id) {
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      tx.objectStore(storeActif).delete(id);
+      await txDone(tx); db.close();
+    },
+    async activeCount() {
+      const db = await ouvrir();
+      const n = await reqDone(db.transaction(storeActif, 'readonly').objectStore(storeActif).count());
+      db.close(); return n as number;
+    },
+    async incrementAttempts(id) {
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      const store = tx.objectStore(storeActif);
+      const op = (await reqDone(store.get(id))) as OperationCaisse | undefined;
+      let n = 0;
+      if (op) { n = (op.attempts ?? 0) + 1; op.attempts = n; store.put(op); }
+      await txDone(tx); db.close();
+      return n;
+    },
+    // ATOMIQUE : lecture active + écriture dead + suppression active dans UNE tx.
+    async moveToDead(id, echec) {
+      const db = await ouvrir();
+      const tx = db.transaction([storeActif, storeMort], 'readwrite');
+      const active = tx.objectStore(storeActif);
+      const op = (await reqDone(active.get(id))) as OperationCaisse | undefined;
+      if (op) {
+        tx.objectStore(storeMort).put({ ...op, echec } as LettreMorte);
+        active.delete(id);
+      }
+      await txDone(tx); db.close();
+    },
+    async deadCount() {
+      const db = await ouvrir();
+      const n = await reqDone(db.transaction(storeMort, 'readonly').objectStore(storeMort).count());
+      db.close(); return n as number;
+    },
+    async deadList() {
+      const db = await ouvrir();
+      const all = await reqDone(db.transaction(storeMort, 'readonly').objectStore(storeMort).getAll());
+      db.close();
+      return (all as LettreMorte[]).sort((a, b) => a.ts - b.ts);
+    },
+    async deadRemove(id) {
+      const db = await ouvrir();
+      const tx = db.transaction(storeMort, 'readwrite');
+      tx.objectStore(storeMort).delete(id);
+      await txDone(tx); db.close();
+    },
+  };
+}
+
+// ── Implémentation mémoire (tests purs, sans IndexedDB, atomicité JS naturelle) ─
+export function memoryOutboxStore(): OutboxStore {
+  const active = new Map<string, OperationCaisse>();
+  const dead = new Map<string, LettreMorte>();
+  return {
+    async enqueue(op) { active.set(op.id, { ...op }); },
+    async list() { return [...active.values()].sort((a, b) => a.ts - b.ts); },
+    async remove(id) { active.delete(id); },
+    async activeCount() { return active.size; },
+    async incrementAttempts(id) {
+      const op = active.get(id); if (!op) return 0;
+      op.attempts = (op.attempts ?? 0) + 1; return op.attempts;
+    },
+    async moveToDead(id, echec) {
+      const op = active.get(id); if (!op) return;
+      dead.set(id, { ...op, echec }); active.delete(id); // les deux d'un coup (mono-thread)
+    },
+    async deadCount() { return dead.size; },
+    async deadList() { return [...dead.values()].sort((a, b) => a.ts - b.ts); },
+    async deadRemove(id) { dead.delete(id); },
+  };
+}
+
+// ── Store par défaut (production) ────────────────────────────────────────────
+let _defaultStore: OutboxStore | null = null;
+function defaultStore(): OutboxStore {
+  if (!_defaultStore) _defaultStore = idbOutboxStore();
+  return _defaultStore;
+}
+
+/** Un `userId` de secours (fallback 'anon', chaîne vide, etc.) n'est PAS une
+ *  preuve d'identité — accepter une telle valeur reviendrait à créer, dès la
+ *  mise en file, exactement l'opération « sans propriétaire fiable » que ce
+ *  cloisonnement doit empêcher. Correction post-revue (2e passe) :
+ *  `enfilerOperation` refuse maintenant explicitement toute valeur qui n'est
+ *  pas un identifiant réel. */
+function estUnUtilisateurReel(userId: unknown): userId is string {
+  return typeof userId === 'string' && userId.trim().length > 0 && userId !== 'anon';
+}
+
+/** Ajoute une opération à la file durable. Réutilise `idempotency_key` comme id
+ *  si présente (envoi en ligne échoué), pour que le rejeu envoie la MÊME clé.
+ *
+ *  `userId` (P0-1) : propriétaire de l'opération, OBLIGATOIRE et RÉEL — c'est
+ *  lui qui protège contre le rejeu sous une autre session (terminal partagé).
+ *  FAIL CLOSED : `undefined`/`null`/`''`/`'anon'` sont refusés avec une erreur
+ *  explicite plutôt que silencieusement remplacés — une opération financière
+ *  ou de stock ne doit JAMAIS être créée sans propriétaire authentifié réel.
+ *  L'appelant doit empêcher l'action (ou la faire échouer visiblement) tant
+ *  que l'identité n'est pas disponible, pas la mettre en file sous un nom
+ *  générique. */
+export async function enfilerOperation(
+  endpoint: OfflineEndpoint,
+  payload: unknown,
+  userId: string | undefined | null,
+  store: OutboxStore = defaultStore(),
+  method: OfflineMethod = 'POST',
+): Promise<string> {
+  if (!estUnUtilisateurReel(userId)) {
+    throw new Error(
+      `Opération hors-ligne refusée (${endpoint}) : aucun utilisateur authentifié réel. ` +
+      `Une opération financière ou de stock ne peut jamais être mise en file sous un propriétaire de secours ('anon' ou vide).`,
+    );
+  }
+  const cle = (payload as PayloadOperation | null)?.idempotency_key;
+  const op: OperationCaisse = { id: cle || uuid(), endpoint, method, payload: payload as PayloadOperation, ts: Date.now(), userId };
+  await store.enqueue(op);
+  // A2 — une mise en file ARME la relance : sans ça, l'opération attendait le
+  // prochain montage ou un `online` qui ne vient pas dans la WebView.
+  for (const ecouteur of ecouteursMiseEnFile) ecouteur();
+  return op.id;
+}
+
+const ecouteursMiseEnFile = new Set<() => void>();
+
+/** S'abonne aux mises en file (le rejeu du contexte de caisse). Rend le désabonnement. */
+export function surMiseEnFile(ecouteur: () => void): () => void {
+  ecouteursMiseEnFile.add(ecouteur);
+  return () => { ecouteursMiseEnFile.delete(ecouteur); };
+}
+
+/** Vue filtrée par propriétaire (P0-1) : n'expose QUE les opérations dont le
+ *  propriétaire est CONNU et correspond exactement — stricte, sans exception.
+ *  Une opération sans `userId` (héritée) n'appartient à personne : elle ne
+ *  passe ce filtre pour AUCUN utilisateur, voir `operationsSansProprietaire`. */
+function estAUtilisateur(op: OperationCaisse, userId: string): boolean {
+  return op.userId === userId;
+}
+
+/** Une opération sans propriétaire connu (héritée d'avant P0-1, ou toute
+ *  incohérence future) n'est jamais silencieusement perdue : elle reste
+ *  visible ici, mise à part, en attente d'un traitement/alerte manuel — mais
+ *  jamais attribuée ni rejouée automatiquement (voir `synchroniser`). */
+function estOrpheline(op: OperationCaisse): boolean {
+  return !op.userId;
+}
+
+export async function operationsEnAttente(userId: string, store: OutboxStore = defaultStore()): Promise<OperationCaisse[]> {
+  return (await store.list()).filter((op) => estAUtilisateur(op, userId));
+}
+export async function nbEnAttente(userId: string, store: OutboxStore = defaultStore()): Promise<number> {
+  return (await operationsEnAttente(userId, store)).length;
+}
+export async function nbEchecs(userId: string, store: OutboxStore = defaultStore()): Promise<number> {
+  return (await lettresMortes(userId, store)).length;
+}
+export async function lettresMortes(userId: string, store: OutboxStore = defaultStore()): Promise<LettreMorte[]> {
+  return (await store.deadList()).filter((op) => estAUtilisateur(op, userId));
+}
+/** Retire une lettre morte — vérifie la propriété d'abord (P0-1) : on ne
+ *  supprime jamais silencieusement l'opération d'un AUTRE compte, ni d'une
+ *  opération orpheline (propriétaire inconnu — la stricte égalité l'exclut
+ *  déjà, aucun utilisateur ne peut la purger via ce chemin). */
+export async function purgerLettreMorte(id: string, userId: string, store: OutboxStore = defaultStore()): Promise<void> {
+  const dead = await store.deadList();
+  const cible = dead.find((op) => op.id === id);
+  if (!cible || !estAUtilisateur(cible, userId)) return;
+  return store.deadRemove(id);
+}
+
+/** Opérations ACTIVES sans propriétaire connu, tous comptes confondus — jamais
+ *  rejouées ni attribuées automatiquement (voir `synchroniser`). Exposé pour
+ *  qu'un traitement/alerte manuel puisse les repérer plutôt que les laisser
+ *  invisibles indéfiniment. */
+export async function operationsSansProprietaire(store: OutboxStore = defaultStore()): Promise<OperationCaisse[]> {
+  return (await store.list()).filter(estOrpheline);
+}
+export async function nbSansProprietaire(store: OutboxStore = defaultStore()): Promise<number> {
+  return (await operationsSansProprietaire(store)).length;
+}
+
+/**
+ * Rejoue les opérations en attente selon la politique 4xx/5xx.
+ *
+ * P0-1 — cloisonnement par utilisateur, STRICT : `currentUserId` est
+ * l'identité de la session ACTIVE au moment du rejeu (pas une valeur
+ * mémorisée à la création de l'effet React qui appelle cette fonction — elle
+ * doit être relue à chaque appel). Seule une opération dont
+ * `op.userId === currentUserId` est rejouée.
+ *
+ * Une opération dont le propriétaire diffère n'est NI rejouée NI purgée :
+ * elle reste intacte dans la file, prête pour le retour de son propriétaire
+ * (terminal partagé, logout/login, fermeture/redémarrage de l'appli).
+ *
+ * Une opération héritée SANS propriétaire connu (posée avant P0-1) n'est PAS
+ * rejouée et n'est JAMAIS attribuée à l'utilisateur courant — l'identité
+ * actuellement connectée n'est pas une preuve de qui a créé cette opération.
+ * Elle est comptée à part (`sansProprietaire`) et reste consultable via
+ * `operationsSansProprietaire`, pour un traitement/alerte manuel.
+ *
+ * CLOISONNEMENT DES COMPTEURS (correction post-revue, 2e passe) : `reste` et
+ * `echecs` sont scopés à `currentUserId`, JAMAIS des comptes globaux tous
+ * comptes confondus — sinon une session pourrait comparer un « avant »
+ * mesuré pour elle-même à un « après » qui inclut les lettres mortes d'un
+ * AUTRE compte sur le même terminal (ex: A à 0 échec, B à 2 → une alerte
+ * fausse se déclencherait chez A). Toute métrique globale éventuelle doit
+ * porter un nom explicite séparé (voir `sansProprietaire`, déjà distinct) et
+ * ne jamais être présentée dans l'UX d'une session utilisateur.
+ *
+ * @returns { ok, reste (actives DE currentUserId uniquement), echecs
+ *   (lettres mortes DE currentUserId uniquement), ignorees (d'un AUTRE
+ *   compte, non touchées), sansProprietaire (propriétaire inconnu, ni
+ *   rejouée ni attribuée — global par nature, nom explicite),
+ *   okParEndpoint / resteParEndpoint (OFF-02 : la MÊME chose, ventilée par
+ *   point de terminaison — ajout purement additif, les cinq champs
+ *   d'origine gardent leur nom, leur type et leur valeur) }
+ */
+/**
+ * Opérations dont la DATE compte : celles qui appartiennent à une journée de
+ * caisse. Une vente faite à 23h55 sans réseau et remontée à 00h05 doit rester
+ * au jour où elle a eu lieu — sinon la marchande compte faux le soir, des deux
+ * côtés de minuit.
+ */
+// Les DEUX côtés du livre portent leur jour — ARGENT-1, 19/09/2026.
+//
+// Cette liste ne contenait que la vente. La dépense partait donc sans sa date,
+// et le serveur l'enregistrait au jour du retour du réseau. La caisse théorique
+// du soir — fond + ventes − dépenses — était fausse des deux côtés : trop haute
+// hier, trop basse aujourd'hui.
+//
+// `/stocks/` reste HORS de cette liste, et c'est délibéré : une mise à jour de
+// stock n'a pas de jour comptable, et lui en joindre un avait cassé
+// `test:offline-stock` la première fois.
+/** Les opérations D'ARGENT : elles portent leur date (journée comptable) et ne
+ *  sont jamais abandonnées pour une erreur passagère (ARG-03). */
+const ENDPOINTS_ARGENT = ['/caisse/vente', '/caisse/depense'];
+
+// ── OFF-02 : de quoi savoir CE QUI vient de passer, pas seulement COMBIEN ────
+//
+// La file mélange les natures : une vente, une dépense et un ajustement de
+// stock y voisinent. `ok` les compte ensemble — c'est ce qu'il doit faire, et
+// ça ne bouge pas. Mais annoncer « ta vente est partie » sur un `ok > 0` qui
+// était une dépense serait un mensonge de confirmation, celui-là même
+// qu'OFF-01 vient de fermer côté encaissement.
+//
+// LA NATURE EST DÉJÀ LÀ : chaque opération porte son point de terminaison
+// (`/caisse/vente`, `/caisse/depense`, `/stocks/…`). On s'en sert, on
+// n'invente aucun champ parallèle qui pourrait diverger de lui.
+//
+// CE QUE CETTE VENTILATION NE FAIT PAS, ET C'EST LE POINT : elle n'OBSERVE.
+// Elle est incrémentée à l'endroit exact où `ok++` l'est déjà, et calculée à
+// partir des opérations encore en file. L'ORDRE du rejeu, l'IDEMPOTENCE des
+// clés, le COMPTAGE (`ok`, `reste`, `echecs`) et la CONSERVATION des
+// opérations sont strictement inchangés — contrainte posée par Patrick pour
+// ce lot, et mesurée sur le rejeu réel par `test:vente-synchronisee`.
+//
+// La clé est le point de terminaison TEL QUEL, sans regroupement : un
+// `/stocks/<id>` produit donc une entrée par article. C'est voulu — regrouper
+// demanderait d'inventer un vocabulaire de « nature », et un tour de rejeu
+// porte de toute façon une poignée d'opérations.
+export type CompteParEndpoint = Readonly<Record<string, number>>;
+
+/** Ce qu'un tour de rejeu a produit. Les cinq premiers champs sont le contrat
+ *  d'origine, inchangé ; les deux derniers sont additifs (OFF-02). */
+export interface BilanSynchronisation {
+  ok: number;
+  reste: number;
+  echecs: number;
+  ignorees: number;
+  sansProprietaire: number;
+  /** Combien d'opérations sont VRAIMENT parties, par point de terminaison. */
+  okParEndpoint: CompteParEndpoint;
+  /** Combien restent en file (de `currentUserId`), par point de terminaison. */
+  resteParEndpoint: CompteParEndpoint;
+}
+
+/** Le point de terminaison d'une VENTE — écrit ici, et lu de là par qui doit
+ *  distinguer une vente d'une dépense. Une seule vérité, un seul nom. */
+export const ENDPOINT_VENTE: CaisseEndpoint = '/caisse/vente';
+
+/** Combien de VENTES viennent de partir dans ce tour de rejeu. */
+export function ventesParties(bilan: Pick<BilanSynchronisation, 'okParEndpoint'>): number {
+  return bilan.okParEndpoint[ENDPOINT_VENTE] ?? 0;
+}
+
+/** Combien de VENTES restent en file après ce tour (succès partiel). */
+export function ventesEncoreEnFile(bilan: Pick<BilanSynchronisation, 'resteParEndpoint'>): number {
+  return bilan.resteParEndpoint[ENDPOINT_VENTE] ?? 0;
+}
+
+/** Ventile par point de terminaison les opérations encore en file du compte. */
+async function resteVentile(userId: string, store: OutboxStore): Promise<CompteParEndpoint> {
+  const compte: Record<string, number> = {};
+  for (const op of await operationsEnAttente(userId, store)) {
+    compte[op.endpoint] = (compte[op.endpoint] ?? 0) + 1;
+  }
+  return compte;
+}
+
+export async function synchroniser<E extends OfflineEndpoint = OfflineEndpoint>(
+  poster: (endpoint: E, payload: unknown, method: OfflineMethod) => Promise<void>,
+  currentUserId: string,
+  store: OutboxStore = defaultStore(),
+): Promise<BilanSynchronisation> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return {
+      ok: 0, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
+      ignorees: 0, sansProprietaire: await nbSansProprietaire(store),
+      okParEndpoint: {}, resteParEndpoint: await resteVentile(currentUserId, store),
+    };
+  }
+  const ops = await store.list();
+  let ok = 0;
+  // OBSERVATION SEULE : ce compteur ne décide de rien dans la boucle.
+  const okParEndpoint: Record<string, number> = {};
+  let ignorees = 0;
+  let sansProprietaire = 0;
+  for (const op of ops) {
+    // Propriétaire inconnu : jamais rejouée, jamais attribuée à personne.
+    // Mise à part, intacte, en attente d'un traitement/alerte manuel.
+    if (estOrpheline(op)) { sansProprietaire++; continue; }
+    // Cloisonnement : jamais rejouer l'opération d'un AUTRE compte sous la
+    // session courante. On ne la touche pas — ni tentative, ni lettre morte,
+    // ni incrément d'essais — elle reste active pour son propriétaire.
+    if (op.userId !== currentUserId) { ignorees++; continue; }
+    try {
+      // LA DATE DE L'OPÉRATION PART AVEC ELLE — correctif du 18/09/2026.
+      // Sans elle, le serveur horodatait au moment du REJEU : une vente de
+      // 2 000 F faite à 23h55 sans réseau, remontée à 00h05, basculait sur le
+      // jour suivant. Le total global restait juste, mais la journée de la
+      // marchande — celle qu'elle compte le soir en fermant sa caisse — était
+      // fausse des deux côtés. `ts` était déjà mémorisé dans la file ; il n'en
+      // sortait simplement jamais.
+      // SEULES LES OPÉRATIONS D'ARGENT PORTENT LEUR DATE. Un ajustement de
+      // stock n'a pas de journée comptable : lui coller une date n'apporte
+      // rien et change le contrat d'une route qui ne l'attend pas (défaut
+      // attrapé par test:offline-stock avant qu'il ne sorte).
+      const portefaireDate = ENDPOINTS_ARGENT.some((e) => op.endpoint.startsWith(e));
+      await poster(
+        op.endpoint as E,
+        {
+          ...op.payload,
+          idempotency_key: op.id,
+          ...(portefaireDate ? { date_operation: new Date(op.ts).toISOString() } : {}),
+        },
+        op.method || 'POST',
+      );
+      await store.remove(op.id);
+      ok++;
+      okParEndpoint[op.endpoint] = (okParEndpoint[op.endpoint] ?? 0) + 1;
+    } catch (e) {
+      if (estPermanent(e)) {
+        // Rejet métier définitif : lettre morte (atomique) + on CONTINUE.
+        await store.moveToDead(op.id, { status: statutDe(e), message: String((e as Error)?.message ?? ''), failedAt: Date.now() });
+        continue;
+      }
+      // Transitoire UNIQUEMENT : on incrémente les essais.
+      const n = await store.incrementAttempts(op.id);
+      const argent = ENDPOINTS_ARGENT.some((e) => op.endpoint.startsWith(e));
+      if (n >= REPLAY_CAP && !argent) {
+        await store.moveToDead(op.id, { status: statutDe(e), message: String((e as Error)?.message ?? ''), failedAt: Date.now() });
+        continue;
+      }
+      break; // réseau/serveur instable : on préserve l'ordre et on retentera
+    }
+  }
+  return {
+    ok, reste: await nbEnAttente(currentUserId, store), echecs: await nbEchecs(currentUserId, store),
+    ignorees, sansProprietaire,
+    okParEndpoint, resteParEndpoint: await resteVentile(currentUserId, store),
+  };
+}

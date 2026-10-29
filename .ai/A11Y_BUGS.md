@@ -2,7 +2,16 @@
 
 > Registre des problèmes a11y. Format : A11Y-XXX.
 
-## État au 2026-09-28
+## État au 2026-10-29 (rattrapé sur le code réel, commit 138a2630)
+
+- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels puis 5, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés) ; A11Y-006 (garde `test:charte-globale` — la dette 4240 hex est FIGÉE, elle ne peut que descendre ; voir l'entrée) ; A11Y-005 (les 3 retours icône-seule SANS nom accessible nommés — SupportContact ×1, UniversalAcademy ×2 — et le tableau de vérité des 11 routes sans BottomBar écrit dans `.ai/A11Y_CLAVIER.md` ; SupportContact inscrit au harnais axe).
+- **Inventaires corrigés sur le code réel** (le registre du 28/09 mentait par péremption) :
+  - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
+  - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
+  - A11Y-006 : mesure brute puis exacte — **4240 hexadécimaux dans 542 fichiers** hors tests et hors commentaires (première estimation grep : 4262/199, affinée par l'algorithme du garde). La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
+- **Ouverts** : A11Y-003. (A11Y-001 : EN COURS — pas réversible n°1 posé, gardes posées, unification Radix = rang dédié. A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
+
+## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
 - **Total problèmes** : 7
 - **CRITIQUES (P0)** : 0
@@ -13,47 +22,52 @@
 ## Points faibles identifiés (audit initial 2026-09-28)
 
 ### A11Y-001 — Multiplicité des systèmes de modales (P1)
-- **Statut** : OUVERT
-- **Description** : 7 systèmes de modales coexistent : `ModalContext` + `Modal.tsx` custom + `ModalPortal` + Radix `Dialog` + `UniversalModalBO` + `ProfilUnifieModal` + `ChangePasswordModal`.
-- **Impact** : focus trap variable selon le système, inconsistencies a11y potentielles.
-- **Fichiers concernés** : `src/app/contexts/ModalContext.tsx`, `src/app/components/Modal.tsx`, `src/app/components/ModalPortal.tsx`, `src/app/components/ui/dialog.tsx`, `src/app/components/backoffice/universal/UniversalModalBO.tsx`, `src/app/components/profile/ProfilUnifieModal.tsx`, `src/app/components/profile/ChangePasswordModal.tsx`.
-- **Recommandation** : Uniformiser vers Radix `Dialog` exclusivement.
+- **Statut** : EN COURS — **pas réversible n°1 posé le 29/10**, **pas 2 posé le 29/10 (socle Radix, voir ci-dessous)** ; restent les portails disséminés (WalletPage) et la question des panneaux/notifications (NotificationToast, NotificationsPanel — catégorie a11y différente), un système à la fois, preuve visuelle par écran.
+- **Description** (inventaire CORRIGÉ le 29/10 sur le code réel — les fichiers cités le 28/09 ont disparu) : 5 systèmes coexistent aujourd'hui : `ModalContext` (compteur + scroll lock) + `ModalPortal` (infra de portail) + `SharedModal` (shared, motion+portal) + `UniversalModalBO` / `UniversalDrawerBO` (back-office — **UniversalModalBO est DÉJÀ sur Radix Dialog**, vérifié dans le source) + portails `createPortal` disséminés (WalletPage, NotificationToast, NotificationsPanel — des panneaux/notifications, catégorie a11y différente).
+- **Impact** : focus trap variable selon le système, `aria-modal` et ESC incohérents, inconsistencies a11y potentielles.
+- **Pas réversible n°1 (29/10)** : `SharedModal` porte désormais la sémantique complète de dialogue — `role="dialog"`, `aria-modal`, titre et description associés (`aria-labelledby`/`aria-describedby`), bouton Fermer nommé (il était MUET), fermeture ESC (respectant `disableBackdropClick`), focus initial sur la carte + RETOUR du focus au déclencheur à la fermeture. Zéro changement visuel. **Inscrit au harnais axe OUVERT** (cas « SharedModal ouvert — dialogue nommé » : 0 violation, 21 règles passent) — le dialogue ne peut plus redevenir muet sans rouge.
+- **Pas 2 — socle Radix (29/10, `2cfe20f9` + `b8ab2448`)** : le fait-maison part, Radix Dialog porte ESC, **focus TRAP** (la promesse du pas 1 — pas réinventé à la main), focus initial, retour au déclencheur, portail. API publique inchangée (aucun consommateur ne change) ; contrat ModalContext conservé (BottomBar, scroll lock) ; rendu inchangé (pattern forceMount + AnimatePresence déjà en production dans UniversalModalBO). Contrats affinés écrits dans l'en-tête : `disableBackdropClick` interdit backdrop ET Escape, le bouton Fermer reste explicite ; un clic sur les marges ferme désormais (standard Radix — l'ancien conteneur les absorbait en silence) ; un dialogue sans `title` doit passer la prop additive `ariaLabel` (le warning Radix est un garde voulu). ScoreOnboardingModal (sans title depuis toujours — dialogue SANS nom accessible, trou non vu par axe car le cas inscrit passait un title) reçoit son nom « Ton Score Jùlaba » (`b8ab2448`). Le harnais axe expose désormais MutationObserver/Event/CustomEvent du realm jsdom et stubbe ResizeObserver — le socle réel (react-remove-scroll, DismissableLayer) tourne dans le banc. Cas « SharedModal ouvert » : 0 violation, rendu réel sous Radix.
+- **Reste pour la clôture** : les portails disséminés (`WalletPage` ; `NotificationToast`/`NotificationsPanel` sont des panneaux, à arbitrer comme catégorie a11y distincte). Chaque système refondu entre au harnais axe.
+- **Fichiers concernés** : `src/app/contexts/ModalContext.tsx`, `src/app/components/shared/ModalPortal.tsx`, `src/app/components/shared/Modal.tsx`, `src/app/components/backoffice/universal/UniversalModalBO.tsx`, `src/app/components/backoffice/universal/UniversalDrawerBO.tsx`, `src/app/components/wallet/WalletPage.tsx`, `src/app/components/shared/NotificationToast.tsx`, `src/app/components/shared/NotificationsPanel.tsx`.
 
 ### A11Y-002 — Pas de test a11y automatisé (P1)
-- **Statut** : OUVERT
-- **Description** : Aucun test a11y automatisé en CI (axe-core, pa11y, lighthouse CI non détectés).
+- **Statut** : RÉSOLU côté code le 29/10 — harnais `frontend/src/app/a11y/axe.test.mts`, maillon `test:a11y-axe` dans `verify`.
+- **Description** : Aucun test a11y automatisé (axe-core, pa11y, lighthouse CI non détectés).
 - **Impact** : Régressions a11y non détectées automatiquement.
-- **Recommandation** : Mettre en place axe-core en CI + `@axe-core/playwright` pour tests E2E.
+- **Ce qui a été fait** : axe-core injecté dans un jsdom, composants RÉELS montés sous la pile complète des providers de App.tsx (ordre exact du rendu de production, zéro mock réseau — le hors-ligne est catché par l'app elle-même). 4 cas inscrits à la naissance : BottomBar marchand ×2 états (Tata visible / masqué), Sidebar marchand + producteur — **0 violation, 13-15 règles passent par cas**. Le stub des assets binaires (module.registerHooks) ne vit que dans le banc ; le build Vite est intact. Un rouge d'axe bloque verify.
+- **Limites assumées (documentées dans l'en-tête du banc)** : color-contrast sort « incomplete » en jsdom (besoin du canvas réel — le contraste se juge au terrain, rang 4 du plan) ; le lecteur d'écran reste une recette humaine (rang 7). Ajouter un composant au harnais = ajouter un cas.
 
-### A11Y-003 — i18n absente (P1)
-- **Statut** : OUVERT
+### A11Y-003 — i18n UI absente (P1)
+- **Statut** : OUVERT — HORS RANG 6 (lot dédié ; la voix couvre déjà dioula/bambara pour l'ORAL : `test:i18n-*`, `test:voix-dyu-argent` ; c'est le TEXTE UI qui reste français).
 - **Description** : `useLangPref` expose `french`/`dioula`/`bambara` mais chaînes UI hardcoded en français. `index.html` a `<html lang="fr">` hardcoded.
 - **Impact** : Marchandes dioula/bambara non servies côté UI textuelle (uniquement voice-first couvre partiellement).
 - **Recommandation** : Adopter i18next ou react-intl, extraire les chaînes UI dans des fichiers de locale.
 
 ### A11Y-004 — Pas de skip-link visible sur `<AppLayout>` (P2)
-- **Statut** : OUVERT
+- **Statut** : RÉSOLU le 29/10 — commit `138a2630` « fix(a11y): le clavier saute la navigation — skip-link sur AppLayout ». Vu dans le source : le lien est le PREMIER tab du DOM, `sr-only focus:not-sr-only`, il rejoint `<main id="contenu-principal" tabIndex={-1}>`. Registre rattrapé le même jour.
 - **Description** : `components/layout/ScrollToTop.tsx` existe mais pas de skip-link visible pour la navigation clavier.
 - **Impact** : Navigation clavier longue pour atteindre le contenu principal.
-- **Recommandation** : Ajouter un skip-link "Aller au contenu principal" visible au focus clavier.
+- **Recommandation** : Ajouter un skip-link "Aller au contenu principal" visible au focus clavier. → FAIT.
 
 ### A11Y-005 — BottomBar masquée sans alternative clavier documentée (P2)
-- **Statut** : OUVERT
-- **Description** : `BottomBar` masquée sur plusieurs routes (`hiddenPaths`) sans alternative clavier documentée.
-- **Impact** : Navigation mobile réduite sur certaines routes.
-- **Recommandation** : Documenter les alternatives clavier pour chaque route `hiddenPaths`.
+- **Statut** : RÉSOLU le 29/10 — tableau de vérité écrit (`A11Y_CLAVIER.md`) + 3 défauts réels réparés.
+- **Description** : `BottomBar` masquée sur 11 routes (`hiddenPaths` dans AppLayout.tsx) sans alternative clavier documentée.
+- **Ce que la vérification a trouvé** : 6 écrans sur 8 avaient DÉJÀ une sortie correcte (SubPageLayout ×5 : bouton `aria-label="Retour"` ; MarchandDepenses : `aria-label="Revenir en arrière"`). **3 boutons retour icône-seule étaient MUETS** pour le lecteur d'écran (il disait juste « bouton ») : SupportContact ×1 (`/marchand/support` etc.), UniversalAcademy ×2 (`/academy`).
+- **Ce qui a été fait** : `aria-label="Retour"` posé sur les 3 (zéro changement visuel) ; SupportContact inscrit au harnais axe (la règle `button-name` refuse à jamais un retour muet sur cet écran) ; le tableau route → contrôle de sortie écrit dans `.ai/A11Y_CLAVIER.md` avec la règle qui reste : toute nouvelle route dans `hiddenPaths` met à jour le tableau DANS son commit.
+- **Limites** : la restitution TalkBack/VoiceOver réelle reste la recette terrain (rang 7).
 
 ### A11Y-006 — Couleurs hard-codées subsistantes (P2)
-- **Statut** : OUVERT
+- **Statut** : GARDE EN PLACE le 29/10 — `test:charte-globale` dans `verify`. La REMISE AU TOKEN reste un chantier de rangs futurs (à la baisse uniquement).
 - **Description** : Malgré règle explicite (tokens CSS obligatoires), couleurs hard-codées subsistantes.
 - **Impact** : Contrastes non vérifiables automatiquement dans les 3 confits visuels.
-- **Recommandation** : `caisseCharte.test.mts` est le garde-fou — l'étendre à tout le frontend.
+- **Ce qui a été fait** : mesure exacte du 29/10 sur l'arbre `594e2df0` — **4240 hex dans 542 fichiers** (hors commentaires, hors bancs) ; la garde fige cette base et refuse TOUTE hausse. Chaque remise au token reste un changement visuel à prouver (capture + terrain) — jamais en bloc. Le banc impose de DÉSCENDRE la constante `BASE` à chaque périmètre réparé, avec la référence du commit de preuve.
+- **Pourquoi pas zéro-hex immédiat** : 4240 remises non prouvées = régression visuelle non prouvée. La dette est assumée ÉCRITE, bornée, et monotone décroissante — l'inverse de ce qu'elle était : invisible, non bornée, dérive libre.
 
-### A11Y-007 — 878 `console.*` en production (P2)
-- **Statut** : OUVERT
-- **Description** : 878 `console.*` répartis sur 162 fichiers, pas de stripping configuré.
-- **Impact** : Bruit pour lecteurs d'écran si erreurs loguées, performance dégradée.
-- **Recommandation** : Mettre en place `vite-plugin` ou Terser pour strip en production, utiliser `eventLogger.ts` (existant mais sous-utilisé).
+### A11Y-007 — 1750 `console.*` dans le code (P2)
+- **Statut** : RÉSOLU côté code le 29/10 — robinet dans `vite.config.ts` (esbuild `pure` sous `command === "build"`), garde `test:console-prod` dans `verify`.
+- **Description** : 1750 appels dans 93 fichiers (1410 `log`, 276 `warn`, 63 `error`, 1 `info`), pas de stripping au build.
+- **Ce qui a été fait** : `esbuild.pure = ["console.log", "console.info", "console.debug"]` au build seulement — rollup retire du bundle tout appel dont le résultat est inutilisé. **Preuve par build réel** : `vite build` vert (22 s, 206 chunks + 265 clips pré-cachés), puis comptage dans `dist/assets` : **0** console.log/info/debug, **347** warn/error conservés (diagnostic légitime en prod, Sentry). En dev, aucun strip (condition `command === "build"`) — le diagnostic de développement est intact.
+- **La garde** : `test:console-prod` relit vite.config et refuse que le robinet bouge (condition, couverture log/info/debug, étiquette A11Y-007, clé esbuild).
 
 ## Points forts a11y (audit initial)
 
@@ -73,3 +87,9 @@
 ## Score a11y : 75/100
 
 Design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile testée CI), mais dette sur la multiplicité des modales, l'absence de tests a11y automatisés, et l'i18n absente.
+
+## Historique des clôtures
+
+- **2026-10-29** : A11Y-004 RÉSOLU (`138a2630`, skip-link AppLayout). Registre rattrapé sur le code réel : inventaires A11Y-001/006/007 corrigés et mesurés.
+- **2026-10-29 (suite)** : A11Y-002 RÉSOLU (harnais axe-core `test:a11y-axe`), A11Y-007 RÉSOLU (robinet esbuild + garde `test:console-prod`, preuve par build réel).
+- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire). A11Y-005 RÉSOLU (3 retours nommés, SupportContact au harnais axe, tableau de vérité `A11Y_CLAVIER.md`). A11Y-001 — pas réversible n°1 : SharedModal porte la sémantique dialog complète + bouton Fermer nommé + ESC + focus aller/retour, inscrit au harnais axe OUVERT (6e cas, 0 violation, 21 règles). Restent ouverts : A11Y-001 (unification Radix, rang dédié), A11Y-003 (i18n UI, lot dédié).

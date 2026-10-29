@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TransactionsRestController } from './transactions-rest.controller';
 import { CaisseTransaction } from '../caisse-rest/caisse-transaction.entity';
-import { AuditModule } from '../audit/audit.module';
+import { AuditModule } from '../audit-log/audit-log.module';
 import { TransactionsExportService } from './transactions-export.service';
 
 @Module({

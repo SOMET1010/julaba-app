@@ -5,22 +5,24 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
+import { RecuperationController } from './recuperation.controller';
 import { AuthService } from './auth.service';
 import { ActivationModule } from './activation.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { CodeRecuperation } from './entities/code-recuperation.entity';
 import { Cooperative } from '../cooperatives-rest/cooperative.entity';
 import { WalletsModule } from '../wallets/wallets.module';
 import { FeedbakSmsModule } from '../feedbak-sms/feedbak-sms.module';
-import { AuditModule } from '../audit/audit.module';
+import { AuditModule } from '../audit-log/audit-log.module';
 import { PinCryptoService } from './pin-crypto.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     PassportModule,
-    TypeOrmModule.forFeature([User, RefreshToken, Cooperative]),
+    TypeOrmModule.forFeature([User, RefreshToken, Cooperative, CodeRecuperation]),
     ActivationModule,
     WalletsModule,
     FeedbakSmsModule,
@@ -35,7 +37,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, RecuperationController],
   providers: [AuthService, JwtStrategy, Reflector, PinCryptoService],
   exports: [AuthService, ActivationModule, JwtModule, Reflector],
 })

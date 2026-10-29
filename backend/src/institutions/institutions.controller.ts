@@ -6,7 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Institution } from './institution.entity';
-import { AuditService } from '../audit/audit.service';
+import { AuditService } from '../audit-log/audit-log.service';
 
 // RC 07/10 — l'écran BO Institutions parle en `statut` ('actif' | 'suspendu'),
 // l'entité ne connaît que `actif` (booléen). `repo.update` avec `statut` (ou
