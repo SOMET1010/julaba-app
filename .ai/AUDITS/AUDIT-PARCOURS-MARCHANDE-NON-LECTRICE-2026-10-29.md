@@ -65,3 +65,12 @@ Ne pas annoncer « parcours entièrement vocal validé » avant que les étapes 
 ## Limites de cet audit
 
 Aucun code applicatif n'a été modifié par ce document. Aucune commande de test, installation APK, reconnaissance micro sur appareil réel, ni consultation de base de données n'a été exécutée dans cette session. Les constats ci-dessus s'appuient sur les documents et descriptions de tests présents sur `dev`; les états runtime restent à établir.
+
+## Correctif appliqué après audit — 29/10/2026
+
+- [x] **Confidentialité du journal vocal** : les chaînes enregistrées par le journal VOICE-01 sont désormais assainies récursivement avant d'entrer en mémoire ou dans `localStorage`. Les séquences de 7 chiffres ou plus sont masquées, y compris dans les événements génériques, les textes TTS et les détails imbriqués.
+- [x] **Anciennes traces** : le journal assainit et réécrit les entrées chargées depuis le stockage local, afin qu'une trace créée par une ancienne version ne reste pas exposée après mise à jour.
+- [x] **Régression couverte par test** : ajout de cas sur les numéros continus, les numéros séparés par des espaces, les événements génériques et les traces historiques.
+- [ ] **Exécution des tests** : non exécutés dans cet environnement ; le code et les assertions ont été vérifiés statiquement, mais le test `npm run test:voix-trace` doit encore être lancé dans le dépôt.
+- [ ] **Validation terrain** : toujours nécessaire sur un vrai APK Android, avec micro, TTS natif/Sherpa et des marchandes non-lectrices. Ce correctif de confidentialité ne vaut pas validation du parcours vocal complet.
+
