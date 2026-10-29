@@ -13,12 +13,12 @@
 
 ## État au 2026-10-07
 
-- **Total bugs** : 12 (11 résolus, 1 ouvert)
+- **Total bugs** : 12 (12 résolus, 0 ouvert)
 - **Bugs P0** : 0 ouvert
-- **Bugs P1** : 1 ouvert (BUG-008 — outbox producteur hors-ligne)
+- **Bugs P1** : 0 ouvert
 - **Bugs P2** : 0 ouvert
 - **Bugs P3** : 0
-- **Bugs résolus** : BUG-001..005 (5) + BUG-009/010 (29/10) + BUG-011..014 (audit voix 07/10) = 11
+- **Bugs résolus** : BUG-001..005 (5) + BUG-008/009/010 (29/10) + BUG-011..014 (audit voix 07/10) = 12 — REGISTRE VIDE
 
 > Numérotation : BUG-006 et BUG-007 n'ont jamais été attribués (numéros sautés par l'histoire du registre — constaté en REVIEW-004). Ils restent RÉSERVÉS : ne pas les réattribuer, les prochains bugs prennent BUG-011 et suivants.
 
@@ -104,16 +104,18 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - **Description** : les 4 routes de callback (`/pay/success`, `/pay/error`, `/paiement/success`, `/paiement/failed`) montent toutes `PaySuccessPage`, qui ne détectait l'échec que par `pathname.includes('error')` — « failed » passe au travers : une erreur de paiement PSP s'affichait comme un succès. `PaySuccessPage.tsx:7`.
 - **Résolution** : détection `/error|failed/` — les quatre callbacks affichent désormais l'état réel.
 - **Commits** : cf. UX-6 (fix wallet BUG-005) · **Vérifications** : tsc 0, test:ci 0
-## Bugs ouverts — Revue audit UX du 2026-10-06
+## Revue audit UX du 2026-10-06 — tous fermés le 29/10 (BUG-008 le dernier)
 
 ### BUG-008 — Écriture récolte/publication producteur perdue hors ligne
-- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-06 · **Fermé** : 2026-10-29
 - **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
 - **Environnement** : dev / terrain hors ligne
-- **Description** : les créations de récolte et de publication appellent directement l'API sans outbox ni idempotence. Une coupure réseau après saisie ne laisse pas de mutation rejouable.
+- **Description** : les créations de récolte et de publication appelaient directement l'API sans outbox ni idempotence. Une coupure réseau après saisie ne laissait pas de mutation rejouable.
 - **Comportement attendu** : conserver la saisie avec propriétaire, clé d'idempotence et statut « à synchroniser », puis rejouer au retour réseau.
-- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx:351-371,481-485`.
-- **Tests liés** : à créer — outbox producteur nominal, 4xx lettre morte, 5xx rejeu.
+- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx`, `frontend/src/app/voice-offline/offlineProducteur.ts` (nouveau), `frontend/src/app/voice-offline/offlineCaisse.ts` (extension additive).
+- **Résolution** : file hors-ligne du producteur — ses PROPRES magasins IndexedDB (`producteur_outbox`/`producteur_dead`, migration additive v3) et la sémantique de rejeu de la caisse EMPRUNTÉE (même `synchroniser` : clés d'idempotence, cloisonnement P0-1, 4xx lettre morte, transitoire compté au CAP). createRecolte/createPublication suivent la règle caisse : hors ligne/5xx/réseau → file + saisie GARDÉE affichée marquée `horsLigne` ; 4xx métier → remonté. Rejeu au montage, `online`, retour de visibilité, chaque mise en file, relance espacée. Fail closed : jamais de récolte en file sans propriétaire réel.
+- **Commits** : `382c31be` · **Vérifications** : banc `test:offline-producteur` 15/15 verts (nominal, 4xx lettre morte + purge protégée, 5xx jusqu'au CAP, cloisonnement A/B, garde propriétaire) ; régression zéro (test:offline, test:offline-stock verts) ; tsc 0.
+- **Reste** : recette terrain (cutter le réseau pendant une saisie réelle au champ).
 
 ### BUG-009 — Annulation de commande producteur sans confirmation
 - **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-06 · **Fermé** : 2026-10-29
