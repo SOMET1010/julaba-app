@@ -9,7 +9,7 @@
   - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
   - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
   - A11Y-006 : mesure brute puis exacte — **4240 hexadécimaux dans 542 fichiers** hors tests et hors commentaires (première estimation grep : 4262/199, affinée par l'algorithme du garde). La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
-- **Ouverts** : A11Y-001, A11Y-003. (A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
+- **Ouverts** : A11Y-003. (A11Y-001 : EN COURS — pas réversible n°1 posé, gardes posées, unification Radix = rang dédié. A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
 
 ## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
@@ -22,11 +22,12 @@
 ## Points faibles identifiés (audit initial 2026-09-28)
 
 ### A11Y-001 — Multiplicité des systèmes de modales (P1)
-- **Statut** : OUVERT
-- **Description** (inventaire CORRIGÉ le 29/10 sur le code réel — les fichiers cités le 28/09 ont disparu) : 5 systèmes coexistent aujourd'hui : `ModalContext` (custom, trap maison) + `ModalPortal` (shared, portail brut) + `UniversalModalBO` / `UniversalDrawerBO` (back-office, portail brut) + portails `createPortal` disséminés (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` n'a qu'un import dans tout `src` — la recommandation initiale (Radix exclusif) n'est suivie nulle part.
+- **Statut** : EN COURS — **pas réversible n°1 posé le 29/10** (voir ci-dessous) ; l'unification Radix complète reste un rang dédié, un système à la fois, preuve visuelle par écran.
+- **Description** (inventaire CORRIGÉ le 29/10 sur le code réel — les fichiers cités le 28/09 ont disparu) : 5 systèmes coexistent aujourd'hui : `ModalContext` (compteur + scroll lock) + `ModalPortal` (infra de portail) + `SharedModal` (shared, motion+portal) + `UniversalModalBO` / `UniversalDrawerBO` (back-office — **UniversalModalBO est DÉJÀ sur Radix Dialog**, vérifié dans le source) + portails `createPortal` disséminés (WalletPage, NotificationToast, NotificationsPanel — des panneaux/notifications, catégorie a11y différente).
 - **Impact** : focus trap variable selon le système, `aria-modal` et ESC incohérents, inconsistencies a11y potentielles.
-- **Fichiers concernés** : `src/app/contexts/ModalContext.tsx`, `src/app/components/shared/ModalPortal.tsx`, `src/app/components/backoffice/universal/UniversalModalBO.tsx`, `src/app/components/backoffice/universal/UniversalDrawerBO.tsx`, `src/app/components/wallet/WalletPage.tsx`, `src/app/components/shared/NotificationToast.tsx`, `src/app/components/shared/NotificationsPanel.tsx`.
-- **Recommandation** : uniformiser vers Radix `Dialog` exclusivement — par pas réversibles, un système à la fois, avec preuve axe + terrain, jamais en bloc.
+- **Pas réversible n°1 (29/10)** : `SharedModal` porte désormais la sémantique complète de dialogue — `role="dialog"`, `aria-modal`, titre et description associés (`aria-labelledby`/`aria-describedby`), bouton Fermer nommé (il était MUET), fermeture ESC (respectant `disableBackdropClick`), focus initial sur la carte + RETOUR du focus au déclencheur à la fermeture. Zéro changement visuel. **Inscrit au harnais axe OUVERT** (cas « SharedModal ouvert — dialogue nommé » : 0 violation, 21 règles passent) — le dialogue ne peut plus redevenir muet sans rouge.
+- **Reste pour la clôture** : le focus TRAP (cycler Tab dedans) — il vient avec l'adoption Radix de `SharedModal` puis des portails disséminés, PAS réinventé à la main (un piège maison de plus serait le défaut lui-même). Chaque système refondu entre au harnais axe.
+- **Fichiers concernés** : `src/app/contexts/ModalContext.tsx`, `src/app/components/shared/ModalPortal.tsx`, `src/app/components/shared/Modal.tsx`, `src/app/components/backoffice/universal/UniversalModalBO.tsx`, `src/app/components/backoffice/universal/UniversalDrawerBO.tsx`, `src/app/components/wallet/WalletPage.tsx`, `src/app/components/shared/NotificationToast.tsx`, `src/app/components/shared/NotificationsPanel.tsx`.
 
 ### A11Y-002 — Pas de test a11y automatisé (P1)
 - **Statut** : RÉSOLU côté code le 29/10 — harnais `frontend/src/app/a11y/axe.test.mts`, maillon `test:a11y-axe` dans `verify`.
@@ -90,4 +91,4 @@ Design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile t
 
 - **2026-10-29** : A11Y-004 RÉSOLU (`138a2630`, skip-link AppLayout). Registre rattrapé sur le code réel : inventaires A11Y-001/006/007 corrigés et mesurés.
 - **2026-10-29 (suite)** : A11Y-002 RÉSOLU (harnais axe-core `test:a11y-axe`), A11Y-007 RÉSOLU (robinet esbuild + garde `test:console-prod`, preuve par build réel).
-- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire). A11Y-005 RÉSOLU (3 retours nommés, SupportContact au harnais axe, tableau de vérité `A11Y_CLAVIER.md`). Reste ouvert : A11Y-001 (modales, par pas réversibles), A11Y-003 (i18n UI, lot dédié).
+- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire). A11Y-005 RÉSOLU (3 retours nommés, SupportContact au harnais axe, tableau de vérité `A11Y_CLAVIER.md`). A11Y-001 — pas réversible n°1 : SharedModal porte la sémantique dialog complète + bouton Fermer nommé + ESC + focus aller/retour, inscrit au harnais axe OUVERT (6e cas, 0 violation, 21 règles). Restent ouverts : A11Y-001 (unification Radix, rang dédié), A11Y-003 (i18n UI, lot dédié).

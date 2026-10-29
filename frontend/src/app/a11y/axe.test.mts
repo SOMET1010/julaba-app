@@ -79,6 +79,10 @@ Object.defineProperties(globalThis, {
   getComputedStyle: { configurable: true, value: dom.window.getComputedStyle },
   localStorage: { configurable: true, value: dom.window.localStorage },
   sessionStorage: { configurable: true, value: dom.window.sessionStorage },
+  // pretendToBeVisual donne à jsdom un rAF réel — les composants qui l'appellent
+  // nu (ex: SharedModal pour le focus initial) le trouvent en global.
+  requestAnimationFrame: { configurable: true, value: dom.window.requestAnimationFrame.bind(dom.window) },
+  cancelAnimationFrame: { configurable: true, value: dom.window.cancelAnimationFrame.bind(dom.window) },
   matchMedia: {
     configurable: true,
     value: (q: string) => ({
@@ -115,6 +119,7 @@ const { ProducteurProvider } = await import("../contexts/ProducteurContext.tsx")
 const { BottomBar } = await import("../components/layout/BottomBar.tsx");
 const { Sidebar } = await import("../components/layout/Sidebar.tsx");
 const { SupportContact } = await import("../components/shared/SupportContact.tsx");
+const { SharedModal } = await import("../components/shared/Modal.tsx");
 
 // La PILE EXACTE de App.tsx (ordre du rendu de production), par réduction —
 // l'imbrication à la main est une fabrique d'erreurs de parenthèses.
@@ -179,6 +184,29 @@ const cas: Cas[] = [
       "main",
       { id: "contenu-principal" },
       React.createElement(SupportContact, { role: "marchand", showBack: true }),
+    ),
+  },
+  // SharedModal OUVERT : le dialogue doit se lire tout seul — role=dialog,
+  // aria-modal, titre associé, description associée, bouton Fermer nommé.
+  // A11Y-001 (pas réversible n°1, 29/10). S'il redevient muet, la règle axe
+  // `aria-required-attr` / `button-name` refuse.
+  {
+    nom: "SharedModal ouvert — dialogue nommé",
+    chemin: "/marchand/accueil",
+    element: () => React.createElement(
+      "main",
+      { id: "contenu-principal" },
+      React.createElement(
+        SharedModal,
+        {
+          isOpen: true,
+          onClose: () => {},
+          title: "Ajouter au stock",
+          description: "Dis la quantité reçue, elle est ajoutée au stock.",
+          footer: React.createElement("button", { type: "button" }, "Ajouter"),
+          children: React.createElement("button", { type: "button" }, "Choisir un produit"),
+        },
+      ),
     ),
   },
 ];

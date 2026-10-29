@@ -5,7 +5,7 @@
  * Basé sur le Design System Marchand.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { MOTION, Z_INDEX } from '../../styles/design-tokens';
@@ -70,6 +70,41 @@ export function SharedModal({
   // ModalPortal gère le scroll lock et l'enregistrement dans ModalContext
   // Plus besoin de manipuler le DOM manuellement ici
 
+  // ── SÉMANTIQUE DE DIALOGUE (A11Y-001, pas réversible n°1, 29/10) ────────
+  // Le modal est un dialogue : role=dialog + aria-modal + association du
+  // titre et de la description. Zéro changement visuel — ce sont des
+  // attributs, pas des styles. Le focus TRAP complet (cycler Tab à
+  // l'intérieur) viendra avec l'unification Radix — pas réinventé à la
+  // main ici, un piège maison de plus serait le défaut lui-même.
+  const idTitre = useId();
+  const idDescription = useId();
+  const carteRef = useRef<HTMLDivElement>(null);
+
+  // ESC ferme — sauf quand disableBackdropClick interdit déjà la fermeture
+  // accidentelle (le même contrat : ce drapeau désactive TOUTES les
+  // fermetures non explicites, clavier compris).
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !disableBackdropClick) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen, disableBackdropClick, onClose]);
+
+  // Focus initial sur la carte (le lecteur d'écran "entre" dans le dialogue)
+  // puis RETOUR du focus à l'élément déclencheur à la fermeture — sans ça,
+  // le clavier repart du début de la page après chaque modal.
+  useEffect(() => {
+    if (!isOpen) return;
+    const declencheur = document.activeElement as HTMLElement | null;
+    const raf = requestAnimationFrame(() => carteRef.current?.focus());
+    return () => {
+      cancelAnimationFrame(raf);
+      declencheur?.focus?.();
+    };
+  }, [isOpen]);
+
   // Classes de taille
   const sizeClasses = {
     sm: 'max-w-md',
@@ -103,6 +138,12 @@ export function SharedModal({
               style={{ zIndex: Z_INDEX.modal }}
             >
               <motion.div
+                ref={carteRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? idTitre : undefined}
+                aria-describedby={description ? idDescription : undefined}
+                tabIndex={-1}
                 className={cn(
                   'bg-white rounded-3xl shadow-2xl',
                   'w-full',
@@ -125,12 +166,12 @@ export function SharedModal({
                   <div className="flex items-start justify-between p-6 border-b border-gray-200 flex-shrink-0">
                     <div className="flex-1">
                       {title && (
-                        <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                        <h2 id={idTitre} className="text-2xl font-bold text-gray-900 mb-1">
                           {title}
                         </h2>
                       )}
                       {description && (
-                        <p className="text-sm text-gray-600">
+                        <p id={idDescription} className="text-sm text-gray-600">
                           {description}
                         </p>
                       )}
@@ -138,6 +179,8 @@ export function SharedModal({
                     
                     {!hideCloseButton && (
                       <motion.button
+                        type="button"
+                        aria-label="Fermer"
                         onClick={onClose}
                         className="ml-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
                         whileHover={{ scale: 1.1 }}
