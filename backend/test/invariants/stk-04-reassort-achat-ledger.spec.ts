@@ -52,7 +52,7 @@ describe('Invariant STK-04 — le réassort entre dans le ledger comme ACHAT (�
     // Marchand réel via l'inscription publique (mot de passe acteur 0000 → levé).
     const signup = await api()
       .post('/api/v1/auth/signup')
-      .send({ phone: '+2250700000501', firstName: 'Awa', lastName: 'Stk04', role: 'marchand', genre: 'femme' });
+      .send({ phone: '+2250700000930', firstName: 'Awa', lastName: 'Stk04', role: 'marchand', genre: 'femme' });
     expect([200, 201]).toContain(signup.status);
     marchandToken = signup.body.accessToken as string;
     await api()

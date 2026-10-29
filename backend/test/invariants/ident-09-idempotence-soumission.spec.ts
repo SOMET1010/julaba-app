@@ -38,7 +38,7 @@ import { AppModule } from '../../src/app.module';
 import { DbInitService } from '../../src/database/db-init.service';
 import { User, UserRole } from '../../src/users/entities/user.entity';
 
-const PHONE_ACTEUR = '+2250700000801';
+const PHONE_ACTEUR = '+2250700000916';
 
 describe('Invariant IDENT-09 — soumission de dossier idempotente (🟢 attendu)', () => {
   let app: INestApplication;
@@ -94,7 +94,7 @@ describe('Invariant IDENT-09 — soumission de dossier idempotente (🟢 attendu
     jwt = app.get(JwtService);
     await app.get(DbInitService, { strict: false }).runInit();
 
-    const ident = await seedUser(UserRole.IDENTIFICATEUR, '+2250700000800');
+    const ident = await seedUser(UserRole.IDENTIFICATEUR, '+2250700000915');
     tokenIdentificateur = ident.token;
   }, 120000);
 
@@ -144,7 +144,7 @@ describe('Invariant IDENT-09 — soumission de dossier idempotente (🟢 attendu
       .send({
         idempotencyKey: 'IDEM-9-test-0002',
         acteur: {
-          firstName: 'Yao', lastName: 'Kouassi', phone: '+2250700000802',
+          firstName: 'Yao', lastName: 'Kouassi', phone: '+2250700000917',
           password: 'secret-inconnu', role: 'producteur', genre: 'homme',
         },
         identification: {
@@ -170,7 +170,7 @@ describe('Invariant IDENT-09 — soumission de dossier idempotente (🟢 attendu
       .set('Authorization', `Bearer ${tokenIdentificateur}`)
       .send({
         acteur: {
-          firstName: 'Fatou', lastName: 'Diarra', phone: '+2250700000803',
+          firstName: 'Fatou', lastName: 'Diarra', phone: '+2250700000918',
           password: 'secret-inconnu', role: 'marchand', genre: 'femme',
         },
         identification: {
