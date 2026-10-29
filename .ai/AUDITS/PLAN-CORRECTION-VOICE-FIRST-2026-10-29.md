@@ -64,8 +64,50 @@ Statuts : `FAIT (preuve)` / `CONTRÉ (audit infirmé par le code)` / `PLANIFIÉ 
   prêts — CLIPS-VOIX-A-ENREGISTRER.md §4) puis recette terrain (Patrick).
 - Honnêteté : deux suites unitaires échouaient DÉJÀ sur l'arbre propre
   d'origin/dev (unicité des téléphones entre suites invariants
-  existantes ; StocksRestController — idempotence). Hors du présent lot,
-  à reprendre par un rang dédié.
+  existantes ; StocksRestController — idempotence). → **REPRIS ET CLOS
+  par le LOT-BANC-UNITAIRE (29/10, voir ci-dessous)**.
+
+### LOT-BANC-UNITAIRE — rang dédié du banc, clos côté code (29/10)
+
+« Preuve avant croyance » commence par un banc vert : deux suites
+unitaires rouges sur l'arbre propre, et une troisième flaky en groupe.
+
+- **stocks-rest.idempotency** (`21221d3a`) : le test, né le 11/09 AVANT
+  STK-04, comptait 2 requêtes dans la transaction d'un PATCH marchand ;
+  le contrôleur en fait 3 depuis `964697ce` (lecture de l'ancien stock
+  SOUS VERROU avant l'UPDATE, pour tracer le réassort en achat). Le
+  contrôleur est la vérité (invariant stk-04 4/4) — le test a suivi :
+  mock de la lecture verrouillée, stock 12→12 (delta 0, aucun achat
+  inventé — l'achat reste couvert par l'invariant STK-04), premier
+  passage 3 requêtes, rejeu exactement 1 (l'INSERT en conflit).
+- **Téléphones en collision** (`fd5f33b5`) : le garde
+  `telephones-tests-uniques` détectait **11 collisions** entre suites
+  d'invariants (une base partagée pour toute l'exécution — le 2e
+  inscrit répond 409 : la suite passe SEULE et échoue EN GROUPE, la
+  pire forme d'échec). Cinq paires levées (un fichier par paire, blocs
+  contigus conservés) : stk-04 → 0930, prod-05 → plage ARGENT/PROD
+  0788880045, sec-besoin-01 → 0925/0926, ident-02 → 0910-0913,
+  ident-09 → 0915-0918. L'allotissement des plages est désormais ÉCRIT
+  dans le garde (08xx m6-m8, 09xx IDENT/sécurité, 078888xx
+  ARGENT/PROD — prochains libres 0931-0999) ; le renvoi « cf. le
+  garde-fou » de prod-05 pointait vers une table qui n'existait pas.
+- **ident-02 flaky EN GROUPE — découverte du rang** (`668f7ef1`) :
+  passait seul, échouait en groupe, SANS collision de numéro. Cause :
+  l'assertion comptait les wallets de TOUS les identificateurs de la
+  base partagée, alors que `auth.service.signup` appelle
+  `createForUser` pour TOUT rôle — m6-m8 (qui signe un identificateur
+  par l'API) le contaminait selon l'ordre de jest. Deux tirages, deux
+  ordres, un échec puis des passes : reproductible, non déterministe.
+  L'assertion est bornée au sujet du test (l'ident seedé ICI reste sans
+  wallet) — ce que le test prouve est la neutralité serveur face à SES
+  huit appels 403. **Ligne ouverte au registre maître : ARG-16** (les
+  lignes wallet fantômes des rôles exclus — signup + backfill DbInit —
+  restent ; aucun parcours ne change, les 403 précèdent toute lecture ;
+  l'alignement sur la whitelist est à arbitrer).
+- **Preuves** : unitaires 310/310 (avant 308/310) ; 6 suites invariants
+  — dont m6-m8, le contaminateur — lancées DEUX FOIS dans des ordres
+  différents → 6/6 à chaque tirage, 42/42 ; registre dette recompté
+  par script 119 lignes — 49 F / 7 H / 63 O (révision 39).
 
 ### LOT-WA-01 — WebAuthn réellement usernameless (P1-AUTH-03)
 
