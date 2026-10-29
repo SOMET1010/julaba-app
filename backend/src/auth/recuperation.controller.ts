@@ -519,7 +519,7 @@ export class RecuperationController {
  * sur SON nouveau téléphone. userID = user.id : le pivot du LOT-WA-01,
  * l'assertion usernameless quotidienne rapportera ce userHandle.
  */
-async function generateRegistrationOptionsPourRecuperation(compte: User) {
+export async function generateRegistrationOptionsPourRecuperation(compte: User) {
   return generateRegistrationOptions({
     rpName: 'Jùlaba',
     rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
