@@ -25,9 +25,9 @@ Statuts : `FAIT (preuve)` / `CONTRÉ (audit infirmé par le code)` / `PLANIFIÉ 
 
 Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 
-- Backend : options d'enrôlement → `residentKey: 'required'`, `userVerification: 'required'`, `userID = user.id` (l'assertion sans identifiant rapportera le userHandle = qui se connecte) ; options d'authentification → mode SANS `phone` : `allowCredentials: []` (découvrable) + `userVerification: 'required'`, challenge conservé dans un registre mémoire TTL 3 min ; verify → chemin sans `userId` : userHandle → user → credential → challenge du registre. Chemin historique par numéro INTACT en repli (credentials non découvrables des enrôlements anciens).
-- Frontend : `authenticateWebAuthn` tente D'ABORD sans numéro (credentials découvrables) puis retombe sur le chemin par numéro — le numéro reste « caché, pas supprimé » (spec §2.2).
-- Preuves : build backend, tests, voir commits du lot.
+- Backend (`c9080d0f`) : options d'enrôlement → `residentKey: 'required'`, `userVerification: 'required'`, `userID = user.id` (l'assertion sans identifiant rapportera le userHandle = qui se connecte) ; options d'authentification → mode SANS `phone` : `allowCredentials: []` (découvrable) + `userVerification: 'required'`, challenge conservé dans un registre mémoire TTL 3 min (`challenge-usernameless.ts`, usage unique) ; verify → chemin sans `userId` : userHandle → user → credential → challenge du registre. Chemin historique par numéro INTACT en repli (credentials non découvrables des enrôlements anciens).
+- Frontend (`9cb02531`) : `authenticateWebAuthn` tente D'ABORD sans numéro (credentials découvrables) puis retombe sur le chemin par numéro — le numéro reste « caché, pas supprimé » (spec §2.2).
+- Preuves : build backend OK ; `test:unit challenge-usernameless` 4/4 verts (usage unique, refus du non-challenge, TTL, purge) ; `test:biometrie-session` + `test:convergence-api` verts (régression zéro) ; `tsc -b` 0 ; lint propre.
 
 ## 3. Planifié — ordre retenu
 

@@ -1749,3 +1749,20 @@ Work Log:
 Stage Summary:
 - RÉPONSE À PATRICK : Capacitor est complet — le seul maillon qui manquait (@capacitor/app) est installé et la touche retour est MAÎTRISÉE : elle recule d'un écran quand il y en a un, avertit avant de fermer, et ne ferme jamais sans deux appuis volontaires. Prochain APK (dispatch avec « branche »:"dev") embarquera le tout — sur le web/preview, aucune change visible (voulu)
 - Pour ajouter un AUTRE plugin Capacitor plus tard : l'installer en RACINE dependencies (comme @capacitor/app), puis `npx cap sync android` — le pont JS se fait par window.Capacitor.Plugins (pas d'import npm côté frontend, zéro impact bundle web)
+
+---
+Task ID: audit-voice-first-29-10
+Agent: Z.ai Code (session Patrick)
+Task: « Selon cet audit, applique les corrections, prepare tout dans .ai et corrige tout »
+
+Work Log:
+- AUDIT EXTERNE REÇU (score auditeur 52/100, commit observé 4947b870) : archivé VERBATIM dans .ai/AUDITS/AUDIT-VOICE-FIRST-INCLUSION-2026-10-29.md + plan de correction tracé .ai/AUDITS/PLAN-CORRECTION-VOICE-FIRST-2026-10-29.md (commit 9e62062c). Règle appliquée : l'audit est un INTRANT, pas une vérité — chaque écart re-vérifié contre le code a96c11b1
+- CINQ AFFIRMATIONS CONTRADITES par le code (documentées, ligne à l'appui) : /non-enregistre parle déjà (UnregisteredPhone.tsx:12,58-63) ; états suspendu/attente déjà parlés avec clips dédiés (LoginPassword.tsx:1108-1120 « LE DÉFAUT FERMÉ ICI ») ; seed '123456' déjà interdit (seed-demo.service.ts:76) et seeds opt-in prod ; typecheck/build verts dans un environnement sain (le sandbox de l'auditeur manquait de tsx/esbuild — ses « non-preuves » n'engagent rien) ; AUTH-RECOVERY-01 déjà consigné au registre backend (auth.controller.ts:685-705, arbitrage Patrick 19/09 : ne jamais improviser une récupération, risque SEC-05)
+- DEUX ÉCARTS CONFIRMÉS : WebAuthn pas usernameless (TRAITÉ CE LOT) et récupération complète (PLANIFIÉ chantier dédié LOT-RECOVERY — pas improvisé ici)
+- LOT-WA-01 backend c9080d0f : enrôlement → residentKey 'required', userVerification 'required', userID = user.id (PIVOT : SimpleWebAuthn v13 pose un userHandle ALÉATOIRE sinon — l'usernameless serait insoluble) ; /authenticate/options SANS phone → allowCredentials vide + userVerification 'required', challenge en registre mémoire TTL 3 min USAGE UNIQUE (challenge-usernameless.ts — rejeu refusé, purge des morts) ; /authenticate/verify SANS userId → userHandle décodé → même verdict cryptographique. Chemin par numéro INTACT en repli (régression interdite, §2.2)
+- LOT-WA-01 front 9cb02531 : authenticateWebAuthn tente D'ABORD sans numéro ; l'invite ouverte qui tranche n'est jamais doublée d'une seconde invite ; aucune invite → repli silencieux par numéro (le catch n'est pas un silence qui ment — le repli parle, lui, à chaque échec)
+- Le banc backend a attrapé un défaut du BANC lui-même : dernière consommation du test [4] sans l'horloge injectée (Date.now() réel ≫ horloge fictive) — corrigé dans le test, implémentation intacte
+- Preuves : nest build OK ; test:unit challenge-usernameless 4/4 ; test:biometrie-session (API-01b intacte) + test:convergence-api verts ; tsc -b 0 (front) ; lint propre
+
+Stage Summary:
+- RÉPONSE À PATRICK : l'audit est archivé et TRACÉ dans .ai (verbatim + plan), PAS appliqué aveuglément — cinq de ses écarts sont contredits par le code réel, un est traité (WebAuthn usernameless, backend c9080d0f + front 9cb02531), la récupération complète est planifiée en chantier dédié (improviser aurait rouvert SEC-05). Prochaine étape de l'auditeur à prendre au sérieux : la preuve appareil (T1-T3, montants parlés) — elle ne s'obtient que sur Android réel
