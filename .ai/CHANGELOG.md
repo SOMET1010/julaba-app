@@ -3,6 +3,49 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Corrigé — Le rang du banc unitaire est clos : les invariants redeviennent lisibles (2026-10-29)
+
+« Passe aux prochains rangs » (Patrick). Le plan de correction avait consigné
+un rang dédié : deux suites unitaires échouaient sur l'arbre propre
+d'origin/dev. En les réparant, la troisième préoccupation est apparue : un
+invariant flaky en groupe. Trois commits, trois préoccupations, un banc
+complètement vert.
+
+1. **Le garde unitaire suit le réassort tracé** (`21221d3a`) —
+   `stocks-rest.idempotency` comptait 2 requêtes dans la transaction d'un
+   PATCH marchand ; le contrôleur en fait 3 depuis STK-04 (`964697ce`) :
+   l'ancien stock est lu SOUS VERROU avant l'UPDATE pour tracer le réassort
+   en achat dans le ledger. Le contrôleur est la vérité (invariant STK-04
+   4/4), le test — né le 11/09, avant STK-04 — a suivi. Stock mocké 12→12 :
+   delta 0, aucune ligne d'achat inventée, le garde reste focalisé sur
+   l'idempotence (premier passage 3 requêtes, rejeu exactement 1).
+2. **Les suites cessent de se marcher sur les téléphones** (`fd5f33b5`) —
+   le garde `telephones-tests-uniques` détectait **11 collisions** entre
+   suites d'invariants : une base partagée pour toute l'exécution, le 2e
+   inscrit répond 409, la suite passe SEULE et échoue EN GROUPE. Cinq paires
+   levées (un fichier par paire, blocs contigus conservés) ; l'allotissement
+   des plages est écrit dans le garde (08xx m6-m8, 09xx bloc IDENT/sécurité,
+   078888xx ARGENT/PROD, prochains libres 0931-0999) — le renvoi « cf. le
+   garde-fou » de prod-05 pointait vers une table qui n'existait pas ; elle
+   existe maintenant.
+3. **ident-02 prouve la neutralité sur SON sujet** (`668f7ef1`) — découverte
+   du rang : il passait seul et échouait EN GROUPE sans collision de numéro.
+   Son assertion comptait les wallets de TOUS les identificateurs de la base
+   partagée alors que `auth.service.signup` crée un wallet pour TOUT rôle ;
+   m6-m8 (qui signe un identificateur par l'API) le contaminait selon l'ordre
+   de jest. Deux tirages, deux ordres, un échec puis des passes :
+   reproductible, non déterministe. Assertion bornée à l'ident seedé par le
+   test. **Ligne ARG-16 ouverte au registre maître** (révision 39) : les
+   lignes wallet fantômes des rôles exclus (signup + backfill DbInit)
+   restent en place — aucun parcours ne change, les 403 précèdent toute
+   lecture ; l'alignement sur la whitelist est une question de doctrine à
+   arbitrer.
+
+Preuves : unitaires 310/310 (avant 308/310) ; 6 suites invariants — dont
+m6-m8, le contaminateur — lancées deux fois dans des ordres différents →
+6/6 à chaque tirage (42/42). Registre dette recompté par script : 119 lignes
+— 49 F / 7 H / 63 O. Restes du banc : aucun — le rang dédié est clos.
+
 ### Ajouté — Le rang 6 de l'audit voice-first est clos côté code : l'accessibilité a ses gardes (2026-10-29)
 
 « Passes aux Prochains rangs » (Patrick). Rang 6 du plan de correction
