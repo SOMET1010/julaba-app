@@ -5,6 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { ActivationCode } from './entities/activation-code.entity';
 import { User, UserStatus } from '../users/entities/user.entity';
+import { AuditService } from '../audit-log/audit-log.service';
 
 const CODE_TTL_MS = 30 * 60 * 1000; // 30 min — expiration COURTE (séance d'enrôlement assistée)
 const PINS_INTERDITS = new Set(['0000', '1234']);
@@ -21,6 +22,7 @@ export class ActivationService {
   constructor(
     @InjectRepository(ActivationCode) private readonly repo: Repository<ActivationCode>,
     private readonly dataSource: DataSource,
+    private readonly auditService: AuditService,
   ) {}
 
   /** Émet un code d'activation à usage unique. Renvoie le CLAIR une seule fois. */
@@ -84,6 +86,27 @@ export class ActivationService {
         mustChangePassword: false,
       } as any);
       this.logger.log(`Compte ${row.userId} activé (secret posé par la marchande).`);
+
+      // LOT-ACTIVATION (SPEC-AUTH-CIBLE §1.1.3) — LA TRACE DU CONSENTEMENT.
+      // L'écran n'appelle cette route qu'après le geste d'ELLE (« C'est mon
+      // compte », toucher long ≥ 800 ms) : cette ligne horodatée est donc la
+      // trace serveur de la marche posée — jointe au journal de l'émission du
+      // code, elle raconte la double présence (l'agent a remis le billet, ELLE
+      // a tenu le geste). Sans elle, l'activation ne serait qu'un UPDATE
+      // anonyme : aucune preuve qu'une personne a dit oui.
+      try {
+        await this.auditService.log({
+          userId: row.userId,
+          action: 'ACTIV_CONSENTEMENT',
+          entite: 'activation_code',
+          entiteId: row.id,
+          details: { horodatage: new Date().toISOString() },
+        });
+      } catch {
+        // La trace ne doit jamais bloquer l'activation : si le journal est
+        // indisponible, le compte reste activé et l'échec est assumé ici.
+        this.logger.warn(`Trace ACTIV_CONSENTEMENT non écrite pour ${row.userId}`);
+      }
       return { userId: row.userId };
     });
   }
