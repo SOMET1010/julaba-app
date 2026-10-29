@@ -82,7 +82,10 @@ function charger(): void {
     if (!Array.isArray(arr)) return;
     tampon = arr
       .filter((e) => e && typeof e.t === 'number' && typeof e.ev === 'string')
+      .map((e) => assainirEntree(e as TraceEntree))
       .slice(-MAX);
+    // Réécrit les anciennes traces : elles aussi peuvent contenir des numéros.
+    persister();
   } catch { tampon = []; }
 }
 
@@ -113,6 +116,30 @@ export function masquerChiffresSensibles(texte: string): string {
   });
 }
 
+/**
+ * Nettoie récursivement toutes les chaînes avant stockage ou export.
+ * Le masquage limité à STT_FIN/INTENTION ne protégeait pas les autres
+ * événements libres (TTS, erreurs ou INFO) ni les anciennes traces chargées.
+ */
+function assainirValeur(valeur: unknown): unknown {
+  if (typeof valeur === 'string') return masquerChiffresSensibles(valeur);
+  if (Array.isArray(valeur)) return valeur.map(assainirValeur);
+  if (valeur && typeof valeur === 'object') {
+    return Object.fromEntries(
+      Object.entries(valeur as Record<string, unknown>).map(([cle, v]) => [cle, assainirValeur(v)]),
+    );
+  }
+  return valeur;
+}
+
+function assainirEntree(entree: TraceEntree): TraceEntree {
+  return {
+    t: entree.t,
+    ev: entree.ev,
+    ...(entree.d ? { d: assainirValeur(entree.d) as Record<string, unknown> } : {}),
+  };
+}
+
 /** Pile COURTE : les 2 premiers cadres hors de ce module et de l'audioManager. */
 function pile(): string {
   try {
@@ -129,7 +156,7 @@ function pile(): string {
 /** Ajoute un événement au journal. Ne jette jamais. */
 export function tracer(ev: string, d?: Record<string, unknown>): void {
   try {
-    tampon.push(d ? { t: maintenant(), ev, d } : { t: maintenant(), ev });
+    tampon.push(d ? assainirEntree({ t: maintenant(), ev, d }) : { t: maintenant(), ev });
     while (tampon.length > MAX) tampon.shift();
     persister();
   } catch { /* ignore */ }
