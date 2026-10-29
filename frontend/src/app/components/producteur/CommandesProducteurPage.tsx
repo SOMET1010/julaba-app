@@ -114,6 +114,16 @@ interface Commande {
   type?: string;
 }
 
+/** BUG-009 — ce que la relecture d'annulation lit, et rien de plus : les deux
+ * familles de commandes (locale « Commande » et API) le satisfont toutes deux. */
+interface CommandeAAnnuler {
+  id: string;
+  acheteurNom?: string;
+  acheteur?: string;
+  total?: number;
+  prixTotal?: number;
+}
+
 // ── Données statiques ──────────────────────────────────────────────────────────
 
 const STATUT_CONFIG: Record<StatutType | 'en_livraison' | 'annulee', {
@@ -259,6 +269,13 @@ export function ProducteurCommandes() {
   const [isUpdatingStatut, setIsUpdatingStatut] = useState(false);
   const [showReceptionModal, setShowReceptionModal] = useState(false);
   const [selectedCmdForReception, setSelectedCmdForReception] = useState<ApiCommande | null>(null);
+  // BUG-009 — l'annulation ne part JAMAIS du premier tap : elle passe par la
+  // relecture parlée + la modale de confirmation. Le verrou est SYNCHRONE
+  // (ref, pattern POSCaisse/BUG-011) : un double-tap ne peut pas doubler
+  // l'appel, l'état React seul arrive trop tard entre deux taps.
+  const [cmdAAnnuler, setCmdAAnnuler] = useState<CommandeAAnnuler | null>(null);
+  const [annulationEnCours, setAnnulationEnCours] = useState(false);
+  const annulationEnCoursRef = useRef(false);
 
   // Voice
   const [isListening, setIsListening] = useState(false);
@@ -547,6 +564,49 @@ export function ProducteurCommandes() {
     } finally {
       setIsUpdatingStatut(false);
     }
+  };
+
+  // ── BUG-009 — l'annulation est une opération sérieuse, elle se relit ───────
+  // Un tap unique sur « Annuler » ne détruit plus une commande : le bouton
+  // ouvre la RELECTURE (dite à voix, lisible, avec client + montant), puis la
+  // modale de confirmation. Le verrou synchrone ferme la porte au double-tap.
+  // Les deux familles de commandes (locale « Commande », API) sont couvertes
+  // par un type structurel — l'annulation ne lit QUE ce qui se relit.
+  const demanderAnnulation = (commande: CommandeAAnnuler) => {
+    if (annulationEnCoursRef.current) return;
+    setCmdAAnnuler(commande);
+    const client = commande.acheteurNom || commande.acheteur || 'le client';
+    const montant = Number(commande.total ?? commande.prixTotal ?? 0).toLocaleString('fr-FR');
+    speak(`Tu vas annuler la commande de ${client}, ${montant} francs. Confirme si tu es sûr.`);
+  };
+
+  const confirmerAnnulation = async () => {
+    const commande = cmdAAnnuler;
+    if (!commande || annulationEnCoursRef.current) return;
+    annulationEnCoursRef.current = true; // verrou SYNCHRONE — le double-tap arrive trop tard
+    setAnnulationEnCours(true);
+    try {
+      await cancelCommande(commande.id);
+      await refreshCommandes();
+      speak('Commande annulée');
+      toast.success('Commande annulée');
+      setShowDetailModal(false);
+      setCmdAAnnuler(null);
+    } catch (e: unknown) {
+      console.warn('[CommandesProducteur] cancelCommande failed:', e instanceof Error ? e.message : '');
+      const message = messageUtilisateur(e, "Impossible d'annuler la commande. Réessaie.");
+      toast.error(message);
+      speak(message);
+    } finally {
+      annulationEnCoursRef.current = false;
+      setAnnulationEnCours(false);
+    }
+  };
+
+  const refuserAnnulation = () => {
+    if (annulationEnCoursRef.current) return;
+    setCmdAAnnuler(null);
+    speak('La commande reste. Rien n\u2019a été annulé.');
   };
 
   const processVoiceCommand = (_text: string) => {
@@ -1694,48 +1754,34 @@ export function ProducteurCommandes() {
                                 Préparer la commande
                               </motion.button>
                               <motion.button
-                                onClick={async () => {
-                                  try {
-                                    await cancelCommande(selectedCmd.id);
-                                    await refreshCommandes();
-                                    speak('Commande annulée');
-                                    setShowDetailModal(false);
-                                  } catch (e: any) {
-                                    console.warn('[CommandesProducteur] cancelCommande failed:', e?.message);
-                                    const message = messageUtilisateur(e, "Impossible d'annuler la commande. Réessaie.");
-                                    toast.error(message);
-                                    speak(message);
-                                  }
-                                }}
-                                className="flex-[35] py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2"
+                                onClick={() => demanderAnnulation(selectedCmd)}
+                                disabled={annulationEnCours}
+                                className="flex-[35] py-3 rounded-2xl font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50"
                                 style={{ backgroundColor: '#ef4444' }}
                                 whileTap={{ scale: 0.97 }}
                               >
-                                <XCircle className="w-5 h-5" />
-                                Annuler
+                                {annulationEnCours ? (
+                                  <span className="w-4 h-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <XCircle className="w-5 h-5" />
+                                )}
+                                {annulationEnCours ? 'Un instant…' : 'Annuler'}
                               </motion.button>
                             </div>
                           ) : (
                             <motion.button
-                              onClick={async () => {
-                                try {
-                                  await cancelCommande(selectedCmd.id);
-                                  await refreshCommandes();
-                                  speak('Commande annulée');
-                                  setShowDetailModal(false);
-                                } catch (e: any) {
-                                  console.warn('[CommandesProducteur] cancelCommande failed:', e?.message);
-                                  const message = messageUtilisateur(e, "Impossible d'annuler la commande. Réessaie.");
-                                  toast.error(message);
-                                  speak(message);
-                                }
-                              }}
-                              className="w-full py-4 rounded-2xl bg-red-500 text-white font-bold flex items-center justify-center gap-2"
+                              onClick={() => demanderAnnulation(selectedCmd)}
+                              disabled={annulationEnCours}
+                              className="w-full py-4 rounded-2xl bg-red-500 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                               whileTap={{ scale: 0.95 }}
                               whileHover={{ scale: 1.02 }}
                             >
-                              <Trash2 className="w-5 h-5" />
-                              Annuler la commande
+                              {annulationEnCours ? (
+                                <span className="w-5 h-5 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Trash2 className="w-5 h-5" />
+                              )}
+                              {annulationEnCours ? 'Un instant…' : 'Annuler la commande'}
                             </motion.button>
                           )
                         )}
@@ -1747,6 +1793,52 @@ export function ProducteurCommandes() {
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* BUG-009 — LA RELECTURE AVANT LA DESTRUCTION. Lisible, parlée, avec
+          le client et le montant : elle décide en connaissance de cause. Le
+          verrou synchrone tient pendant l'appel — le double-tap ne peut pas
+          doubler l'annulation. Rien ne part sans le gros bouton rouge. */}
+      <AnimatePresence>
+        {cmdAAnnuler && (
+          <motion.div
+            className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/50 p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => { if (!annulationEnCoursRef.current) refuserAnnulation(); }}
+            role="dialog" aria-modal="true" aria-label="Confirmer l'annulation de la commande"
+          >
+            <motion.div
+              className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl"
+              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-lg font-bold text-gray-900 mb-1">Annuler la commande ?</p>
+              <p className="text-gray-600 mb-1">
+                Commande de <span className="font-bold">{cmdAAnnuler.acheteurNom || cmdAAnnuler.acheteur || 'le client'}</span>
+                {' '}— {Number(cmdAAnnuler.total ?? cmdAAnnuler.prixTotal ?? 0).toLocaleString('fr-FR')} francs.
+              </p>
+              <p className="text-sm text-gray-500 mb-5">Elle sera annulée pour de bon. Le client en sera informé.</p>
+              <button
+                type="button" onClick={refuserAnnulation} disabled={annulationEnCours}
+                className="w-full mb-2 py-4 rounded-2xl font-bold text-white disabled:opacity-50"
+                style={{ background: '#4CAF50' }}
+              >
+                Non, garder la commande
+              </button>
+              <button
+                type="button" onClick={confirmerAnnulation} disabled={annulationEnCours}
+                className="w-full py-4 rounded-2xl border-2 border-red-200 bg-red-50 text-red-600 font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {annulationEnCours ? (
+                  <span className="w-4 h-4 border-2 border-red-400/70 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <XCircle className="w-5 h-5" />
+                )}
+                {annulationEnCours ? 'Annulation…' : 'Oui, annuler la commande'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ══════════════════════════════════════════════════════════════════ */}
