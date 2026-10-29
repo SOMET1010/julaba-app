@@ -1,0 +1,48 @@
+# PLAN DE CORRECTION — Audit voice-first & inclusion 2026-10-29
+
+Traçage de la correction de l'audit `AUDIT-VOICE-FIRST-INCLUSION-2026-10-29.md`.
+Règle appliquée : **preuve avant croyance** — chaque écart cité a été re-vérifié
+contre le code réel (`a96c11b1`, 6 commits après le commit observé `4947b870`).
+Statuts : `FAIT (preuve)` / `CONTRÉ (audit infirmé par le code)` / `PLANIFIÉ (lot)` / `TERRAIN (hors code)`.
+
+---
+
+## 1. Contre-vérifications — ce que l'audit avance et que le code dément
+
+| # | Affirmation de l'audit | Réalité du code (preuve) | Statut |
+|---|---|---|---|
+| C-1 | « /non-enregistre n'a aucun appel vocal » (P1-AUTH-05, logigramme 151-166) | `UnregisteredPhone.tsx:12` importe `speakClipOrText` (audioManager) ; `:58-63` `direNumeroInconnu()` parle accueil + geste avec clips | **CONTRÉ** |
+| C-2 | « compte suspendu/rejeté/en attente ramené à mauvais code » (P1-AUTH-05) | `LoginPassword.tsx:1108-1120` : clips DÉDIÉS `compteSuspendu` / `compteAttenteValidation` branchés sur les messages backend — commentaire « LE DÉFAUT FERMÉ ICI » | **CONTRÉ** (fermé avant l'audit) |
+| C-3 | « secrets par défaut 0000/123456 à éliminer » (P0-3) | `seed-demo.service.ts:76` : `'123456'` → `return null` (interdit depuis 17/09) ; seeds opt-in (`SEED_DEMO="true"` requis en prod) ; PIN identificateur généré serveur + SMS, jamais affiché (AUTH-RECOVERY, route admin) ; code secret marchande = clavier (B5) | **CONTRÉ en majeure partie** (reste : inventaire ops des comptes hérités pré-17/09 — tâche données, pas code) |
+| C-4 | « typecheck/build frontend non exécutables » (P2-1) | Environnement de l'AUDITEUR cassé (tsx/esbuild manquants). Preuve contraire du 29/10 : `tsc -b` → 0 erreur, lint propre, chaîne verify verte (preuves commit `d25b9c8a`) | **CONTRÉ** (aucun fix code requis) |
+| C-5 | « récupération manquante » (P0-AUTH-01) | VRAI — mais DÉJÀ CONSIGNÉ au registre : `auth.controller.ts:685-705`, AUTH-RECOVERY-01, arbitrage Patrick 19/09/2026 « ne pas improviser une récupération dans les routes existantes (rouvrirait SEC-05) » | **PLANIFIÉ** (chantier dédié, voir §3) |
+| C-6 | « WebAuthn pas usernameless » (P1-AUTH-03) | VRAI : `auth.controller.ts` residentKey/userVerification `preferred`, phone requis en options ; `useWebAuthn.ts:127-152` envoie le phone | **FAIT CE LOT** (§2) |
+| C-7 | « montants dynamiques dépendants d'un moteur local disponible » | L'audit n'a pas vu le chemin natif : `SherpaTtsPlugin.kt` (TTS embarqué APK) + `nativeTts.ts` existent — les montants SONT synthétisables hors-ligne sur APK ; reste preuve terrain | **PARTIEL — TERRAIN** |
+
+## 2. Fait dans ce lot (29/10/2026)
+
+### LOT-WA-01 — WebAuthn réellement usernameless (P1-AUTH-03)
+
+Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
+
+- Backend : options d'enrôlement → `residentKey: 'required'`, `userVerification: 'required'`, `userID = user.id` (l'assertion sans identifiant rapportera le userHandle = qui se connecte) ; options d'authentification → mode SANS `phone` : `allowCredentials: []` (découvrable) + `userVerification: 'required'`, challenge conservé dans un registre mémoire TTL 3 min ; verify → chemin sans `userId` : userHandle → user → credential → challenge du registre. Chemin historique par numéro INTACT en repli (credentials non découvrables des enrôlements anciens).
+- Frontend : `authenticateWebAuthn` tente D'ABORD sans numéro (credentials découvrables) puis retombe sur le chemin par numéro — le numéro reste « caché, pas supprimé » (spec §2.2).
+- Preuves : build backend, tests, voir commits du lot.
+
+## 3. Planifié — ordre retenu
+
+| Rang | Écart | Lot à venir | Pré-requis |
+|---|---|---|---|
+| 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | LOT-RECOVERY (chantier dédié — spec §3.1/3.2 intégrale) | schéma (table codes), spec d'écran, tests serveur ; JAMAIS dans les routes existantes (SEC-05) |
+| 2 | P0-AUTH-02 Enrôlement/activation accessible | LOT-ACTIVATION | revalider l'écran corrigé de bout en bout ; consentement horodaté ; secret choisi par elle |
+| 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
+| 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
+| 5 | P1-4/5/6 Couverture vocale producteur/coopérative/wallet, uniformisation erreurs | lots par rôle (bugs ouverts BUG-008/009/010 déjà tracés dans .ai/BUGS.md) | — |
+| 6 | P2-2 axe-core/Playwright, skip-link, modales unifiées | LOT-A11Y-OUTILS | — |
+| 7 | P2-4/5 Recette avec utilisatrices réelles, métrique compris/entendu/visible/confirmé/synchronisé | TERRAIN (Patrick) | APK + marches réelles |
+
+## 4. Ce que ce plan refuse de faire
+
+- N'improvise PAS la récupération dans les routes existantes (SEC-05, arbitrage 19/09 — AUTH-RECOVERY-01).
+- Ne retire PAS la demande de numéro du chemin de repli (credentials non découvrables existants) — régression interdite.
+- Ne déclare PAS « conforme » sur la foi de tests statiques : la promesse voice-first exige la preuve appareil (T1-T3 partiels assumés dans .maestro/README.md).
