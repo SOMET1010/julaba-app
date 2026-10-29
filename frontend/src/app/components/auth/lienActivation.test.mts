@@ -36,14 +36,24 @@ console.log('\n[2] La phrase est dite');
 // refacto et son garde restait rouge SANS LIAISON avec ce lot — cassé sur
 // la base propre 30b8623b, prouvé par git stash. Le garde dit désormais le
 // contrat actuel : la voix de l'activation vit sur l'écran d'activation.
+// RÉALITÉ DU 29/10 (LOT-ACTIVATION, P0-AUTH-02) : l'écran d'activation est
+// devenu un parcours à trois marches (code reçu → pavé du secret → geste
+// « C'est mon compte »). Sa voix vit AU CATALOGUE (famille ACTIV_*) — une
+// seule source, la leçon login-41 ; le texte affiché EST le texte dit.
+// L'ancien contrat (accueil login-51 en dur, erreurs login-59 à 63) reste
+// garanti en intention : l'écran parle À L'ARRIVÉE et À CHAQUE ERREUR —
+// les phrases, elles, ont changé parce que le parcours a changé.
 const entree = (MESSAGES_TTS as readonly { id: string; frActuel: string }[]).find(m => m.id === 'ENTREE_CODE_AGENT');
 ok(!!entree && /agent/.test(entree.frActuel) && /clé/.test(entree.frActuel), 'phrase ENTREE_CODE_AGENT au catalogue (agent + clé)');
 ok(tParle('ENTREE_CODE_AGENT') === entree?.frActuel, 'la clé se résout en phrase (pas « [ENTREE_CODE_AGENT] »)');
 ok(/parlerAvantConnexion\('connexion', tParle\('ENTREE_CODE_AGENT'\)\)/.test(bouton), 'dite par la porte d’avant connexion');
+const activAccueil = (MESSAGES_TTS as readonly { id: string; frActuel: string }[]).find(m => m.id === 'ACTIV_ACCUEIL');
+ok(!!activAccueil && /code que tu as reçu/.test(activAccueil.frActuel), 'phrase ACTIV_ACCUEIL au catalogue (le code reçu)');
+ok(tParle('ACTIV_ACCUEIL') === activAccueil?.frActuel, 'l’accueil de l’activation se résout en phrase');
 const activation = lire('./ActivationScreen.tsx');
-ok(/direConsigne\(\);/.test(activation), 'l’écran d’activation dit son accueil à l’arrivée');
-ok(/Tape le code que tu as reçu/.test(activation), 'l’accueil dit est celui du clip login-51');
-ok(/parle\(error\)/.test(activation), 'chaque erreur de l’activation se dit (clips login-59 à 63)');
+ok(/direAccueil\(\);/.test(activation), 'l’écran d’activation dit son accueil à l’arrivée');
+ok(/dire\(error\)/.test(activation), 'chaque erreur de l’activation se dit (famille ACTIV_*)');
+ok(/tParle\('ACTIV_CONSIGNE_PRESENCE'\)/.test(activation), 'le geste de consentement est annoncé à voix (SPEC-AUTH-CIBLE §1.1.3)');
 
 console.log(echecs === 0 ? '\nActivation atteignable et annoncée ✅\n' : `\n${echecs} échec(s) ❌\n`);
 if (echecs) process.exit(1);

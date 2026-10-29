@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **461** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 477 |
-| — littéraux (phrase fixe en dur) | 201 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **465** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 481 |
+| — littéraux (phrase fixe en dur) | 199 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 112 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 118 |
 | — relais (`dire = (t) => speak(t)`) | 28 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 64 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **243** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **241** |
 | Dont dynamiques (avec variables) | 72 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **58** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **520** |
 | Fichiers avec au moins un site d'appel | 88 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 325 — **hors parcours vocal**, voir §8 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 331 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -41,6 +41,7 @@
 | `components/marchand/MarchandModals.tsx` | marchand_autre | 10 | 4 | 6 | 0 | 0 | 0 | 10 |
 | `components/shared/ProfilUnifieModal.tsx` | partage | 10 | 8 | 0 | 0 | 2 | 0 | 0 |
 | `components/producteur/ProducteurProduction.tsx` | producteur | 9 | 6 | 2 | 1 | 0 | 0 | 0 |
+| `components/auth/ActivationScreen.tsx` | auth | 8 | 0 | 0 | 7 | 1 | 0 | 0 |
 | `components/marchand/ConfirmationLigne.tsx` | vente | 8 | 0 | 0 | 3 | 1 | 5 | 0 |
 | `components/marchand/CreditModal.tsx` | credit | 8 | 6 | 1 | 0 | 1 | 0 | 4 |
 | `components/marchand/VentesPassees.tsx` | marchand_autre | 8 | 5 | 1 | 2 | 0 | 0 | 2 |
@@ -61,7 +62,6 @@
 | `components/wallet/WalletCard.tsx` | wallet | 5 | 7 | 0 | 0 | 0 | 0 | 2 |
 | `pages/CollecteVoix.tsx` | pages | 5 | 1 | 0 | 3 | 1 | 0 | 0 |
 | `pages/marchand/MesDonnees.tsx` | pages | 5 | 4 | 0 | 1 | 0 | 0 | 0 |
-| `components/auth/ActivationScreen.tsx` | auth | 4 | 2 | 0 | 1 | 1 | 0 | 0 |
 | `components/marchand/BoutonDireProduit.tsx` | autre | 4 | 3 | 0 | 2 | 0 | 0 | 0 |
 | `components/shared/ReceptionPaiementModal.tsx` | partage | 4 | 2 | 1 | 1 | 0 | 0 | 0 |
 | `components/shared/UniversalParametres.tsx` | marchand_autre | 4 | 3 | 0 | 0 | 0 | 2 | 0 |
@@ -121,7 +121,7 @@
 |---|---:|---:|---:|
 | producteur | 71 | 57 | 6 |
 | marchand_autre | 57 | 41 | 16 |
-| auth | 43 | 16 | 0 |
+| auth | 47 | 14 | 0 |
 | partage | 42 | 27 | 0 |
 | stock | 39 | 38 | 4 |
 | caisse | 36 | 0 | 0 |
@@ -161,10 +161,14 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 18 | `speakClipOrText` | relais | texte |  |  |
-| 52 | `parle` | literal | Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître. |  |  |
-| 66 | `parle` | dynamique | error |  |  |
-| 72 | `parle` | literal | Compte activé ! Tu peux maintenant te connecter avec ton code. |  |  |
+| 69 | `speakClipOrText` | relais | texte |  |  |
+| 72 | `dire` | dynamique | tParle('ACTIV_ACCUEIL') |  |  |
+| 82 | `dire` | dynamique | error |  |  |
+| 88 | `dire` | dynamique | tParle('ACTIV_SUCCES') |  |  |
+| 102 | `dire` | dynamique | tParle('ACTIV_CONSIGNE_CHOISIR') |  |  |
+| 123 | `dire` | dynamique | tParle('ACTIV_CONSIGNE_REDIS') |  |  |
+| 137 | `dire` | dynamique | tParle('ACTIV_CONSIGNE_PRESENCE') |  |  |
+| 193 | `dire` | dynamique | tParle('ACTIV_PRESENCE_TROP_COURTE') |  |  |
 
 ### `components/auth/ChangePasswordScreen.tsx` — auth
 
@@ -1774,7 +1778,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (325)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (331)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
