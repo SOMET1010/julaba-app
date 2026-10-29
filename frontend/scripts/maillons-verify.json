@@ -42,6 +42,7 @@
     "test:coffre-web",
     "test:offline-producteur",
     "test:a11y-axe",
+    "test:console-prod",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",

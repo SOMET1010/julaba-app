@@ -4,12 +4,12 @@
 
 ## État au 2026-10-29 (rattrapé sur le code réel, commit 138a2630)
 
-- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous).
+- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés).
 - **Inventaires corrigés sur le code réel** (le registre du 28/09 mentait par péremption) :
   - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
   - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
   - A11Y-006 : mesure — **4262 hexadécimaux** dans **199 fichiers** hors tests. La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
-- **Ouverts** : A11Y-001, A11Y-003, A11Y-005, A11Y-006, A11Y-007.
+- **Ouverts** : A11Y-001, A11Y-003, A11Y-005, A11Y-006.
 
 ## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
@@ -60,10 +60,10 @@
 - **Recommandation** : `caisseCharte.test.mts` est le garde-fou — l'étendre à tout le frontend. Réalité du 29/10 : l'extension zéro-hex immédiate est impossible (4262 occurrences, chaque remise au token est un changement visuel à prouver). La garde honnête : **figer la base et refuser toute aggravation**, puis descendre le chiffre rang après rang.
 
 ### A11Y-007 — 1750 `console.*` dans le code (P2)
-- **Statut** : OUVERT — recompte du 29/10 : 1750 appels dans 93 fichiers (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
-- **Description** : pas de stripping configuré au build.
-- **Impact** : Bruit en production, performance dégradée, indice pour qui sonde (cf. AUTH-14 qui a déjà taillé le `warn` auth).
-- **Recommandation** : strip au build via esbuild (`pure`) — `log`/`info`/`debug` retirés du bundle livré, `warn`/`error` conservés comme diagnostic légitime ; le dev garde tout.
+- **Statut** : RÉSOLU côté code le 29/10 — robinet dans `vite.config.ts` (esbuild `pure` sous `command === "build"`), garde `test:console-prod` dans `verify`.
+- **Description** : 1750 appels dans 93 fichiers (1410 `log`, 276 `warn`, 63 `error`, 1 `info`), pas de stripping au build.
+- **Ce qui a été fait** : `esbuild.pure = ["console.log", "console.info", "console.debug"]` au build seulement — rollup retire du bundle tout appel dont le résultat est inutilisé. **Preuve par build réel** : `vite build` vert (22 s, 206 chunks + 265 clips pré-cachés), puis comptage dans `dist/assets` : **0** console.log/info/debug, **347** warn/error conservés (diagnostic légitime en prod, Sentry). En dev, aucun strip (condition `command === "build"`) — le diagnostic de développement est intact.
+- **La garde** : `test:console-prod` relit vite.config et refuse que le robinet bouge (condition, couverture log/info/debug, étiquette A11Y-007, clé esbuild).
 
 ## Points forts a11y (audit initial)
 
@@ -87,3 +87,4 @@ Design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile t
 ## Historique des clôtures
 
 - **2026-10-29** : A11Y-004 RÉSOLU (`138a2630`, skip-link AppLayout). Registre rattrapé sur le code réel : inventaires A11Y-001/006/007 corrigés et mesurés.
+- **2026-10-29 (suite)** : A11Y-002 RÉSOLU (harnais axe-core `test:a11y-axe`), A11Y-007 RÉSOLU (robinet esbuild + garde `test:console-prod`, preuve par build réel).

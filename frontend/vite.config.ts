@@ -131,7 +131,7 @@ function stampServiceWorker(outDir: string): Plugin {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss(), stampServiceWorker(path.resolve(__dirname, "../frontend/dist"))],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
@@ -141,6 +141,25 @@ export default defineConfig({
     __JULABA_VOIX_DYU__: JSON.stringify(voixDyu),
     __JULABA_DYU_ARGENT__: JSON.stringify(dyuArgent),
   },
+  // ── A11Y-007 — LA CONSOLE DU BUILD LIVRÉ SE TAIT ──────────────────────────
+  // Le dépôt contenait 1750 appels console.* (dont 1410 console.log) : du
+  // bruit en production, de la taille morte dans l'APK, et un indice pour
+  // qui sonde le téléphone. `pure` marque ces appels sans effet de bord :
+  // au BUILD, rollup retire du bundle tout appel dont personne ne lit le
+  // résultat (toujours, console.log rend undefined). En DEV, aucun strip :
+  // le diagnostic complet reste le quotidien du développement.
+  //
+  // POURQUOI warn/error RESTENT. Ce sont des diagnostics légitimes en prod
+  // (Sentry, journal de recette). AUTH-14 avait déjà taillé les console.warn
+  // auth au profit du robinet utils/warnDev.ts — ce garde-ci est le filet
+  // général, pas un retour en arrière sur ce choix.
+  //
+  // PREUVE DU 29/10 (commit de ce garde) : vite build → `grep -c "console\."
+  // dist/assets/*.js` = 0 sur log/info/debug, build vert, aucune source
+  // modifiée. La garde test:console-prod verrouille la présence du robinet.
+  esbuild: command === "build"
+    ? { pure: ["console.log", "console.info", "console.debug"] }
+    : {},
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -199,4 +218,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
