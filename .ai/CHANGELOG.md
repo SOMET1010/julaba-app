@@ -3,6 +3,43 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Ajouté — A11Y-001 pas 2 : SharedModal passe sous Radix, le focus trap vient du socle (2026-10-29)
+
+« Passe aux prochains rangs » (Patrick). Le rang dédié inscrit au rang 6 :
+l'adoption Radix de `SharedModal` — la promesse du pas 1 était « le focus
+TRAP viendra avec l'unification Radix, pas réinventé à la main ».
+
+1. **Le socle est Radix Dialog** (`2cfe20f9`) — le fait-maison part : ESC,
+   trap, focus initial sur la carte, retour au déclencheur et portail sont
+   portés par Radix. L'API publique est inchangée (aucun consommateur ne
+   change), le contrat ModalContext est conservé (BottomBar, scroll lock —
+   Radix ne le connaît pas), le rendu est inchangé (pattern forceMount +
+   AnimatePresence déjà en production dans UniversalModalBO). Contrats
+   affinés et écrits dans l'en-tête : `disableBackdropClick` interdit
+   backdrop ET Escape (le bouton Fermer reste explicite) ; un clic sur les
+   marges ferme désormais (standard Radix) ; un dialogue sans `title` doit
+   passer la prop additive `ariaLabel` — le warning Radix est un garde
+   voulu.
+2. **Le harnais axe reflète le socle réel** (`2cfe20f9`) — jsdom possède
+   MutationObserver : il manquait à l'exposer en global ; Event/CustomEvent
+   du realm jsdom exposés aussi (sans ça, un `new Event(...)` reçoit
+   l'Event de Node et jsdom refuse le dispatch) ; ResizeObserver stubbé
+   minimal. Le socle réel (react-remove-scroll, DismissableLayer) tourne
+   dans le banc.
+3. **ScoreOnboardingModal reçoit son nom** (`b8ab2448`) — le trou que le
+   pas 1 laissait passer : ce dialogue ne passe pas de `title` (chaque
+   étape porte son h2), il rendait donc un dialogue SANS nom accessible,
+   invisible d'axe car le cas inscrit en passait un. Il s'appelle
+   « Ton Score Jùlaba », stable à travers les étapes. Zéro changement
+   visuel.
+
+Preuves : tsc -b 0 ; harnais axe vert sur les 6 cas (le cas « SharedModal
+ouvert » rend 1995 caractères sous Radix, 0 violation) ; check --rapide
+identique sur l'arbre propre et sur l'arbre du lot (les 3 refus
+garde-argent préexistent, informatifs — aucun écart introduit). Restes
+d'A11Y-001 : les portails disséminés (WalletPage ; NotificationToast/
+NotificationsPanel à arbitrer comme catégorie distincte).
+
 ### Corrigé — Le rang du banc unitaire est clos : les invariants redeviennent lisibles (2026-10-29)
 
 « Passe aux prochains rangs » (Patrick). Le plan de correction avait consigné
