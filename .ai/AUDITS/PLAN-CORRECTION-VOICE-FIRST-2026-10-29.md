@@ -33,7 +33,7 @@ Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 
 | Rang | Écart | Lot à venir | Pré-requis |
 |---|---|---|---|
-| 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | LOT-RECOVERY (chantier dédié — spec §3.1/3.2 intégrale) | schéma (table codes), spec d'écran, tests serveur ; JAMAIS dans les routes existantes (SEC-05) |
+| 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | **LOT-RECOVERY — BACKEND FAIT (29/10)** : fondations bb2b093a (table codes_recuperation + session à étapes), gestion du code 6a6381d2 (généré par SMS à l'agent, jamais affiché, listé sans secret, révocable ; un seul code actif par compte), parcours 4c3d60b2 (initier/consentement/options/ré-enrôlement — le code seul ne suffit JAMAIS, anciennes clés révoquées, jetons cookies+corps, journaux RECOUV_*) ; tests unitaires 13/13, build OK | Restes : écran front (docs/SPEC-ECRAN-RECUPERATION.md écrite), test d'invariants HTTP harnais, clips voix, recette terrain |
 | 2 | P0-AUTH-02 Enrôlement/activation accessible | LOT-ACTIVATION | revalider l'écran corrigé de bout en bout ; consentement horodaté ; secret choisi par elle |
 | 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
 | 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
