@@ -8,19 +8,19 @@
 
 | Mesure | Valeur |
 |---|---|
-| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **446** |
-| Branches de phrase à ces sites (un ternaire = deux branches) | 462 |
-| — littéraux (phrase fixe en dur) | 200 |
+| Sites d'appel vocaux (`speak`, `dire`, `direEtRetenir`, `ttsSpeak`, `speakAuto`, `speakClipOrText`, `direIntro`, `speakMessage`) | **461** |
+| Branches de phrase à ces sites (un ternaire = deux branches) | 477 |
+| — littéraux (phrase fixe en dur) | 201 |
 | — gabarits (`${…}`, phrase dynamique à variables) | 72 |
-| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 99 |
-| — relais (`dire = (t) => speak(t)`) | 27 |
+| — dynamiques (phrase construite ailleurs : `effet.texte`, `phraseLigneAjoutee(…)`, `res.message`…) | 112 |
+| — relais (`dire = (t) => speak(t)`) | 28 |
 | — clés i18n (`speakMessage('…')`, `t('…')`) | 64 |
-| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **242** |
+| Phrases distinctes aux sites d'appel (littéraux + gabarits) | **243** |
 | Dont dynamiques (avec variables) | 72 |
 | Dont critiques argent (fichier d'argent ou vocabulaire d'argent) | **58** |
 | Phrases des corpus fixes (clips, scripts, dialogues purs, moteur) | **520** |
-| Fichiers avec au moins un site d'appel | 87 |
-| Attributs `aria-label` (lecteur d'écran uniquement) | 323 — **hors parcours vocal**, voir §8 |
+| Fichiers avec au moins un site d'appel | 88 |
+| Attributs `aria-label` (lecteur d'écran uniquement) | 325 — **hors parcours vocal**, voir §8 |
 
 ## 2. Par fichier (sites d'appel)
 
@@ -32,6 +32,7 @@
 | `components/marchand/AjoutProduitGuide.tsx` | autre | 19 | 0 | 0 | 2 | 1 | 16 | 0 |
 | `hooks/useVoiceCore.ts` | moteur_vocal | 17 | 9 | 0 | 7 | 2 | 0 | 1 |
 | `components/wallet/WithdrawWalletModal.tsx` | wallet | 16 | 12 | 4 | 0 | 0 | 0 | 11 |
+| `components/auth/RecuperationCompte.tsx` | auth | 15 | 1 | 0 | 13 | 1 | 0 | 0 |
 | `components/marchand/MesCommandes.tsx` | marchand_autre | 14 | 6 | 3 | 4 | 0 | 2 | 1 |
 | `components/wallet/RechargeWalletModal.tsx` | wallet | 14 | 10 | 4 | 0 | 0 | 0 | 6 |
 | `components/auth/LoginPassword.tsx` | auth | 13 | 6 | 0 | 8 | 0 | 0 | 0 |
@@ -120,13 +121,13 @@
 |---|---:|---:|---:|
 | producteur | 71 | 57 | 6 |
 | marchand_autre | 57 | 41 | 16 |
+| auth | 43 | 16 | 0 |
 | partage | 42 | 27 | 0 |
 | stock | 39 | 38 | 4 |
 | caisse | 36 | 0 | 0 |
 | wallet | 36 | 37 | 19 |
 | autre | 32 | 3 | 0 |
 | vente | 29 | 0 | 0 |
-| auth | 28 | 15 | 0 |
 | cooperative | 21 | 19 | 4 |
 | moteur_vocal | 18 | 9 | 1 |
 | pages | 10 | 5 | 0 |
@@ -181,20 +182,40 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 
 | Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
 |---:|---|---|---|---|:-:|
-| 300 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesAccueil.texte |  |  |
-| 300 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
-| 465 | `parle` | dynamique | error |  |  |
-| 528 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
-| 531 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
-| 740 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verifVoix.texte |  |  |
-| 851 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRecue.texte |  |  |
-| 860 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRefus.texte |  |  |
-| 867 | `parle` | dynamique | ENTREE_VOICE_CLIPS.clavierSurCommande.texte |  |  |
-| 903 | `parle` | dynamique | clipRappel.texte |  |  |
-| 1097 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesEchec.texte |  |  |
-| 1389 | `parle` | literal | Tu es en train d'effacer le numéro ! |  |  |
-| 1401 | `parle` | literal | C'est effacé net. |  |  |
-| 1708 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+| 301 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesAccueil.texte |  |  |
+| 301 | `parle` | literal | Voilà les chiffres maintenant. Mets ton code comme d'habitude. |  |  |
+| 466 | `parle` | dynamique | error |  |  |
+| 529 | `parle` | literal | D'accord, c'est calé comme ça. |  |  |
+| 532 | `parle` | literal | D'accord, on continue comme d'habitude. |  |  |
+| 741 | `parle` | dynamique | ENTREE_VOICE_CLIPS.verifVoix.texte |  |  |
+| 852 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRecue.texte |  |  |
+| 861 | `parle` | dynamique | ENTREE_VOICE_CLIPS.confirmationVoixRefus.texte |  |  |
+| 868 | `parle` | dynamique | ENTREE_VOICE_CLIPS.clavierSurCommande.texte |  |  |
+| 904 | `parle` | dynamique | clipRappel.texte |  |  |
+| 1098 | `parle` | dynamique | ENTREE_VOICE_CLIPS.pinImagesEchec.texte |  |  |
+| 1390 | `parle` | literal | Tu es en train d'effacer le numéro ! |  |  |
+| 1402 | `parle` | literal | C'est effacé net. |  |  |
+| 1709 | `parle` | literal | C'est bon maintenant. Appuie sur le micro et puis parle. |  |  |
+
+### `components/auth/RecuperationCompte.tsx` — auth
+
+| Ligne | Fonction | Nature | Phrase / expression | Variables | Argent |
+|---:|---|---|---|---|:-:|
+| 66 | `speakClipOrText` | relais | texte |  |  |
+| 70 | `dire` | dynamique | tParle('RECOUV_ACCUEIL') |  |  |
+| 92 | `dire` | dynamique | tParle('RECOUV_CONSIGNE_PRESENCE') |  |  |
+| 96 | `dire` | dynamique | tParle('RECOUV_ATTENTE') |  |  |
+| 102 | `dire` | dynamique | tParle('RECOUV_CODE_REFUSE') |  |  |
+| 108 | `dire` | dynamique | tParle('RECOUV_HORS_LIGNE') |  |  |
+| 140 | `dire` | dynamique | tParle('RECOUV_CONSIGNE_DOIGT') |  |  |
+| 143 | `dire` | dynamique | tParle('RECOUV_SESSION_EXPIREE') |  |  |
+| 150 | `dire` | dynamique | tParle('RECOUV_HORS_LIGNE') |  |  |
+| 168 | `dire` | dynamique | tParle('RECOUV_PRESENCE_TROP_COURTE') |  |  |
+| 189 | `dire` | literal | Session expirée. Reprends du début. |  |  |
+| 201 | `dire` | dynamique | tParle('RECOUV_DOIGT_ENCORE') |  |  |
+| 216 | `dire` | dynamique | tParle('RECOUV_SUCCES') |  |  |
+| 233 | `dire` | dynamique | tParle('RECOUV_DOIGT_ENCORE') |  |  |
+| 240 | `dire` | dynamique | tParle('RECOUV_HORS_LIGNE') |  |  |
 
 ### `components/auth/UnregisteredPhone.tsx` — auth
 
@@ -512,11 +533,11 @@ Nature : `literal` = phrase fixe ; `template` = gabarit avec variables `{…}` ;
 | 511 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
 | 524 | `direEtRetenirMessage` | cle_i18n | TATA_DEPENSE_MONTANT_INCOMPRIS |  |  |
 | 554 | `speakMessage` | dynamique | ...introMessage() |  |  |
-| 812 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
-| 817 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
-| 826 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
-| 975 | `speak` | dynamique | dernierePhraseRef.current |  |  |
-| 975 | `speak` | dynamique | introLigne() |  |  |
+| 823 | `speakMessage` | cle_i18n | TATA_PRODUIT_AJOUTE_BOUTIQUE |  |  |
+| 828 | `speakMessage` | cle_i18n | TATA_AJOUT_BOUTIQUE_ECHEC |  |  |
+| 837 | `speakMessage` | cle_i18n | TATA_ON_NE_CHANGE_RIEN |  |  |
+| 986 | `speak` | dynamique | dernierePhraseRef.current |  |  |
+| 986 | `speak` | dynamique | introLigne() |  |  |
 
 ### `components/marchand/PinConfirmModal.tsx` — auth
 
@@ -1753,7 +1774,7 @@ Ce que la marchande peut DIRE aujourd'hui, tel que le code l'accepte. Corpus STT
 
 ## 8. Ce qui n'est PAS dans le parcours vocal (et pourquoi)
 
-- **`aria-label` (323)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
+- **`aria-label` (325)** : lus par un lecteur d'écran (TalkBack), pas par Tata. La marchande non-lectrice n'utilise pas de lecteur d'écran — l'application parle elle-même. Jugés hors parcours vocal ; ils restent du texte d'interface (rail Manus / design), pas des phrases de Tata.
 - **Toasts** (`toast.success(…)`) et libellés d'écran : affichés, jamais dits. Hors inventaire vocal.
 - **`texteDyu`** de `loginVoiceScript.ts` : traduction dioula de travail, NON validée (le fichier le dit). Elle n'est ni activée ni reprise : Manus tranche.
 
