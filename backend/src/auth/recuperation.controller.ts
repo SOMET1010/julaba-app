@@ -131,8 +131,15 @@ export class RecuperationController {
       });
     }
 
+    // LE SECRET EST LA FORME CANONIQUE — celle que normaliserCodeRecuperation
+    // rendra au moment de la présentation (minuscules, tirets, espaces volent).
+    // Hasher la forme AFFICHÉE (avec le tiret) comparerait deux secrets
+    // différents : le code aurait été refusé À TOUT COUP — la marche 1 murée
+    // pour tout le monde. Preuve : harnais HTTP recouv-01 R4 (Postgres réel,
+    // bcrypt.compare = false sur le round-trip génération → présentation).
     const codeClair = genererCodeRecuperation();
-    const codeHash = await bcrypt.hash(codeClair, 10);
+    const codeCanonique = normaliserCodeRecuperation(codeClair)!;
+    const codeHash = await bcrypt.hash(codeCanonique, 10);
     const expireLe = new Date(Date.now() + DUREE_VIE_CODE_RECUPERATION_MS);
     const sauve = await this.codesRepo.save({
       userId: compte.id,
