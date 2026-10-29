@@ -41,6 +41,7 @@
     "test:warn-dev",
     "test:coffre-web",
     "test:offline-producteur",
+    "test:a11y-axe",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",

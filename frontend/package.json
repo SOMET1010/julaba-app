@@ -210,7 +210,8 @@
     "test:lien-activation": "tsx src/app/components/auth/lienActivation.test.mts",
     "test:enum-check-phone": "node scripts/test-enum-check-phone.mjs",
     "test:warn-dev": "node scripts/test-warn-dev.mjs",
-    "test:coffre-web": "node scripts/test-coffre-web.mjs"
+    "test:coffre-web": "node scripts/test-coffre-web.mjs",
+    "test:a11y-axe": "tsx src/app/a11y/axe.test.mts"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -276,6 +277,7 @@
     "@types/react": "*",
     "@types/react-dom": "*",
     "@vitejs/plugin-react": "^4.7.0",
+    "axe-core": "^4.14.0",
     "jsdom": "^26.1.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",

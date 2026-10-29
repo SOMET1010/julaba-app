@@ -4,12 +4,12 @@
 
 ## État au 2026-10-29 (rattrapé sur le code réel, commit 138a2630)
 
-- **Résolu ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos).
+- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous).
 - **Inventaires corrigés sur le code réel** (le registre du 28/09 mentait par péremption) :
   - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
   - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
   - A11Y-006 : mesure — **4262 hexadécimaux** dans **199 fichiers** hors tests. La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
-- **Ouverts** : A11Y-001, A11Y-002, A11Y-003, A11Y-005, A11Y-006, A11Y-007.
+- **Ouverts** : A11Y-001, A11Y-003, A11Y-005, A11Y-006, A11Y-007.
 
 ## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
@@ -29,10 +29,11 @@
 - **Recommandation** : uniformiser vers Radix `Dialog` exclusivement — par pas réversibles, un système à la fois, avec preuve axe + terrain, jamais en bloc.
 
 ### A11Y-002 — Pas de test a11y automatisé (P1)
-- **Statut** : OUVERT
+- **Statut** : RÉSOLU côté code le 29/10 — harnais `frontend/src/app/a11y/axe.test.mts`, maillon `test:a11y-axe` dans `verify`.
 - **Description** : Aucun test a11y automatisé (axe-core, pa11y, lighthouse CI non détectés).
 - **Impact** : Régressions a11y non détectées automatiquement.
-- **Recommandation** : harnais axe-core sur le DOM RÉELLEMENT RENDU (jsdom + testing-library, composants réels — pas une maquette), branché dans `verify`. Un rouge d'axe est un défaut d'usage, pas du style.
+- **Ce qui a été fait** : axe-core injecté dans un jsdom, composants RÉELS montés sous la pile complète des providers de App.tsx (ordre exact du rendu de production, zéro mock réseau — le hors-ligne est catché par l'app elle-même). 4 cas inscrits à la naissance : BottomBar marchand ×2 états (Tata visible / masqué), Sidebar marchand + producteur — **0 violation, 13-15 règles passent par cas**. Le stub des assets binaires (module.registerHooks) ne vit que dans le banc ; le build Vite est intact. Un rouge d'axe bloque verify.
+- **Limites assumées (documentées dans l'en-tête du banc)** : color-contrast sort « incomplete » en jsdom (besoin du canvas réel — le contraste se juge au terrain, rang 4 du plan) ; le lecteur d'écran reste une recette humaine (rang 7). Ajouter un composant au harnais = ajouter un cas.
 
 ### A11Y-003 — i18n UI absente (P1)
 - **Statut** : OUVERT — HORS RANG 6 (lot dédié ; la voix couvre déjà dioula/bambara pour l'ORAL : `test:i18n-*`, `test:voix-dyu-argent` ; c'est le TEXTE UI qui reste français).
