@@ -114,6 +114,29 @@ vtrace.erreur('useVoiceCore.startRecording', 'Accès au micro refusé.');
     (vtrace.derniereVoix() as { moteur?: string } | null)?.moteur === 'clip');
 }
 
+// ── 2b. Confidentialité : tous les événements doivent masquer les numéros ──
+console.log('\nConfidentialité du journal');
+{
+  vtrace.__reinitialiserPourTests();
+  vtrace.tracer('INFO', { note: 'Téléphone 0726262626', nested: { valeur: '07 26 26 26 26' } });
+  const entree = vtrace.entrees()[0];
+  const contenu = JSON.stringify(entree);
+  verifier('masque les numéros dans les événements génériques et imbriqués',
+    !contenu.includes('0726262626') && !contenu.includes('07 26 26 26 26')
+    && contenu.includes('0726••••••') && contenu.includes('07 2• •• •• ••'));
+  const stocke = faussesStorage.getItem('julaba_journal_voix') || '';
+  verifier('le localStorage ne contient pas le numéro complet',
+    !stocke.includes('0726262626') && !stocke.includes('07 26 26 26 26'));
+  // Simule une ancienne version ayant déjà persisté une trace non masquée.
+  faussesStorage.setItem('julaba_journal_voix', JSON.stringify([
+    { t: Date.now(), ev: 'INFO', d: { phone: '0726262626' } },
+  ]));
+  vtrace.__rechargerDepuisStockagePourTests();
+  verifier('masque aussi les anciennes traces au rechargement',
+    !JSON.stringify(vtrace.entrees()).includes('0726262626')
+    && !(faussesStorage.getItem('julaba_journal_voix') || '').includes('0726262626'));
+}
+
 // ── 3. Persistance localStorage ─────────────────────────────────────────────
 console.log('\nPersistance');
 {
