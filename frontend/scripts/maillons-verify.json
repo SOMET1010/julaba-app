@@ -108,6 +108,7 @@
     "test:parole-entree",
     "test:entree-numero-voix",
     "test:retour-frappe",
+    "test:retour-appareil",
     "test:catalogue-caisse-etat",
     "test:etal-garde",
     "test:caisse-tutoie",

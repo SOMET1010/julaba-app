@@ -160,6 +160,7 @@
     "test:parole-entree": "tsx src/app/services/paroleEntree.test.mts",
     "test:entree-numero-voix": "tsx src/app/services/entreeVoixNumero.test.mts",
     "test:retour-frappe": "tsx src/app/services/retourDeFrappe.test.mts",
+    "test:retour-appareil": "tsx src/app/services/retourAppareil.test.mts",
     "test:catalogue-caisse-etat": "tsx src/app/services/etatCatalogueCaisse.test.mts",
     "test:etal-garde": "tsx src/app/services/etalGarde.test.mts",
     "test:caisse-tutoie": "tsx src/app/components/marchand/caisseTutoie.test.mts",
