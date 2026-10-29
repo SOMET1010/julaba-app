@@ -21,6 +21,35 @@ Statuts : `FAIT (preuve)` / `CONTRÉ (audit infirmé par le code)` / `PLANIFIÉ 
 
 ## 2. Fait dans ce lot (29/10/2026)
 
+### LOT-RECOVERY — clôture du rang 1 (29/10, suite)
+
+- **Écran front FAIT** (`9c44d790`) : trois marches guidées par la voix,
+  elle ne tape jamais — la ligne « Restes » ci-dessous était périmée sur
+  ce point (l'écran est arrivé APRÈS la rédaction de la ligne, rebasé
+  depuis) ; le registre est corrigé ici.
+- **Harnais HTTP FAIT** (`e7922b3e` fix + `112db806` harnais) : le reste
+  « test d'invariants HTTP harnais, vraie réponse WebAuthn générée » est
+  monté ET COURU sur Postgres réel (instance embarquée, base jetable).
+  R1→R8 verts : secret jamais révélé (SMS à l'agent seul), un seul code
+  actif, refus uniforme, code seul insuffisant (marche 3 murée), options
+  découvrables (residentKey/userVerification required, userID = user.id,
+  ancienne clé exclue), vraie réponse reconnecte (clés remplacées, code
+  consommé, jetons APK), usage unique, échelle d'attente même sur le
+  vrai code. La fabrique WebAuthn du harnais est validée par le
+  vérificateur de la production (4/4 unitaires).
+- **BUG TROUVÉ ET RÉPARÉ PAR LE HARNAIS** (`e7922b3e`) : le code de
+  récupération ne pouvait JAMAIS être validé — hash sur la forme
+  affichée « XXXX-XXXX », comparaison sur la forme canonique
+  « XXXXXXXX ». Marche 1 murée pour tout le monde. Round-trip verrouillé
+  au banc unitaire. La preuve que le plan attendait de la recette
+  terrain, le harnais l'a rendue avant la première utilisatrice.
+- **Restes réels du rang 1** : enregistrement studio des clips (scripts
+  prêts — CLIPS-VOIX-A-ENREGISTRER.md §4) puis recette terrain (Patrick).
+- Honnêteté : deux suites unitaires échouaient DÉJÀ sur l'arbre propre
+  d'origin/dev (unicité des téléphones entre suites invariants
+  existantes ; StocksRestController — idempotence). Hors du présent lot,
+  à reprendre par un rang dédié.
+
 ### LOT-WA-01 — WebAuthn réellement usernameless (P1-AUTH-03)
 
 Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
@@ -33,7 +62,7 @@ Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 
 | Rang | Écart | Lot à venir | Pré-requis |
 |---|---|---|---|
-| 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | **LOT-RECOVERY — BACKEND FAIT (29/10)** : fondations c39f7f7a (table codes_recuperation + session à étapes), gestion du code 7855e6ea (généré par SMS à l'agent, jamais affiché, listé sans secret, révocable ; un seul code actif par compte), parcours cbbbc539 (initier/consentement/options/ré-enrôlement — le code seul ne suffit JAMAIS, anciennes clés révoquées, jetons cookies+corps, journaux RECOUV_*) ; tests unitaires 13/13, build OK | Restes : écran front (docs/SPEC-ECRAN-RECUPERATION.md écrite), test d'invariants HTTP harnais, clips voix, recette terrain |
+| 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | **LOT-RECOVERY — BACKEND FAIT (29/10)** : fondations c39f7f7a (table codes_recuperation + session à étapes), gestion du code 7855e6ea (généré par SMS à l'agent, jamais affiché, listé sans secret, révocable ; un seul code actif par compte), parcours cbbbc539 (initier/consentement/options/ré-enrôlement — le code seul ne suffit JAMAIS, anciennes clés révoquées, jetons cookies+corps, journaux RECOUV_*) ; tests unitaires 13/13, build OK ; **écran front FAIT 9c44d790 ; harnais HTTP FAIT e7922b3e+112db806 (R1→R8 verts, bug du tiret trouvé et réparé)** | **Restes : clips voix à enregistrer (scripts prêts, CLIPS-VOIX-A-ENREGISTRER.md §4), recette terrain** |
 | 2 | P0-AUTH-02 Enrôlement/activation accessible | LOT-ACTIVATION | revalider l'écran corrigé de bout en bout ; consentement horodaté ; secret choisi par elle |
 | 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
 | 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
