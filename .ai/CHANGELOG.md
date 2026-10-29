@@ -3,6 +3,50 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Ajouté — Le rang 6 de l'audit voice-first est clos côté code : l'accessibilité a ses gardes (2026-10-29)
+
+« Passes aux Prochains rangs » (Patrick). Rang 6 du plan de correction
+(LOT-A11Y-OUTILS, P2-2 de l'audit) : entre la session parallèle (skip-link
+`138a2630`) et ce lot, six commits, un registre rattrapé sur la vérité du
+code, et surtout : **une régression d'accessibilité bloque désormais
+`verify`**.
+
+1. **Le registre A11Y dit la vérité** (`b0426ca2`) — A11Y-004 fermé un jour
+   après son correctif ; inventaires remesurés : 5 systèmes de modales réels
+   (pas 7, et UniversalModalBO est DÉJÀ sur Radix), 1750 `console.*` dans 93
+   fichiers, 4240 hexadécimaux dans 542 (hors commentaires/bancs).
+2. **Le harnais axe-core** (`eeb22683`, A11Y-002) — axe injecté dans un jsdom,
+   composants RÉELS montés sous la pile complète des providers de App.tsx
+   (ordre exact de production, zéro mock réseau — le hors-ligne est catché
+   par l'app elle-même). Maillon `test:a11y-axe`. Au fil du lot : 6 cas
+   (BottomBar ×2 états, Sidebar marchand + producteur, SupportContact,
+   SharedModal ouvert), 0 violation, 13-21 règles passent par cas. tsx ne
+   sait pas lire les .png/.webp : un `module.registerHooks` n'interpose le
+   stub QUE dans le banc — build Vite et tsconfig intacts.
+3. **La console du build livré se tait** (`594e2df0`, A11Y-007) — esbuild
+   `pure` sous `command === "build"` : preuve par build RÉEL, 0
+   console.log/info/debug dans dist (contre ~1411 dans les sources), 347
+   warn/error conservés (diagnostic légitime). Garde `test:console-prod`.
+4. **La dette hexadécimale est figée** (`767ea138`, A11Y-006) —
+   `test:charte-globale` : base 4240, toute hausse refusée, chaque baisse
+   DOIT descendre la constante avec sa preuve. La remise au token reste un
+   chantier de rangs, à la baisse uniquement.
+5. **Les retours muets parlent** (`8b9536b4`, A11Y-005) — vérification route
+   par route des 11 routes sans BottomBar : 6 écrans déjà corrects
+   (SubPageLayout ×5, MarchandDepenses), 3 boutons retour MUETS réparés
+   (SupportContact, UniversalAcademy ×2). Tableau de vérité `.ai/A11Y_CLAVIER.md`.
+6. **SharedModal devient un dialogue qui se raconte** (`2bc2ed66`, A11Y-001
+   pas réversible n°1) — role=dialog, aria-modal, titre/description associés,
+   Fermer nommé, ESC (contrat disableBackdropClick respecté), focus initial +
+   retour au déclencheur. Gardé par axe OUVERT. Le focus TRAP vient avec
+   l'adoption Radix — pas réinventé à la main.
+
+Restes écrits et tracés : A11Y-001 (unification Radix, rang dédié),
+A11Y-003 (i18n UI, lot dédié), la remise au token (A11Y-006, à la baisse),
+la recette terrain (rang 7). Au passage : `test:offline-producteur`
+(BUG-008, `382c31be`) était orphelin d'aucune chaîne — entré dans `verify`
+(`bc6e3770`, la garde orphelins l'a attrapé).
+
 ### Corrigé — Ajouter un produit s'entend de bout en bout : chaque question écoute sa réponse (2026-10-26)
 
 Recette Patrick : « Assure-toi qu'elle puisse ajouter des produits entièrement
