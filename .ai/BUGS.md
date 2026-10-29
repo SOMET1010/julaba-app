@@ -13,13 +13,12 @@
 
 ## État au 2026-10-07
 
-- **Total bugs** : 12 (9 résolus, 3 ouverts)
+- **Total bugs** : 12 (11 résolus, 1 ouvert)
 - **Bugs P0** : 0 ouvert
-- **Bugs P1** : 3 ouverts (BUG-008/009/010 — producteur)
+- **Bugs P1** : 1 ouvert (BUG-008 — outbox producteur hors-ligne)
 - **Bugs P2** : 0 ouvert
 - **Bugs P3** : 0
-- **Bugs résolus** : 9 (BUG-011..014 détectés ET résolus le jour même — audit voix 07/10)
-- **Bugs résolus** : 5
+- **Bugs résolus** : BUG-001..005 (5) + BUG-009/010 (29/10) + BUG-011..014 (audit voix 07/10) = 11
 
 > Numérotation : BUG-006 et BUG-007 n'ont jamais été attribués (numéros sautés par l'histoire du registre — constaté en REVIEW-004). Ils restent RÉSERVÉS : ne pas les réattribuer, les prochains bugs prennent BUG-011 et suivants.
 
@@ -117,22 +116,25 @@ Les items suivants sont issus de `docs/dette/REGISTRE-MAITRE.md` (révision 20).
 - **Tests liés** : à créer — outbox producteur nominal, 4xx lettre morte, 5xx rejeu.
 
 ### BUG-009 — Annulation de commande producteur sans confirmation
-- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-06 · **Fermé** : 2026-10-29
 - **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
 - **Environnement** : dev / pilote
 - **Description** : le bouton « Annuler la commande » déclenche directement `cancelCommande()` sans confirmation, raison ni verrou synchrone.
 - **Comportement attendu** : relecture texte/voix, confirmation explicite, verrou anti double-tap et retour d'erreur visible.
-- **Fichiers concernés** : `frontend/src/app/components/producteur/CommandesProducteurPage.tsx:1627-1683`.
-- **Tests liés** : à créer — annulation confirmée, annulation abandonnée, double-tap, erreur réseau.
+- **Fichiers concernés** : `frontend/src/app/components/producteur/CommandesProducteurPage.tsx`
+- **Résolution** : les deux boutons « Annuler » (commande acceptée, autres états) ouvrent désormais la RELECTURE PARLÉE (client + montant dits à voix) puis la modale de confirmation (aria-modal, deux gros boutons, fermeture refusée pendant l'envoi) ; verrou SYNCHRONE `annulationEnCoursRef` (pattern POSCaisse/BUG-011) posé avant tout await ; boutons « Un instant… » désactivés ; erreur visible ET parlée (toast + speak), succès confirmé à voix.
+- **Commits** : `b89a6df2` · **Vérifications** : tsc 0, lint propre — le double-tap ne peut plus doubler l'appel (verrou synchrone), rien ne part sans le gros bouton rouge.
+- **Reste** : recette terrain (le flux se vit au marché, pas au banc).
 
 ### BUG-010 — Revenu gagné incluant des commandes non livrées
-- **Priorité** : P1 · **Statut** : OUVERT · **Date détection** : 2026-10-06
+- **Priorité** : P1 · **Statut** : RÉSOLU · **Date détection** : 2026-10-06 · **Fermé** : 2026-10-20 (registre rattrapé le 29/10)
 - **Détecté par** : Agent Reviewer, revue de `AUDIT-UX-ROLES-2026-10-06.md`
 - **Environnement** : dev / pilote
-- **Description** : `revenusTotal` additionne toute commande non annulée, y compris `en_attente`, `confirmee` et `en_cours`, tandis que l'interface annonce « Tu as gagné ».
+- **Description** : `revenusTotal` additionnait toute commande non annulée, y compris `en_attente`, `confirmee` et `en_cours`, tandis que l'interface annonce « Tu as gagné ».
 - **Comportement attendu** : séparer revenu livré/encaissé, montant en attente et montant annulé ; utiliser une fonction métier unique dans tous les écrans.
-- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx:606-614`, `frontend/src/app/components/producteur/Revenus.tsx:100-114`.
-- **Tests liés** : à créer — commandes par statut, cohérence KPI/écran revenus/voix.
+- **Fichiers concernés** : `frontend/src/app/contexts/ProducteurContext.tsx`, `frontend/src/app/components/producteur/Revenus.tsx`, `backend/src/producteur/ProducteurStatsController`.
+- **Résolution** : le statut était périmé au registre — le code avait déjà fermé l'écart. Client : `0c674e15` (repli offline aligné sur `statut_paiement = 'paye'`, l'en attente vit dans sa carte Revenus.tsx). Serveur : `bf5b16ad` (PROD-05) — `revenus_total`/`revenus_jour` ne comptent QUE `statut_paiement='paye'` (FILTER SQL), le reste exposé SÉPARÉMENT dans `revenusEnAttente` ; une commande confirmée NON PAYÉE ne gonfle plus « Revenus totaux ».
+- **Commits** : `0c674e15`, `bf5b16ad` · **Vérifications** : invariant `prod-05-revenus-encaisses.spec.ts` — payée compte, non-payée ne compte pas mais apparaît en attente, annulée ne compte nulle part.
 
 ## Bugs à détecter (surveillance active)
 ### BUG-011 — Double-tap sur le PIN du MarchéVirtuel = commandes dupliquées
