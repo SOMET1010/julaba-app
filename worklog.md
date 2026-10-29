@@ -1730,3 +1730,22 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : sur le web/preview, la vente entend maintenant — le micro se refermait tout seul après 6 secondes, en pleine phrase, parce que le filet de silence ne voyait que le niveau du micro (mort sur le web) ; il lit maintenant la dictée qui grandit. Sur l'APK rien ne change (le niveau y vivait) ; si un téléphone coupe encore en pleine phrase, envoyer le 🐞 Rapport : le journal dira si c'est le seuil du marché qui monte trop (MIC-02B)
+
+---
+Task ID: capacitor-retours-29-10
+Agent: Z.ai Code (session Patrick)
+Task: « Assure toi que les actions retours et capacitor ainsi que les plugins qu'il faut sont installés et correctement implementés »
+
+Work Log:
+- AUDIT COMPLET (preuve, pas croyance) : l'intégration Capacitor était SAINE à 90 % — racine @capacitor/core+cli+android+ios 8.5.x (04f81b52), android/ complet (gradle, MainActivity enregistrant 3 plugins locaux SherpaStt/SherpaTts/RoutageAudio, AndroidManifest avec RECORD_AUDIO + MODIFY_AUDIO_SETTINGS + ACCESS_NETWORK_STATE + CAMERA required=false), capacitor.config.ts cohérent (com.julaba.app, webDir frontend/dist), workflows/apk.yml chaîne complète (branche dispatch → checkout → npm ci → npx cap sync android → gradlew assembleDebug → upload-artifact), ponts JS web-only (nativeStt/nativeTts/pontRoutageAudio : window.Capacitor.Plugins, dégradation web propre)
+- LE TROU : @capacitor/app ABSENT — le paquet officiel qui porte la touche retour matérielle (backButton + exitApp). Aucune occurrence de backButton/popstate dans frontend/src : sur l'APK, un appui remontait l'historique du WebView et un appui de trop FERMAIT L'APPLICATION, y compris panier plein en pleine vente
+- Hygiène au passage : frontend/package.json déclarait encore @capacitor/* ^8.1.0 (héritage frontend_src, zéro import) — aligné ^8.5.0 ; frontend/package-lock.json regénéré par la recette isolée (le lock ne change que les 3 champs de spec, l'arbre résolu ne bouge pas) ; node_modules local resynchronisé au passage (@capacitor/ios rematérialisé)
+- COMMIT 1 d4364e27 (installation) : @capacitor/app ^8.1.2 en racine dependencies (là où vit capacitor.config.ts et où cap sync collecte) ; preuves : npm ls (8.1.2, core 8.5.3 dédupé partout), npm ci --dry-run du lock isolé 0 erreur
+- COMMIT 2 d25b9c8a (implémentation) : services/retourAppareil.ts — même forme que routageAudio (pont global, erreurs avalées, non-opération web). Règle : reculer si double vote (WebView canGoBack ET react-router idx > 0 — le double vote bloque le lien profond qui ferait reculer dans un historique étranger) ; sinon premier appui → avis « Encore un appui pour quitter Jùlaba » (div aria-live hors React), second sous 2 s → exitApp. Reculer remet le compteur à zéro. Monté dans main.tsx au niveau du routage audio (un seul point, après le fetch net)
+- LE BANC A ATTRAPÉ UN VRAI DÉFAUT avant le commit : à t=0, la sentinelle `dernierAppui > 0` confondait « aucun avertissement » et « averti à l'instant zéro » (horloge du banc démarrant à 0) — remplacée par un drapeau `averti` explicite
+- PREUVE CAP SYNC : npx cap sync android (dist de preuve, retirée après) → « Found 1 Capacitor plugin: @capacitor/app@8.1.2 », AppPlugin dans capacitor.plugins.json, ':capacitor-app' dans capacitor.settings.gradle et capacitor.build.gradle (fichiers générés gitignorés — la preuve est dans ce journal, pas dans l'arbre)
+- Preuves de non-régression : test:retour-appareil 8/8 sections, test:maillons-orphelins verte (maillon test:retour-appareil rattaché), test:micro-contraint verte (MIC-01 intact), tsc -b 0, lint propre
+
+Stage Summary:
+- RÉPONSE À PATRICK : Capacitor est complet — le seul maillon qui manquait (@capacitor/app) est installé et la touche retour est MAÎTRISÉE : elle recule d'un écran quand il y en a un, avertit avant de fermer, et ne ferme jamais sans deux appuis volontaires. Prochain APK (dispatch avec « branche »:"dev") embarquera le tout — sur le web/preview, aucune change visible (voulu)
+- Pour ajouter un AUTRE plugin Capacitor plus tard : l'installer en RACINE dependencies (comme @capacitor/app), puis `npx cap sync android` — le pont JS se fait par window.Capacitor.Plugins (pas d'import npm côté frontend, zéro impact bundle web)
