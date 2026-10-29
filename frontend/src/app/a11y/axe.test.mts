@@ -76,6 +76,31 @@ Object.defineProperties(globalThis, {
   SVGElement: { configurable: true, value: dom.window.SVGElement },
   Element: { configurable: true, value: dom.window.Element },
   Node: { configurable: true, value: dom.window.Node },
+  // A11Y-001 pas 2 : le socle des modales est Radix Dialog, qui observe le
+  // DOM (react-remove-scroll / DismissableLayer). MutationObserver est
+  // supporté par jsdom — il ne manquait qu'à l'exposer en global, comme
+  // HTMLElement ci-dessus.
+  MutationObserver: { configurable: true, value: dom.window.MutationObserver },
+  // Radix (DismissableLayer / react-remove-scroll) crée des événements à la
+  // main et les dispatche sur le document. Node possède Event/CustomEvent
+  // dans SON realm : sans cet exposé, une lib qui fait `new Event(...)`
+  // reçoit l'Event de Node et jsdom refuse le dispatch (« parameter 1 is
+  // not of type 'Event' »). Le realm jsdom prime, comme HTMLElement.
+  Event: { configurable: true, value: dom.window.Event },
+  CustomEvent: { configurable: true, value: dom.window.CustomEvent },
+  // Radix (react-remove-scroll) demande aussi ResizeObserver quand il
+  // compense la scrollbar : jsdom ne le fournit pas, un stub minimal
+  // suffit (aucun redimensionnement réel en banc) — même esprit que
+  // matchMedia ci-dessous.
+  ResizeObserver: {
+    configurable: true,
+    value: dom.window.ResizeObserver ??
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+  },
   getComputedStyle: { configurable: true, value: dom.window.getComputedStyle },
   localStorage: { configurable: true, value: dom.window.localStorage },
   sessionStorage: { configurable: true, value: dom.window.sessionStorage },
