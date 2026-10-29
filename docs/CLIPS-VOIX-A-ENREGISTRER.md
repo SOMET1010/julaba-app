@@ -84,6 +84,36 @@ imprécis : on ne dit pas qu'il s'agit de **choisir** un code, ni qu'il faut le
 | `code-redire.mp3` | Redis le même code, pour être sûre. |
 | `code-different.mp3` | Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code. |
 
+## 4 — L'écran de récupération (priorité haute — le parcours est muré sans eux)
+
+Écrit le 29/10/2026, avec l'écran de récupération (LOT-RECOVERY). Le parcours
+complet existe désormais — trois marches guidées, elle ne tape jamais
+(`RecuperationCompte.tsx`, spec `SPEC-ECRAN-RECUPERATION.md`) — mais **toutes
+ses phrases passent par le moteur de synthèse**, et dans l'APK le moteur est
+muet : tant que ces clips n'existent pas, la marche à suivre existe sans voix,
+donc sans elle. Les textes sont les ids du catalogue (`frontend/src/app/i18n/
+voice/catalog.ts`, famille `RECOUV_*`) ; à déposer dans
+`frontend/public/voix/tata/`.
+
+| Fichier | Id catalogue | Texte à dire |
+|---|---|---|
+| `recouv-entree.mp3` | RECOUV_ENTREE | Si tu as perdu ton accès, touche le bouton rond en dessous : on t'aidera à rentrer. |
+| `recouv-accueil.mp3` | RECOUV_ACCUEIL | Tu as perdu ton accès ? Pas de souci. Donne le téléphone à la personne qui t'aide. Elle tape le code, et toi, tu poses ton doigt. |
+| `recouv-code-refuse.mp3` | RECOUV_CODE_REFUSE | Le numéro ou le code n'est pas bon. Fais-le vérifier, puis recommence. |
+| `recouv-attente.mp3` | RECOUV_ATTENTE | Trop d'essais. Attends un peu, puis on recommence. |
+| `recouv-session-expiree.mp3` | RECOUV_SESSION_EXPIREE | Session expirée. Reprends du début. |
+| `recouv-hors-ligne.mp3` | RECOUV_HORS_LIGNE | Pas de réseau. Connecte-toi puis réessaie. |
+| `recouv-consigne-presence.mp3` | RECOUV_CONSIGNE_PRESENCE | C'est ton moment : maintiens ton doigt sur le gros bouton jusqu'au son. |
+| `recouv-presence-trop-courte.mp3` | RECOUV_PRESENCE_TROP_COURTE | Encore un peu : maintiens jusqu'au son. |
+| `recouv-consigne-doigt.mp3` | RECOUV_CONSIGNE_DOIGT | C'est bien ça. Maintenant pose ton doigt sur le capteur. C'est ton nouveau téléphone. |
+| `recouv-doigt-encore.mp3` | RECOUV_DOIGT_ENCORE | Ce n'est rien. Pose ton doigt encore. |
+| `recouv-succes.mp3` | RECOUV_SUCCES | C'est bon, tu es revenue. Bienvenue chez toi. |
+
+> Les phrases sont câblées via `speakClipOrText` : une fois les fichiers
+> déposés, il faudra brancher chaque id sur son fichier (même petit travail
+> de code que pour les chiffres, section 2). D'ici là, la règle tient :
+> **une phrase sans clip est un silence dans l'APK.**
+
 ## Comment enregistrer
 
 Mêmes conditions que les 137 clips existants, sinon la voix change d'un écran
