@@ -1766,3 +1766,22 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : l'audit est archivé et TRACÉ dans .ai (verbatim + plan), PAS appliqué aveuglément — cinq de ses écarts sont contredits par le code réel, un est traité (WebAuthn usernameless, backend c9080d0f + front 9cb02531), la récupération complète est planifiée en chantier dédié (improviser aurait rouvert SEC-05). Prochaine étape de l'auditeur à prendre au sérieux : la preuve appareil (T1-T3, montants parlés) — elle ne s'obtient que sur Android réel
+
+---
+Task ID: audit-voice-first-29-10-lot-recovery
+Agent: Z.ai Code (session Patrick)
+Task: « passe au autres » — le rang 1 du plan : LOT-RECOVERY (P0-AUTH-01)
+
+Work Log:
+- DEMARRE PAR LA SYNC : retard 16 commits (Akoun-dev a entre-temps archivé l'audit 9e62062c, fait WebAuthn usernameless c9080d0f/9cb02531 et tracé le plan 6eeff2ae) — tirés, le plan §3 rang 1 lu : LOT-RECOVERY
+- LE CADRE RESPECTÉ À LA LETTRE : AUTH-RECOVERY-01 (arbitrage 19/09) = récupération DÉDIÉE, jamais greffée sur /login ou /webauthn/* (SEC-05). Contrôleur séparé recuperation.controller.ts, 7 routes propres, zéro ligne modifiée dans les routes existantes
+- LOT-RECOVERY backend en 3 commits, un par préoccupation :
+  * bb2b093a fondations : table codes_recuperation (migration 1782400000000), session-recuperation.ts (3 étapes en mémoire, TTL 10 min, usage unique), code-recuperation.ts (base32 Crockford 4+4, 2⁴⁰, node:crypto seul, normalisation qui refuse O/I/L/U sans deviner)
+  * 6a6381d2 gestion du code : générer (SMS au téléphone DE L'AGENT — celui de la marchande est ce qui manque ; la réponse ne porte JAMAIS le code, SMS raté -> renvoyer qui régénère, jamais afficher), lister (états sans hash), révoquer (§3.1.4). Invariant : UN SEUL code actif par compte — l'ancien meurt journalisé AVANT que le nouveau naisse
+  * 4c3d60b2 parcours : initier (public, échéance uniforme, refus uniforme, échelle d'attente sur la LIGNE du code — survit aux redémarrages), consentement (le geste d'ELLE horodaté — LE CODE SEUL NE SUFFIT JAMAIS), webauthn/options + ré-enrôlement (options refusées sans le geste ; residentKey required + userID=user.id pivot LOT-WA-01 ; au verdict : anciennes clés RÉVOQUÉES, code consommé, sessions tombées, journaux RECOUV_*, jetons cookies+corps, elle repart connectée)
+- LE BANC A ATTRAPÉ UN DÉFAUT RÉEL avant le commit : ouvrirSessionRecuperation ne purgeait pas ses morts (le registre grossit avec les tentatives) — purger au passage, comme le challenge usernameless. Deuxième leçon réappliquée du LOT-WA-01 : l'horloge s'injecte dans les fonctions de session, sinon le test Date.now()-réel passe pour la mauvaise raison
+- docs/SPEC-ECRAN-RECUPERATION.md écrite (prérequis du lot front) : qui fait quoi (elle ne tape JAMAIS le numéro ni le code), 3 marches une par écran, toucher long ≥ 800 ms « C'est mon compte », scripts des clips Tata prêts pour le studio, refus de l'écran (aucun code affiché, aucune marche sautée)
+- DEUX ROUGES PRÉ-EXISTANTS constatés et PROUVÉS hors périmètre : stocks-rest.idempotency (mock call count) et telephones-tests-uniques (collisions entre specs invariants dge-09/stk-04/fidelite-cycle/prod-05/financial-score/sec-besoin-01) — mes deux premiers commits ne touchent ni stocks-rest ni test/invariants (diff 6eeff2ae..HEAD vérifiée). À reprendre côté lot STK-04 / sessions d'invariants
+
+Stage Summary:
+- RÉPONSE À PATRICK : la RÉCUPÉRATION COMPLÈTE existe côté serveur — le scénario le plus dur de la spec (téléphone perdu/neuf) a son chemin sûr et tracé : un code à usage unique remis par SMS à l'agent, LE GESTE DE LA MARCHANDE exigé (le code seul ne suffit jamais — §3.1.3), le ré-enrôlement WebAuthn sur son nouveau téléphone, les anciennes clés révoquées, chaque pas journalisé. Restes tracés au plan : l'écran (spec écrite), le harnais HTTP d'invariants, les clips, la recette terrain. Prochains rangs du plan : LOT-ACTIVATION (rang 2), lots par rôle (rang 5), LOT-A11Y-OUTILS (rang 6) — LOT-MULTI-COMPTES (rang 3) et LOT-PROUVE-APPAREIL (rang 4) restent bloqués sur du terrain (arbitrage §4.1 / Android réel)
