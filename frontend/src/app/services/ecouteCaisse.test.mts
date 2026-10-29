@@ -8,7 +8,7 @@
 import {
   finDEcoute, afficheEcoute, libelleVenteComprise,
   SILENCE_FIN_MS, ECOUTE_MAX_MS, AVANT_PREMIER_MOT_MS,
-  plancherDeBruit, seuilDeParole, parleMaintenant, NIVEAU_PAROLE, MARGE_VOIX,
+  plancherDeBruit, seuilDeParole, parleMaintenant, elleParle, NIVEAU_PAROLE, MARGE_VOIX,
 } from './ecouteCaisse.js';
 
 let echecs = 0;
@@ -99,6 +99,33 @@ console.log('\n[1 bis] MIC-02B — le seuil s\'adapte au fond, puis il ne bouge 
      'le seuil est bien le fond PLUS la marge, et rien d\'autre');
   ok(seuilDeParole(-5) === MARGE_VOIX,
      'un plancher absurde ne fabrique pas un seuil négatif');
+}
+
+console.log('\n[1b] MIC-01 complété : la preuve de parole a DEUX organes (le bug « il n\'entend pas » de Patrick, 29/10/2026)');
+{
+  // LE BUG : sur le web, webReco n'ouvre PAS de stream — le niveau du micro
+  // est mort à zéro en permanence. Le filet ne voyait donc JAMAIS de parole,
+  // et fermait l'écoute à AVANT_PREMIER_MOT_MS avec « elle n'a rien dit »,
+  // PENDANT qu'elle parlait. Six secondes après l'ouverture : « quand je
+  // veux vendre, il n'entend pas ou capte pas ce que je dis ».
+
+  // L'APK ne change pas : le niveau reste la preuve (stream natif vivant).
+  ok(elleParle(NIVEAU_PAROLE + 5, NIVEAU_PAROLE, '') === true,
+     'APK — le niveau au-dessus du seuil prouve qu\'elle parle, comme toujours');
+  ok(elleParle(NIVEAU_PAROLE + 5, NIVEAU_PAROLE, 'je vends du gombo') === true,
+     'les deux organes vivants en même temps : pas de conflit, elle parle');
+
+  // Le cas mort d'avant : niveau à zéro ET dictée vide (elle n'a rien dit).
+  ok(elleParle(0, NIVEAU_PAROLE, '') === false,
+     'niveau mort et dictée vide : elle n\'a rien dit — le filet « rien-dit » reste debout');
+  ok(elleParle(0, NIVEAU_PAROLE, '   ') === false,
+     'une dictée d\'espaces n\'est pas une parole — pas de faux positif');
+
+  // LA RÉPARATION : niveau mort (web), mais la dictée grandit en direct.
+  ok(elleParle(0, NIVEAU_PAROLE, 'vends tomate') === true,
+     'WEB — le niveau est mort (pas de stream) mais la dictée grandit : ELLE PARLE, le filet ne coupe plus');
+  ok(elleParle(0, NIVEAU_PAROLE, 'vingt gombos à mille deux cents francs') === true,
+     'une phrase entière dictée au web garde le micro ouvert jusqu\'au bout');
 }
 
 console.log('\n[2] « J\'ai compris » ne se dit que si on a compris');

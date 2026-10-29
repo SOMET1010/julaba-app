@@ -188,8 +188,12 @@ ok(ticsMicro === 1,
 // seuil — celui qui sait déjà quand une voix porte — et SOUS le drapeau qui
 // dit qu'on l'a déjà saluée. Le relevé bat toutes les 250 ms : un tic hors du
 // drapeau, c'est un téléphone qui tremble en continu.
-ok(/if \(parleMaintenant\(niveauRef\.current, seuilRef\.current\)\) \{\s*if \(!aParleRef\.current\) \{\s*try \{ vibrerTic\(\); \} catch/.test(codeMicro),
-  "le tic part au PREMIER franchissement du seuil, sous le drapeau `aParleRef` — jamais à chaque relevé");
+// MIC-01 complété (29/10/2026) : le franchissement est porté par `elleParle`
+// (deux organes — le niveau APK et la dictée web qui grandit). L'ancre
+// tolère un commentaire entre le `if` de franchissement et le drapeau : le
+// JSDoc VOX-06 vit là, et un commentaire n'a jamais changé un comportement.
+ok(/if \(elleParle\(niveauRef\.current, seuilRef\.current, dicteeRef\.current\)\) \{\s*(?:\/\*[\s\S]*?\*\/\s*)?if \(!aParleRef\.current\) \{\s*try \{ vibrerTic\(\); \} catch/.test(codeMicro),
+  "le tic part au PREMIER franchissement du seuil (niveau APK ou dictée web — elleParle), sous le drapeau `aParleRef` — jamais à chaque relevé");
 // UN REF, PAS UN ÉTAT. Deux relevés espacés de 30 ms liraient tous les deux
 // l'ancienne valeur d'un `useState` et vibreraient deux fois : c'est la
 // régression déjà vécue sur `BoutonDirePrix` (la question partait en boucle).

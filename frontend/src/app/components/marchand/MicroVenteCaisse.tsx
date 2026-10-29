@@ -48,7 +48,7 @@ import { useObjectif } from '../../contexts/ObjectifContext';
 import { useStock, type StockItem } from '../../contexts/StockContext';
 import { extraire } from '../../voice-offline/extraction';
 import { intentLocal, intentLocalCaisse } from '../../voice-offline/localIntent';
-import { finDEcoute, afficheEcoute, libelleVenteComprise, parleMaintenant, plancherDeBruit, seuilDeParole,
+import { finDEcoute, afficheEcoute, libelleVenteComprise, elleParle, plancherDeBruit, seuilDeParole,
          NIVEAU_PAROLE, ECOUTE_PLANCHER_MS, ECOUTE_MAX_MS } from '../../services/ecouteCaisse';
 import { gesteDuMicro, sortieVisible, type EtatVoix } from '../../services/gesteDuMicro';
 import { INTENTIONS_ENCAISSEMENT, estIntentionEncaissement, type IntentionEncaissement } from '../../voice-offline/grammaireEncaissement';
@@ -629,6 +629,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // soixante fois par seconde, et la mesure du silence repartirait à zéro.
   const niveauRef = useRef(0);
   niveauRef.current = volume;
+  // MIC-01 complété — le SECOND organe de la preuve de parole, WEB : la
+  // dictée du navigateur grandit en direct (`liveTranscript`, interim de
+  // webReco) là où le niveau reste mort (aucun stream en web). Même motif
+  // que le niveau ci-dessus : un ref, jamais une dépendance d'effet.
+  const dicteeRef = useRef('');
+  dicteeRef.current = liveTranscript;
   // `isRecording` est déclaré plus bas ; on lit la source, pas son alias.
   const ecouteEnCours = state === 'listening';
   useEffect(() => {
@@ -680,7 +686,12 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         // Échantillonné toutes les 250 ms : il faut neuf mesures consécutives
         // sous le seuil pour atteindre SILENCE_FIN_MS, ce qui laisse passer les
         // creux entre deux syllabes sans couper au milieu d'un mot.
-        if (parleMaintenant(niveauRef.current, seuilRef.current)) {
+        // MIC-01 complété — deux organes : le niveau (APK, stream vivant)
+        // ET la dictée qui grandit (web, interim de webReco). Sur le web le
+        // niveau est mort à zéro : sans la dictée, le filet fermait le micro
+        // à 6 s avec « elle n'a rien dit » PENDANT qu'elle parlait — c'est
+        // exactement « il n'entend pas, il capte pas ce que je dis ».
+        if (elleParle(niveauRef.current, seuilRef.current, dicteeRef.current)) {
           /**
            * VOX-06 — RIEN DANS SA MAIN NE LUI DISAIT QU'ON L'ENTEND.
            *
