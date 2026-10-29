@@ -163,6 +163,34 @@ export function parleMaintenant(niveau: number, seuil: number = NIVEAU_PAROLE): 
   return Number.isFinite(niveau) && niveau >= seuil;
 }
 
+/**
+ * MIC-01 COMPLÉTÉ (29/10/2026) — LA PREUVE DE PAROLE A DEUX ORGANES.
+ *
+ * MIC-01 disait : « ce qui prouve qu'elle parle, c'est le SON » — le niveau
+ * du micro, mesuré en direct. C'est vrai sur l'APK : le chemin natif
+ * (sherpa) ouvre un vrai stream, l'analyser vit, le niveau bouge.
+ *
+ * Sur le WEB (décision du 19/10 : la dictée web existe — webReco.ts), il
+ * n'y a PAS de stream : la reconnaissance du navigateur n'expose aucun
+ * niveau. Le micro de la caisse voyait donc un niveau mort à zéro en
+ * permanence — `parleMaintenant` jamais vrai, `aParle` jamais levé — et le
+ * filet fermait l'écoute à `AVANT_PREMIER_MOT_MS` avec la raison « elle
+ * n'a rien dit », PENDANT qu'elle parlait. Vécu (Patrick) : « quand je
+ * veux vendre, il n'entend pas ou capte pas ce que je dis » — le micro se
+ * coupait au milieu de la phrase, six secondes après l'ouverture, sur le
+ * web comme dans le navigateur du preview.
+ *
+ * La preuve web existe pourtant : l'interim de la dictée (webReco) grandit
+ * en direct dans `liveTranscript`. Ce qui grandit, c'est qu'elle parle.
+ * Le niveau reste la preuve APK ; le web ajoute la sienne — personne ne
+ * perd la sienne. Sur l'APK, `liveTranscript` reste vide pendant l'écoute
+ * (le natif ne livre qu'à la fin) : aucun changement de comportement natif.
+ */
+export function elleParle(niveau: number, seuil: number, dicteeVivante: string): boolean {
+  if (parleMaintenant(niveau, seuil)) return true;
+  return dicteeVivante.trim().length > 0;
+}
+
 export interface FaitsEcoute {
   /** Le micro est-il ouvert ? */
   readonly ecoute: boolean;
