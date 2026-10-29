@@ -114,6 +114,7 @@ const { InstitutionAccessProvider } = await import("../contexts/InstitutionAcces
 const { ProducteurProvider } = await import("../contexts/ProducteurContext.tsx");
 const { BottomBar } = await import("../components/layout/BottomBar.tsx");
 const { Sidebar } = await import("../components/layout/Sidebar.tsx");
+const { SupportContact } = await import("../components/shared/SupportContact.tsx");
 
 // La PILE EXACTE de App.tsx (ordre du rendu de production), par réduction —
 // l'imbrication à la main est une fabrique d'erreurs de parenthèses.
@@ -163,6 +164,22 @@ const cas: Cas[] = [
     nom: "Sidebar producteur — accueil",
     chemin: "/producteur/accueil",
     element: () => React.createElement(Sidebar, { role: "producteur" }),
+  },
+  // Le support est une route SANS BottomBar (hiddenPaths de AppLayout) : sa
+  // SEULE sortie visible est le bouton retour. S'il perd son nom accessible,
+  // le lecteur d'écran dit juste « bouton » — A11Y-005. La règle axe
+  // `button-name` refuse un tel bouton désormais.
+  // Le composant est enveloppé dans un <main> : en production il vit DANS le
+  // `<main id="contenu-principal">` d'AppLayout — sans lui, la règle `region`
+  // pointerait un faux positif de montage isolé, pas un défaut du code.
+  {
+    nom: "SupportContact marchand — retour visible",
+    chemin: "/marchand/support",
+    element: () => React.createElement(
+      "main",
+      { id: "contenu-principal" },
+      React.createElement(SupportContact, { role: "marchand", showBack: true }),
+    ),
   },
 ];
 

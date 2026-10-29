@@ -4,12 +4,12 @@
 
 ## État au 2026-10-29 (rattrapé sur le code réel, commit 138a2630)
 
-- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés) ; A11Y-006 (garde `test:charte-globale` — la dette 4240 hex est FIGÉE, elle ne peut que descendre ; voir l'entrée).
+- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels puis 5, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés) ; A11Y-006 (garde `test:charte-globale` — la dette 4240 hex est FIGÉE, elle ne peut que descendre ; voir l'entrée) ; A11Y-005 (les 3 retours icône-seule SANS nom accessible nommés — SupportContact ×1, UniversalAcademy ×2 — et le tableau de vérité des 11 routes sans BottomBar écrit dans `.ai/A11Y_CLAVIER.md` ; SupportContact inscrit au harnais axe).
 - **Inventaires corrigés sur le code réel** (le registre du 28/09 mentait par péremption) :
   - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
   - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
   - A11Y-006 : mesure brute puis exacte — **4240 hexadécimaux dans 542 fichiers** hors tests et hors commentaires (première estimation grep : 4262/199, affinée par l'algorithme du garde). La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
-- **Ouverts** : A11Y-001, A11Y-003, A11Y-005. (A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
+- **Ouverts** : A11Y-001, A11Y-003. (A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
 
 ## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
@@ -48,10 +48,11 @@
 - **Recommandation** : Ajouter un skip-link "Aller au contenu principal" visible au focus clavier. → FAIT.
 
 ### A11Y-005 — BottomBar masquée sans alternative clavier documentée (P2)
-- **Statut** : OUVERT
-- **Description** : `BottomBar` masquée sur 11 routes (`hiddenPaths` dans AppLayout.tsx : academy, cahier, ventes-passees, commandes, support ×4, alertes ×2, cooperative/commandes) sans alternative clavier documentée.
-- **Impact** : Navigation mobile réduite sur certaines routes.
-- **Recommandation** : Documenter les alternatives clavier pour chaque route `hiddenPaths`.
+- **Statut** : RÉSOLU le 29/10 — tableau de vérité écrit (`A11Y_CLAVIER.md`) + 3 défauts réels réparés.
+- **Description** : `BottomBar` masquée sur 11 routes (`hiddenPaths` dans AppLayout.tsx) sans alternative clavier documentée.
+- **Ce que la vérification a trouvé** : 6 écrans sur 8 avaient DÉJÀ une sortie correcte (SubPageLayout ×5 : bouton `aria-label="Retour"` ; MarchandDepenses : `aria-label="Revenir en arrière"`). **3 boutons retour icône-seule étaient MUETS** pour le lecteur d'écran (il disait juste « bouton ») : SupportContact ×1 (`/marchand/support` etc.), UniversalAcademy ×2 (`/academy`).
+- **Ce qui a été fait** : `aria-label="Retour"` posé sur les 3 (zéro changement visuel) ; SupportContact inscrit au harnais axe (la règle `button-name` refuse à jamais un retour muet sur cet écran) ; le tableau route → contrôle de sortie écrit dans `.ai/A11Y_CLAVIER.md` avec la règle qui reste : toute nouvelle route dans `hiddenPaths` met à jour le tableau DANS son commit.
+- **Limites** : la restitution TalkBack/VoiceOver réelle reste la recette terrain (rang 7).
 
 ### A11Y-006 — Couleurs hard-codées subsistantes (P2)
 - **Statut** : GARDE EN PLACE le 29/10 — `test:charte-globale` dans `verify`. La REMISE AU TOKEN reste un chantier de rangs futurs (à la baisse uniquement).
@@ -89,4 +90,4 @@ Design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile t
 
 - **2026-10-29** : A11Y-004 RÉSOLU (`138a2630`, skip-link AppLayout). Registre rattrapé sur le code réel : inventaires A11Y-001/006/007 corrigés et mesurés.
 - **2026-10-29 (suite)** : A11Y-002 RÉSOLU (harnais axe-core `test:a11y-axe`), A11Y-007 RÉSOLU (robinet esbuild + garde `test:console-prod`, preuve par build réel).
-- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire).
+- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire). A11Y-005 RÉSOLU (3 retours nommés, SupportContact au harnais axe, tableau de vérité `A11Y_CLAVIER.md`). Reste ouvert : A11Y-001 (modales, par pas réversibles), A11Y-003 (i18n UI, lot dédié).
