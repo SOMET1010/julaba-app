@@ -83,7 +83,7 @@ Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 | 2 | P0-AUTH-02 Enrôlement/activation accessible | **LOT-ACTIVATION — FAIT (29/10)** : écran en trois marches bbfa2c93 (pavé B5, secret choisi par elle, geste de consentement ≥ 800 ms), trace serveur horodatée 985cf4e2 (ACTIV_CONSENTEMENT, invariant 12/12) | **Restes : clips ACTIV à enregistrer (scripts prêts, CLIPS-VOIX-A-ENREGISTRER.md §5), recette terrain de bout en bout** |
 | 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
 | 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
-| 5 | P1-4/5/6 Couverture vocale producteur/coopérative/wallet, uniformisation erreurs | lots par rôle (bugs ouverts BUG-008/009/010 déjà tracés dans .ai/BUGS.md) | — |
+| 5 | P1-4/5/6 Couverture vocale producteur/coopérative/wallet, uniformisation erreurs | lots par rôle (bugs ouverts BUG-008/009/010 déjà tracés dans .ai/BUGS.md) — **29/10 : BUG-009 RÉSOLU b89a6df2 (relecture parlée + confirmation + verrou synchrone) ; BUG-010 déjà fermé côté code (0c674e15 + bf5b16ad, registre rattrapé) ; reste BUG-008 (outbox hors-ligne)** | — |
 | 6 | P2-2 axe-core/Playwright, skip-link, modales unifiées | LOT-A11Y-OUTILS | — |
 | 7 | P2-4/5 Recette avec utilisatrices réelles, métrique compris/entendu/visible/confirmé/synchronisé | TERRAIN (Patrick) | APK + marches réelles |
 
