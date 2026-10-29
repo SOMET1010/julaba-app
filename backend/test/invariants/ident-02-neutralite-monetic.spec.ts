@@ -86,17 +86,17 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
 
     // L'identificateur : PAS de wallet seedé — sa neutralité n'a pas besoin
     // d'un solde à zéro pour tenir, elle tient SANS portefeuille.
-    const ident = await seedUser(UserRole.IDENTIFICATEUR, '+2250700000701');
+    const ident = await seedUser(UserRole.IDENTIFICATEUR, '+2250700000910');
     tokenIdentificateur = ident.token;
 
-    const inst = await seedUser(UserRole.INSTITUTION, '+2250700000702');
+    const inst = await seedUser(UserRole.INSTITUTION, '+2250700000911');
     tokenInstitution = inst.token;
 
-    const admin = await seedUser(UserRole.ADMIN_GENERAL, '+2250700000703');
+    const admin = await seedUser(UserRole.ADMIN_GENERAL, '+2250700000912');
     tokenAdminGeneral = admin.token;
 
     // Le marchand, seul profil dont le wallet est réel au pilote.
-    const marchand = await seedUser(UserRole.MARCHAND, '+2250700000704');
+    const marchand = await seedUser(UserRole.MARCHAND, '+2250700000913');
     tokenMarchand = marchand.token;
     await seedWallet(marchand.id, 5000);
   }, 120000);
@@ -111,10 +111,10 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
     ['GET', '/api/v1/wallets/me/pending'],
   ];
   const ROUTES_ECRITURE: Array<[string, string, any]> = [
-    ['POST', '/api/v1/wallets/me/recharge-mobile', { provider: 'orange_ci', montant: 500, telephone: '+2250700000701' }],
-    ['POST', '/api/v1/wallets/me/retrait-mobile', { provider: 'orange_ci', montant: 500, telephone: '+2250700000701' }],
-    ['POST', '/api/v1/wallets/me/rechercher-destinataire', { telephone: '+2250700000704' }],
-    ['POST', '/api/v1/wallets/me/transfert', { destinataire: '+2250700000704', montant: 500 }],
+    ['POST', '/api/v1/wallets/me/recharge-mobile', { provider: 'orange_ci', montant: 500, telephone: '+2250700000910' }],
+    ['POST', '/api/v1/wallets/me/retrait-mobile', { provider: 'orange_ci', montant: 500, telephone: '+2250700000910' }],
+    ['POST', '/api/v1/wallets/me/rechercher-destinataire', { telephone: '+2250700000913' }],
+    ['POST', '/api/v1/wallets/me/transfert', { destinataire: '+2250700000913', montant: 500 }],
     ['POST', '/api/v1/wallets/me/statut-paiement', { merchantTransactionId: 'RCH-fake-1' }],
   ];
 
@@ -155,7 +155,7 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
     const rAdminTransfert = await api()
       .post('/api/v1/wallets/me/transfert')
       .set('Authorization', `Bearer ${tokenAdminGeneral}`)
-      .send({ destinataire: '+2250700000704', montant: 500 });
+      .send({ destinataire: '+2250700000913', montant: 500 });
     expect(rAdminTransfert.status).toBe(403);
   });
 

@@ -32,8 +32,8 @@ describe('Invariant SEC-BESOIN-01 — consolidation des besoins scopée serveur 
   let coopAId: string;
   let coopBId: string;
 
-  const PHONE_A = '+2250700000301';
-  const PHONE_B = '+2250700000302';
+  const PHONE_A = '+2250700000925';
+  const PHONE_B = '+2250700000926';
 
   const signup = async (phone: string, role: string, firstName: string) => {
     const res = await request(app.getHttpServer())

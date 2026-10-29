@@ -94,7 +94,7 @@ describe('Invariant PROD-05 — les revenus producteur sont encaissés (statut_p
         `INSERT INTO commandes
            (acheteur_nom, acheteur_telephone, vendeur_id, type, produit, quantite,
             prix_unitaire, total, statut, date_commande, statut_paiement)
-         VALUES ('Acheteur Test', '+2250700000099', $1, 'directe', 'Igname', 10, $2, $2, $3, now(), $4)`,
+         VALUES ('Acheteur Test', '+2250788880045', $1, 'directe', 'Igname', 10, $2, $2, $3, now(), $4)`,
         [producteurId, total, statut, statutPaiement],
       );
     await seedCommande(PAYEE, 'confirmee', 'paye');
