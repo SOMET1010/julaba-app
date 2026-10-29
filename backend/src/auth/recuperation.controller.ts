@@ -27,19 +27,33 @@
 // (invariant : UN SEUL code actif par compte).
 // ──────────────────────────────────────────────────────────────────────────
 
-import { Controller, Post, Get, Param, Body, Query, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Query, HttpCode, HttpStatus, UseGuards, Request, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { Response } from 'express';
+import { verifyRegistrationResponse, generateRegistrationOptions } from '@simplewebauthn/server';
+import type { RegistrationResponseJSON } from '@simplewebauthn/types';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { User } from '../users/entities/user.entity';
 import { CodeRecuperation } from './entities/code-recuperation.entity';
 import { genererCodeRecuperation, normaliserCodeRecuperation } from './code-recuperation';
+import {
+  ouvrirSessionRecuperation,
+  sessionVivante,
+  poserConsentement,
+  poserChallengeWebauthn,
+  consommerSessionRecuperation,
+} from './session-recuperation';
+import { attenteApresEchecs, attenteEnClair } from './verrou-pin';
+import { repondreAEcheanceUniforme } from './anti-enumeration';
+import { poserCookiesJetonsActeur } from './cookies-jetons';
 import { AuditService } from '../audit-log/audit-log.service';
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
+import { AuthService } from './auth.service';
 
 /** Un code vit 7 jours — largement le temps d'organiser l'assistance, jamais la permanence. */
 export const DUREE_VIE_CODE_RECUPERATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -57,6 +71,7 @@ export class RecuperationController {
     @InjectRepository(CodeRecuperation) private readonly codesRepo: Repository<CodeRecuperation>,
     private readonly auditService: AuditService,
     private readonly feedbakSmsService: FeedbakSmsService,
+    private readonly authService: AuthService,
   ) {}
 
   // ── Faire naître un code ────────────────────────────────────────────────
@@ -216,6 +231,304 @@ export class RecuperationController {
     });
     return { success: true };
   }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // LE PARCOURS À TROIS MARCHES — sur le NOUVEAU téléphone de la marchande.
+  //
+  //   MARCHE 1  initier        — l'agent tape le numéro + le code. Public :
+  //                              elle n'a AUCUNE session, c'est le sens même
+  //                              de la récupération. L'échéance de réponse est
+  //                              uniforme et le refus ne dit jamais QUOI a
+  //                              échoué (anti-énumération, AUTH-07).
+  //   MARCHE 2  consentement   — LE GESTE D'ELLE. « C'est mon compte », tenu
+  //                              longuement, hors de la poche de quiconque
+  //                              détient le code. Horodaté, journalisé. LE
+  //                              CODE SEUL NE SUFFIT JAMAIS (§3.1.3) : sans
+  //                              cette marche posée, la marche 3 est murée.
+  //   MARCHE 3  ré-enrôlement  — options puis vérification WebAuthn sur SON
+  //                              nouveau téléphone : residentKey required,
+  //                              userVerification required, userID = user.id
+  //                              (le pivot du LOT-WA-01 — le userHandle
+  //                              rapportera QUI se connecte au quotidien).
+  //                              Les anciennes clés (téléphone perdu) sont
+  //                              RÉVOQUÉES À CET INSTANT (§3.1.4), le code est
+  //                              consommé (usage unique), les sessions ouvertes
+  //                              tombent, et elle repart connectée — guidée
+  //                              par la voix côté écran.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  @Post('initier')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async initier(@Body() body: { phone?: string; code?: string }, @Request() req: any) {
+    const debut = Date.now();
+    // Un seul refus, quel que soit ce qui a échoué : numéro inconnu, compte non
+    // éligible, code inconnu, code expiré, code révoqué, code faux — la durée
+    // et la réponse ne doivent rien apprendre à qui sonde (AUTH-07).
+    const REFUS = { success: false, message: 'Numéro ou code refusé' };
+    let reponse: object = REFUS;
+    try {
+      const phone = normaliserTelephone(body?.phone);
+      const codeSaisi = normaliserCodeRecuperation(body?.code);
+      if (!phone || !codeSaisi) {
+        reponse = REFUS;
+      } else {
+      const compte = await this.userRepo.findOne({ where: { phone } });
+      if (!compte) {
+        reponse = REFUS;
+      } else {
+      const code = await this.codesRepo.findOne({
+        where: { userId: compte.id, statut: 'actif' },
+        order: { genereLe: 'DESC' },
+      });
+      if (!code) {
+        reponse = REFUS;
+      } else {
+      const maintenant = Date.now();
+      if (code.expireLe && code.expireLe.getTime() <= maintenant) {
+        reponse = REFUS;
+      } else if (code.verrouLe && code.verrouLe.getTime() > maintenant) {
+        // Le verrou ne se cache pas : il n'apprend l'existence de rien — il
+        // n'est atteignable qu'après de vrais échecs sur une vraie ligne.
+        reponse = {
+          success: false,
+          code: 'ATTENTE',
+          message: `Trop d'essais. Attends ${attenteEnClair(code.verrouLe.getTime() - maintenant)}.`,
+        };
+      } else {
+      const verifie = await bcrypt.compare(codeSaisi, code.codeHash);
+      if (!verifie) {
+        // L'échelle d'attente, côté serveur (§4.4) : 3 échecs → 5 min,
+        // 6 → 15, 9 et plus → 1 heure. Le compteur vit sur la LIGNE du code,
+        // il survit aux redémarrages — contrairement à un compteur mémoire.
+        const echecs = (code.echecs ?? 0) + 1;
+        const attenteMs = attenteApresEchecs(echecs);
+        await this.codesRepo.update(code.id, {
+          echecs,
+          verrouLe: attenteMs > 0 ? new Date(maintenant + attenteMs) : null,
+        });
+        await this.auditService.log({
+          userId: null,
+          action: 'RECOUV_CODE_VERIFIE_ECHEC',
+          entite: 'code_recuperation',
+          entiteId: code.id,
+          // Aucun fragment du code présenté — même un faux n'est pas journalisé.
+          details: { compteCible: compte.id, echecs },
+          ip: req.ip ?? null,
+        });
+        reponse = REFUS;
+      } else {
+        // Le code est bon : la marche 1 est posée. Il n'est PAS encore
+        // consommé — il le sera au ré-enrôlement mené à bout. Un parcours
+        // interrompu (le serveur redémarre, le réseau coupe) reprend à la
+        // marche 1, sans brûler le code d'une tentative inaboutie.
+        await this.codesRepo.update(code.id, { echecs: 0, verrouLe: null });
+        const jeton = ouvrirSessionRecuperation(compte.id, code.id);
+        await this.auditService.log({
+          userId: null,
+          action: 'RECOUV_CODE_VERIFIE_OK',
+          entite: 'code_recuperation',
+          entiteId: code.id,
+          details: { compteCible: compte.id },
+          ip: req.ip ?? null,
+        });
+        reponse = { success: true, jeton };
+      }
+      }
+      }
+      }
+      }
+    } catch {
+      reponse = REFUS;
+    }
+    // TOUTES les sorties passent ici : la durée mesurée depuis l'extérieur ne
+    // dépend plus du chemin pris (AUTH-07, échéance uniforme).
+    await repondreAEcheanceUniforme(debut);
+    return reponse;
+  }
+
+  // MARCHE 2 — le geste d'ELLE. Le client n'appelle cette route qu'après le
+  // toucher long sur « C'est mon compte » ; le serveur ne peut pas voir un
+  // doigt, mais il PEUT tracer l'événement, l'horodater, et refuser d'ouvrir
+  // la marche 3 tant que ce trace n'existe pas. C'est la trace qui, jointe au
+  // journal du ré-enrôlement, raconte la double présence (§3.2).
+  @Post('consentement')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async consentement(@Body() body: { jeton?: string }, @Request() req: any) {
+    const session = sessionVivante(body?.jeton, 'code_valide');
+    if (!session) {
+      return { success: false, message: 'Session de récupération inconnue ou expirée' };
+    }
+    const posee = poserConsentement(body!.jeton!);
+    if (!posee) {
+      return { success: false, message: 'Session de récupération inconnue ou expirée' };
+    }
+    await this.auditService.log({
+      userId: null,
+      action: 'RECOUV_CONSENTEMENT',
+      entite: 'code_recuperation',
+      entiteId: session.codeId,
+      // Le consentement horodaté (§3.1.3) : qui (le compte), quand (NOW),
+      // sur quelle session. C'est la trace serveur du geste physique.
+      details: { compteCible: session.userId, horodatage: posee.consentementLe },
+      ip: req.ip ?? null,
+    });
+    return { success: true, etape: 'consentement' };
+  }
+
+  // MARCHE 3a — les options d'enrôlement, données UNIQUEMENT à une session
+  // qui a déjà posé les deux premières marches. Le challenge vit dans la
+  // session (elle n'a pas de ligne user à prêter) — en mémoire, TTL court,
+  // écrasé à chaque nouvelle demande.
+  @Post('webauthn/options')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async optionsReenrolement(@Body() body: { jeton?: string }) {
+    const session = sessionVivante(body?.jeton, 'consentement');
+    if (!session) {
+      return { error: 'Session de récupération inconnue, expirée, ou geste manquant' };
+    }
+    const compte = await this.userRepo.findOne({ where: { id: session.userId } });
+    if (!compte) return { error: 'Compte introuvable' };
+    const options = await generateRegistrationOptionsPourRecuperation(compte);
+    const posee = poserChallengeWebauthn(body!.jeton!, options.challenge);
+    if (!posee) return { error: 'Session de récupération inconnue, expirée, ou geste manquant' };
+    return options;
+  }
+
+  // MARCHE 3b — le verdict. Trois portes ici, toutes serveur : la session est
+  // à « consentement » (le code ET le geste existent), le challenge posé par
+  // /webauthn/options est celui de la réponse, et la vérification
+  // cryptographique passe. Alors — et seulement alors — les anciennes clés
+  // meurent, le code est consommé, et elle repart connectée.
+  @Post('re-enroler')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async reEnroler(
+    @Body() body: { jeton?: string; reponse?: RegistrationResponseJSON },
+    @Res({ passthrough: true }) res: Response,
+    @Request() req: any,
+  ) {
+    if (!body?.jeton || !body?.reponse) {
+      return { verified: false, error: 'Données manquantes' };
+    }
+    const session = sessionVivante(body.jeton, 'consentement');
+    if (!session || !session.challengeWebauthn) {
+      return { verified: false, error: 'Récupération incomplète : le code et le geste sont requis' };
+    }
+    const compte = await this.userRepo.findOne({ where: { id: session.userId } });
+    if (!compte) return { verified: false, error: 'Compte introuvable' };
+
+    let registrationInfo: Awaited<ReturnType<typeof verifyRegistrationResponse>>['registrationInfo'];
+    try {
+      const verdict = await verifyRegistrationResponse({
+        response: body.reponse,
+        expectedChallenge: session.challengeWebauthn,
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+      });
+      if (!verdict.verified || !verdict.registrationInfo) {
+        // Le geste a échoué : la session SURVIT (le doigt se repose), le
+        // client peut redemander des options — un nouveau challenge, même
+        // parcours. Rien n'a été consommé.
+        return { verified: false };
+      }
+      registrationInfo = verdict.registrationInfo;
+    } catch (e: any) {
+      return { verified: false, error: e?.message };
+    }
+
+    const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo!;
+    const nouvelleCle = {
+      credentialID: credential.id,
+      credentialPublicKey: Buffer.from(credential.publicKey).toString('base64url'),
+      counter: credential.counter,
+      deviceType: credentialDeviceType,
+      backedUp: credentialBackedUp,
+      transports: body.reponse.response?.transports || [],
+    };
+
+    // §3.1.4 — LES ANCIENNES CLÉS MEURENT ICI. Tout authentificateur lié à ce
+    // compte (le téléphone perdu, volé, réinstallé) cesse d'exister côté
+    // serveur : remplacées, pasArchivees. Le journal porte combien — la trace
+    // de la révocation, pas un musée.
+    const anciennes = compte.webauthnCredentials || [];
+    await this.userRepo.update(compte.id, {
+      webauthnCredentials: [nouvelleCle],
+      webauthnChallenge: null,
+    } as any);
+
+    // Le code a servi : usage unique, horodaté. Toute session de récupération
+    // du compte ferme avec lui (usage unique aussi).
+    await this.codesRepo.update(session.codeId, {
+      statut: 'consomme',
+      consommeLe: new Date(),
+    });
+    consommerSessionRecuperation(body.jeton);
+
+    // Les sessions ouvertes du compte tombent : un téléphone qu'on remplace
+    // (volé ? prêté ?) ne doit rien garder d'ouvert.
+    await this.authService.revokeAllUserTokens(compte.id);
+
+    await this.auditService.log({
+      userId: null,
+      action: 'RECOUV_RE_ENROLEMENT',
+      entite: 'code_recuperation',
+      entiteId: session.codeId,
+      details: {
+        compteCible: compte.id,
+        anciennesClesRevoquees: anciennes.length,
+        nouvelleCle: { deviceType: credentialDeviceType, backedUp: credentialBackedUp },
+        consentementLe: session.consentementLe,
+      },
+      ip: req.ip ?? null,
+    });
+
+    // Elle repart connectée — le parcours ne s'arrête pas sur un écran de
+    // félicitations à traduire pour elle : la suite est la sienne, guidée
+    // par la voix. Jetons en cookies (web) ET dans le corps (APK), comme
+    // la connexion par empreinte.
+    const ipAddress = req.ip || req.headers['x-forwarded-for'];
+    const resultat = await this.authService.loginById(
+      compte.id,
+      req.headers['user-agent'],
+      ipAddress as string,
+    );
+    poserCookiesJetonsActeur(res, resultat.accessToken, resultat.refreshToken);
+    return {
+      verified: true,
+      user: resultat.user,
+      accessToken: resultat.accessToken,
+      refreshToken: resultat.refreshToken,
+    };
+  }
+}
+
+/**
+ * Les options d'enrôlement du ré-enrôlement — mêmes exigences que
+ * l'enrôlement ordinaire (SPEC-AUTH-CIBLE §2.1) : credential DÉCOUVRABLE
+ * (residentKey 'required') et userVerification 'required' — c'est SON doigt
+ * sur SON nouveau téléphone. userID = user.id : le pivot du LOT-WA-01,
+ * l'assertion usernameless quotidienne rapportera ce userHandle.
+ */
+async function generateRegistrationOptionsPourRecuperation(compte: User) {
+  return generateRegistrationOptions({
+    rpName: 'Jùlaba',
+    rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+    userName: (compte as any).phone,
+    userID: new TextEncoder().encode(compte.id) as any,
+    userDisplayName: `${(compte as any).firstName ?? ''} ${(compte as any).lastName ?? ''}`.trim(),
+    attestationType: 'none',
+    excludeCredentials: (compte.webauthnCredentials || []).map((c) => ({
+      id: c.credentialID,
+      transports: c.transports as any,
+    })) as any,
+    authenticatorSelection: {
+      residentKey: 'required',
+      userVerification: 'required',
+    },
+  });
 }
 
 /**
