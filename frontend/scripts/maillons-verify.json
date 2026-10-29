@@ -40,6 +40,7 @@
     "test:enum-check-phone",
     "test:warn-dev",
     "test:coffre-web",
+    "test:offline-producteur",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",
