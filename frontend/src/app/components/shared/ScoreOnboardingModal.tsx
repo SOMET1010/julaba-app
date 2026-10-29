@@ -188,13 +188,19 @@ export function ScoreOnboardingModal({
 
   return (
     <>
-      <SharedModal 
-        isOpen={isOpen} 
+      <SharedModal
+        isOpen={isOpen}
         onClose={onClose}
         size="lg"
         hideCloseButton={true}
         disableBackdropClick={false}
         fullHeight={true}
+        // A11Y-001 pas 2 (Radix) : ce dialogue n'a pas de `title` rendu par
+        // SharedModal — chaque étape porte son propre h2 dans le contenu.
+        // Sans nom accessible, le dialogue ne se « lit » pas tout seul et
+        // Radix le signale. Le nom est celui du dialogue, stable à travers
+        // les étapes : les h2 internes restent le contenu.
+        ariaLabel="Ton Score Jùlaba"
         className="border-2 overflow-hidden"
         cardStyle={{
           borderColor: primaryColor,
