@@ -133,7 +133,28 @@ export function AppLayout() {
         )}
       </AnimatePresence>
 
-      <main className="min-h-screen pb-20 lg:pb-0 lg:pl-[280px] xl:pl-[320px]" style={{ backgroundColor: getRoleConfig(user.role)?.bgWarm || '#F8F9FA' }}>
+      {/* SKIP-LINK (audit voice-first P2-2, WCAG 2.4.1) — le premier tab
+          du DOM passe AU-DESSUS de la sidebar et de la BottomBar : à la
+          navigation clavier, « Aller au contenu » arrive AVANT la longue
+          liste de liens, et le focus rejoint le contenu réel. Invisible au
+          repos, visible au focus — jamais pour les doigts. */}
+      <a
+        href="#contenu-principal"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('contenu-principal')?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[300] focus:px-4 focus:py-3 focus:rounded-xl focus:bg-gray-900 focus:text-white focus:font-bold focus:shadow-lg"
+      >
+        Aller au contenu principal
+      </a>
+
+      <main
+        id="contenu-principal"
+        tabIndex={-1}
+        className="min-h-screen pb-20 lg:pb-0 lg:pl-[280px] xl:pl-[320px] focus:outline-none"
+        style={{ backgroundColor: getRoleConfig(user.role)?.bgWarm || '#F8F9FA' }}
+      >
         <Outlet />
       </main>
 
