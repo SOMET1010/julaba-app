@@ -446,7 +446,9 @@ export function UniversalAcademy() {
       {/* Header simple */}
       <div className="flex items-center justify-between px-4 pt-12 pb-4 gap-3">
         <motion.button
+          type="button"
           onClick={handleBack}
+          aria-label="Retour"
           className="w-12 h-12 rounded-full bg-white shadow-md border-2 flex items-center justify-center flex-shrink-0"
           style={{ borderColor: `${primaryColor}40` }}
           whileTap={{ scale: 0.9 }}
@@ -636,7 +638,9 @@ export function UniversalAcademy() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-12 pb-6">
           <motion.button
+            type="button"
             onClick={handleBack}
+            aria-label="Retour"
             className="w-12 h-12 rounded-full bg-white shadow-md border-2 flex items-center justify-center"
             style={{ borderColor: `${primaryColor}40` }}
             whileTap={{ scale: 0.9 }}

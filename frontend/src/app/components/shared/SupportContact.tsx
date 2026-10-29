@@ -304,6 +304,8 @@ export function SupportContact({ role, userName = 'Utilisateur', showBack = fals
           <div style={{ width: 44 }}>
             {showBack && (
               <motion.button
+                type="button"
+                aria-label="Retour"
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(-1)}
                 style={{
