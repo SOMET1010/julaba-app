@@ -51,6 +51,7 @@
     "test:tokens": "tsx src/app/services/tokens.test.mts",
     "test:support": "tsx src/app/services/supportLu.test.mts",
     "test:offline": "tsx src/app/voice-offline/offlineCaisse.test.mts",
+    "test:offline-producteur": "tsx src/app/voice-offline/offlineProducteur.test.mts",
     "test:offline-stock": "tsx src/app/voice-offline/offlineStock.test.mts",
     "test:offline-voice-runtime": "tsx src/app/services/offlineVoiceRuntime.test.mts",
     "test:local-voice-choice": "tsx src/app/services/localVoiceChoice.test.mts",

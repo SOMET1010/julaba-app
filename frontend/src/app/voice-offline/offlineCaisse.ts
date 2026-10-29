@@ -24,14 +24,22 @@ import type { LigneDeVente } from '../types/vente';
 const DB_NAME = 'julaba_offline';
 const STORE = 'caisse_outbox';
 const DEAD_STORE = 'caisse_dead';
-const DB_VERSION = 2; // v1→v2 : ajout additif du store des lettres mortes.
+// v2 : ajout additif du store des lettres mortes.
+// v3 (BUG-008) : stores du PRODUCTEUR (récoltes/publications) dans la MÊME base
+// — une seule IndexedDB, un seul openDb, une migration purement additive qui
+// ne détruit jamais rien (même règle que v1→v2).
+const DB_VERSION = 3;
 
 /** Nombre d'essais transitoires avant de parquer une op en lettre morte. */
 export const REPLAY_CAP = 5;
 
 export type CaisseEndpoint = '/caisse/vente' | '/caisse/depense';
 export type StockEndpoint = `/stocks/${string}`;
-export type OfflineEndpoint = CaisseEndpoint | StockEndpoint;
+/** BUG-008 — les écritures du PRODUCTEUR (récolte, publication) rejoignent la
+ *  même discipline hors-ligne. Additif pur : la caisse et le stock n'en voient
+ *  aucune conséquence, ils n'émettent jamais ces points de terminaison. */
+export type ProducteurEndpoint = '/recoltes' | '/publications';
+export type OfflineEndpoint = CaisseEndpoint | StockEndpoint | ProducteurEndpoint;
 export type OfflineMethod = 'POST' | 'PATCH';
 
 /** Ce qu'une opération mise en file transporte : une VENTE, une DÉPENSE ou une
@@ -66,6 +74,25 @@ export type PayloadOperation = {
   seuil_alerte?: number;
   categorie?: string;
   date_peremption?: string | null;
+  /** BUG-008 — une récolte ou une publication mise en file transporte ses
+   *  champs à elle. Ici aussi, rien d'opaque : chaque champ est nommé, le
+   *  serveur les lit tels quels au rejeu. */
+  produit?: string;
+  unite?: string;
+  qualite?: string;
+  statut?: string;
+  date_recolte?: string;
+  cycle_id?: string | null;
+  recolte_id?: string | null;
+  parcelle?: string | null;
+  photo_url?: string | null;
+  culture?: string;
+  quantite_disponible?: number;
+  quantite_initiale?: number;
+  localisation?: string;
+  zone_livraison?: string[];
+  date_expiration?: string;
+  conditions_vente?: string;
 };
 
 export interface OperationCaisse {
@@ -126,7 +153,13 @@ export interface OutboxStore {
   deadRemove(id: string): Promise<void>;
 }
 
-// ── Implémentation IndexedDB (production) ────────────────────────────────────
+// ── Implémentation IndexedDB (production) ────────────────────────────
+// Les magasins sont paramétrables : la CAISSE garde les siens par défaut,
+// le PRODUCTEUR (BUG-008) ouvre les SIENS dans la même base — un seul
+// openDb, une seule migration, deux files qui ne se voient jamais.
+export const STORE_PRODUCTEUR = 'producteur_outbox';
+export const DEAD_PRODUCTEUR = 'producteur_dead';
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -135,6 +168,10 @@ function openDb(): Promise<IDBDatabase> {
       // Migration additive : ne détruit jamais les données existantes.
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(DEAD_STORE)) db.createObjectStore(DEAD_STORE, { keyPath: 'id' });
+      // v3 (BUG-008) : le producteur vit dans les MÊMES magasins logiques,
+      // sous des noms à lui — cloisonnement par domaine, pas par base.
+      if (!db.objectStoreNames.contains(STORE_PRODUCTEUR)) db.createObjectStore(STORE_PRODUCTEUR, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(DEAD_PRODUCTEUR)) db.createObjectStore(DEAD_PRODUCTEUR, { keyPath: 'id' });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -155,35 +192,36 @@ function reqDone<T>(r: IDBRequest<T>): Promise<T> {
   });
 }
 
-export function idbOutboxStore(): OutboxStore {
+export function idbOutboxStore(storeActif: string = STORE, storeMort: string = DEAD_STORE): OutboxStore {
+  const ouvrir = openDb;
   return {
     async enqueue(op) {
-      const db = await openDb();
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put(op);
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      tx.objectStore(storeActif).put(op);
       await txDone(tx); db.close();
     },
     async list() {
-      const db = await openDb();
-      const all = await reqDone(db.transaction(STORE, 'readonly').objectStore(STORE).getAll());
+      const db = await ouvrir();
+      const all = await reqDone(db.transaction(storeActif, 'readonly').objectStore(storeActif).getAll());
       db.close();
       return (all as OperationCaisse[]).sort((a, b) => a.ts - b.ts);
     },
     async remove(id) {
-      const db = await openDb();
-      const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).delete(id);
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      tx.objectStore(storeActif).delete(id);
       await txDone(tx); db.close();
     },
     async activeCount() {
-      const db = await openDb();
-      const n = await reqDone(db.transaction(STORE, 'readonly').objectStore(STORE).count());
+      const db = await ouvrir();
+      const n = await reqDone(db.transaction(storeActif, 'readonly').objectStore(storeActif).count());
       db.close(); return n as number;
     },
     async incrementAttempts(id) {
-      const db = await openDb();
-      const tx = db.transaction(STORE, 'readwrite');
-      const store = tx.objectStore(STORE);
+      const db = await ouvrir();
+      const tx = db.transaction(storeActif, 'readwrite');
+      const store = tx.objectStore(storeActif);
       const op = (await reqDone(store.get(id))) as OperationCaisse | undefined;
       let n = 0;
       if (op) { n = (op.attempts ?? 0) + 1; op.attempts = n; store.put(op); }
@@ -192,31 +230,31 @@ export function idbOutboxStore(): OutboxStore {
     },
     // ATOMIQUE : lecture active + écriture dead + suppression active dans UNE tx.
     async moveToDead(id, echec) {
-      const db = await openDb();
-      const tx = db.transaction([STORE, DEAD_STORE], 'readwrite');
-      const active = tx.objectStore(STORE);
+      const db = await ouvrir();
+      const tx = db.transaction([storeActif, storeMort], 'readwrite');
+      const active = tx.objectStore(storeActif);
       const op = (await reqDone(active.get(id))) as OperationCaisse | undefined;
       if (op) {
-        tx.objectStore(DEAD_STORE).put({ ...op, echec } as LettreMorte);
+        tx.objectStore(storeMort).put({ ...op, echec } as LettreMorte);
         active.delete(id);
       }
       await txDone(tx); db.close();
     },
     async deadCount() {
-      const db = await openDb();
-      const n = await reqDone(db.transaction(DEAD_STORE, 'readonly').objectStore(DEAD_STORE).count());
+      const db = await ouvrir();
+      const n = await reqDone(db.transaction(storeMort, 'readonly').objectStore(storeMort).count());
       db.close(); return n as number;
     },
     async deadList() {
-      const db = await openDb();
-      const all = await reqDone(db.transaction(DEAD_STORE, 'readonly').objectStore(DEAD_STORE).getAll());
+      const db = await ouvrir();
+      const all = await reqDone(db.transaction(storeMort, 'readonly').objectStore(storeMort).getAll());
       db.close();
       return (all as LettreMorte[]).sort((a, b) => a.ts - b.ts);
     },
     async deadRemove(id) {
-      const db = await openDb();
-      const tx = db.transaction(DEAD_STORE, 'readwrite');
-      tx.objectStore(DEAD_STORE).delete(id);
+      const db = await ouvrir();
+      const tx = db.transaction(storeMort, 'readwrite');
+      tx.objectStore(storeMort).delete(id);
       await txDone(tx); db.close();
     },
   };
