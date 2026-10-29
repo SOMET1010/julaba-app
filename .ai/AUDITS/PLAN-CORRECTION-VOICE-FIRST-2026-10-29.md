@@ -84,7 +84,7 @@ Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 | 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
 | 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
 | 5 | P1-4/5/6 Couverture vocale producteur/coopérative/wallet, uniformisation erreurs | lots par rôle (bugs ouverts BUG-008/009/010 déjà tracés dans .ai/BUGS.md) — **29/10 : RANG CLOS — BUG-009 RÉSOLU b89a6df2 (relecture parlée + confirmation + verrou synchrone) ; BUG-008 RÉSOLU 382c31be (file hors-ligne producteur, sémantique caisse empruntée, banc 15/15) ; BUG-010 déjà fermé côté code (0c674e15 + bf5b16ad, registre rattrapé). Registre BUGS VIDE (12/12 résolus)** | — |
-| 6 | P2-2 axe-core/Playwright, skip-link, modales unifiées | LOT-A11Y-OUTILS | — |
+| 6 | P2-2 axe-core/Playwright, skip-link, modales unifiées | LOT-A11Y-OUTILS — **29/10 : EN COURS** — skip-link FAIT `138a2630` ; **harnais axe-core FAIT** (`test:a11y-axe` dans verify : axe injecté en jsdom, composants réels sous la pile complète App.tsx, 4 cas BottomBar/Sidebar, 0 violation, 13-15 règles passent — registre A11Y-002 fermé) ; restes : modales unifiées (A11Y-001, par pas réversibles), garde charte globale (A11Y-006), clavier BottomBar documenté (A11Y-005) | — |
 | 7 | P2-4/5 Recette avec utilisatrices réelles, métrique compris/entendu/visible/confirmé/synchronisé | TERRAIN (Patrick) | APK + marches réelles |
 
 ## 4. Ce que ce plan refuse de faire
