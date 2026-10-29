@@ -212,7 +212,8 @@
     "test:warn-dev": "node scripts/test-warn-dev.mjs",
     "test:coffre-web": "node scripts/test-coffre-web.mjs",
     "test:a11y-axe": "tsx src/app/a11y/axe.test.mts",
-    "test:console-prod": "node scripts/test-console-prod.mjs"
+    "test:console-prod": "node scripts/test-console-prod.mjs",
+    "test:charte-globale": "node scripts/test-charte-globale.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

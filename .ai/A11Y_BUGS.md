@@ -4,12 +4,12 @@
 
 ## État au 2026-10-29 (rattrapé sur le code réel, commit 138a2630)
 
-- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés).
+- **Résolus ce jour** : A11Y-004 (skip-link sur AppLayout — commit `138a2630`, vu dans le source : `<a href="#contenu-principal">` avant le `<main id>`, visible au focus, jamais au repos) ; A11Y-002 (harnais axe-core `test:a11y-axe`, 4 cas réels, 0 violation — détail dans l'entrée ci-dessous) ; A11Y-007 (robinet esbuild `pure` sous `command === "build"` : preuve par build réel du 29/10 — 0 console.log/info/debug dans le bundle livré, 347 warn/error conservés) ; A11Y-006 (garde `test:charte-globale` — la dette 4240 hex est FIGÉE, elle ne peut que descendre ; voir l'entrée).
 - **Inventaires corrigés sur le code réel** (le registre du 28/09 mentait par péremption) :
   - A11Y-001 : `Modal.tsx`, `ProfilUnifieModal.tsx`, `ChangePasswordModal.tsx` N'EXISTENT PLUS. Systèmes réellement en place : `ModalContext.tsx`, `ModalPortal.tsx` (shared), `UniversalModalBO.tsx` + `UniversalDrawerBO.tsx` (back-office), portails `createPortal` maison (WalletPage, NotificationToast, NotificationsPanel). Radix `Dialog` : **1 seul import** dans tout `src` ; Radix `AlertDialog` : 1.
   - A11Y-007 : recompte — **1750 appels** `console.*` dans **93 fichiers** (1410 `log`, 276 `warn`, 63 `error`, 1 `info`).
-  - A11Y-006 : mesure — **4262 hexadécimaux** dans **199 fichiers** hors tests. La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
-- **Ouverts** : A11Y-001, A11Y-003, A11Y-005, A11Y-006.
+  - A11Y-006 : mesure brute puis exacte — **4240 hexadécimaux dans 542 fichiers** hors tests et hors commentaires (première estimation grep : 4262/199, affinée par l'algorithme du garde). La dette est une mer, pas une flaque : une interdiction zéro-hex d'un coup est fausse (régression visuelle non prouvée). La garde qui convient : **figer la base, refuser toute aggravation**.
+- **Ouverts** : A11Y-001, A11Y-003, A11Y-005. (A11Y-006 : garde en place, la REMISE AU TOKEN reste un chantier de rangs.)
 
 ## État au 2026-09-28 (audit initial — conservé pour l'histoire)
 
@@ -54,10 +54,11 @@
 - **Recommandation** : Documenter les alternatives clavier pour chaque route `hiddenPaths`.
 
 ### A11Y-006 — Couleurs hard-codées subsistantes (P2)
-- **Statut** : OUVERT — base mesurée le 29/10 : **4262 hex dans 199 fichiers** hors tests.
+- **Statut** : GARDE EN PLACE le 29/10 — `test:charte-globale` dans `verify`. La REMISE AU TOKEN reste un chantier de rangs futurs (à la baisse uniquement).
 - **Description** : Malgré règle explicite (tokens CSS obligatoires), couleurs hard-codées subsistantes.
 - **Impact** : Contrastes non vérifiables automatiquement dans les 3 confits visuels.
-- **Recommandation** : `caisseCharte.test.mts` est le garde-fou — l'étendre à tout le frontend. Réalité du 29/10 : l'extension zéro-hex immédiate est impossible (4262 occurrences, chaque remise au token est un changement visuel à prouver). La garde honnête : **figer la base et refuser toute aggravation**, puis descendre le chiffre rang après rang.
+- **Ce qui a été fait** : mesure exacte du 29/10 sur l'arbre `594e2df0` — **4240 hex dans 542 fichiers** (hors commentaires, hors bancs) ; la garde fige cette base et refuse TOUTE hausse. Chaque remise au token reste un changement visuel à prouver (capture + terrain) — jamais en bloc. Le banc impose de DÉSCENDRE la constante `BASE` à chaque périmètre réparé, avec la référence du commit de preuve.
+- **Pourquoi pas zéro-hex immédiat** : 4240 remises non prouvées = régression visuelle non prouvée. La dette est assumée ÉCRITE, bornée, et monotone décroissante — l'inverse de ce qu'elle était : invisible, non bornée, dérive libre.
 
 ### A11Y-007 — 1750 `console.*` dans le code (P2)
 - **Statut** : RÉSOLU côté code le 29/10 — robinet dans `vite.config.ts` (esbuild `pure` sous `command === "build"`), garde `test:console-prod` dans `verify`.
@@ -88,3 +89,4 @@ Design inclusif remarquable (voice-first, mode soleil, haptique, cible tactile t
 
 - **2026-10-29** : A11Y-004 RÉSOLU (`138a2630`, skip-link AppLayout). Registre rattrapé sur le code réel : inventaires A11Y-001/006/007 corrigés et mesurés.
 - **2026-10-29 (suite)** : A11Y-002 RÉSOLU (harnais axe-core `test:a11y-axe`), A11Y-007 RÉSOLU (robinet esbuild + garde `test:console-prod`, preuve par build réel).
+- **2026-10-29 (rang 6)** : A11Y-006 — garde `test:charte-globale` posée (base 4240 figée, décroissance obligatoire).

@@ -43,6 +43,7 @@
     "test:offline-producteur",
     "test:a11y-axe",
     "test:console-prod",
+    "test:charte-globale",
     "test:recuperation-admin",
     "test:carte-xss",
     "test:prix-catalogue",
