@@ -133,6 +133,7 @@ import type { CommandeNumero } from '../../voice-offline/commandesEntree';
 // parler (services/bipEntree : WebAudio pur, sans réseau, jamais bloquant).
 import { sonnerBipEntree } from '../../services/bipEntree';
 import { BoutonCodeAgent } from './BoutonCodeAgent';
+import { BoutonRecuperation } from './BoutonRecuperation';
 // Maquette du 12/10 — le testeur saute d'un univers à l'autre depuis la
 // connexion : bouton `<>` haut-droite + menu rôles (DEV uniquement,
 // silencieux — voir MenuRolesTest.tsx).
@@ -1869,6 +1870,11 @@ export function LoginPassword() {
               </div>
             </div>
             <BoutonCodeAgent disabled={isLoading} />
+            {/* LOT-RECOVERY (29/10/2026) : la porte de la récupération — le
+                parallèle du code d'activation pour le jour où le téléphone
+                a disparu avec l'identifiant WebAuthn. /recuperation sans
+                lien entrant serait le défaut UX-02 rejoué. */}
+            <BoutonRecuperation disabled={isLoading} />
             </motion.div>
           )}
         </AnimatePresence>

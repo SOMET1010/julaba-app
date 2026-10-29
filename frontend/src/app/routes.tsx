@@ -7,6 +7,7 @@ import { EntryGate } from './components/auth/EntryGate';
 import { ChangePasswordScreen } from './components/auth/ChangePasswordScreen';
 import { ActivationScreen } from './components/auth/ActivationScreen';
 import { UnregisteredPhone } from './components/auth/UnregisteredPhone';
+import { RecuperationCompte } from './components/auth/RecuperationCompte';
 import { BORoot } from './components/backoffice/BORoot';
 import { BOLogin } from './components/backoffice/BOLogin';
 import { useBackOfficeOptional } from './contexts/BackOfficeContext';
@@ -73,6 +74,14 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <EntryGate /> },
       { path: "/non-enregistre", element: <UnregisteredPhone /> },
+      // LOT-RECOVERY (29/10/2026) — le parcours de récupération assistée :
+      // téléphone perdu/neuf, code remis par l'agent, geste « C'est mon
+      // compte », ré-enrôlement WebAuthn. Route PUBLIQUE comme /activation :
+      // la personne qui y arrive n'a AUCUNE session — c'est le sens même du
+      // parcours. EntryGate reste le seul juge de l'entrée ordinaire ; cette
+      // route est une porte D'ASSISTANCE, jamais un chemin de contournement
+      // (le serveur exige code + geste avant tout).
+      { path: "/recuperation", element: <RecuperationCompte /> },
       // AUTH-01 (audit UI auth 05/10/2026) — UNE SEULE PORTE D'ENTRÉE, et la
       // garde `test:entree-unique` remise à VIVANTE (elle est repassée dans la
       // chaîne `verify`). /welcome et /login montaient Welcome et
