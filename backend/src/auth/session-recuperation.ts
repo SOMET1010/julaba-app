@@ -39,6 +39,13 @@ export interface SessionRecuperation {
   etape: EtapeRecuperation;
   /** L'horodatage du geste de la marchande — la trace du consentement. */
   consentementLe: Date | null;
+  /**
+   * Le challenge WebAuthn posé pour le ré-enrôlement (marche 3). Il vit ICI —
+   * pas sur la ligne user — parce que la marchande n'a AUCUNE session : les
+   * routes /webauthn/register/* existantes sont fermées derrière JwtAuthGuard,
+   * et il n'est pas question de lui en ouvrir une par la fenêtre.
+   */
+  challengeWebauthn: string | null;
   expire: number;
 }
 
@@ -62,8 +69,16 @@ export function sessionVivante(
  * Ouvre la marche 1 : le code est vérifié, la session naît à « code_valide ».
  * Toute session antérieure du même compte est écrasée — une seule file active.
  * Rend le jeton (opaque, 32 octets de hasard cryptographique).
+ * L'horloge s'injecte — le banc de tests l'a appris au LOT-WA-01 : un Date.now()
+ * réel dépasse toujours une horloge fictive de test, et la leçon finit en
+ * catastrophe silencieuse (un test qui « passe » pour la mauvaise raison).
  */
-export function ouvrirSessionRecuperation(userId: string, codeId: string): string {
+export function ouvrirSessionRecuperation(
+  userId: string,
+  codeId: string,
+  maintenant: number = Date.now(),
+): string {
+  purger(maintenant); // le registre ne grossit pas avec les tentatives
   fermerSessionsDuCompte(userId);
   const jeton = randomBytes(32).toString('hex');
   sessions.set(jeton, {
@@ -71,7 +86,8 @@ export function ouvrirSessionRecuperation(userId: string, codeId: string): strin
     codeId,
     etape: 'code_valide',
     consentementLe: null,
-    expire: Date.now() + TTL_SESSION_RECUPERATION_MS,
+    challengeWebauthn: null,
+    expire: maintenant + TTL_SESSION_RECUPERATION_MS,
   });
   return jeton;
 }
@@ -93,6 +109,24 @@ export function poserConsentement(
 /** Consomme la session (ré-enrôlement mené à bout) — usage unique, sans retour. */
 export function consommerSessionRecuperation(jeton: string): void {
   sessions.delete(jeton);
+}
+
+/**
+ * Pose le challenge WebAuthn de la marche 3 sur la session (déjà consentie).
+ * Rend null si la session est morte ou pas à l'étape « consentement » — les
+ * options d'enrôlement ne se donnent qu'après le geste de la marchande.
+ */
+export function poserChallengeWebauthn(
+  jeton: string,
+  challenge: string,
+  maintenant: number = Date.now(),
+): SessionRecuperation | null {
+  purger(maintenant);
+  const session = sessions.get(jeton);
+  if (!session || session.expire <= maintenant) return null;
+  if (session.etape !== 'consentement') return null;
+  session.challengeWebauthn = challenge;
+  return session;
 }
 
 /** Ferme toute session d'un compte (nouvelle tentative, ou code révoqué). */
