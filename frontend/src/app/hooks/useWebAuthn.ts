@@ -125,6 +125,46 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
  * appels « avant-session, à ne pas converger », comme `login` et `activer`.
  */
 export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
+  // ── 1) SANS NUMÉRO — SPEC-AUTH-CIBLE §2.1 (LOT-WA-01, 29/10) ──────────────
+  // L'authentificateur propose LUI-MÊME sa clé découvrable : elle pose son
+  // doigt, le userHandle dit qui elle est, le numéro n'est jamais demandé.
+  // Ne passe ici que si un credential découvrable a été enrôlé (ceux posés
+  // à partir du 29/10) ; sinon le navigateur refuse l'invite tout de suite
+  // et le repli ci-dessous prend la main.
+  try {
+    const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    if (optRes.ok) {
+      const options = await optRes.json();
+      if (options && !options.error && options.challenge) {
+        const authResponse = await startAuthentication({ optionsJSON: options });
+        const verRes = await fetch(`${API_URL}/auth/webauthn/authenticate/verify`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ response: authResponse }),
+        });
+        const verData = await verRes.json();
+        // L'invite s'est ouverte et a TRANCHÉ : on ne relance pas une seconde
+        // invite par le numéro — elle a eu sa chance, on respecte le verdict.
+        if (verData.verified) return { success: true, user: verData.user, accessToken: verData.accessToken, refreshToken: verData.refreshToken };
+        return { success: false, error: 'Ton téléphone ne t\'a pas reconnue.' };
+      }
+    }
+  } catch {
+    // Aucune invite ouverte : pas de clé découvrable sur cet appareil, ou
+    // elle a annulé avant le verdict. Ce n'est pas une erreur à afficher —
+    // c'est le signal du repli. Le chemin par numéro parle, lui, à chaque
+    // échec (clips ENTREE_VOICE_CLIPS dans LoginPassword).
+  }
+
+  // ── 2) REPLI PAR NUMÉRO — chemin historique, inchangé ────────────────────
+  // Obligatoire pour les credentials NON découvrables (enrôlements d'avant
+  // le 29/10) : le numéro reste « caché, pas supprimé » (spec §2.2).
   try {
     const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
       method: 'POST',
