@@ -16,6 +16,17 @@ type UpdatePublicationData = cyclesApiAdapterMod.UpdatePublicationData;
 import { DEV_MODE, devLog } from '../config/devMode';
 import { useApp } from './AppContext';
 import { NOT_AUTHENTICATED, apiRequest } from '../services/api/api-client';
+// BUG-008 — la file hors-ligne du producteur : récolte et publication ne
+// meurent plus avec le réseau. La sémantique de rejeu est celle de la caisse
+// (offlineCaisse), empruntée, pas recopiée.
+import {
+  enfilerRecolte,
+  enfilerPublication,
+  synchroniserProducteur,
+  surMiseEnFile as surMiseEnFileProducteur,
+  type OperationCaisse,
+} from '../voice-offline/offlineProducteur';
+import { estPermanent } from '../voice-offline/offlineCaisse';
 
 /**
  * ═══════════════════════════════════════════════════════════════════
@@ -72,6 +83,10 @@ export interface Recolte {
   stockVendu: number;
   // PROD-03 — « effectivement livré » (distinct de vendu : livré ⊆ vendu).
   stockLivre?: number;
+  /** BUG-008 — la saisie a survécu à une coupure : elle vit dans la file
+   *  hors-ligne et partira au retour du réseau. Le serveur n'a RIEN reçu
+   *  encore — l'écran peut le dire au lieu de mentir. */
+  horsLigne?: boolean;
   createdAt?: string;
   // Variantes héritées de l'API (snake_case / anciens noms) encore lues par
   // certains écrans — optionnelles, à résorber écran par écran.
@@ -112,6 +127,8 @@ export interface Publication {
   description?: string;
   photoUrl?: string;
   conditionsVente?: string;
+  /** BUG-008 — en file hors-ligne : visible, mais pas encore au serveur. */
+  horsLigne?: boolean;
 }
 
 export interface CommandeProducteur {
@@ -360,29 +377,79 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     } catch (e: any) { if (e?.message !== NOT_AUTHENTICATED) console.warn('[ProducteurContext] fetchRecoltes failed:', e?.message); }
   };
 
+  // BUG-008 — même règle que la caisse (doitEnfiler, CaisseContext) : hors
+  // ligne, 5xx, ou pas de statut HTTP (réseau, technique) → LA FILE ; un 4xx
+  // de rejet métier (400 validation…) est remonté, le rejouer ne l'aiderait
+  // pas. La saisie survit à la coupure dans TOUS les cas où la survie a un
+  // sens.
+  const doitEnfilerProducteur = (error: unknown): boolean => {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+    const status = (error as { status?: unknown } | null)?.status;
+    if (typeof status === 'number') return status >= 500; // 5xx enfiler ; 4xx surface
+    return true; // pas de statut HTTP → transitoire (réseau/technique)
+  };
+
   const createRecolte = async (data: CreateRecolteData) => {
     if (!data.produit?.trim()) throw new Error('Produit requis');
     if (!data.quantite || Number(data.quantite) <= 0) throw new Error('Quantité invalide');
+    // LE PAYLOAD EST UN SEUL OBJET : le même part en ligne, en file, et au
+    // rejeu — la clé d'idempotence y vit (un rejeu = un enregistrement, même
+    // si le premier envoi était en réalité arrivé). Comme la caisse.
+    const payload = {
+      produit: data.produit,
+      quantite: Number(data.quantite),
+      unite: data.unite || 'kg',
+      qualite: data.qualite || 'standard',
+      date_recolte: data.date_recolte || new Date().toISOString().split('T')[0],
+      prix_unitaire: Number(data.prix_unitaire) || 0,
+      statut: 'declaree',
+      cycle_id: data.cycle_id || null,
+      parcelle: data.parcelle || null,
+      notes: data.notes || null,
+      photo_url: (data as any).photo_url || null,
+      idempotency_key: (crypto?.randomUUID?.() as string) || `rc-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    };
+    // La récolte LOCALE : visible tout de suite, marquée hors-ligne — l'écran
+    // peut dire « à synchroniser » au lieu de perdre la saisie ou de mentir.
+    const recolteLocale = (id: string): Recolte => ({
+      id,
+      cycleId: data.cycle_id,
+      produit: data.produit,
+      quantite: Number(data.quantite),
+      unite: data.unite || 'kg',
+      qualite: data.qualite || 'standard',
+      dateRecolte: payload.date_recolte,
+      statut: 'declaree',
+      prixUnitaire: Number(data.prix_unitaire) || 0,
+      parcelle: data.parcelle,
+      notes: data.notes,
+      photoUrl: (data as any).photo_url,
+      stockDisponible: Number(data.quantite),
+      stockVendu: 0,
+      createdAt: new Date().toISOString(),
+      horsLigne: true,
+    });
+    // Hors-ligne déclaré : la file durable, la saisie GARDÉE (pas enregistrée).
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const id = await enfilerRecolte(payload, appUser?.id);
+      setRecoltes(prev => [...prev, recolteLocale(id)]);
+      return { id, ...payload, hors_ligne: true };
+    }
     let res: any;
     try {
       res = await apiRequest<any>(API_URL, '/recoltes', {
         method: 'POST',
-        body: JSON.stringify({
-          produit: data.produit,
-          quantite: Number(data.quantite),
-          unite: data.unite || 'kg',
-          qualite: data.qualite || 'standard',
-          date_recolte: data.date_recolte || new Date().toISOString().split('T')[0],
-          prix_unitaire: Number(data.prix_unitaire) || 0,
-          statut: 'declaree',
-          cycle_id: data.cycle_id || null,
-          parcelle: data.parcelle || null,
-          notes: data.notes || null,
-          photo_url: (data as any).photo_url || null,
-        }),
+        body: JSON.stringify(payload),
       });
     } catch (e: any) {
       if (e?.message === NOT_AUTHENTICATED) throw new Error('Tu dois te connecter pour créer une récolte');
+      // La coupure (5xx, réseau) ne tue plus la récolte : elle attend dans la
+      // file et repartira avec LA MÊME clé — jamais de doublon au serveur.
+      if (doitEnfilerProducteur(e)) {
+        const id = await enfilerRecolte(payload, appUser?.id);
+        setRecoltes(prev => [...prev, recolteLocale(id)]);
+        return { id, ...payload, hors_ligne: true };
+      }
       throw e;
     }
     const saved = res;
@@ -493,6 +560,35 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
   const createPublication = async (data: CreatePublicationData) => {
     if (!data.produit?.trim()) throw new Error('Produit requis');
     if (!data.prix_unitaire || Number(data.prix_unitaire) <= 0) throw new Error('Prix unitaire invalide');
+    // BUG-008 — la publication aussi survit à la coupure (même file, même
+    // discipline). La normalisation (`quantite_initiale`, `unite`) reste dans
+    // la couche API : au rejeu, elle repasse par le même chemin qu'en ligne.
+    const publicationLocale = (id: string): Publication => ({
+      id,
+      cycleId: data.cycle_id,
+      recolteId: data.recolte_id,
+      produit: data.produit,
+      culture: data.culture,
+      quantiteDisponible: Number(data.quantite_disponible),
+      quantiteInitiale: data.quantite_initiale ?? Number(data.quantite_disponible),
+      unite: data.unite || 'kg',
+      prixUnitaire: Number(data.prix_unitaire),
+      qualite: data.qualite || 'standard',
+      localisation: data.localisation,
+      active: true,
+      statut: 'disponible',
+      datePublication: new Date().toISOString(),
+      dateRecolte: data.date_recolte,
+      description: data.description,
+      photoUrl: data.photo_url,
+      conditionsVente: data.conditions_vente,
+      horsLigne: true,
+    });
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      const id = await enfilerPublication(data, appUser?.id);
+      setPublications(prev => [publicationLocale(id), ...prev]);
+      return;
+    }
     try {
       const { publication } = await publicationsApi.createPublication(data);
       const newPublication: Publication = {
@@ -520,6 +616,11 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
       await refreshStats();
     } catch (error: any) {
       console.warn('[ProducteurContext] createPublication failed:', error?.message);
+      if (doitEnfilerProducteur(error)) {
+        const id = await enfilerPublication(data, appUser?.id);
+        setPublications(prev => [publicationLocale(id), ...prev]);
+        return;
+      }
       throw error;
     }
   };
@@ -707,6 +808,79 @@ export function ProducteurProvider({ children }: { children: ReactNode }) {
     const rolesProducteur = ['producteur', 'cooperateur'];
     if (!rolesProducteur.includes(appUser.role as string)) return;
     refreshAllData();
+  }, [appUser?.id, appUser?.role]);
+
+  // ── BUG-008 — LE REJEU : ce qui a survécu à la coupure PART au retour du réseau.
+  //
+  // Même discipline que la caisse (CaisseContext) : au montage (rattrape la
+  // file laissée par une session précédente), sur `online`, quand la page
+  // redevient VISIBLE (la WebView n'émet pas toujours `online`), et à CHAQUE
+  // mise en file (la première entrée arme la relance). Le rejeu est le MÊME
+  // code que l'argent : ordre préservé, clés d'idempotence, 4xx lettre morte,
+  // transitoire compté. Une op qui part déclenche le rafraîchissement — la
+  // copie locale marquée `horsLigne` laisse la place au serveur, qui fait foi.
+  useEffect(() => {
+    if (!appUser?.id) return;
+    const rolesProducteur = ['producteur', 'cooperateur'];
+    if (!rolesProducteur.includes(appUser.role as string)) return;
+
+    const posterProducteur = async (
+      endpoint: '/recoltes' | '/publications',
+      payload: unknown,
+      _method: 'POST' | 'PATCH',
+    ): Promise<void> => {
+      if (endpoint === '/recoltes') {
+        await apiRequest(API_URL, '/recoltes', { method: 'POST', body: JSON.stringify(payload) });
+        return;
+      }
+      await publicationsApi.createPublication(payload as CreatePublicationData);
+    };
+
+    let arrete = false;
+    let minuterie: ReturnType<typeof setTimeout> | null = null;
+    const DELAIS_MS = [5000, 15000, 60000];
+    let essai = 0;
+
+    const sync = async () => {
+      if (arrete) return;
+      if (minuterie) { clearTimeout(minuterie); minuterie = null; }
+      try {
+        const bilan = await synchroniserProducteur(posterProducteur, appUser.id);
+        if (bilan.ok > 0) {
+          // Le serveur a reçu : les listes reprennent la vérité du serveur —
+          // les copies locales horsLigne s'effacent avec le rafraîchissement.
+          if (DEV_MODE) console.log(`[ProducteurContext] hors-ligne : ${bilan.ok} écriture(s) producteur synchronisée(s)`);
+          await Promise.allSettled([fetchRecoltes(), fetchPublications(), refreshStats()]);
+        }
+        // Il reste de la file : on retente, relance espacée — sans rien
+        // demander à personne, comme la caisse.
+        if (bilan.reste > 0 && essai < DELAIS_MS.length) {
+          minuterie = setTimeout(() => { essai++; void sync(); }, DELAIS_MS[essai] ?? 60000);
+        } else if (bilan.reste === 0) {
+          essai = 0;
+        }
+      } catch {
+        // Un échec complet de la sync ne doit pas abandonner la file :
+        // la relance espacée retentera (même leçon que CaisseContext).
+        if (!arrete && essai < DELAIS_MS.length) {
+          minuterie = setTimeout(() => { essai++; void sync(); }, DELAIS_MS[essai] ?? 60000);
+        }
+      }
+    };
+
+    const desabonner = surMiseEnFileProducteur(() => { essai = 0; void sync(); });
+    const surVisible = () => { if (document.visibilityState === 'visible') void sync(); };
+    void sync(); // rattrape une file laissée par une session hors-ligne précédente — la SIENNE uniquement
+    window.addEventListener('online', sync);
+    document.addEventListener('visibilitychange', surVisible);
+    return () => {
+      arrete = true;
+      if (minuterie) clearTimeout(minuterie);
+      desabonner();
+      window.removeEventListener('online', sync);
+      document.removeEventListener('visibilitychange', surVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appUser?.id, appUser?.role]);
 
   const value: ProducteurContextType = {
