@@ -1693,3 +1693,23 @@ Stage Summary:
 - RÈGLE POUR TOUT DISPATCH APK FUTUR : TOUJOURS passer `"branche":"dev"` dans inputs (le défaut est main, volontaire — REL-01) ; ne jamais se fier au head_sha du run API pour savoir ce qui a été construit
 - L'APK d637d58 remis à Patrick : les quatre étapes d'ajout écoutent, le micro attend la fin réelle des questions ; si le téléphone reste muet, le 🐞 Rapport nommera le moteur mort (TTS_MOTEUR 'navigateur' sur APK = synthèse native en panne)
 - Mon correctif fb994d1d reposait sur une hypothèse réfutée — il a été revert le jour même ; le lock backend reste dans le dépôt (le build Docker en a besoin) et le CI l'a toléré 3 fois sur 3
+
+---
+Task ID: lockfile-frontend-build-29-10
+Agent: Z.ai Code (session Patrick)
+Task: « ajoute "package-lock.json" a la racine du dossier frontend »
+
+Work Log:
+- Même lacune que backend le 28/10 : frontend/Dockerfile:9 fait « COPY frontend/package.json frontend/package-lock.json ./ » puis « npm ci » (stage builder, image nginx finale) — le lock n'existait pas dans le dépôt, toute construction de l'image frontend échouait au COPY avant même l'install
+- MÊME PIÈGE npm workspaces : dans frontend/, « npm install --package-lock-only » ne produit RIEN (absorbé par le workspace racine) — génération dans un contexte isolé (copie du package.json seul hors du monorepo), qui reproduit exactement le COPY du Dockerfile : package.json seul, sans parent
+- Le manifeste frontend porte des « * » (radix-ui, tailwind-merge, @types/react) : le contexte isolé les résout aux versions courantes du registre — quasi identiques au lock racine (react 18.3.1, vite 6.4.5 vs 6.4.4 racine, radix-dialog 1.3.1 vs 1.3.0 : écart max un patch)
+- PREUVE stage 1 Dockerfile rejoué isolément : npm ci 8,5 s → 0 erreur ; npm run build (Vite) ✓ 21,30 s ; dist émis dans ../frontend/dist comme dans l'image (/app/frontend/dist) ; service worker stampé (205 chunks + 265 clips voix pré-cachés)
+- PREUVE non-régression install racine (la fausse piste du 28/10, fermée par le revert d637d585) : npm ci --dry-run à la racine donne 996 paquets AVEC ET SANS frontend/package-lock.json — le CI et l'APK workflow (npm ci racine, cache package-lock.json racine) sont insensibles au lock imbriqué, numériquement prouvé
+- Cohérence avec le dépôt : deploy.yml installe et build le frontend DEPUIS LA RACINE (workspaces) — il n'a jamais eu besoin du lock imbriqué ; le lock sert UNIQUEMENT au Dockerfile frontend (build image nginx, contexte = racine du repo)
+- Un seul fichier ajouté (7 357 lignes, lockfileVersion 3, 504 packages, racine autonome julaba-frontend) ; frontend/package.json INCHANGÉ
+- Commit 16531789 (fix(frontend)), sync guard RETARD=0, push sous Akoun-dev
+
+Stage Summary:
+- RÉPONSE À PATRICK : frontend/package-lock.json est commité et poussé (16531789) — le build Docker de l'image frontend (docker build -f frontend/Dockerfile --build-arg VITE_API_URL=… .) a désormais ce qui lui manquait ; preuve npm ci + vite build rejouée sur l'arbre exact du lock
+- Pour RÉGÉNÉRER après une évolution des deps frontend : reproduire le contexte isolé (copie de frontend/package.json hors du monorepo + npm install --package-lock-only) — jamais npm install dans frontend/ lui-même (absorbé par le workspace racine) ; puis rejouer la preuve stage 1 avant de pousser
+- L'APK et le CI ne changent pas : ils installent depuis la racine avec le lock racine (996 paquets, preuve avec/sans) ; le lock imbriqué n'influence que le Docker frontend
