@@ -28,6 +28,7 @@ import type {
 import { FeedbakSmsService } from '../feedbak-sms/feedbak-sms.service';
 import { attenteApresEchecs, essaisAvantAttente, estVerrouHeriteSansFin } from './verrou-pin';
 import { genererPinIdentificateurAcceptable } from './pin-identificateur';
+import { enregistrerChallengeSansIdentifiant, consommerChallengeSansIdentifiant } from './challenge-usernameless';
 import { AuditService } from '../audit-log/audit-log.service';
 import { PinCryptoService } from './pin-crypto.service';
 import { stripSensitiveUserFields } from '../users/sanitize-user.util';
@@ -861,12 +862,19 @@ export class AuthController {
       rpName: 'Jùlaba',
       rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
       userName: user.phone,
+      // userHandle = l'ID du compte : c'est CE QUE L'ASSERTION SANS IDENTIFIANT
+      // (usernameless) rapportera au serveur pour savoir QUI se connecte.
+      // SimpleWebAuthn v13 génère un identifiant ALÉATOIRE si on ne le pose pas
+      // — l'usernameless serait alors impossible à résoudre côté serveur.
+      userID: new TextEncoder().encode(user.id) as any,
       userDisplayName: `${user.firstName} ${user.lastName}`.trim(),
       attestationType: 'none',
       excludeCredentials: existingCredentials as any,
+      // SPEC-AUTH-CIBLE §2.1 : credential DÉCOUVRABLE — l'authentificateur
+      // propose lui-même la clé, le numéro n'est jamais demandé au quotidien.
       authenticatorSelection: {
-        residentKey: 'preferred',
-        userVerification: 'preferred',
+        residentKey: 'required',
+        userVerification: 'required',
       },
     });
     await this.userRepo.update(req.user.id, { webauthnChallenge: options.challenge } as any);
@@ -911,8 +919,24 @@ export class AuthController {
 
   @Post('webauthn/authenticate/options')
   @HttpCode(HttpStatus.OK)
-  async webauthnAuthOptions(@Body() body: { phone: string }) {
-    if (!body.phone) return { error: 'Numéro requis' };
+  async webauthnAuthOptions(@Body() body: { phone?: string }) {
+    // USERNAMELESS (SPEC-AUTH-CIBLE §2.1) — SANS numéro : allowCredentials
+    // vide → l'authentificateur propose ses credentials découvrables et
+    // l'assertion rapportera le userHandle (qui dit QUI se connecte).
+    // userVerification 'required' : c'est bien SON doigt/visage qui déverrouille
+    // la clé, pas un simple balayage du téléphone. Le challenge ne peut pas
+    // vivre sur une ligne utilisateur (on ne sait pas encore laquelle) →
+    // registre mémoire à TTL court, usage unique (challenge-usernameless.ts).
+    if (!body.phone) {
+      const options = await generateAuthenticationOptions({
+        rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        userVerification: 'required',
+      });
+      enregistrerChallengeSansIdentifiant(options.challenge);
+      return options;
+    }
+    // CHEMIN DE REPLI par numéro (credentials NON découvrables des enrôlements
+    // d'avant le 29/10) : inchangé — le numéro est « caché, pas supprimé » (§2.2).
     const trimmed = body.phone.trim();
     const digits = trimmed.replace(/\D/g, '');
     const phone = trimmed.startsWith('+225')
@@ -943,20 +967,45 @@ export class AuthController {
   @Post('webauthn/authenticate/verify')
   @HttpCode(HttpStatus.OK)
   async webauthnAuthVerify(
-    @Body() body: { response: AuthenticationResponseJSON; userId: string },
+    @Body() body: { response: AuthenticationResponseJSON; userId?: string },
     @Res({ passthrough: true }) res: Response,
     @Request() req: any,
   ) {
-    if (!body.userId || !body.response) return { verified: false, error: 'Données manquantes' };
-    const user = await this.userRepo.findOne({ where: { id: body.userId } });
-    if (!user || !user.webauthnChallenge) return { verified: false, error: 'Challenge manquant' };
+    if (!body.response) return { verified: false, error: 'Données manquantes' };
+
+    // Deux entrées (avec numéro / sans numéro), une seule issue : le user +
+    // le challenge attendu, puis le même verdict cryptographique.
+    let user: User | null = null;
+    let expectedChallenge: string;
+    const estSansIdentifiant = !body.userId;
+
+    if (!estSansIdentifiant) {
+      user = await this.userRepo.findOne({ where: { id: body.userId } });
+      if (!user || !user.webauthnChallenge) return { verified: false, error: 'Challenge manquant' };
+      expectedChallenge = user.webauthnChallenge;
+    } else {
+      // USERNAMELESS : l'assertion rapporte le userHandle posé à l'enrôlement
+      // (= l'ID du compte) et le challenge posé par /authenticate/options —
+      // à usage unique (consommerChallengeSansIdentifiant refuse le rejeu).
+      const charge = (body.response as any)?.response ?? {};
+      const candidateId = userHandleVersUserId(charge.userHandle);
+      if (!candidateId) return { verified: false, error: 'Identifiant découvrable non renseigné' };
+      const challengeAssertion = charge.challenge;
+      if (!consommerChallengeSansIdentifiant(challengeAssertion)) {
+        return { verified: false, error: 'Challenge inconnu, expiré ou déjà utilisé' };
+      }
+      user = await this.userRepo.findOne({ where: { id: candidateId } });
+      if (!user) return { verified: false, error: 'Utilisateur introuvable' };
+      expectedChallenge = challengeAssertion as string;
+    }
+
     const credentialID = body.response.id;
     const credential = (user.webauthnCredentials || []).find((c) => c.credentialID === credentialID);
     if (!credential) return { verified: false, error: 'Credential introuvable' };
     try {
       const { verified, authenticationInfo } = await verifyAuthenticationResponse({
         response: body.response,
-        expectedChallenge: user.webauthnChallenge,
+        expectedChallenge,
         expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
         expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
         credential: {
@@ -974,7 +1023,9 @@ export class AuthController {
         );
         await this.userRepo.update(user.id, {
           webauthnCredentials: updated,
-          webauthnChallenge: null,
+          // Usernameless : rien à effacer sur la ligne — le challenge vivait
+          // dans le registre mémoire et a déjà été consommé plus haut.
+          ...(estSansIdentifiant ? {} : { webauthnChallenge: null }),
         } as any);
         const ipAddress = req.ip || req.headers['x-forwarded-for'];
         const result = await this.authService.loginById(user.id, req.headers['user-agent'], ipAddress as string);
@@ -1018,4 +1069,19 @@ export class AuthController {
     res.cookie('refresh_token', refreshToken, { ...base, maxAge: 7 * 24 * 60 * 60 * 1000 });
   }
 
+}
+
+/**
+ * userHandle (base64url porté par l'assertion usernameless) → l'ID du compte
+ * posé à l'enrôlement (`userID = user.id`, encodé en UTF-8). Rend null pour
+ * tout ce qui ne peut pas être un userHandle : rien ne passe par erreur.
+ */
+function userHandleVersUserId(userHandle: unknown): string | null {
+  if (typeof userHandle !== 'string' || userHandle.length === 0) return null;
+  try {
+    const id = Buffer.from(userHandle, 'base64url').toString('utf8');
+    return id.length > 0 ? id : null;
+  } catch {
+    return null;
+  }
 }
