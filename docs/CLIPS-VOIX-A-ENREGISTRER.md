@@ -114,6 +114,31 @@ voice/catalog.ts`, famille `RECOUV_*`) ; à déposer dans
 > de code que pour les chiffres, section 2). D'ici là, la règle tient :
 > **une phrase sans clip est un silence dans l'APK.**
 
+## 5 — L'écran d'activation (priorité haute — le geste est muré sans eux)
+
+Écrit le 29/10/2026, avec le refonte de l'activation (LOT-ACTIVATION).
+L'écran est passé de trois champs de texte à un parcours guidé : le code
+reçu, le secret choisi sur le pavé, puis LE geste (« C'est mon compte »,
+toucher long ≥ 800 ms) qui déclenche l'activation — le serveur horodate
+(ACTIV_CONSENTEMENT). Toutes ses phrases passent encore par la synthèse :
+dans l'APK, un écran muet. Les ids sont au catalogue (`frontend/src/app/
+i18n/voice/catalog.ts`, famille `ACTIV_*`) ; à déposer dans
+`frontend/public/voix/tata/`.
+
+| Fichier | Id catalogue | Texte à dire |
+|---|---|---|
+| `activ-accueil.mp3` | ACTIV_ACCUEIL | Bienvenue chez toi ! Tape le code que tu as reçu, puis choisis ton code secret à quatre chiffres. |
+| `activ-code-manquant.mp3` | ACTIV_CODE_MANQUANT | Saisis d'abord le code que tu as reçu. |
+| `activ-consigne-choisir.mp3` | ACTIV_CONSIGNE_CHOISIR | Choisis ton code secret à quatre chiffres. Personne d'autre ne doit le connaître. |
+| `activ-consigne-redis.mp3` | ACTIV_CONSIGNE_REDIS | Redis le même code, pour être sûre. |
+| `activ-code-different.mp3` | ACTIV_CODE_DIFFERENT | Les deux codes ne sont pas les mêmes. Choisis à nouveau ton code. |
+| `activ-code-trop-simple.mp3` | ACTIV_CODE_TROP_SIMPLE | Ce code est trop simple. Choisis-en un autre. |
+| `activ-consigne-presence.mp3` | ACTIV_CONSIGNE_PRESENCE | C'est ton compte. Maintiens ton doigt sur le gros bouton jusqu'au son. |
+| `activ-presence-trop-courte.mp3` | ACTIV_PRESENCE_TROP_COURTE | Encore un peu : maintiens jusqu'au son. |
+| `activ-code-refuse.mp3` | ACTIV_CODE_REFUSE | Ce code ne marche pas ou il est expiré. Demande un nouveau code. |
+| `activ-hors-ligne.mp3` | ACTIV_HORS_LIGNE | Pas de réseau. Connecte-toi puis réessaie. |
+| `activ-succes.mp3` | ACTIV_SUCCES | C'est bon, ton compte est à toi ! Tu peux maintenant te connecter avec ton code. |
+
 ## Comment enregistrer
 
 Mêmes conditions que les 137 clips existants, sinon la voix change d'un écran

@@ -21,6 +21,23 @@ Statuts : `FAIT (preuve)` / `CONTRÉ (audit infirmé par le code)` / `PLANIFIÉ 
 
 ## 2. Fait dans ce lot (29/10/2026)
 
+### LOT-ACTIVATION — rang 2 clos côté code (29/10, suite)
+
+- **Écran front refait** (`bbfa2c93`) : trois marches, une par écran — le
+  code reçu (usage unique, pas un secret), le secret CHOISI PAR ELLE sur
+  le pavé (B5 — jamais un champ libre, jamais dicté, jamais 0000/1234,
+  glyphes images avec la même préférence que la connexion), puis LE GESTE
+  d'elle (« C'est mon compte », toucher long ≥ 800 ms, même mécanique que
+  la récupération) avant tout appel serveur. La voix vit au catalogue
+  (famille ACTIV_*), filet audio-unlock en plus.
+- **Trace serveur** (`985cf4e2`) : ACTIV_CONSENTEMENT horodaté au journal
+  d'audit (même journal que le reste — AuditModule dans ActivationModule) ;
+  invariant P0.0 étendu (12/12 verts) : chaque activation écrit exactement
+  une trace de plus.
+- **Restes réels du rang 2** : enregistrement studio des clips ACTIV
+  (scripts prêts — CLIPS-VOIX-A-ENREGISTRER.md §5), puis recette terrain
+  de bout en bout (elle active, elle se connecte, elle caisse).
+
 ### LOT-RECOVERY — clôture du rang 1 (29/10, suite)
 
 - **Écran front FAIT** (`9c44d790`) : trois marches guidées par la voix,
@@ -63,7 +80,7 @@ Cible `docs/SPEC-AUTH-CIBLE.md §2` : connexion quotidienne SANS numéro.
 | Rang | Écart | Lot à venir | Pré-requis |
 |---|---|---|---|
 | 1 | P0-AUTH-01 Récupération complète (code identificateur unique+TTL+révocable, double présence, consentement tracé, ré-enrôlement, révocation anciens credentials, guidage Tata) | **LOT-RECOVERY — BACKEND FAIT (29/10)** : fondations c39f7f7a (table codes_recuperation + session à étapes), gestion du code 7855e6ea (généré par SMS à l'agent, jamais affiché, listé sans secret, révocable ; un seul code actif par compte), parcours cbbbc539 (initier/consentement/options/ré-enrôlement — le code seul ne suffit JAMAIS, anciennes clés révoquées, jetons cookies+corps, journaux RECOUV_*) ; tests unitaires 13/13, build OK ; **écran front FAIT 9c44d790 ; harnais HTTP FAIT e7922b3e+112db806 (R1→R8 verts, bug du tiret trouvé et réparé)** | **Restes : clips voix à enregistrer (scripts prêts, CLIPS-VOIX-A-ENREGISTRER.md §4), recette terrain** |
-| 2 | P0-AUTH-02 Enrôlement/activation accessible | LOT-ACTIVATION | revalider l'écran corrigé de bout en bout ; consentement horodaté ; secret choisi par elle |
+| 2 | P0-AUTH-02 Enrôlement/activation accessible | **LOT-ACTIVATION — FAIT (29/10)** : écran en trois marches bbfa2c93 (pavé B5, secret choisi par elle, geste de consentement ≥ 800 ms), trace serveur horodatée 985cf4e2 (ACTIV_CONSENTEMENT, invariant 12/12) | **Restes : clips ACTIV à enregistrer (scripts prêts, CLIPS-VOIX-A-ENREGISTRER.md §5), recette terrain de bout en bout** |
 | 3 | P1-AUTH-04 Sélecteur de comptes (téléphone partagé) | LOT-MULTI-COMPTES | arbitrage terrain (fréquence réelle du partage — spec §4.1 « À VALIDER ») |
 | 4 | P1-3 Montants dynamiques — preuve APK du TTS natif | LOT-PROUVE-APPAREIL | recette Maestro/Android réel (P2-3) |
 | 5 | P1-4/5/6 Couverture vocale producteur/coopérative/wallet, uniformisation erreurs | lots par rôle (bugs ouverts BUG-008/009/010 déjà tracés dans .ai/BUGS.md) | — |
