@@ -47,6 +47,7 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
   let tokenInstitution: string;
   let tokenAdminGeneral: string;
   let tokenMarchand: string;
+  let identId: string;
 
   const api = () => request(app.getHttpServer());
 
@@ -88,6 +89,7 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
     // d'un solde à zéro pour tenir, elle tient SANS portefeuille.
     const ident = await seedUser(UserRole.IDENTIFICATEUR, '+2250700000910');
     tokenIdentificateur = ident.token;
+    identId = ident.id;
 
     const inst = await seedUser(UserRole.INSTITUTION, '+2250700000911');
     tokenInstitution = inst.token;
@@ -133,10 +135,24 @@ describe('Invariant IDENT-02 — neutralité monétique servée sur wallets (�
       expect({ route, statut: r.status }).toEqual({ route, statut: 403 });
     }
 
-    // Zéro écriture n'a eu lieu : le compte identificateur n'a ni wallet ni
-    // transaction en base.
+    // Zéro écriture n'a eu lieu : LE compte identificateur de ce test n'a ni
+    // wallet ni transaction en base.
+    //
+    // (20/10/2026, rang banc unitaire) L'assertion comptait les wallets de
+    // TOUS les identificateurs de la base. Sur la base partagée des
+    // invariants, la propriété dépendait de l'ORDRE des suites : un signup
+    // d'identificateur fait ailleurs (m6-m8 — auth.service.signup appelle
+    // createForUser pour tout rôle) allouait un wallet, et ce test devenait
+    // rouge ou vert selon le tri de jest — le syndrome « instable » exact
+    // que le garde telephones-tests-uniques décrit. Ce que ce test prouve
+    // est la neutralité SERVEUR face à SES huit appels : l'ident seedé ici
+    // reste sans portefeuille. La largeur « aucun identificateur de la base
+    // n'a de ligne » est une question de doctrine différente (lignes wallet
+    // fantômes des rôles exclus), consignée au registre — pas à prouver
+    // ici, où elle ne dépend d'aucune des huit routes sous test.
     const wallets = await ds.query(
-      `SELECT COUNT(*)::int AS n FROM wallets w JOIN users u ON u.id = w.user_id WHERE u.role = 'identificateur'`,
+      `SELECT COUNT(*)::int AS n FROM wallets WHERE user_id = $1`,
+      [identId],
     );
     expect(wallets[0].n).toBe(0);
   });
