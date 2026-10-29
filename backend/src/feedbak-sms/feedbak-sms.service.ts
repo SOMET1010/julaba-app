@@ -132,4 +132,14 @@ export class FeedbakSmsService {
     const message = `Bonjour ${prenom}, ton code PIN Jùlaba a été modifié avec succès. Si tu n'es pas à l'origine de ce changement, contacte immédiatement ton superviseur.`;
     await this.send(phone, message, 'PIN_CHANGE');
   }
+
+  // LOT-RECOVERY (SPEC-AUTH-CIBLE §3) : SEUL exemplaire du code de récupération.
+  // Le téléphone de la marchande est précisément CE QUI MANQUE — le code part
+  // donc au téléphone DE L'AGENT qui le remettra en main propre. Même discipline
+  // que le PIN : corps jamais journalisé, retour booléen -> `SMS_NON_DELIVRE`
+  // chez l'appelant, message sous 160 caractères.
+  async notifyCodeRecuperationAgent(phone: string, code: string): Promise<boolean> {
+    const message = `Julaba : code de recuperation : ${code} . Usage unique, valable 7 jours. A remettre en main propre, sur le nouveau telephone de la personne.`;
+    return this.send(phone, message, 'CODE_RECUPERATION_AGENT');
+  }
 }
