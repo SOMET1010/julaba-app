@@ -77,6 +77,18 @@ import('./app/services/routageAudio')
   .then(({ installerRoutageAudio }) => installerRoutageAudio())
   .catch(() => { /* ignore */ });
 
+// ── Actions retour : la touche retour de l'appareil ─────────────────────────
+// Sur l'APK, un appui sur la touche retour reculait dans le WebView, et un
+// appui de trop fermait l'application NET — y compris panier plein, au milieu
+// d'une vente. Ici, en un seul point comme le routage audio : un écran
+// derrière → on recule ; à la racine → premier appui avertit, second (sous
+// 2 s) ferme. Non-opération complète hors APK Android (le plugin
+// @capacitor/app n'est intégré que par `npx cap sync android`), et toute
+// erreur est avalée : la touche retour ne peut pas faire perdre une vente.
+import('./app/services/retourAppareil')
+  .then(({ installerRetourAppareil }) => installerRetourAppareil())
+  .catch(() => { /* ignore */ });
+
 // Ré-échauffe le modèle vocal hors-ligne s'il a déjà été installé sur cet appareil.
 // (Le drapeau d'installation est persistant ; le modèle en mémoire, lui, est perdu
 // à chaque rechargement — sans ça la voix retombait sur le cloud mort.)
