@@ -113,8 +113,10 @@ import { recoWebDispo } from '../../voice-offline/webReco';
 import { InstallerOffline } from '../../voice-offline/InstallerOffline';
 import { getEffectiveMode, guidageVocal, clavierParDefaut, noterCanal, suggestionAuto, marquerDemande, setAccessMode, type EffectiveMode } from '../../utils/accessMode';
 import { numeroCIComplet, operateurDe, OP_COULEUR, type Operateur } from '../../utils/civNumbers';
-import { dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { chargerComptes, dernierCompte, memoriserCompte, type CompteMemorise } from '../../services/comptesMemorises';
+import { cibleApresChoix, nomAffiche, vueSelection } from '../../services/selectionComptes';
 import { salutation } from '../../utils/appellation';
+import { speakClipOrText } from '../../services/audioManager';
 import { vibrerSucces, vibrerErreur } from '../../utils/haptique';
 import { glyphePourChiffre } from '../../services/clavierImage';
 import { retourFrappe, type EtapeSaisie } from '../../services/retourDeFrappe';
@@ -232,6 +234,15 @@ export function LoginPassword() {
   const [compteConnu] = useState<CompteMemorise | null>(() => {
     try { return dernierCompte(window.localStorage); } catch { return null; }
   });
+  // LOT-MULTI-COMPTES : la LISTE entière (bornée à 3), pas seulement la
+  // dernière personne — le téléphone partagé a plusieurs visages.
+  const [comptes] = useState<CompteMemorise[]>(() => {
+    try { return chargerComptes(window.localStorage); } catch { return []; }
+  });
+  // Le compte touché sur le sélecteur : sa cérémonie (biométrie ou pavé) est
+  // SCELLÉE sur lui — jamais sur « le dernier qui est passé ».
+  const [compteChoisi, setCompteChoisi] = useState<CompteMemorise | null>(null);
+  const compteActif = compteChoisi ?? compteConnu;
   const [phone, setPhone] = useState(compteConnu?.phone ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -239,7 +250,13 @@ export function LoginPassword() {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [pinInput, setPinInput] = useState('');
   const accueilCodeVoixLanceRef = useRef(false);
-  const [step, setStep] = useState<'reconnaissance' | 'phone' | 'password'>(compteConnu ? (compteConnu.biometrie ? 'reconnaissance' : 'password') : 'phone');
+  const [step, setStep] = useState<'selection' | 'reconnaissance' | 'phone' | 'password'>(() => {
+    // LOT-MULTI-COMPTES : 2 comptes et + sur CE téléphone → le sélecteur d'abord.
+    const mode = vueSelection(comptes).mode;
+    if (mode === 'aucun') return 'phone';
+    if (mode === 'selection') return 'selection';
+    return compteConnu?.biometrie ? 'reconnaissance' : 'password';
+  });
   // AUTH-10 — isListening / isFinalizingDictation et toute la mécanique de
   // dictée EN DIRECT vivent dans useDicteeLive ; l'écran consomme la surface.
   const { isListening, isFinalizingDictation, demarrerDictee } = useDicteeLive();
@@ -331,6 +348,20 @@ export function LoginPassword() {
   // et l'audio ne prononce jamais de donnée personnelle ou secrète.
   const ecouterTata = () => {
     setTataSpeaking(true);
+    // Sélecteur : la consigne des cartes (catalogue CONN_SEL_*), pas un clip
+    // d'EntreeVoiceKey — le sélecteur n'a pas encore son clip studio.
+    if (step === 'selection') {
+      try {
+        void (async () => {
+          try {
+            await speakClipOrText({ text: tParle('CONN_SEL_QUI') });
+            await speakClipOrText({ text: tParle('CONN_SEL_AUTRE') });
+          } finally { setTataSpeaking(false); }
+        })();
+      } catch { setTataSpeaking(false); }
+      setTimeout(() => setTataSpeaking(false), 8000); // filet
+      return;
+    }
     const key: EntreeVoiceKey = step === 'phone'
       ? (voixEcouteDispo ? 'numeroVoix' : 'numero')
       : step === 'reconnaissance' && compteConnu?.biometrie
@@ -490,6 +521,31 @@ export function LoginPassword() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // ── LOT-MULTI-COMPTES — LA VOIX DU SÉLECTEUR ──────────────────────────
+  // À l'arrivée sur les cartes, Tata demande QUI est là. Le prénom de
+  // personne n'est jamais synthétisé (règle de vie privée de l'entrée) :
+  // ce sont les cartes (photo + prénom + position) qui parlent. La phrase
+  // part par speakClipOrText — clip quand il sera enregistré, moteur local
+  // d'ici là (patron RecuperationCompte) — jamais par direEntreeTexte,
+  // qui se tait sur un texte sans clip (leçon login-41).
+  const selectionVoixLanceeRef = useRef(false);
+  useEffect(() => {
+    if (step !== 'selection') {
+      selectionVoixLanceeRef.current = false;
+      return;
+    }
+    if (selectionVoixLanceeRef.current) return;
+    selectionVoixLanceeRef.current = true;
+    if (!guidageVocal(accessMode)) return;
+    void (async () => {
+      try {
+        await speakClipOrText({ text: tParle('CONN_SEL_QUI') });
+        await speakClipOrText({ text: tParle('CONN_SEL_AUTRE') });
+      } catch { /* la voix n'est jamais bloquante */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   // « Tata se souvient de moi » : à l'arrivée, Tata SALUE par le prénom et dit le
   // geste à faire — l'écran n'a rien à lire. (Une seule fois, au montage.)
   // FILET DE RATTRAPAGE : cet écran ('reconnaissance') peut être le TOUT
@@ -498,15 +554,17 @@ export function LoginPassword() {
   // préalable dans CETTE session, l'audio reste bloqué par le navigateur.
   // Même filet que Welcome.tsx/OnboardingSlides.tsx.
   const direAccueilReconnaissance = useCallback(() => {
-    if (!(step === 'reconnaissance' && compteConnu && guidageVocal(accessMode))) return;
-    try { void direConsigne(compteConnu.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
+    if (!(step === 'reconnaissance' && compteActif && guidageVocal(accessMode))) return;
+    try { void direConsigne(compteActif.biometrie ? 'reconnaissance' : 'code'); } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, compteConnu, accessMode]);
+  }, [step, compteActif, accessMode]);
 
+  // LOT-MULTI-COMPTES : l'effet écoute AUSSI les transitions — arrivée via le
+  // sélecteur (compteChoisi), l'étape doit se dire comme au montage.
   useEffect(() => {
     direAccueilReconnaissance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [step]);
 
   // Tata propose l'adaptation (mode 'auto') : elle le DIT (une fois) — c'est une
   // question, pas un réglage à trouver.
@@ -977,10 +1035,34 @@ export function LoginPassword() {
     } catch { /* ignore */ }
   };
 
+  // ── LOT-MULTI-COMPTES — LE SÉLECTEUR (rang 3, spec §4.1) ──────────────────
+  // Elle touche SON visage : le numéro vient de la liste (jamais re-tapé), la
+  // cible vient de cibleApresChoix (SA biométrie, ou SON pavé de code).
+  const choisirCompte = (c: CompteMemorise) => {
+    setCompteChoisi(c);
+    setPhone(c.phone);
+    setPinInput('');
+    setPassword('');
+    setError('');
+    setStep(cibleApresChoix(c));
+  };
+  // « Ce n'est pas moi » — rien n'est effacé : la personne suivante se
+  // présente par le parcours classique (parcours existant, inchangé).
+  const autreCompte = () => {
+    setCompteChoisi(null);
+    setPhone('');
+    setPinInput('');
+    setPassword('');
+    setError('');
+    setStep('phone');
+  };
+
   const handleBiometric = async () => {
     setIsLoading(true);
     try {
-      const result = await authenticateWebAuthn(phone);
+      // Compte désigné (sélecteur) : la cérémonie est scellée sur SON compte
+      // — l'authentificateur ne peut répondre qu'avec SES credentials.
+      const result = await authenticateWebAuthn(phone, { compteDesigne: Boolean(compteChoisi) });
       if (result.success && result.user) {
         setAppUser(result.user);
         setUserProfile(result.user);
@@ -1461,7 +1543,7 @@ export function LoginPassword() {
         <div className="login-brand">
           <span className="login-logo"><img src={logoJulaba} alt="JULABA" /></span><BrandSignature />
         </div>
-        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : salutation(compteConnu?.appellation, compteConnu?.prenom)}</h1>
+        <h1>{step === 'phone' ? 'Ton numéro' : step === 'password' ? 'Ton code secret' : step === 'selection' ? 'Qui est là ?' : salutation(compteActif?.appellation, compteActif?.prenom)}</h1>
         <div className="login-guide">
           <img src={tataNantiLou} alt="Tantie Nanti Lou" />
           <button type="button" onClick={ecouterTata} className="login-replay"
@@ -1494,7 +1576,45 @@ export function LoginPassword() {
         }}
       >
         <AnimatePresence mode="wait">
-          {step === 'reconnaissance' && compteConnu ? (
+          {step === 'selection' && comptes.length >= 2 ? (
+            <motion.div
+              key="selection"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}
+            >
+              {/* LOT-MULTI-COMPTES — le téléphone partagé : chaque visage est
+                  une carte. Photo + prénom + position + icône : quatre canaux
+                  disent « c'est toi » (règle des boutons multi-canal). AUCUN
+                  prénom n'est parlé : la voix dit le GESTE, les cartes disent
+                  QUI — l'audio ne prononce jamais de donnée personnelle. */}
+              <div className="login-selection-liste" role="group" aria-label="Choisis ton compte">
+                {comptes.map((c) => {
+                  const nom = nomAffiche(c);
+                  return (
+                    <button key={c.phone} type="button" className="login-selection-carte"
+                      aria-label={`Entrer comme ${nom}${c.biometrie ? ' — le téléphone te reconnaîtra' : ' — avec ton code'}`}
+                      onClick={() => choisirCompte(c)} disabled={isLoading}>
+                      {c.photo ? <img src={c.photo} alt="" /> : <span className="login-selection-placeholder"><UserRound aria-hidden="true" size={30} /></span>}
+                      <span className="login-selection-nom">{nom}</span>
+                      {/* L'icône annonce le canal de vérification AVANT le toucher. */}
+                      <span className="login-selection-canal" aria-hidden="true">
+                        {c.biometrie ? <Fingerprint size={26} /> : <KeyRound size={24} />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* La personne encore inconnue de ce téléphone : le parcours
+                  classique, sans rien effacer de la liste. */}
+              <button type="button" className="login-change-account" onClick={autreCompte}>
+                <Users aria-hidden="true" size={20} />
+                <span>Autre compte</span>
+              </button>
+            </motion.div>
+          ) : step === 'reconnaissance' && compteActif ? (
             <motion.div
               key="reconnaissance"
               initial={{ opacity: 0, y: 10 }}
@@ -1507,13 +1627,13 @@ export function LoginPassword() {
                   (son prénom) — confirmation immédiate que c'est bien son compte.
                   Le geste est DIT par Tata ; l'écran ne l'écrit pas. */}
               <div className="login-account">
-                {compteConnu.photo ? <img src={compteConnu.photo} alt="" /> : <span className="login-account-placeholder"><UserRound aria-hidden="true" size={40} /></span>}
+                {compteActif.photo ? <img src={compteActif.photo} alt="" /> : <span className="login-account-placeholder"><UserRound aria-hidden="true" size={40} /></span>}
                 <p>Mon compte</p>
               </div>
               <BanniereErreur cle="reco-error-banner" message={error} />
               {/* UN SEUL grand geste, comme le grand micro du parcours classique :
                   reconnaissance (visage/doigt) si elle marche ici, sinon le code. */}
-              {compteConnu.biometrie ? (
+              {compteActif.biometrie ? (
                 <motion.button
                   type="button"
                   aria-label="Ton téléphone te reconnaît — touche pour entrer"
@@ -1552,7 +1672,7 @@ export function LoginPassword() {
                 </motion.button>
               )}
               {/* Secours toujours visible : son code à 4 chiffres — sans redonner le numéro. */}
-              {compteConnu.biometrie && (
+              {compteActif.biometrie && (
                 <button type="button" onClick={() => { setError(''); setStep('password'); }}
                   // AUTH-16 — surface sur token (le #fff en dur rendait hybride
                   // en mode sombre) ; AUTH-09 — cible ≥ 44 px.
@@ -1560,11 +1680,12 @@ export function LoginPassword() {
                   <KeyRound aria-hidden="true" size={22} /> Utiliser mon code
                 </button>
               )}
-              {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer. */}
+              {/* Téléphone partagé : quelqu'un d'autre peut entrer — sans rien effacer.
+                  Plusieurs visages connus → le sélecteur ; un seul → le parcours classique. */}
               <button
                 type="button"
                 className="login-change-account"
-                onClick={() => { setStep('phone'); setPhone(''); setPinInput(''); setError(''); }}
+                onClick={() => { setError(''); setPinInput(''); if (comptes.length >= 2) { setCompteChoisi(null); setStep('selection'); } else { setStep('phone'); setPhone(''); } }}
               >
                 <Users aria-hidden="true" size={20} />
                 <span>Changer de compte</span>

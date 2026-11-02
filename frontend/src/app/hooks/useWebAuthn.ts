@@ -124,13 +124,26 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
  * moments ; la distinction se fait ici. Proposé au registre : classer ces deux
  * appels « avant-session, à ne pas converger », comme `login` et `activer`.
  */
-export async function authenticateWebAuthn(phone: string): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
+/**
+ * ── LOT-MULTI-COMPTES (rang 3, spec §4.1.1) — LE COMPTE DÉSIGNÉ ────────────
+ *
+ * `compteDesigne` scelle la cérémonie sur UN compte précis du sélecteur :
+ * on saute l'essai usernameless (l'authentificateur de la plateforme, lui,
+ * propose TOUTES les clés découvrables de l'appareil — sur un téléphone
+ * partagé, elle pourrait ouvrir une autre carte que celle qu'elle a touchée)
+ * et on va DIRECTEMENT au chemin par numéro : allowCredentials ne contient
+ * que SES credentials — le doigt d'une autre personne ne peut pas ouvrir SA
+ * carte. Le numéro vient de la liste locale (« Tata se souvient de moi ») :
+ * elle ne le re-tape jamais.
+ */
+export async function authenticateWebAuthn(phone: string, options?: { compteDesigne?: boolean }): Promise<{ success: boolean; user?: any; accessToken?: string; refreshToken?: string; error?: string }> {
   // ── 1) SANS NUMÉRO — SPEC-AUTH-CIBLE §2.1 (LOT-WA-01, 29/10) ──────────────
   // L'authentificateur propose LUI-MÊME sa clé découvrable : elle pose son
   // doigt, le userHandle dit qui elle est, le numéro n'est jamais demandé.
   // Ne passe ici que si un credential découvrable a été enrôlé (ceux posés
   // à partir du 29/10) ; sinon le navigateur refuse l'invite tout de suite
   // et le repli ci-dessous prend la main.
+  if (!options?.compteDesigne) {
   try {
     const optRes = await fetch(`${API_URL}/auth/webauthn/authenticate/options`, {
       method: 'POST',
@@ -160,6 +173,7 @@ export async function authenticateWebAuthn(phone: string): Promise<{ success: bo
     // elle a annulé avant le verdict. Ce n'est pas une erreur à afficher —
     // c'est le signal du repli. Le chemin par numéro parle, lui, à chaque
     // échec (clips ENTREE_VOICE_CLIPS dans LoginPassword).
+  }
   }
 
   // ── 2) REPLI PAR NUMÉRO — chemin historique, inchangé ────────────────────
