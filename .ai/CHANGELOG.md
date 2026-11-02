@@ -3,6 +3,38 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Ajouté — Rang 3 : le sélecteur de comptes du téléphone partagé (LOT-MULTI-COMPTES, 2026-10-29)
+
+« Rang 3, 4 » (Patrick) — l'arbitrage « À VALIDER » de la spec §4.1 est venu
+de lui. Le défaut de l'audit (P1-AUTH-04) : « pas de "changer de compte" →
+chaque bascule = re-saisie du numéro » — exactement la tâche qu'on avait dit
+de retirer à qui elle avait déjà été oubliée une fois.
+
+1. **La décision, pure et testée** (`c9af5d7c`) — `selectionComptes.ts` :
+   0 compte → parcours classique ; 1 compte → comme hier (pas de liste pour
+   un choix qui n'en est pas un) ; 2 et + → le sélecteur. Borne MAX_COMPTES
+   réaffirmée à la lecture, nom affiché = appellation > prénom (jamais un
+   titre déduit), cible après choix = SA vérification. Garde
+   `test:selection-comptes` (7 cas) rattachée au banc verify.
+2. **L'écran** (`549052de`) — les cartes (photo + prénom + position +
+   icône du canal, ≥ 72 px, aria nommés, charte jetons intacte). La
+   cérémonie est SCELLÉE sur le compte désigné : `authenticateWebAuthn(…,
+   {compteDesigne})` saute l'essai usernameless qui, sur un téléphone
+   partagé, laissait l'authentificateur de la plateforme répondre avec une
+   AUTRE clé que celle de la carte touchée. « Autre compte » = parcours
+   classique, sans rien effacer. Voix CONN_SEL_QUI/AUTRE (catalogue i18n,
+   patron récupération/activation) — AUCUN prénom n'est synthétisé, la voix
+   dit le geste, les cartes disent qui. Clips studio scriptés
+   (CLIPS-VOIX-A-ENREGISTRER.md §6).
+3. **Deux gardes rattrapées en passant** — `0518e551` (convergence-api :
+   les 4 fetch de récupération sont d'avant session, la regex AVANT_SESSION
+   les nomme) et `9fb03c4c` (indicatifs-dits : le garde lit la 3ᵉ source de
+   voix, catalog.ts, et vérifie chaque clé citée par tParle — les 5
+   indicatifs ACTIV redeviennent verts de première main).
+
+Restes (pas des rangs dédiés) : clips conn-sel à enregistrer (§6) ; recette
+terrain avec DEUX comptes réels sur un même téléphone.
+
 ### Ajouté — A11Y-001 pas 2 : SharedModal passe sous Radix, le focus trap vient du socle (2026-10-29)
 
 « Passe aux prochains rangs » (Patrick). Le rang dédié inscrit au rang 6 :

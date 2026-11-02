@@ -139,6 +139,23 @@ i18n/voice/catalog.ts`, famille `ACTIV_*`) ; à déposer dans
 | `activ-hors-ligne.mp3` | ACTIV_HORS_LIGNE | Pas de réseau. Connecte-toi puis réessaie. |
 | `activ-succes.mp3` | ACTIV_SUCCES | C'est bon, ton compte est à toi ! Tu peux maintenant te connecter avec ton code. |
 
+## 6 — Le sélecteur de comptes (priorité moyenne — l'écran parle déjà, sans clip)
+
+Écrit le 29/10/2026, avec le sélecteur de comptes (LOT-MULTI-COMPTES).
+Le téléphone partagé ouvre maintenant sur des CARTES : elle touche son
+visage, elle entre — jamais de numéro re-tapé. Les deux phrases passent
+encore par la synthèse locale (patron récupération/activation) ; à déposer
+dans `frontend/public/voix/tata/`.
+
+Règle inchangée et vérifiée par construction : AUCUN prénom n'est jamais
+synthétisé — la voix dit le GESTE, ce sont les cartes (photo + prénom) qui
+disent QUI.
+
+| Fichier | Id catalogue | Texte à dire |
+|---|---|---|
+| `conn-sel-qui.mp3` | CONN_SEL_QUI | Qui est là ? Touche ton visage pour entrer. |
+| `conn-sel-autre.mp3` | CONN_SEL_AUTRE | Tu n'es pas sur les photos ? Touche « autre compte » en bas. |
+
 ## Comment enregistrer
 
 Mêmes conditions que les 137 clips existants, sinon la voix change d'un écran
