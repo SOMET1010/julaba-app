@@ -7,6 +7,8 @@ import { useApp } from '../../contexts/AppContext';
 
 // Import des logos Mobile Money depuis le registre central
 import { IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV, IMG_LOGO_WAVE } from '../../assets/images';
+// LOT-PROUVE-APPAREIL (rang 4) : le montant DIT part en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 const logoOrange = IMG_LOGO_ORANGE_MONEY;
 const logoMTN = IMG_LOGO_MTN;
 const logoMoov = IMG_LOGO_MOOV;
@@ -83,7 +85,7 @@ export function WithdrawWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
     setMontant(selectedMontant.toString());
     setIsAutreMontant(false);
     setError('');
-    speak(`${(selectedMontant || 0).toLocaleString()} francs CFA`);
+    speak(`${nombreEnMotsFr(selectedMontant || 0)} francs CFA`);
     setTimeout(() => setEtape(3), 300);
   };
 
@@ -116,7 +118,7 @@ export function WithdrawWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
     }
 
     setError('');
-    speak(`${(montantNum || 0).toLocaleString()} francs CFA`);
+    speak(`${nombreEnMotsFr(montantNum || 0)} francs CFA`);
     setIsAutreMontant(false);
     setTimeout(() => setEtape(3), 300);
   };
@@ -154,7 +156,7 @@ export function WithdrawWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
         return;
       }
 
-      speak(`Retrait de ${(parseFloat(montant) || 0).toLocaleString()} francs CFA en cours. Confirme sur ton téléphone.`);
+      speak(`Retrait de ${nombreEnMotsFr(parseFloat(montant) || 0)} francs CFA en cours. Confirme sur ton téléphone.`);
       handleClose();
 
     } catch (err: any) {

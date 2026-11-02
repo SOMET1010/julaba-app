@@ -4,6 +4,9 @@ import { Loader2, X } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { vibrerAttente } from '../../utils/haptique';
 import { PinArgent } from './PinArgent';
+// LOT-PROUVE-APPAREIL (rang 4) : le montant DIT part en toutes lettres — la
+// relecture est la primitive T8 de l'argent : elle ne peut pas épeler.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 /**
  * RELECTURE D'ARGENT — la primitive maison T8 (AUDIT-UX-ROLES-2026-10-06,
@@ -97,7 +100,7 @@ export function RelectureArgent({
   // est parlé ici est écrit à l'écran — titre, montant, destinataire,
   // avertissement.
   const etaitOuvertRef = useRef(false);
-  const phraseVoix = `${titre} ${montant.toLocaleString('fr-FR')} francs${sousLigne ? ` — ${sousLigne}` : ''}. ${avertissement}`;
+  const phraseVoix = `${titre} ${nombreEnMotsFr(montant)} francs${sousLigne ? ` — ${sousLigne}` : ''}. ${avertissement}`;
   useEffect(() => {
     const ouverture = ouvert && !etaitOuvertRef.current;
     etaitOuvertRef.current = ouvert;

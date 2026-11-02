@@ -13,6 +13,8 @@ import {
 } from './ProducteurModals';
 import tataLouImgProducteur from "../../../assets/images/tantie-producteur.png";
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
+// LOT-PROUVE-APPAREIL (rang 4) : les nombres DITS partent en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 export function ProducteurHome() {
   const navigate = useNavigate();
@@ -55,9 +57,9 @@ export function ProducteurHome() {
     const production = stats?.recoltesKgTotal ?? 0;
     const revenus = stats?.revenusTotal ?? 0;
     if (production > 0 && revenus === 0) {
-      message = `Tu as ${(production || 0).toLocaleString()} kilogrammes de production. Commence à vendre !`;
+      message = `Tu as ${nombreEnMotsFr(production || 0)} kilogrammes de production. Commence à vendre !`;
     } else if (production > 0 && revenus > 0) {
-      message = `Bravo ! Tu as ${(production || 0).toLocaleString()} kilogrammes produits et ${(revenus || 0).toLocaleString()} francs CFA de revenus`;
+      message = `Bravo ! Tu as ${nombreEnMotsFr(production || 0)} kilogrammes produits et ${nombreEnMotsFr(revenus || 0)} francs CFA de revenus`;
     } else {
       message = `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ''} ! Crée ta première plantation agricole pour démarrer`;
     }

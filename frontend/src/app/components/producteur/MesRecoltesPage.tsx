@@ -10,6 +10,8 @@ import { useProducteur, type Recolte, type Cycle } from '../../contexts/Producte
 import { useApp } from '../../contexts/AppContext';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { SearchBar } from '../shared/SearchBar';
+// LOT-PROUVE-APPAREIL (rang 4) : le nombre DIT part en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 const COLOR = '#2E8B57';
 const formatMontant = (v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}k` : `${v}`;
@@ -258,7 +260,7 @@ export function MesRecoltesPage() {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.06, type: 'spring', stiffness: 220 }}
-                    onClick={() => { setRecolte(recolte); void speak(`${recolte.produit}, ${Number(recolte.quantite).toLocaleString()} kg`); }}
+                    onClick={() => { setRecolte(recolte); void speak(`${recolte.produit}, ${nombreEnMotsFr(Number(recolte.quantite))} kilogrammes`); }}
                     className="bg-white rounded-3xl border-2 border-gray-100 overflow-hidden cursor-pointer"
                   >
                     {recolte.photoUrl && (

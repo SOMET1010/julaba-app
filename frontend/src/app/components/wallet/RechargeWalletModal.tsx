@@ -9,6 +9,8 @@ import { rechargerViaBpay, verifierStatutBpay } from '../../services/api/wallets
 
 // Import des logos Mobile Money depuis le registre central
 import { IMG_LOGO_ORANGE_MONEY, IMG_LOGO_MTN, IMG_LOGO_MOOV, IMG_LOGO_WAVE } from '../../assets/images';
+// LOT-PROUVE-APPAREIL (rang 4) : le montant DIT part en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 const logoOrange = IMG_LOGO_ORANGE_MONEY;
 const logoMTN = IMG_LOGO_MTN;
 const logoMoov = IMG_LOGO_MOOV;
@@ -81,7 +83,7 @@ export function RechargeWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
   const handleMontantSelect = (selectedMontant: number) => {
     setMontant(selectedMontant.toString());
     setIsAutreMontant(false);
-    speak(`${(selectedMontant || 0).toLocaleString()} francs CFA`);
+    speak(`${nombreEnMotsFr(selectedMontant || 0)} francs CFA`);
     setTimeout(() => setEtape(3), 300);
   };
 
@@ -107,7 +109,7 @@ export function RechargeWalletModal({ isOpen, onClose, roleColor = '#2E8B57' }: 
     }
 
     setError('');
-    speak(`${(montantNum || 0).toLocaleString()} francs CFA`);
+    speak(`${nombreEnMotsFr(montantNum || 0)} francs CFA`);
     setIsAutreMontant(false);
     setTimeout(() => setEtape(3), 300);
   };

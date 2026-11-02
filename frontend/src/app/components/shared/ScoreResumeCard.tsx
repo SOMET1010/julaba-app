@@ -27,6 +27,9 @@ import { ScoreOnboardingModal } from './ScoreOnboardingModal';
 import { ActionsGuideesCard } from './ActionsGuideesCard';
 import { useScoreJULABA } from '../../hooks/useScoreJULABA';
 import { RoleType } from '../../config/roleConfig';
+// LOT-PROUVE-APPAREIL (rang 4) : chaque montant DIT part en toutes lettres —
+// « trois mille francs », jamais « 3 000 » que la synthèse épelle.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 // ─── Configuration dynamique du Résumé par rôle ──────────────────────────────
 interface ResumeLineConfig {
@@ -53,7 +56,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Ventes du jour',        unit: 'FCFA',    bgColor: 'bg-green-50',  dotColor: 'bg-green-500',  textColor: 'text-green-700' },
     ligne2: { label: 'Cahier du jour',       unit: 'FCFA',    bgColor: 'bg-orange-50', dotColor: 'bg-orange-500', textColor: 'text-orange-700' },
     ligne3: { label: 'Ce que tu devrais avoir',unit: 'FCFA',    bgColor: 'bg-gray-50',   dotColor: 'bg-gray-500',   textColor: 'text-gray-700', tooltip: 'Calculé à partir de tes ventes moins tes cahiers' },
-    speakFn: (v1, v2, v3) => `Résumé du jour : tu as vendu pour ${(v1 || 0).toLocaleString()} francs, dépensé ${(v2 || 0).toLocaleString()} francs, et tu devrais avoir ${(v3 || 0).toLocaleString()} francs en caisse`,
+    speakFn: (v1, v2, v3) => `Résumé du jour : tu as vendu pour ${nombreEnMotsFr(v1 || 0)} francs, dépensé ${nombreEnMotsFr(v2 || 0)} francs, et tu devrais avoir ${nombreEnMotsFr(v3 || 0)} francs en caisse`,
   },
   producteur: {
     title: 'Résumé du jour',
@@ -61,7 +64,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Récoltes du jour',       unit: 'kg',      bgColor: 'bg-green-50',  dotColor: 'bg-green-500',  textColor: 'text-green-700' },
     ligne2: { label: 'Cahier agricoles',     unit: 'FCFA',    bgColor: 'bg-orange-50', dotColor: 'bg-orange-500', textColor: 'text-orange-700' },
     ligne3: { label: 'Revenus du jour',         unit: 'FCFA',    bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500',   textColor: 'text-blue-700', tooltip: 'Total des ventes de tes récoltes du jour' },
-    speakFn: (v1, v2, v3) => `Résumé du jour : tu as récolté ${(v1 || 0).toLocaleString()} kilogrammes, dépensé ${(v2 || 0).toLocaleString()} francs pour ta ferme, et gagné ${(v3 || 0).toLocaleString()} francs de revenus`,
+    speakFn: (v1, v2, v3) => `Résumé du jour : tu as récolté ${nombreEnMotsFr(v1 || 0)} kilogrammes, dépensé ${nombreEnMotsFr(v2 || 0)} francs pour ta ferme, et gagné ${nombreEnMotsFr(v3 || 0)} francs de revenus`,
   },
   cooperative: {
     title: "Résumé d'activité",
@@ -69,7 +72,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Ventes groupées du jour', unit: 'FCFA',   bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500',   textColor: 'text-blue-700' },
     ligne2: { label: 'Solde trésorerie',        unit: 'FCFA',    bgColor: 'bg-orange-50', dotColor: 'bg-orange-500', textColor: 'text-orange-700' },
     ligne3: { label: 'Cotisations',             unit: 'FCFA',    bgColor: 'bg-gray-50',   dotColor: 'bg-gray-500',   textColor: 'text-gray-700', tooltip: 'Total des cotisations validées des membres' },
-    speakFn: (v1, v2, v3) => `Résumé : la coopérative a ${(v1 || 0).toLocaleString()} francs de ventes groupées, un solde de trésorerie de ${(v2 || 0).toLocaleString()} francs, et ${(v3 || 0).toLocaleString()} francs de cotisations`,
+    speakFn: (v1, v2, v3) => `Résumé : la coopérative a ${nombreEnMotsFr(v1 || 0)} francs de ventes groupées, un solde de trésorerie de ${nombreEnMotsFr(v2 || 0)} francs, et ${nombreEnMotsFr(v3 || 0)} francs de cotisations`,
   },
   cooperateur: {
     title: "Résumé d'activité",
@@ -77,7 +80,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Ventes groupées du jour', unit: 'FCFA',   bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500',   textColor: 'text-blue-700' },
     ligne2: { label: 'Solde trésorerie',        unit: 'FCFA',    bgColor: 'bg-orange-50', dotColor: 'bg-orange-500', textColor: 'text-orange-700' },
     ligne3: { label: 'Cotisations',             unit: 'FCFA',    bgColor: 'bg-gray-50',   dotColor: 'bg-gray-500',   textColor: 'text-gray-700', tooltip: 'Total des cotisations validées des membres' },
-    speakFn: (v1, v2, v3) => `Résumé : la coopérative a ${(v1 || 0).toLocaleString()} francs de ventes groupées, un solde de trésorerie de ${(v2 || 0).toLocaleString()} francs, et ${(v3 || 0).toLocaleString()} francs de cotisations`,
+    speakFn: (v1, v2, v3) => `Résumé : la coopérative a ${nombreEnMotsFr(v1 || 0)} francs de ventes groupées, un solde de trésorerie de ${nombreEnMotsFr(v2 || 0)} francs, et ${nombreEnMotsFr(v3 || 0)} francs de cotisations`,
   },
   identificateur: {
     title: 'Résumé du jour',
@@ -85,7 +88,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Identifications du jour',unit: 'acteurs', bgColor: 'bg-green-50',  dotColor: 'bg-green-500',  textColor: 'text-green-700' },
     ligne2: { label: 'Revenus du jour',         unit: 'FCFA',    bgColor: 'bg-orange-50', dotColor: 'bg-orange-500', textColor: 'text-orange-700' },
     ligne3: { label: 'Total acteurs identifiés',unit: 'acteurs', bgColor: 'bg-gray-50',   dotColor: 'bg-gray-500',   textColor: 'text-gray-700', tooltip: 'Nombre total d\'acteurs que tu as identifiés depuis le début' },
-    speakFn: (v1, v2, v3) => `Résumé du jour : tu as identifié ${v1} acteurs aujourd'hui, gagné ${(v2 || 0).toLocaleString()} francs, et ton total est de ${v3} acteurs identifiés`,
+    speakFn: (v1, v2, v3) => `Résumé du jour : tu as identifié ${v1} acteurs aujourd'hui, gagné ${nombreEnMotsFr(v2 || 0)} francs, et ton total est de ${v3} acteurs identifiés`,
   },
   institution: {
     title: "Vue d'ensemble",
@@ -93,7 +96,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Utilisateurs actifs',    unit: 'acteurs', bgColor: 'bg-green-50',  dotColor: 'bg-green-500',  textColor: 'text-green-700' },
     ligne2: { label: 'Volume total du jour',   unit: 'FCFA',    bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500',   textColor: 'text-blue-700' },
     ligne3: { label: 'Transactions du jour',   unit: 'opérations', bgColor: 'bg-gray-50', dotColor: 'bg-gray-500',  textColor: 'text-gray-700', tooltip: 'Nombre total de transactions enregistrées aujourd\'hui' },
-    speakFn: (v1, v2, v3) => `Vue d'ensemble : ${v1} utilisateurs actifs, ${(v2 || 0).toLocaleString()} francs de volume total, et ${v3} transactions aujourd'hui`,
+    speakFn: (v1, v2, v3) => `Vue d'ensemble : ${v1} utilisateurs actifs, ${nombreEnMotsFr(v2 || 0)} francs de volume total, et ${v3} transactions aujourd'hui`,
   },
   administrateur: {
     title: "Vue d'ensemble",
@@ -101,7 +104,7 @@ const RESUME_BY_ROLE: Record<RoleType, ResumeConfig> = {
     ligne1: { label: 'Utilisateurs actifs',    unit: 'acteurs', bgColor: 'bg-green-50',  dotColor: 'bg-green-500',  textColor: 'text-green-700' },
     ligne2: { label: 'Volume total du jour',   unit: 'FCFA',    bgColor: 'bg-blue-50',   dotColor: 'bg-blue-500',   textColor: 'text-blue-700' },
     ligne3: { label: 'Transactions du jour',   unit: 'opérations', bgColor: 'bg-gray-50', dotColor: 'bg-gray-500',  textColor: 'text-gray-700', tooltip: 'Nombre total de transactions enregistrées aujourd\'hui' },
-    speakFn: (v1, v2, v3) => `Vue d'ensemble : ${v1} utilisateurs actifs, ${(v2 || 0).toLocaleString()} francs de volume total, et ${v3} transactions aujourd'hui`,
+    speakFn: (v1, v2, v3) => `Vue d'ensemble : ${v1} utilisateurs actifs, ${nombreEnMotsFr(v2 || 0)} francs de volume total, et ${v3} transactions aujourd'hui`,
   },
 };
 

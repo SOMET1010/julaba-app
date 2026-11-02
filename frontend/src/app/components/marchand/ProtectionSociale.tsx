@@ -24,6 +24,8 @@ import {
   type Organisme,
   type Cotisation,
 } from '../../services/protectionSociale.service';
+// LOT-PROUVE-APPAREIL (rang 4) : les montants DITS partent en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 // PROD-04 — la page est routée pour le producteur ET la marchande : le rôle
 // est déduit du préfixe d'URL (couleur et header suivent le profil), le reste
@@ -108,8 +110,8 @@ export function ProtectionSociale() {
     const cnam = totalCotise(etat.cotisations, 'CNAM');
     const parts = [
       'Votre protection sociale.',
-      `CNPS, pour votre retraite : ${cnps.toLocaleString('fr-FR')} francs cotisés.`,
-      `CNAM, pour votre santé : ${cnam.toLocaleString('fr-FR')} francs cotisés.`,
+      `CNPS, pour votre retraite : ${nombreEnMotsFr(cnps)} francs cotisés.`,
+      `CNAM, pour votre santé : ${nombreEnMotsFr(cnam)} francs cotisés.`,
     ];
     if (rappels.length) parts.push(`Attention, il vous reste des mois à régler.`);
     speak(parts.join(' '));

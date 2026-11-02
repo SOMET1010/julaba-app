@@ -27,6 +27,8 @@ import { Label } from '../ui/label';
 import { Montant, MontantCard } from '../shared/Montant';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { toast } from 'sonner';
+// LOT-PROUVE-APPAREIL (rang 4) : le montant DIT part en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 const COOPERATIVE_COLOR = '#2072AF';
 
@@ -122,7 +124,7 @@ export function TresorerieCooperative() {
       return;
     }
 
-    speak(`Transaction ${typeTransaction === 'entree' ? 'entrée' : 'sortie'} de ${(montant || 0).toLocaleString()} francs CFA enregistrée`);
+    speak(`Transaction ${typeTransaction === 'entree' ? 'entrée' : 'sortie'} de ${nombreEnMotsFr(montant || 0)} francs CFA enregistrée`);
 
     // Reset
     setShowAjoutModal(false);

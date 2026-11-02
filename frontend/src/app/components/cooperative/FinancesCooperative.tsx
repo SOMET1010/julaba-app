@@ -34,6 +34,8 @@ import { Montant, MontantCard } from '../shared/Montant';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { UniversalKPI, KPIGrid } from '../ui/UniversalKPI';
 import { toast } from 'sonner';
+// LOT-PROUVE-APPAREIL (rang 4) : le montant DIT part en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 const COLOR = '#2072AF';
 
@@ -246,7 +248,7 @@ export function FinancesCooperative() {
   } = useCooperative();
 
   // Le/la responsable doit pouvoir ENTENDRE la trésorerie (pas seulement la lire).
-  const direSolde = () => speak(`Trésorerie actuelle : ${(soldeActuel || 0).toLocaleString('fr-FR')} francs.`);
+  const direSolde = () => speak(`Trésorerie actuelle : ${nombreEnMotsFr(soldeActuel || 0)} francs.`);
   const soldeDit = useRef(false);
   useEffect(() => {
     if (soldeDit.current || (soldeActuel === 0)) return;

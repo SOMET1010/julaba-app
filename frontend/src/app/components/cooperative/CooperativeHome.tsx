@@ -19,6 +19,8 @@ import {
 } from './CooperativeModals';
 import tataLouImgCooperative from "../../../assets/images/tantie-cooperative.png";
 import { NotifBellButton, NotificationsPanel } from '../shared/NotificationsPanel';
+// LOT-PROUVE-APPAREIL (rang 4) : les montants DITS partent en toutes lettres.
+import { nombreEnMotsFr } from '../../i18n/voice/argent/deuxFormes';
 
 export function CooperativeHome() {
   const navigate = useNavigate();
@@ -55,7 +57,7 @@ export function CooperativeHome() {
   const currentSession = null; // Pas de session pour coopérative
 
   const handleListenMessage = () => {
-    const message = `Bonjour ! La coopérative ${cooperative?.nom || user?.prenoms} compte ${getMembresActifs().length} membres actifs avec ${(dashboardStats.kpi1Value || 0).toLocaleString()} francs CFA de ventes groupées et ${(dashboardStats.kpi2Value || 0).toLocaleString()} francs CFA en trésorerie`;
+    const message = `Bonjour ! La coopérative ${cooperative?.nom || user?.prenoms} compte ${getMembresActifs().length} membres actifs avec ${nombreEnMotsFr(dashboardStats.kpi1Value || 0)} francs CFA de ventes groupées et ${nombreEnMotsFr(dashboardStats.kpi2Value || 0)} francs CFA en trésorerie`;
     speak(message);
   };
 
