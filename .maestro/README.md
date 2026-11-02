@@ -60,6 +60,38 @@ solution. Deux pistes existent, **nommées, datées, et non ouvertes ici** :
 
 ---
 
+## T6 — la preuve APK du TTS natif sur les montants (rang 4, 29/10)
+
+Le rang 4 du plan d'audit (« montants dynamiques — preuve APK du TTS natif »)
+a son protocole. La chaîne native existe (`SherpaTtsPlugin.kt`, Piper/SIWIS
+embarqué, pont `nativeTts.ts`, orchestration `audioManager.realStartTts`) ;
+ce qui manquait est la preuve posée noir sur blanc. Elle a DEUX moitiés, et
+aucune ne se substitue à l'autre :
+
+1. **La moitié machinique** — le flow **`T6-tts-natif-montant.yaml`** (tag
+   `tts`, marqué `partiel` comme T2) : vente tactile → total affiché juste
+   (jamais NaN, jamais négatif). Le montant à l'écran part du MÊME chemin
+   unique que la voix (`ARGENT_ENONCE` / `formeParlee`) — un total faux à
+   l'écran est un montant faux dans l'oreille. Toutes les phrases de montants
+   passent désormais en toutes lettres (`nombreEnMotsFr`) : « trois mille
+   francs », jamais « 3 000 » épelé — garde `test:montants-oraux`.
+2. **La moitié du moteur (sur l'APK)** — pour la phrase du total, le journal
+   de voix doit porter `TTS_MOTEUR : native-sherpa` (et la sonde
+   `TTS_NATIF_SONDE {disponible:true}`) :
+   ```sh
+   adb shell "run-as com.julaba.app cat /data/data/com.julaba.app/app_webview/Local\ Storage/leveldb/*" 2>/dev/null | strings | grep -E "TTS_MOTEUR|TTS_NATIF_SONDE"
+   ```
+   ou le bouton 🐞 Rapport, qui copie le même journal avec son repère.
+3. **Le verdict d'écoute** — « l'entends-tu dire *trois mille francs* ? » —
+   reste le geste humain (fiche testeur, cinq gestes). Les WAV de référence
+   pour le banc physique viennent du workflow **`spike-tts.yml`** (artefacts
+   à écouter, mêmes phrases-montants).
+
+On ne déclare PAS « conforme » sur la foi de ces seules traces — c'est la
+règle du plan d'audit §4 : la preuve appareil inclut l'oreille de Patrick.
+
+---
+
 ## Installer
 
 ```sh

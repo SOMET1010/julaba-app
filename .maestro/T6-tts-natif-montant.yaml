@@ -1,0 +1,48 @@
+# T6 — LE TTS NATIF A LE MONTANT (rang 4 — LOT-PROUVE-APPAREIL).
+#
+# ⚠️ CE FLOW NE PROUVE PAS, LUI SEUL, QUE L'APK PARLE. Maestro n'ENTEND pas :
+# le verdict d'écoute (« l'entends-tu dire trois mille francs ? ») reste un
+# geste HUMAIN — REGLE-VOICE-FIRST l'interdit à une instance IA.
+#
+# CE QU'IL PROUVE (la moitié machinique, comme T2) :
+#   1. Le pendant ÉCRIT du montant qui part à la voix — même chemin unique
+#      (`ARGENT_ENONCE` / `formeParlee`) : un total faux à l'écran est un
+#      montant faux dans l'oreille.
+#   2. Le montant montré n'est JAMAIS négatif ni NaN — ce qui se dirait
+#      « moins » ou « e-NaN » ne doit jamais exister.
+#
+# LA MOITIÉ MACHINIQUE DU MOTEUR (à faire sur l'APK, pas ici) : le journal de
+# voix doit porter, pour la phrase du total, la trace du moteur retenu :
+#   TTS_MOTEUR : native-sherpa   (et la sonde : TTS_NATIF_SONDE disponible:true)
+# Relevé sur l'appareil (cf. README §« Le journal de l'application ») :
+#   adb shell "run-as com.julaba.app cat /data/data/com.julaba.app/app_webview/Local\ Storage/leveldb/*" 2>/dev/null | strings | grep -E "TTS_MOTEUR|TTS_NATIF_SONDE"
+# — ou le bouton 🐞 Rapport, qui copie le même journal avec son repère.
+# Les artefacts WAV de référence (mêmes phrases-montants) viennent du
+# workflow spike-tts.yml — ils alimentent le banc physique (haut-parleur →
+# micro) décrit dans le README.
+appId: com.julaba.app
+name: T6 — le montant du TTS natif est juste (le son reste humain)
+tags:
+  - avecCompte
+  - caisse
+  - partiel
+  - tts
+---
+- runFlow: 00-login.yaml
+- runFlow: commun/aller-a-la-caisse.yaml
+
+# Vente tactile (le chemin que ce banc sait jouer seul) — premier produit de
+# l'étal, quel qu'il soit. C'est CE total que le TTS natif devra dire.
+- tapOn:
+    index: 0
+    text: "F$"
+    optional: true
+- takeScreenshot: T6-total-avant-voix
+
+- assertVisible: "Total"
+- assertNotVisible: "NaN"
+- assertNotVisible: "undefined"
+
+# AUCUN MONTANT NÉGATIF — un « moins » à l'écran serait dit « moins » à voix.
+- assertNotVisible:
+    text: "-[0-9]+ ?F"
