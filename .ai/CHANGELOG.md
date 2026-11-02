@@ -3,6 +3,39 @@
 > Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 > Adjonction du système multi-agents le 2026-09-28.
 
+### Ajouté — Rang 4 : les montants dits quittent les chiffres + le protocole de preuve APK (LOT-PROUVE-APPAREIL, 2026-10-29)
+
+« Rang 3, 4 » (Patrick). Le verrou produit reconnu par REGLE-VOICE-FIRST :
+un montant variable ne peut pas être un clip ; tant que rien ne le prononce
+en toutes lettres, aucun écran d'argent ne peut parler. La chaîne native
+existe déjà (SherpaTtsPlugin, Piper/SIWIS embarqué) — le lot a fermé la
+dette et posé la preuve.
+
+1. **La dette fermée** (`c3916837`) — neuf écrans parlaient leurs montants
+   par `toLocaleString()` : « 3 000 » que la synthèse peut épeler « trois
+   zéro zéro zéro ». Tous migrés sur `nombreEnMotsFr` (« trois mille
+   francs », déterministe, sans ICU, sans dépendance d'appareil) :
+   Revenus, ScoreResumeCard (7 rôles), Trésorerie/Finances coopérative,
+   retrait et recharge wallet, récoltes en kilogrammes, accueil producteur
+   et coopérative, protection sociale, relecture d'argent (primitive T8).
+2. **La garde** (`c3916837`) — `test:montants-oraux` : une ligne qui arrive
+   à une bouche (speak/speakAuto/speakClipOrText/speakFn/dire/parle/
+   phraseVoix) ne formate pas un nombre à l'écran. 713 fichiers balayés,
+   morsure vérifiée sur régression contrôlée, rattachée au banc verify.
+3. **Le protocole de preuve** (`fb1d3a97`) — flow **T6-tts-natif-montant**
+   (tag `tts`, marqué `partiel` comme T2) : la moitié machinique (total
+   juste, jamais NaN, jamais négatif — même chemin unique que la voix).
+   Le README du banc documente la moitié moteur (TTS_MOTEUR native-sherpa
+   + TTS_NATIF_SONDE relevés par adb ou bouton 🐞) et renvoie les WAV de
+   spike-tts.yml vers le banc physique. Le verdict d'écoute reste le geste
+   humain — plan §4 : on ne déclare pas « conforme » sur traces seules.
+
+Restes : recette Android réel (rang P2-3), oreille de Patrick sur le
+haut-parleur, et l'option « clips composables de nombres » (~35
+enregistrements) reste NON choisie — l'arbitrage des trois chemins de
+REGLE-VOICE-FIRST reste à Patrick ; la synthèse native FR tient le verrou
+d'ici là.
+
 ### Ajouté — Rang 3 : le sélecteur de comptes du téléphone partagé (LOT-MULTI-COMPTES, 2026-10-29)
 
 « Rang 3, 4 » (Patrick) — l'arbitrage « À VALIDER » de la spec §4.1 est venu
