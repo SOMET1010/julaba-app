@@ -34,6 +34,7 @@
     "test:choix-unite": "tsx src/app/components/marchand/choixUnite.test.mts",
     "test:tata-actions": "tsx src/app/services/tataMarchandActions.test.mts",
     "test:comptes": "tsx src/app/services/comptesMemorises.test.mts",
+    "test:selection-comptes": "tsx src/app/services/selectionComptes.test.mts",
     "test:bambara": "tsx src/app/voice-offline/nombresBambara.test.mts",
     "test:mandingue": "tsx src/app/voice-offline/nombresMandingue.test.mts",
     "test:fcfa": "tsx src/app/utils/fcfa.test.mts",

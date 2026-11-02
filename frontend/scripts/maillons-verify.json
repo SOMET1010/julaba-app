@@ -15,6 +15,7 @@
     "test:cart",
     "test:voix",
     "test:comptes",
+    "test:selection-comptes",
     "test:bambara",
     "test:mandingue",
     "test:fcfa",
