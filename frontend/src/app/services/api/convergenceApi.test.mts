@@ -160,7 +160,7 @@ const CHEMINS_SENSIBLES = /\/(auth|caisse|stocks?|vente|catalogue-maitre)\b/;
 // session. Les mêmes routes appelées EN session (ouverture du keiwa) passent,
 // elles, par la couche API — d'où la distinction faite dans `useWebAuthn.ts`
 // plutôt qu'ici : ce garde-fou voit des chemins, pas des moments.
-const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refresh|webauthn\/authenticate\/|recover-super-admin|reset-super-admin-password|super-admin-status|test-login|create-super-admin|users\/create|create-acteur|contacts-recovery-bo)/;
+const AVANT_SESSION = /\/auth\/(login|check-phone|change-password|activer|refresh|webauthn\/authenticate\/|recuperation\/|recover-super-admin|reset-super-admin-password|super-admin-status|test-login|create-super-admin|users\/create|create-acteur|contacts-recovery-bo)/;
 
 // NON ENCORE CONVERGÉ, avec la raison. Cette liste doit RÉTRÉCIR.
 const RESTE_A_CONVERGER: Record<string, string> = {
