@@ -36,6 +36,7 @@ const ICI = dirname(fileURLToPath(import.meta.url));
 const AUTH = join(ICI, '..', 'src', 'app', 'components', 'auth');
 const ENTREE = join(ICI, '..', 'src', 'app', 'services', 'entreeVoix.ts');
 const TATA = join(ICI, '..', 'src', 'app', 'services', 'tataUiClips.ts');
+const CATALOGUE_I18N = join(ICI, '..', 'src', 'app', 'i18n', 'voice', 'catalog.ts');
 
 /** Même normalisation que tataUiClips.normalizeForClip : comparaison auditive. */
 const normaliser = (s) => (s || '')
@@ -101,6 +102,21 @@ function litteraux(fragment) {
 }
 
 const catalogue = lireCatalogue();
+
+/**
+ * LOT-ACTIVATION / LOT-RECOVERY (29/10/2026) — la TROISIÈME source de voix.
+ * Les écrans récents citent le catalogue i18n par clé : `tParle('ACTIV_...')`.
+ * La phrase vit dans `catalog.ts` (`frActuel`) — clip à enregistrer, moteur
+ * local d'ici là. La clé citée est un ACCOLAGE, pas une phrase : elle doit
+ * EXISTER dans le catalogue, sinon l'écran parle un message fantôme.
+ */
+function lireClesI18n() {
+  const cles = new Set();
+  const cat = readFileSync(CATALOGUE_I18N, 'utf8');
+  for (const m of cat.matchAll(/id:\s*'([A-Z0-9_]+)'/g)) cles.add(m[1]);
+  return cles;
+}
+const clesI18n = lireClesI18n();
 const ecrans = readdirSync(AUTH).filter((f) => f.endsWith('.tsx'));
 
 let echecs = 0;
@@ -134,7 +150,18 @@ for (const ecran of ecrans) {
       continue;
     }
 
-    const textes = litteraux(arg);
+    // Citations tParle('CLE') : la clé sort de l'extraction des littéraux
+    // (c'est un accolage de catalogue, pas une phrase) — mais CHAQUE clé
+    // citée doit exister, sinon le garde dit laquelle manque.
+    let argReste = arg;
+    for (const citation of arg.matchAll(/tParle\s*\(\s*'([A-Z0-9_]+)'\s*\)/g)) {
+      const cle = citation[1];
+      verifier(clesI18n.has(cle), `${ou} — tParle('${cle}') cite une clé du catalogue i18n`,
+        `cette clé n'existe pas dans catalog.ts — l'écran parlerait un message fantôme.`);
+      argReste = argReste.split(citation[0]).join(' ');
+    }
+
+    const textes = litteraux(argReste);
     if (textes.length === 0) continue; // clé de catalogue ou constante du composant
 
     for (const t of textes) {
