@@ -1,13 +1,14 @@
 name: Miroir Azure DevOps
 
-# Miroir de CE dépôt vers Azure DevOps (DevOps-ANSUT/Julaba) — le lab GitHub est
+# Miroir de CE dépôt vers Azure DevOps (DevOps-ANSUT/julaba-app) — le lab GitHub est
 # l'environnement de développement, la plateforme cible de l'équipe est Azure.
 # À CHAQUE push GitHub (toutes branches), toutes les branches et les tags sont
 # poussés vers le dépôt Azure — plus aucun push manuel vers Azure : le `dev` du
 # lab est visible côté Azure dès qu'il est poussé sur GitHub.
-# Chaque référence part individuellement : une divergence côté Azure (ex. le
-# master historique d'ANSUT) sort en avertissement, n'est jamais écrasée, et
-# n'empêche pas les autres branches de passer.
+# Chaque référence part individuellement : une divergence côté Azure (ex. un
+# push direct côté Azure, comme le master sur sa ligne devops distincte) sort
+# en avertissement, n'est jamais écrasée, et n'empêche pas les autres branches
+# de passer.
 #
 # (Historique : l'ancien job clonait un AUTRE dépôt — Desiralex25/Julabaovh — et
 # poussait master/develop ; il ne se déclenchait jamais. Remplacé, puis étendu
@@ -57,7 +58,7 @@ jobs:
         if: steps.cfg.outputs.configured == 'true'
         run: |
           AUTH=$(printf ":%s" "$AZURE_PAT" | base64 -w0)
-          AZURE_URL="https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba"
+          AZURE_URL="https://dev.azure.com/DevOps-ANSUT/julaba-app/_git/julaba-app"
           ok=0; divergentes=0
           # Branches : le checkout ne crée qu'une branche locale (celle du ref
           # demandé), les autres n'existent que dans refs/remotes/origin — on
