@@ -2,19 +2,22 @@ name: Miroir Azure DevOps
 
 # Miroir de CE dépôt vers Azure DevOps (DevOps-ANSUT/Julaba) — le lab GitHub est
 # l'environnement de développement, la plateforme cible de l'équipe est Azure.
-# À chaque push sur main (et à la demande), `main` et les tags sont poussés vers
-# le dépôt Azure, pour que l'équipe retrouve toujours l'état courant chez elle.
+# À CHAQUE push GitHub (toutes branches), toutes les branches et les tags sont
+# poussés vers le dépôt Azure — plus aucun push manuel vers Azure : le `dev` du
+# lab est visible côté Azure dès qu'il est poussé sur GitHub.
 #
 # (Historique : l'ancien job clonait un AUTRE dépôt — Desiralex25/Julabaovh — et
-# poussait master/develop ; il ne se déclenchait jamais. Remplacé.)
+# poussait master/develop ; il ne se déclenchait jamais. Remplacé, puis étendu
+# de « main seulement, à chaque merge » à « toutes les branches, à chaque
+# push » — le travail quotidien vivant sur `dev`, le miroir main-seul ne
+# reflétait jamais rien.)
 #
 # Secret à poser : AZURE_DEVOPS_PAT (PAT Azure DevOps, droit « Code: Read & Write »
 # sur le projet Julaba). Sans lui, le job sort en « succès avec avertissement » —
 # pas de croix rouge, mais l'oubli reste visible dans chaque run.
 
 on:
-  push:
-    branches: [main]
+  push: {}
   workflow_dispatch: {}
 
 permissions:
@@ -47,14 +50,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pousser main et les tags vers Azure DevOps
+      - name: Pousser toutes les branches et les tags vers Azure DevOps
         if: steps.cfg.outputs.configured == 'true'
         run: |
           AUTH=$(printf ":%s" "$AZURE_PAT" | base64 -w0)
           git -c http.extraheader="Authorization: Basic ${AUTH}" \
             push "https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba" \
-            "refs/heads/main:refs/heads/main" \
+            "refs/heads/*:refs/heads/*" \
             "refs/tags/*:refs/tags/*"
-          # Pas de force : Azure ne reçoit main QUE de ce miroir, le push est
-          # toujours fast-forward. S'il échoue, quelqu'un a poussé directement
-          # côté Azure — à réconcilier à la main, pas à écraser en silence.
+          # Pas de force : Azure ne reçoit ses branches QUE de ce miroir, le
+          # push est toujours fast-forward. S'il échoue, quelqu'un a poussé
+          # directement côté Azure — à réconcilier à la main, pas à écraser en
+          # silence.

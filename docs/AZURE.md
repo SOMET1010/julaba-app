@@ -7,13 +7,14 @@ migration : chaque brique du lab, son équivalent cible, et ce qui change.
 
 ## 1. Le code — miroir automatique (en place)
 
-Le workflow `.github/workflows/mirror-azure.yml` pousse `main` et les tags vers
-`https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba` à chaque merge.
+Le workflow `.github/workflows/mirror-azure.yml` pousse **toutes les branches**
+(et les tags) vers `https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba` à
+**chaque push GitHub** — y compris `dev`, donc, dès qu'il est poussé sur le
+lab. Plus aucun push manuel vers Azure n'est nécessaire.
 
 **À faire une fois** : poser le secret GitHub `AZURE_DEVOPS_PAT` (PAT Azure
 DevOps avec le droit « Code : Read & Write » sur le projet Julaba). Sans lui, le
-miroir sort en « succès avec avertissement » sans rien pousser. Côté Azure,
-mettre `main` comme branche par défaut du dépôt.
+miroir sort en « succès avec avertissement » sans rien pousser.
 
 Le développement continue sur le lab (petits lots → CI → recette → merge) ;
 Azure reçoit l'état consolidé. La bascule complète (PR et CI côté Azure) se
@@ -50,7 +51,7 @@ ce jour-là.
 
 ## 4. Ordre conseillé de bascule
 
-1. **Maintenant** : poser `AZURE_DEVOPS_PAT` → le miroir tourne à chaque merge.
+1. **Maintenant** : poser `AZURE_DEVOPS_PAT` → le miroir tourne à chaque push.
 2. **Avant le pilote** : rien ne change — le pilote tourne sur le lab (les
    prérequis de `docs/PILOTE.md` s'appliquent au lab).
 3. **Pendant/après le pilote** : monter la cible (Flexible Server + App
