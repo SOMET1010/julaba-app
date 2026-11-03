@@ -1799,3 +1799,19 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : le miroir GitHub → Azure tourne seul — chaque push GitHub arrive sur Azure en ~1 minute (preuves : runs 41618574266 et 41619538498, annotations lues). Les commits de cette session sont désormais signés « Akoun Bernard Aboa ». PAT à régénérer à l'occasion (il a circulé en clair dans le chat). Rang 3 (multi-comptes) et Rang 4 (preuve APK TTS) en attente du signal
+
+---
+Task ID: infra-identite-commits-03-11
+Agent: Z.ai Code (session Patrick)
+Task: correction de l'identité des commits — « Z User » → « Akoun Bernard Aboa »
+
+Work Log:
+- CONSTAT DE PATRICK : presque tous ses push portaient « Z User » sur Azure — cause trouvée : la config GLOBALE de l'environnement (user.name « Z User », user.email z@container) s'appliquait aux commits créés hors du réglage local du dépôt ; 291 commits sur dev étaient touchés, plus 51 signés « Akoun-dev » (l'identité temporaire qu'il avait remplacée de sa main)
+- DÉCISION EXPLICITE DE PATRICK : corriger — l'historique SE réécrit cette fois, sur commande ; l'entrée précédente (miroir-azure-03-11) disait l'inverse, elle est réfutée par son ordre
+- RÉÉCRITURE CIBLÉE PAR git-filter-repo (1,6 s) : Z User + Akoun-dev → « Akoun Bernard Aboa <aboa.akoun40@gmail.com> » (auteur ET committer), sur les 6 branches (dev, main, master, 3× claude/*) et les tags ; filter-branch natif abandonné (timeout 10 min) au profit de filter-repo
+- PREUVE DU ZÉRO DÉGÂT : les arbres des 6 branches sont identiques bit à bit avant/après (dev 09622703, main 61114dcd, master 9aeb9cbd, claude/* 92f00200/cc0c1437/9f4d1e00) ; 1651 commits avant = 1651 après ; l'historique authentique (Claude, PATRICK, SOMET1010, ABOA AKOUN BERNARD, Pascal Somet, claude[bot]) n'a pas bougé
+- IDENTITÉ PERMANENTE posée en config globale ET config dépôt — plus aucun commit ne peut reprendre une identité d'environnement
+- PUSHES : GitHub en force (réécriture = hashes nouveaux), puis Azure DevOps-ANSUT/julaba-app en force sur dev/main/claude/*/tags ; master tenté SANS force (divergence 3db36195b connue — jamais écrasé sans ordre explicite)
+
+Stage Summary:
+- RÉPONSE À PATRICK : ton nom est rétabli partout — les 345 commits qui portaient une identité d'environnement signent désormais « Akoun Bernard Aboa <aboa.akoun40@gmail.com> », le contenu du code n'a pas changé d'un octet (arbres identiques prouvés). Le miroir GitHub → Azure repart propre vers julaba-app ; rappel : PAT à régénérer à l'occasion (elle a circulé en clair dans le chat)
