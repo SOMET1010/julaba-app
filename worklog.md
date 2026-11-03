@@ -1785,3 +1785,17 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : la RÉCUPÉRATION COMPLÈTE existe côté serveur — le scénario le plus dur de la spec (téléphone perdu/neuf) a son chemin sûr et tracé : un code à usage unique remis par SMS à l'agent, LE GESTE DE LA MARCHANDE exigé (le code seul ne suffit jamais — §3.1.3), le ré-enrôlement WebAuthn sur son nouveau téléphone, les anciennes clés révoquées, chaque pas journalisé. Restes tracés au plan : l'écran (spec écrite), le harnais HTTP d'invariants, les clips, la recette terrain. Prochains rangs du plan : LOT-ACTIVATION (rang 2), lots par rôle (rang 5), LOT-A11Y-OUTILS (rang 6) — LOT-MULTI-COMPTES (rang 3) et LOT-PROUVE-APPAREIL (rang 4) restent bloqués sur du terrain (arbitrage §4.1 / Android réel)
+
+---
+Task ID: infra-miroir-azure-03-11
+Agent: Z.ai Code (session Patrick)
+Task: miroir GitHub → Azure automatique + signature « Akoun Bernard Aboa »
+
+Work Log:
+- CONTEXTE : Patrick voulait le miroir automatique GitHub → Azure à chaque push ; mirror-azure.yml existait mais ne se déclenchait que sur main — or tout le travail vit sur dev, il ne reflétait jamais rien
+- ADAPTÉ PLUTÔT QUE DOUBLON : déclenchement à chaque push (toutes branches), branches + tags (986a1760) ; preuve du run 41618574266 : seuls dev + tags partaient (actions/checkout ne crée qu'une branche locale) → push par référence individuelle depuis refs/remotes/origin (8c8f8c66c) ; le master historique ANSUT (fa543e0d) a divergé de GitHub → avertissement visible, jamais écrasé
+- SECRET AZURE_DEVOPS_PAT posé via l'API GitHub (sealed box libsodium) après test ls-remote ; deux runs verts ; preuve finale : dev/main/claude/*/tags identiques des deux côtés, develop et ansut d'Azure intacts
+- IDENTITÉ DE COMMIT : user.name local passe de « Akoun-dev » à « Akoun Bernard Aboa » (email inchangé aboa.akoun40@gmail.com) — ce worklog est le premier commit signé ainsi ; les commits antérieurs gardent leur identité d'origine (l'historique ne se réécrit pas)
+
+Stage Summary:
+- RÉPONSE À PATRICK : le miroir GitHub → Azure tourne seul — chaque push GitHub arrive sur Azure en ~1 minute (preuves : runs 41618574266 et 41619538498, annotations lues). Les commits de cette session sont désormais signés « Akoun Bernard Aboa ». PAT à régénérer à l'occasion (il a circulé en clair dans le chat). Rang 3 (multi-comptes) et Rang 4 (preuve APK TTS) en attente du signal
