@@ -5,6 +5,9 @@ name: Miroir Azure DevOps
 # À CHAQUE push GitHub (toutes branches), toutes les branches et les tags sont
 # poussés vers le dépôt Azure — plus aucun push manuel vers Azure : le `dev` du
 # lab est visible côté Azure dès qu'il est poussé sur GitHub.
+# Chaque référence part individuellement : une divergence côté Azure (ex. le
+# master historique d'ANSUT) sort en avertissement, n'est jamais écrasée, et
+# n'empêche pas les autres branches de passer.
 #
 # (Historique : l'ancien job clonait un AUTRE dépôt — Desiralex25/Julabaovh — et
 # poussait master/develop ; il ne se déclenchait jamais. Remplacé, puis étendu
@@ -50,15 +53,31 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Pousser toutes les branches et les tags vers Azure DevOps
+      - name: Pousser chaque branche et chaque tag vers Azure DevOps
         if: steps.cfg.outputs.configured == 'true'
         run: |
           AUTH=$(printf ":%s" "$AZURE_PAT" | base64 -w0)
-          git -c http.extraheader="Authorization: Basic ${AUTH}" \
-            push "https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba" \
-            "refs/heads/*:refs/heads/*" \
-            "refs/tags/*:refs/tags/*"
-          # Pas de force : Azure ne reçoit ses branches QUE de ce miroir, le
-          # push est toujours fast-forward. S'il échoue, quelqu'un a poussé
-          # directement côté Azure — à réconcilier à la main, pas à écraser en
-          # silence.
+          AZURE_URL="https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba"
+          ok=0; divergentes=0
+          # Branches : le checkout ne crée qu'une branche locale (celle du ref
+          # demandé), les autres n'existent que dans refs/remotes/origin — on
+          # pousse donc depuis le suivi distant vers refs/heads Azure.
+          while read -r ref; do
+            short="${ref#refs/remotes/origin/}"
+            if git -c http.extraheader="Authorization: Basic ${AUTH}" push "$AZURE_URL" "${ref}:refs/heads/${short}"; then
+              ok=$((ok+1))
+            else
+              divergentes=$((divergentes+1))
+              echo "::warning::branche ${short} non reflétée côté Azure (divergence — à réconcilier à la main, jamais écrasée)."
+            fi
+          done < <(git for-each-ref refs/remotes/origin --format='%(refname)' | grep -v '/HEAD$')
+          # Tags : même traitement, référence par référence.
+          while read -r ref; do
+            if git -c http.extraheader="Authorization: Basic ${AUTH}" push "$AZURE_URL" "${ref}:${ref}"; then
+              ok=$((ok+1))
+            else
+              divergentes=$((divergentes+1))
+              echo "::warning::tag ${ref#refs/tags/} non reflété côté Azure (divergence — à réconcilier à la main, jamais écrasé)."
+            fi
+          done < <(git for-each-ref refs/tags --format='%(refname)')
+          echo "Miroir : ${ok} références poussées, ${divergentes} divergente(s)."

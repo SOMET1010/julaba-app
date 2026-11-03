@@ -10,7 +10,9 @@ migration : chaque brique du lab, son équivalent cible, et ce qui change.
 Le workflow `.github/workflows/mirror-azure.yml` pousse **toutes les branches**
 (et les tags) vers `https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba` à
 **chaque push GitHub** — y compris `dev`, donc, dès qu'il est poussé sur le
-lab. Plus aucun push manuel vers Azure n'est nécessaire.
+lab. Plus aucun push manuel vers Azure n'est nécessaire. Chaque référence part
+individuellement : une divergence côté Azure (le `master` historique d'ANSUT
+l'est) sort en avertissement et n'est jamais écrasée.
 
 **À faire une fois** : poser le secret GitHub `AZURE_DEVOPS_PAT` (PAT Azure
 DevOps avec le droit « Code : Read & Write » sur le projet Julaba). Sans lui, le
