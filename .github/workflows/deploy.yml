@@ -2,12 +2,13 @@ name: Deploy JULABA to Production
 
 # ⚠️ DÉPLOIEMENT (CD) — DÉCLENCHEMENT MANUEL UNIQUEMENT.
 #
-# Cible de production NON CONFIRMÉE : le dépôt contient deux chaînes
-# concurrentes (Render statique vs ce serveur SSH/Docker julaba.online) et rien
-# ne prouve réellement laquelle sert la prod. Tant que ce n'est pas tranché par
-# une preuve d'infrastructure/administration (pas par inférence depuis le
-# dépôt), ce workflow N'EST PAS branché sur `main` : il ne s'exécute QUE sur
-# demande explicite (« Run workflow »). Voir ci/README.md.
+# Cible de production NON CONFIRMÉE : l'ancienne chaîne concurrente (site
+# statique Render) a été RETIRÉE du dépôt le 03/11/2026 — reste ce serveur
+# SSH/Docker julaba.online, et le front Azure déployé par le pipeline de
+# l'équipe. Ce qui sert réellement la prod reste à trancher par une preuve
+# d'infrastructure/administration (pas par inférence depuis le dépôt) : ce
+# workflow N'EST PAS branché sur `main`, il ne s'exécute QUE sur demande
+# explicite (« Run workflow »). Voir ci/README.md.
 #
 # L'ancien déclencheur `push: master` visait une branche INEXISTANTE (la
 # branche par défaut est `main`) : il ne se déclenchait jamais. Retiré pour

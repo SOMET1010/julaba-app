@@ -60,12 +60,4 @@ describe('Mot de passe des comptes back-office de démo', () => {
       .filter((l) => /[^=!<>]=\s*['"]123456['"]/.test(l));
     expect(affectations).toEqual([]);
   });
-
-  it('render.yaml ne publie aucune valeur pour ce mot de passe', () => {
-    const rendu = readFileSync(join(__dirname, '../../../render.yaml'), 'utf8');
-    const bloc = rendu.slice(rendu.indexOf('SEED_DEMO_BO_PASSWORD'));
-    const lignesSuivantes = bloc.split('\n').slice(0, 3).join('\n');
-    expect(lignesSuivantes).toContain('sync: false');
-    expect(lignesSuivantes).not.toMatch(/value:/);
-  });
 });

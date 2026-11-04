@@ -23,7 +23,8 @@ import { appliquerConfortAuDemarrage } from './app/utils/confortVisuel';
 appliquerConfortAuDemarrage();
 
 // ── Auth mobile : jeton en en-tête Authorization — FILET TEMPORAIRE ──────────
-// Les cookies cross-domaine (julaba-web ↔ julaba-api) sont BLOQUÉS par les
+// Les cookies cross-domaine (site et API sur des domaines différents) sont
+// BLOQUÉS par les
 // navigateurs mobiles (surtout en navigation privée) → la connexion « réussissait »
 // puis l'appli te croyait déconnectée (« retour au début »). On envoie donc le
 // jeton stocké (localStorage) en en-tête sur chaque appel à NOTRE API. Le backend

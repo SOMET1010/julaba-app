@@ -35,9 +35,9 @@ on:
         required: true
         default: 'main'
       api_url:
-        description: 'VITE_API_URL — sans elle, l app n atteint aucun backend'
+        description: 'VITE_API_URL — sans elle, l app n atteint aucun backend (panne bruyante voulue)'
         required: true
-        default: 'https://julaba-api.onrender.com/api/v1'
+        default: ''
       voix_dyu:
         # LA VOIX DIOULA, ETEINTE PAR DEFAUT.
         #

@@ -21,16 +21,18 @@ function eq(a: unknown, b: unknown, label: string) {
 function vrai(c: boolean, label: string) { eq(c, true, label); }
 
 console.log("web — l'URL injectee au build gagne toujours");
-eq(resoudreUrlApi({ viteApiUrl: "https://api.exemple.test/api/v1", plateforme: "web", hostname: "julaba-web.onrender.com" }),
+eq(resoudreUrlApi({ viteApiUrl: "https://api.exemple.test/api/v1", plateforme: "web", hostname: "app.julaba.example" }),
    { url: "https://api.exemple.test/api/v1", natifSansConfiguration: false },
-   "VITE_API_URL passe avant le filet onrender");
+   "VITE_API_URL passe avant tout repli implicite");
 eq(resoudreUrlApi({ viteApiUrl: "  https://api.exemple.test/api/v1  ", plateforme: "web", hostname: "x" }).url,
    "https://api.exemple.test/api/v1", "espaces autour de VITE_API_URL ignores");
 
 console.log("web — sans VITE_API_URL");
-eq(resoudreUrlApi({ plateforme: "web", hostname: "julaba-web.onrender.com" }),
-   { url: "https://julaba-api.onrender.com/api/v1", natifSansConfiguration: false },
-   "production web : front et back sont sur DEUX domaines");
+eq(resoudreUrlApi({ plateforme: "web", hostname: "app.julaba.example" }),
+   { url: "/api/v1", natifSansConfiguration: false },
+   "production web : site et API sur le meme domaine, chemin relatif");
+vrai(!URL_API_NON_CONFIGUREE.startsWith("/"),
+     "URL absolue : elle ne retombe jamais sur les fichiers embarques");
 eq(resoudreUrlApi({ plateforme: "web", hostname: "localhost" }),
    { url: "/api/v1", natifSansConfiguration: false },
    "dev / meme domaine : chemin relatif (comportement historique inchange)");
@@ -58,8 +60,6 @@ console.log("l'URL de non-configuration ne peut pas resoudre par accident");
 // `.invalid` est reserve par la RFC 2606 : aucun DNS ne le resoudra jamais.
 vrai(/\.invalid(\/|$)/.test(new URL(URL_API_NON_CONFIGUREE).hostname + "/"),
      "domaine en .invalid (RFC 2606)");
-vrai(!URL_API_NON_CONFIGUREE.includes("onrender.com"),
-     "ne pointe vers aucun vrai backend");
 
 console.log("le module s'importe hors Vite sans exploser");
 // Sous tsx, `import.meta.env` n'existe pas. Si ce fichier a pu importer
