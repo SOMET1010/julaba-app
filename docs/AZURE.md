@@ -30,10 +30,10 @@ ce jour-là.
 |---|---|---|---|
 | Code + revues | GitHub (PR, checks obligatoires) | Azure Repos + PR policies | Reprendre les 2 checks bloquants comme *build validation* |
 | CI | GitHub Actions : `ci.yml` (build + tests + gate TS), `invariants.yml` (Postgres jetable) | Azure Pipelines | Port direct : mêmes commandes npm ; le Postgres jetable devient un *service container* du pipeline |
-| Backend | Render web service (`render.yaml`) | App Service (Linux, Node) ou AKS si l'équipe y est déjà | Mêmes variables d'env ; `TRUST_PROXY` à recalibrer derrière le front Azure (via `/api/v1/health/net`) |
-| Frontend | Render static site | Azure Static Web Apps ou Blob Storage + Front Door | `VITE_API_URL` au build, comme aujourd'hui |
-| Base de données | Render PostgreSQL (plan free, expire ~90 j) | **Azure Database for PostgreSQL Flexible Server** | Gros gain : sauvegardes automatiques intégrées (rétention 7–35 j, restauration point-in-time) — le risque R3 disparaît nativement ; le workflow de dump GitHub reste utile comme copie *hors* plateforme |
-| Secrets | Render `generateValue` + secrets GitHub | **Azure Key Vault** (+ Managed Identity) | `JWT_SECRET`, `PIN_ENCRYPTION_KEY`, `REFRESH_TOKEN_SALT` sortent des dashboards ; le fail-fast au boot reste la garde |
+| Backend | Render web service — **retiré du dépôt le 03/11/2026** | App Service (Linux, Node) ou AKS si l'équipe y est déjà | Mêmes variables d'env ; `TRUST_PROXY` à recalibrer derrière le front Azure (via `/api/v1/health/net`) |
+| Frontend | Render static site — **retiré du dépôt le 03/11/2026** | Azure Static Web Apps ou Blob Storage + Front Door | `VITE_API_URL` au build, comme aujourd'hui |
+| Base de données | Render PostgreSQL — **retiré du dépôt le 03/11/2026** | **Azure Database for PostgreSQL Flexible Server** | Gros gain : sauvegardes automatiques intégrées (rétention 7–35 j, restauration point-in-time) — le risque R3 disparaît nativement ; le workflow de dump GitHub reste utile comme copie *hors* plateforme |
+| Secrets | Render `generateValue` — **retiré du dépôt le 03/11/2026** (+ secrets GitHub) | **Azure Key Vault** (+ Managed Identity) | `JWT_SECRET`, `PIN_ENCRYPTION_KEY`, `REFRESH_TOKEN_SALT` sortent des dashboards ; le fail-fast au boot reste la garde |
 | Sauvegardes | `sauvegarde-db.yml` (GitHub Actions, artefacts chiffrés) | Sauvegardes natives Flexible Server + copie Blob Storage (règle de cycle de vie) | Porter le cron en Azure Pipelines *scheduled* si on veut garder la copie externe |
 | Télémétrie | Sentry (activable par `SENTRY_DSN`) | **Application Insights** (ou Sentry conservé) | L'init Sentry est optionnelle et isolée dans `instrument.ts` : brancher App Insights au même endroit, sans toucher au reste |
 | Packs de voix (chantier V1) | — (à construire) | **Blob Storage + Azure CDN/Front Door** | Le manifeste est agnostique de l'hébergeur (`base_url` dans le JSON, URL du manifeste en variable d'env) : la migration = changer une URL |
