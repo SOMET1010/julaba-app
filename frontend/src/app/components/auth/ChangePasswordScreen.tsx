@@ -137,8 +137,8 @@ export function ChangePasswordScreen() {
     try {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
-      // En-tête Authorization en secours du cookie de session : sur julaba-web/
-      // julaba-api (domaines différents), le cookie cross-domaine est bloqué
+      // En-tête Authorization en secours du cookie de session : quand le site
+      // et l'API sont sur des domaines différents, le cookie cross-domaine est bloqué
       // par défaut par plusieurs navigateurs même correctement configuré côté
       // serveur — un login BO qui « réussissait » (écran suivant affiché) était
       // ensuite rejeté en 401 sur ce premier appel authentifié, affiché à tort

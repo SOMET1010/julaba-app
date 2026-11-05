@@ -146,7 +146,6 @@ async function bootstrap() {
   const ORIGINES_APPLI_MOBILE = ['https://localhost', 'capacitor://localhost'];
   const allowedOrigins = [
     process.env.CORS_ORIGIN,
-    'https://julaba-web.onrender.com',
     'https://julaba.online',
     ...ORIGINES_APPLI_MOBILE,
   ].filter((o): o is string => Boolean(o));

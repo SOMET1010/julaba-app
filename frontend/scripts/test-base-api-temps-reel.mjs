@@ -4,7 +4,7 @@
  *
  * LE DÉFAUT. `hooks/useRealtime.ts` lisait `/admin/stats`, `/activity`,
  * `/health` et `/timeline` par `fetch('/api/v1' + path)` : un chemin RELATIF,
- * qui ignore `VITE_API_URL`. Sur deux domaines (julaba-web ↔ julaba-api) ou en
+ * qui ignore `VITE_API_URL`. Sur deux domaines (site et API séparés) ou en
  * local, les quatre lectures partaient vers l'hôte du FRONT, recevaient une
  * erreur, et le tableau de bord restait vide — sans jeton BO en prime.
  *

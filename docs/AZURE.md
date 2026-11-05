@@ -8,15 +8,16 @@ migration : chaque brique du lab, son équivalent cible, et ce qui change.
 ## 1. Le code — miroir automatique (en place)
 
 Le workflow `.github/workflows/mirror-azure.yml` pousse **toutes les branches**
-(et les tags) vers `https://dev.azure.com/DevOps-ANSUT/Julaba/_git/Julaba` à
+(et les tags) vers `https://dev.azure.com/DevOps-ANSUT/julaba-app/_git/julaba-app` à
 **chaque push GitHub** — y compris `dev`, donc, dès qu'il est poussé sur le
 lab. Plus aucun push manuel vers Azure n'est nécessaire. Chaque référence part
-individuellement : une divergence côté Azure (le `master` historique d'ANSUT
-l'est) sort en avertissement et n'est jamais écrasée.
+individuellement : une divergence côté Azure (un push direct côté Azure, comme
+le `master` resté sur sa ligne devops distincte) sort en avertissement et
+n'est jamais écrasée.
 
 **À faire une fois** : poser le secret GitHub `AZURE_DEVOPS_PAT` (PAT Azure
-DevOps avec le droit « Code : Read & Write » sur le projet Julaba). Sans lui, le
-miroir sort en « succès avec avertissement » sans rien pousser.
+DevOps avec le droit « Code : Read & Write » sur le projet julaba-app). Sans
+lui, le miroir sort en « succès avec avertissement » sans rien pousser.
 
 Le développement continue sur le lab (petits lots → CI → recette → merge) ;
 Azure reçoit l'état consolidé. La bascule complète (PR et CI côté Azure) se
@@ -29,10 +30,10 @@ ce jour-là.
 |---|---|---|---|
 | Code + revues | GitHub (PR, checks obligatoires) | Azure Repos + PR policies | Reprendre les 2 checks bloquants comme *build validation* |
 | CI | GitHub Actions : `ci.yml` (build + tests + gate TS), `invariants.yml` (Postgres jetable) | Azure Pipelines | Port direct : mêmes commandes npm ; le Postgres jetable devient un *service container* du pipeline |
-| Backend | Render web service (`render.yaml`) | App Service (Linux, Node) ou AKS si l'équipe y est déjà | Mêmes variables d'env ; `TRUST_PROXY` à recalibrer derrière le front Azure (via `/api/v1/health/net`) |
-| Frontend | Render static site | Azure Static Web Apps ou Blob Storage + Front Door | `VITE_API_URL` au build, comme aujourd'hui |
-| Base de données | Render PostgreSQL (plan free, expire ~90 j) | **Azure Database for PostgreSQL Flexible Server** | Gros gain : sauvegardes automatiques intégrées (rétention 7–35 j, restauration point-in-time) — le risque R3 disparaît nativement ; le workflow de dump GitHub reste utile comme copie *hors* plateforme |
-| Secrets | Render `generateValue` + secrets GitHub | **Azure Key Vault** (+ Managed Identity) | `JWT_SECRET`, `PIN_ENCRYPTION_KEY`, `REFRESH_TOKEN_SALT` sortent des dashboards ; le fail-fast au boot reste la garde |
+| Backend | Render web service — **retiré du dépôt le 03/11/2026** | App Service (Linux, Node) ou AKS si l'équipe y est déjà | Mêmes variables d'env ; `TRUST_PROXY` à recalibrer derrière le front Azure (via `/api/v1/health/net`) |
+| Frontend | Render static site — **retiré du dépôt le 03/11/2026** | Azure Static Web Apps ou Blob Storage + Front Door | `VITE_API_URL` au build, comme aujourd'hui |
+| Base de données | Render PostgreSQL — **retiré du dépôt le 03/11/2026** | **Azure Database for PostgreSQL Flexible Server** | Gros gain : sauvegardes automatiques intégrées (rétention 7–35 j, restauration point-in-time) — le risque R3 disparaît nativement ; le workflow de dump GitHub reste utile comme copie *hors* plateforme |
+| Secrets | Render `generateValue` — **retiré du dépôt le 03/11/2026** (+ secrets GitHub) | **Azure Key Vault** (+ Managed Identity) | `JWT_SECRET`, `PIN_ENCRYPTION_KEY`, `REFRESH_TOKEN_SALT` sortent des dashboards ; le fail-fast au boot reste la garde |
 | Sauvegardes | `sauvegarde-db.yml` (GitHub Actions, artefacts chiffrés) | Sauvegardes natives Flexible Server + copie Blob Storage (règle de cycle de vie) | Porter le cron en Azure Pipelines *scheduled* si on veut garder la copie externe |
 | Télémétrie | Sentry (activable par `SENTRY_DSN`) | **Application Insights** (ou Sentry conservé) | L'init Sentry est optionnelle et isolée dans `instrument.ts` : brancher App Insights au même endroit, sans toucher au reste |
 | Packs de voix (chantier V1) | — (à construire) | **Blob Storage + Azure CDN/Front Door** | Le manifeste est agnostique de l'hébergeur (`base_url` dans le JSON, URL du manifeste en variable d'env) : la migration = changer une URL |

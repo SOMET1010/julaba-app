@@ -16,11 +16,17 @@
  * schéma qui existe déjà. Le schéma est là, son ENREGISTREMENT ne l'est pas :
  * la chaîne de migrations ne sait pas adopter une base qu'elle n'a pas créée.
  *
- * Ces deux tests sont LIÉS À DESSEIN. Le second dit pourquoi le premier existe :
- * tant que la baseline ne sait pas adopter un schéma existant, remettre le
- * drapeau à "true" casse la production. Le jour où quelqu'un la rend adoptable,
- * le second test échouera — c'est voulu : c'est le signal qu'on peut rouvrir la
- * question, en connaissance de cause, au lieu de basculer un drapeau à l'aveugle.
+ * Ces gardes sont LIÉES À DESSEIN. Le test du drapeau dit pourquoi la baseline
+ * doit rester non-adoptable : tant que la baseline ne sait pas adopter un
+ * schéma existant, remettre le drapeau à "true" casse la production. Le jour
+ * où quelqu'un la rend adoptable, ce test échouera — c'est voulu : c'est le
+ * signal qu'on peut rouvrir la question, en connaissance de cause, au lieu de
+ * basculer un drapeau à l'aveugle.
+ *
+ * NOTE D'HÉBERGEMENT (03/11/2026) : l'ancien Blueprint Render a été retiré du
+ * dépôt. Le réglage réel de `DB_MIGRATIONS_RUN` vit désormais dans les
+ * variables d'environnement de l'hébergeur (Azure) — il doit y rester
+ * "false" tant que la baseline n'est pas adoptable.
  */
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -29,13 +35,6 @@ import { computeBootDbFlags } from '../../src/database/schema-flags';
 const lire = (...p: string[]) => readFileSync(join(__dirname, '../..', ...p), 'utf8');
 
 describe('La production doit pouvoir redémarrer', () => {
-  it('le Blueprint ne réactive pas les migrations au démarrage', () => {
-    const rendu = lire('..', 'render.yaml');
-    const bloc = rendu.slice(rendu.indexOf('key: DB_MIGRATIONS_RUN'));
-    const valeur = /value:\s*"(\w+)"/.exec(bloc.split('\n').slice(0, 3).join('\n'));
-    expect(valeur?.[1]).toBe('false');
-  });
-
   it('la baseline ne sait toujours PAS adopter un schéma existant', () => {
     // Si ce test passe au rouge, c'est probablement une bonne nouvelle : lis le
     // commentaire en tête de fichier avant de le « corriger ».

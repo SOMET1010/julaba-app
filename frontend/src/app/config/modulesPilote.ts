@@ -20,8 +20,9 @@
  * UN SEUL DRAPEAU, LU À LA CONSTRUCTION : `VITE_JULABA_MODULES_HORS_PILOTE`.
  *   · absent, vide, `false`, n'importe quoi d'autre → MASQUÉ (le défaut) ;
  *   · exactement `true` → VISIBLE, pour un build de démonstration.
- * Le défaut est le côté sûr : l'APK (`.github/workflows/apk.yml`) et Render
- * (`render.yaml`, julaba-web) ne posent pas le drapeau, donc tout build livré
+ * Le défaut est le côté sûr : l'APK (`.github/workflows/apk.yml`) est construit
+ * sans ce drapeau et aucun autre fichier de build du dépôt ne le pose, donc
+ * tout build livré
  * masque — sans qu'il faille se souvenir de rien. Rallumer exige un geste
  * explicite, sur un build explicite.
  *

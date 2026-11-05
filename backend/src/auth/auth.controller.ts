@@ -126,7 +126,8 @@ export class AuthController {
     const isBO = BO_ROLES.includes(result.user?.role);
     this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
     // On renvoie AUSSI les jetons dans le corps : sur mobile, les cookies
-    // cross-domaine (julaba-web ↔ julaba-api) sont bloqués. Le frontend stocke
+    // cross-domaine (site et API sur des domaines différents) sont bloqués.
+    // Le frontend stocke
     // ces jetons et les envoie en en-tête Authorization -> connexion fiable partout.
     return { user: result.user, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
   }
@@ -144,7 +145,8 @@ export class AuthController {
       this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
       // LE JETON DE RAFRAÎCHISSEMENT PART AUSSI DANS LE CORPS — HYGIÈNE-1 axe 2.
       // `login` le fait déjà, et pour une raison écrite juste au-dessus : sur
-      // mobile, les cookies cross-domaine (julaba-web ↔ julaba-api) sont
+      // mobile, les cookies cross-domaine (site et API sur des domaines
+      // différents) sont
       // bloqués. `refresh` ne l'avait jamais suivi. Conséquence dans l'APK : le
       // téléphone rejouait indéfiniment le MÊME jeton stocké, puisqu'il n'en
       // recevait jamais le suivant. Or la rotation marque l'ancien « used », et

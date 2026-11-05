@@ -1799,3 +1799,39 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : le miroir GitHub → Azure tourne seul — chaque push GitHub arrive sur Azure en ~1 minute (preuves : runs 41618574266 et 41619538498, annotations lues). Les commits de cette session sont désormais signés « Akoun Bernard Aboa ». PAT à régénérer à l'occasion (il a circulé en clair dans le chat). Rang 3 (multi-comptes) et Rang 4 (preuve APK TTS) en attente du signal
+
+---
+Task ID: infra-identite-commits-03-11
+Agent: Z.ai Code (session Patrick)
+Task: correction de l'identité des commits — « Z User » → « Akoun Bernard Aboa »
+
+Work Log:
+- CONSTAT DE PATRICK : presque tous ses push portaient « Z User » sur Azure — cause trouvée : la config GLOBALE de l'environnement (user.name « Z User », user.email z@container) s'appliquait aux commits créés hors du réglage local du dépôt ; 291 commits sur dev étaient touchés, plus 51 signés « Akoun-dev » (l'identité temporaire qu'il avait remplacée de sa main)
+- DÉCISION EXPLICITE DE PATRICK : corriger — l'historique SE réécrit cette fois, sur commande ; l'entrée précédente (miroir-azure-03-11) disait l'inverse, elle est réfutée par son ordre
+- RÉÉCRITURE CIBLÉE PAR git-filter-repo (1,6 s) : Z User + Akoun-dev → « Akoun Bernard Aboa <aboa.akoun40@gmail.com> » (auteur ET committer), sur les 6 branches (dev, main, master, 3× claude/*) et les tags ; filter-branch natif abandonné (timeout 10 min) au profit de filter-repo
+- PREUVE DU ZÉRO DÉGÂT : les arbres des 6 branches sont identiques bit à bit avant/après (dev 09622703, main 61114dcd, master 9aeb9cbd, claude/* 92f00200/cc0c1437/9f4d1e00) ; 1651 commits avant = 1651 après ; l'historique authentique (Claude, PATRICK, SOMET1010, ABOA AKOUN BERNARD, Pascal Somet, claude[bot]) n'a pas bougé
+- IDENTITÉ PERMANENTE posée en config globale ET config dépôt — plus aucun commit ne peut reprendre une identité d'environnement
+- PUSHES : GitHub en force (réécriture = hashes nouveaux), puis Azure DevOps-ANSUT/julaba-app en force sur dev/main/claude/*/tags ; master tenté SANS force (divergence 3db36195b connue — jamais écrasé sans ordre explicite)
+
+Stage Summary:
+- RÉPONSE À PATRICK : ton nom est rétabli partout — les 345 commits qui portaient une identité d'environnement signent désormais « Akoun Bernard Aboa <aboa.akoun40@gmail.com> », le contenu du code n'a pas changé d'un octet (arbres identiques prouvés). Le miroir GitHub → Azure repart propre vers julaba-app ; rappel : PAT à régénérer à l'occasion (elle a circulé en clair dans le chat)
+
+---
+Task ID: infra-retrait-render-03-11
+Agent: Z.ai Code (session Patrick)
+Task: retrait de tout ce qui est onrender du code — demande explicite de Patrick
+
+Work Log:
+- ORDRE DE PATRICK : « retire tout ce qui est de onrender dans le code » — la chaîne Render quitte le dépôt ; le front Azure (pipeline de l'équipe) appelle l'API en /api/v1 relatif ou via VITE_API_URL, jamais un hébergeur disparu en implicite
+- resoudreUrlApi (frontend/src/app/utils/api.ts) : le filet « hostname julaba-web.onrender.com → https://julaba-api.onrender.com/api/v1 » est SUPPRIMÉ ; cascade réduite à VITE_API_URL → (natif sans config : URL .invalid bruyante) → /api/v1 relatif ; un déploiement deux-domaines doit poser VITE_API_URL au build
+- CORS (backend/src/main.ts) : l'origine https://julaba-web.onrender.com sort de la liste ; restent CORS_ORIGIN, julaba.online, origines Capacitor
+- render.yaml SUPPRIMÉ (git rm) ; les 3 gardes qui le lisaient sont adaptées : seed-bo-password.spec.ts (test « ne publie aucune valeur » retiré), migrations-prod.spec.ts (test Blueprint retiré, note d'hébergement posée : DB_MIGRATIONS_RUN=false côté Azure tant que la baseline n'adopte pas), modulesPilote.test.mts (lecture + assertion retirées)
+- apk.yml et maestro.yml : VITE_API_URL n'a plus de défaut onrender (default: '') — l'oubli donne la panne bruyante voulue (URL_API_NON_CONFIGUREE, porte Android), jamais un pointage silencieux
+- manifeste.exemple.json : base_url voix repointée de julaba-web.onrender.com vers julaba.online
+- Commentaires reformulés sans les noms de services Render : auth.controller.ts (×2), api-client.ts, backoffice-api.ts, ChangePasswordScreen.tsx, main.tsx, modulesPilote.ts, seed-demo.service.ts, test-base-api-temps-reel.mjs, deploy.yml (en-tête), migrations-prod.spec.ts
+- Docs vivantes alignées (commit séparé) : README.md (arborescence + §8 Déploiement + sauvegarde), CLAUDE.md (hébergement + API), ci/README.md (3 chaînes → 2, ADR-0004 marqué obsolète), docs/AZURE.md (colonne « lab » datée du retrait)
+- GARDE-ASSOUPLIE déclarée dans le commit code : 3 libellés d'api.test.mts renommés + 1 assertion modules-pilote retirée — conséquence directe de l'ordre ; EMPREINTE-GARDES.json INTACTE (le re-gel reste le geste humain de Patrick ; le JSON porte déjà les chemins historiques frontend_src non comparés)
+- PREUVES LOCALES : test:api-url 13/13 vert ; test:modules-pilote vert (15 règles) ; jest unit seed-bo-password + migrations-prod 9/9 PASS ; grep onrender : zéro occurrence restante dans code/config/workflows (hors docs historiques + worklog, qui racontent le passé)
+
+Stage Summary:
+- RÉPONSE À PATRICK : plus rien du code ne pointe vers onrender — l'APK sans VITE_API_URL panne bruyamment au lieu d'appeler un mort, le web sans VITE_API_URL tape le même domaine en /api/v1, CORS ne connaît plus Render, le Blueprint est supprimé. Reste côté infonuagique (pas du code) : les services Render réels (julaba-api/julaba-web/julaba-db) et le dashboard — à éteindre côté compte Render quand la bascule Azure sera prouvée

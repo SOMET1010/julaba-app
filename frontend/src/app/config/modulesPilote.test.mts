@@ -460,9 +460,7 @@ console.log('\n[8-huities] PROD-10 : le financement est une vitrine HONNÊTE (A-
 console.log('\n[9] Conclusion');
 {
   const apk = readFileSync(new URL('../../../../.github/workflows/apk.yml', import.meta.url), 'utf8');
-  const render = readFileSync(new URL('../../../../render.yaml', import.meta.url), 'utf8');
   ok(!apk.includes(NOM), 'apk.yml ne pose pas le drapeau → APK masqué');
-  ok(!render.includes(NOM), 'render.yaml ne pose pas le drapeau → julaba-web masqué');
   ok(accueilDuProfil('/inconnu/x') === '/', 'un chemin hors profil repart de la porte unique `/`');
   ok(MODULES_HORS_PILOTE.length > 0, `${MODULES_HORS_PILOTE.length} règles de masquage déclarées`);
 }

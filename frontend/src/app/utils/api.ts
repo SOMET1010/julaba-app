@@ -38,11 +38,17 @@ export const URL_API_NON_CONFIGUREE = 'http://api-non-configuree.julaba.invalid/
  * URL impossible et on le signale : une panne bruyante vaut mieux qu'une
  * application qui fait semblant de fonctionner.
  *
+ * Cote WEB, le repli par defaut est le chemin relatif : le site et l'API
+ * vivent derriere le MEME domaine (proxy inverse /api/v1). L'ancien repli
+ * vers l'API Render V2 deux-domaines a ete retire du depot — un build web
+ * qui vise un domaine separe doit maintenant le declarer explicitement via
+ * VITE_API_URL, jamais par un implicite cache.
+ *
  * Fonction PURE (aucune lecture de `window` ni de `import.meta`) pour etre
  * testable — voir api.test.mts.
  */
 export function resoudreUrlApi(ctx: ContexteApi): { url: string; natifSansConfiguration: boolean } {
-  // 1) Valeur injectee au build (ideal) — ex. Render VITE_API_URL.
+  // 1) Valeur injectee au build (ideal) — VITE_API_URL.
   const injectee = (ctx.viteApiUrl ?? '').trim();
   if (injectee) return { url: injectee, natifSansConfiguration: false };
 
@@ -51,15 +57,9 @@ export function resoudreUrlApi(ctx: ContexteApi): { url: string; natifSansConfig
     return { url: URL_API_NON_CONFIGUREE, natifSansConfiguration: true };
   }
 
-  // 3) Filet de securite PRODUCTION WEB. Sur la V1, frontend et backend
-  //    partageaient le meme domaine, donc "/api/v1" suffisait. Sur la V2 ils
-  //    sont sur DEUX domaines : un "/api/v1" relatif taperait sur le site
-  //    statique (→ HTML au lieu du backend).
-  if (ctx.hostname === 'julaba-web.onrender.com') {
-    return { url: 'https://julaba-api.onrender.com/api/v1', natifSansConfiguration: false };
-  }
-
-  // 4) Defaut historique (meme domaine / dev avec proxy Vite).
+  // 3) Defaut WEB : site et API sur le meme domaine (dev avec proxy Vite,
+  //    production derriere un proxy inverse). Le chemin relatif suffit —
+  //    un deploiement deux-domaines doit poser VITE_API_URL au build.
   return { url: '/api/v1', natifSansConfiguration: false };
 }
 

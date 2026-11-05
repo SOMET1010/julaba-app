@@ -3,7 +3,7 @@ import { API_URL } from '../utils/api';
 import type { SousProfilMarchand } from '../types/sousProfilMarchand';
 import { lireResumeVentes, type ResumeVentes } from './ventesBO';
 
-// julaba-web et julaba-api sont sur des DOMAINES différents (Render V2) : le
+// Le site et l'API peuvent être servis sur des DOMAINES différents : le
 // cookie de session cross-domaine (SameSite=None) est bloqué par défaut par
 // plusieurs navigateurs (Safari ITP, Chrome/Firefox en mode protection stricte),
 // même correctement configuré côté serveur. Le backend renvoie donc AUSSI le

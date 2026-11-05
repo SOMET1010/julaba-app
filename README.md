@@ -77,7 +77,6 @@ julaba-app/
 ├── JULABA_DECISIONS.md      # Source de vérité produit (à lire en début de session)
 ├── GUIDE_DEPLOIEMENT.md     # Déploiement OVH VPS (chaîne secondaire)
 ├── package.json             # Workspaces racine (frontend + backend)
-├── render.yaml              # Blueprint Render = chaîne de production réelle
 ├── docker-compose.yml       # Stack locale (backend + postgres)
 ├── capacitor.config.ts      # Pont React → Android
 ├── .github/workflows/       # 9 workflows CI/CD
@@ -172,12 +171,12 @@ runner Jest). Chaque test métier est un script dédié : `test:voix`,
 
 ## 8. Déploiement
 
-Le dépôt héberge **deux chaînes concurrentes**. La prod réelle est sur Render :
+La chaîne Render (Blueprint `render.yaml`, ancienne « prod réelle ») a été
+**retirée du dépôt le 03/11/2026**. Restent :
 
-- **Render (prod réelle)** — [`render.yaml`](render.yaml) monte trois briques :
-  `julaba-db` (PostgreSQL `basic_256mb`), `julaba-api` (NestJS, `starter`),
-  `julaba-web` (statique). Auto-déploiement sur `main`. Voir
-  [docs/DEPLOIEMENT_RENDER.md](docs/DEPLOIEMENT_RENDER.md).
+- **Front Azure** — déployé par le pipeline de l'équipe sur
+  `julaba-app.dev-dtdi.ansut.ci` (pipeline hors de ce dépôt) ; le site appelle
+  l'API en `/api/v1` relatif (même domaine) ou via `VITE_API_URL` au build.
 - **OVH `julaba.online` (chaîne secondaire)** — VPS Ubuntu + Nginx + Docker
   Compose, déployé par [deploy.yml](.github/workflows/deploy.yml) sur action
   manuelle uniquement. Voir [GUIDE_DEPLOIEMENT.md](GUIDE_DEPLOIEMENT.md).
@@ -185,7 +184,7 @@ Le dépôt héberge **deux chaînes concurrentes**. La prod réelle est sur Rend
   distribué via **GitHub Releases** (tag `pilote-latest`, pré-release). APK de
   debug signé par la clé de debug, installable en « sources inconnues ».
 
-La sauvegarde quotidienne de la base Render est chiffrée et stockée hors Render
+La sauvegarde quotidienne de la base est chiffrée et stockée hors plateforme
 (artefacts privés GitHub) — voir [docs/SAUVEGARDES.md](docs/SAUVEGARDES.md).
 
 ## 9. Conventions de contribution

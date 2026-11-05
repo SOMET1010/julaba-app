@@ -59,7 +59,7 @@ on:
       api_url:
         description: 'VITE_API_URL — lue AU BUILD, pas à l exécution'
         required: true
-        default: 'https://julaba-api.onrender.com/api/v1'
+        default: ''
 
 # Deux passages concurrents se disputeraient le même KVM : on sérialise.
 concurrency:

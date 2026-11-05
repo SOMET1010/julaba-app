@@ -5,7 +5,8 @@
  *
  * L'en-tête de ce fichier disait « auth via cookie httpOnly — aucun token en
  * localStorage ». C'était faux depuis longtemps : sur mobile, les cookies
- * cross-domaine (julaba-web ↔ julaba-api) sont bloqués, le jeton vit donc dans
+ * cross-domaine (site et API sur des domaines différents) sont bloqués, le
+ * jeton vit donc dans
  * `localStorage` et part en `Authorization: Bearer …`. Mais ce n'est pas cette
  * couche qui le posait : c'était un monkey-patch de `window.fetch` dans
  * `main.tsx`, qui l'ajoutait à tout appel contenant `/api/v1`. Tous les tests

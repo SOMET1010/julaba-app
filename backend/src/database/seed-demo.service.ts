@@ -43,7 +43,7 @@ interface CompteDemo {
 
 // Mot de passe unique pour TOUS les comptes acteurs de démo (connexion /login,
 // pavé à 4 chiffres) : piloté par SEED_DEMO_PASSWORD, "1234" par défaut si la
-// variable n'est pas fournie (même défaut que render.yaml). Un seul mot de
+// variable n'est pas fournie. Un seul mot de
 // passe pour tous les comptes acteurs évite qu'un testeur voie « Identifiants
 // incorrects » sur un compte de démo parce qu'un autre groupe utilisait un
 // code différent codé en dur.

@@ -16,8 +16,8 @@ décision est fausse.
 | back | NestJS 11.1 · TypeORM 0.3 · PostgreSQL · `backend/` · 47 entités |
 | voix | Sherpa-ONNX **natif** embarqué (`SherpaSttPlugin.kt`, `SherpaTtsPlugin.kt`, voix Piper/SIWIS). `speechSynthesis` du navigateur est **muet en WebView** : ne pas compter dessus |
 | mobile | Capacitor 8 · `com.julaba.app` |
-| hébergement | Render — `julaba-db` (PostgreSQL), `julaba-api` (Node), `julaba-web` (statique) |
-| API | `https://julaba-api.onrender.com/api/v1` |
+| hébergement | Front Azure (pipeline de l'équipe) · OVH `julaba.online` (Docker, manuel) — Render **retiré du dépôt le 03/11/2026** |
+| API | `/api/v1` du domaine de déploiement (relatif, même domaine) ou `VITE_API_URL` posée au build |
 
 ## Commandes
 
