@@ -26,9 +26,9 @@ import type { RegistrationResponseJSON } from '@simplewebauthn/types';
 export interface OptionsFabrique {
   /** Le challenge base64url TEL QUE RENVOYÉ par /webauthn/options. */
   challenge: string;
-  /** L'origine attendue par le serveur (ex. 'https://julaba.online'). */
+  /** L'origine attendue par le serveur (ex. 'https://julaba-app.dev-dtdi.ansut.ci'). */
   origin: string;
-  /** Le RP ID attendu (ex. 'julaba.online') — haché dans l'authData. */
+  /** Le RP ID attendu (ex. 'julaba-app.dev-dtdi.ansut.ci') — haché dans l'authData. */
   rpId: string;
   /** Facultatif — par défaut 32 octets tirés du générateur cryptographique. */
   credentialId?: Buffer;

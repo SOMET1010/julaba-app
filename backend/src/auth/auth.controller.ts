@@ -862,7 +862,7 @@ export class AuthController {
     }));
     const options = await generateRegistrationOptions({
       rpName: 'Jùlaba',
-      rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+      rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       userName: user.phone,
       // userHandle = l'ID du compte : c'est CE QUE L'ASSERTION SANS IDENTIFIANT
       // (usernameless) rapportera au serveur pour savoir QUI se connecte.
@@ -893,8 +893,8 @@ export class AuthController {
       const { verified, registrationInfo } = await verifyRegistrationResponse({
         response: body,
         expectedChallenge: user.webauthnChallenge,
-        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
-        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba-app.dev-dtdi.ansut.ci',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       });
       if (verified && registrationInfo) {
         const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo;
@@ -931,7 +931,7 @@ export class AuthController {
     // registre mémoire à TTL court, usage unique (challenge-usernameless.ts).
     if (!body.phone) {
       const options = await generateAuthenticationOptions({
-        rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
         userVerification: 'required',
       });
       enregistrerChallengeSansIdentifiant(options.challenge);
@@ -958,7 +958,7 @@ export class AuthController {
       transports: c.transports as any,
     }));
     const options = await generateAuthenticationOptions({
-      rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+      rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       userVerification: 'preferred',
       allowCredentials: allowCredentials as any,
     });
@@ -1008,8 +1008,8 @@ export class AuthController {
       const { verified, authenticationInfo } = await verifyAuthenticationResponse({
         response: body.response,
         expectedChallenge,
-        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
-        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba-app.dev-dtdi.ansut.ci',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
         credential: {
           id: credential.credentialID,
           publicKey: Buffer.from(credential.credentialPublicKey, 'base64url'),

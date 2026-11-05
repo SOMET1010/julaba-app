@@ -60,7 +60,7 @@ export class WalletsPublicController {
     if (!rows || rows.length === 0) throw new BadRequestException('Marchand introuvable');
 
     const merchantTransactionId = `PAY-${marchandId.slice(0, 8)}-${Date.now()}`;
-    const notifyUrl = 'https://julaba.online/api/v1/wallets/public/pay-callback';
+    const notifyUrl = 'https://julaba-app.dev-dtdi.ansut.ci/api/v1/wallets/public/pay-callback';
 
     const result = await this.bpayService.initierPaiement({
       provider,
@@ -68,8 +68,8 @@ export class WalletsPublicController {
       telephone,
       notifyUrl,
       merchantTransactionId,
-      successUrl: 'https://julaba.online/paiement/success',
-      failedUrl: 'https://julaba.online/paiement/failed',
+      successUrl: 'https://julaba-app.dev-dtdi.ansut.ci/paiement/success',
+      failedUrl: 'https://julaba-app.dev-dtdi.ansut.ci/paiement/failed',
     });
 
     await this.dataSource.query(
@@ -91,7 +91,7 @@ export class WalletsPublicController {
     // HMAC-SHA256 du corps BRUT (capture rawBody dans main.ts), voie legacy si
     // BPAY_WEBHOOK_LEGACY=true. COMPAT : tant que BPAY_WEBHOOK_SECRET n'est
     // pas configuré, la route traite les callbacks SANS vérification — c'est
-    // le comportement d'aujourd'hui et la recette QR julaba.online en dépend
+    // le comportement d'aujourd'hui et la recette QR dépend de cette voie
     // ; le WARN journalisé invite à configurer le secret. Dès que le secret
     // existe, la vérification devient obligatoire.
     if (!accesWebhookAutoriseBpay(this.configService, this.logger, 'wallets/public/pay-callback', req, headers, 'ACCEPTER')) {

@@ -252,7 +252,7 @@ function ModalQR({ isOpen, onClose, userId, userName }: {
 
   const timerPct = (timeLeft / 60) * 100;
   const timerColor = timeLeft > 20 ? '#4ade80' : timeLeft > 10 ? '#fbbf24' : '#f87171';
-  const qrUrl = `https://julaba.online/pay/${userId}?token=${qrToken}`;
+  const qrUrl = `https://julaba-app.dev-dtdi.ansut.ci/pay/${userId}?token=${qrToken}`;
 
   return createPortal(
     <AnimatePresence>
@@ -815,7 +815,7 @@ export function WalletPage() {
             whileTap={{ scale: 0.97 }}
           >
             <div style={{ background: 'white', borderRadius: 12, padding: 10, display: 'flex', justifyContent: 'center' }}>
-              <QRCode value={`https://julaba.online/pay/${userId}`} size={120} fgColor={C} bgColor="white" level="M" />
+              <QRCode value={`https://julaba-app.dev-dtdi.ansut.ci/pay/${userId}`} size={120} fgColor={C} bgColor="white" level="M" />
             </div>
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', textAlign: 'center', marginTop: 8 }}>Toucher pour payer</p>
           </motion.div>

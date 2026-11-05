@@ -53,7 +53,7 @@ export class WalletsController {
     @CurrentUser() user: User,
     @Body() body: { provider: string; montant: number; telephone: string },
   ) {
-    const notifyUrl = 'https://julaba.online/api/v1/bpay/callback';
+    const notifyUrl = 'https://julaba-app.dev-dtdi.ansut.ci/api/v1/bpay/callback';
     const merchantTransactionId = `RCH-${user.id.slice(0, 8)}-${Date.now()}`;
     const montantInt = Math.round(body.montant);
     if (montantInt < 200) throw new BadRequestException('Montant minimum : 200 FCFA');
@@ -63,8 +63,8 @@ export class WalletsController {
       telephone: body.telephone,
       notifyUrl,
       merchantTransactionId,
-      successUrl: 'https://julaba.online/paiement/success',
-      failedUrl: 'https://julaba.online/paiement/failed',
+      successUrl: 'https://julaba-app.dev-dtdi.ansut.ci/paiement/success',
+      failedUrl: 'https://julaba-app.dev-dtdi.ansut.ci/paiement/failed',
     });
     await this.dataSource.query(
       `INSERT INTO bpay_transactions (user_id, pay_token, merchant_tx_id, amount, provider, type, status) VALUES ($1, $2, $3, $4, $5, 'RECHARGE', 'PENDING')`,
@@ -123,7 +123,7 @@ export class WalletsController {
     if (soldeDisponible < montantInt) {
       throw new BadRequestException(`Solde insuffisant: ${soldeDisponible} < ${montantInt}`);
     }
-    const notifyUrl = 'https://julaba.online/api/v1/bpay/callback';
+    const notifyUrl = 'https://julaba-app.dev-dtdi.ansut.ci/api/v1/bpay/callback';
     const merchantTransactionId = `RET-${randomUUID()}`;
     // pay_token = merchantTransactionId : référence stable, cherchable par le
     // webhook (pay_token OU merchant_tx_id) et interrogeable au check-status.

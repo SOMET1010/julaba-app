@@ -146,7 +146,7 @@ async function bootstrap() {
   const ORIGINES_APPLI_MOBILE = ['https://localhost', 'capacitor://localhost'];
   const allowedOrigins = [
     process.env.CORS_ORIGIN,
-    'https://julaba.online',
+    'https://julaba-app.dev-dtdi.ansut.ci',
     ...ORIGINES_APPLI_MOBILE,
   ].filter((o): o is string => Boolean(o));
   app.use((req: any, res: any, next: any) => {
@@ -220,7 +220,7 @@ async function bootstrap() {
           'https://ansut-test.lafricamobile.com',
           'https://api-rnpp.verif.ci',
           'https://*.ingest.de.sentry.io',
-          'wss://julaba.online',
+          'wss://julaba-app.dev-dtdi.ansut.ci',
         ],
       },
     },

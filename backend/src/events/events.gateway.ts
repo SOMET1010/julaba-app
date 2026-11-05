@@ -19,7 +19,12 @@ import { UserRole } from "../users/entities/user.entity";
   pingInterval: 25000,
   pingTimeout: 10000,
   cors: {
-    origin: ["https://julaba.online", "http://localhost:5173", "http://localhost:3000"],
+    origin: [
+      process.env.CORS_ORIGIN,
+      "https://julaba-app.dev-dtdi.ansut.ci",
+      "http://localhost:5173",
+      "http://localhost:3000",
+    ].filter((origin): origin is string => Boolean(origin)),
     credentials: true,
   },
   namespace: "/ws",

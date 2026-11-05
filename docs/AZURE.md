@@ -5,6 +5,21 @@ la cible de production est **l'infrastructure Azure de l'équipe** (organisation
 Azure DevOps `DevOps-ANSUT`, projet `Julaba`). Ce document est la carte de
 migration : chaque brique du lab, son équivalent cible, et ce qui change.
 
+## Domaine applicatif Azure communiqué pour le test
+
+Le front de test est servi sur `https://julaba-app.dev-dtdi.ansut.ci/`.
+Le routage vérifié expose aussi l'API sur cette origine, sous `/api/v1` :
+le front web doit donc laisser `VITE_API_URL` vide et utiliser le chemin
+relatif. Côté backend, `CORS_ORIGIN` doit être cette origine exacte,
+`WEBAUTHN_RP_ID=julaba-app.dev-dtdi.ansut.ci` et
+`WEBAUTHN_ORIGIN=https://julaba-app.dev-dtdi.ansut.ci`.
+
+Les callback et URLs de retour B-Pay ainsi que les QR utilisent maintenant ce
+domaine. Avant un paiement réel, faire autoriser ces nouvelles URLs par le
+fournisseur. Le changement de RP WebAuthn rend les passkeys enregistrées sous
+l'ancien domaine inutilisables ici : les ré-enregistrer sur le nouveau domaine.
+Ce dépôt ne configure pas à lui seul les variables de l'instance Azure.
+
 ## 1. Le code — miroir automatique (en place)
 
 Le workflow `.github/workflows/mirror-azure.yml` pousse **toutes les branches**
