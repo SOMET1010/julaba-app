@@ -204,10 +204,16 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/core-ack-05.mp3", text: "C'est bien enregistré !" },
   { file: "/voix/tata/core-ack-06.mp3", text: "C'est calé, ta vente est bien entrée dans la machine." },
   { file: "/voix/tata/core-ack-07.mp3", text: "D'accord, j'annule ça. Y'a pas de souci." },
-  { file: "/voix/tata/core-err-01.mp3", text: "Je n'ai pas bien capté. Faut me redire ça autrement, s'il te plaît." },
-  { file: "/voix/tata/core-err-02.mp3", text: "Je n'ai rien entendu, deh. Réessaie en haussant un peu la voix." },
-  { file: "/voix/tata/core-err-03.mp3", text: "Dis oui pour confirmer, ou bien dis non pour laisser tomber." },
-  { file: "/voix/tata/core-err-04.mp3", text: "Appuie sur Oui ou sur Non sur l'écran." },
+  // core-err-01..04 — AUDIO RÉGÉNÉRÉ le 06/11 (lot « toutes les éventualités ») :
+  // les prises d'origine disaient une AUTRE formulation que celle du code — le
+  // texte déclaré est donc passé de la variante au texte EXACT dit par
+  // useVoiceCore (l.924-944), et l'audio a été refait sur CE texte. Avant,
+  // ces quatre replis de confirmation d'argent ne tombaient JAMAIS sur un
+  // clip : « un mot d'écart = muet » (leçon login-41).
+  { file: "/voix/tata/core-err-01.mp3", text: "Je n'ai pas bien compris. Redis-moi ça autrement, s'il te plaît." },
+  { file: "/voix/tata/core-err-02.mp3", text: "Je n'ai rien entendu. Réessaie, parle un peu plus fort." },
+  { file: "/voix/tata/core-err-03.mp3", text: "Dis oui pour valider, ou non pour annuler." },
+  { file: "/voix/tata/core-err-04.mp3", text: "Touche Oui ou Non à l'écran, s'il te plaît." },
   { file: "/voix/tata/core-sys-01.mp3", text: "Je chauffe ma voix un coup, patiente deux minutes." },
   { file: "/voix/tata/core-sys-02.mp3", text: "La voix n'est pas sortie. Regarde ton réseau et puis réessaie." },
   { file: "/voix/tata/core-wait-01.mp3", text: "Je regarde ça un coup..." },
@@ -370,6 +376,38 @@ export const TATA_UI_CLIPS: TataUiClip[] = [
   { file: "/voix/tata/stk-02.mp3", text: "Quel produit vivrier tu veux faire entrer dans le stock ?" },
   { file: "/voix/tata/stk-06.mp3", text: "Tout ton stock est bien chargé, y'a pas de manque." },
   { file: "/voix/tata/stk-08.mp3", text: "Tu n'as pas mis à combien tu as payé ça au gros. On ne pourra pas calculer ton vrai bénéfice." },
+  // ── LOT DU 06/11 — LA VOIX POUR TOUTES LES ÉVENTUALITÉS DES TROIS FLUX ────
+  // Patrick : « Assure-toi qu'on a la voix pour toutes les éventualités de ces
+  // fonctionnalités » (connexion, produit, dépense). Audit du 06/11 : les
+  // textes ci-dessous partaient TOUS à la synthèse — soit faute de clip
+  // (parcours produit et dépense : aucune clé n'avait d'audio), soit parce que
+  // le clip du même nom portait une variante (core-err, re-fait ci-dessus).
+  // Chaque texte est repris MOT POUR MOT de ce que le code dit (frActuel du
+  // catalogue pour STK/DEP ; chaînes de DepenseForm pour les libellés libres).
+  // Mêmes specs que les lots 43-85 : voix de synthèse contrôlée (≠ voix de
+  // Tantie, aucune imitation), 24 kHz mono 96 kbps, −16 LUFS, silences coupés,
+  // débit ralenti. Le texte dynamique (montants, noms) reste à la synthèse :
+  // on ne pré-enregistre pas ce qui change.
+  { file: "/voix/tata/stk-09.mp3", text: "Tu en as combien ? Si tu ne sais pas, passe." },
+  { file: "/voix/tata/stk-10.mp3", text: "Quel produit tu veux ajouter ?" },
+  { file: "/voix/tata/stk-12.mp3", text: "C'est trop court pour un nom. Mets au moins deux lettres." },
+  { file: "/voix/tata/stk-13.mp3", text: "Choisis d'abord comment tu le vends." },
+  { file: "/voix/tata/stk-14.mp3", text: "Il manque le prix. Tape-le." },
+  { file: "/voix/tata/stk-17.mp3", text: "Le micro ne répond pas. Tape son nom." },
+  { file: "/voix/tata/stk-18.mp3", text: "Le micro ne répond pas. Tape le prix." },
+  { file: "/voix/tata/stk-19.mp3", text: "Le micro ne répond pas. Touche comment tu le vends." },
+  { file: "/voix/tata/stk-20.mp3", text: "Le micro ne répond pas. Tape combien tu en as." },
+  { file: "/voix/tata/dep-03.mp3", text: "Dis le motif de ta dépense et combien tu as payé." },
+  { file: "/voix/tata/dep-04.mp3", text: "Le micro est indisponible. Réessaie ou choisis ta dépense à l’écran." },
+  { file: "/voix/tata/dep-05.mp3", text: "Autorise le micro pour enregistrer ta dépense à la voix." },
+  { file: "/voix/tata/dep-06.mp3", text: "Je n'ai pas bien compris ta dépense. Redis le motif et le montant, s'il te plaît." },
+  { file: "/voix/tata/dep-07.mp3", text: "Je n'ai pas réussi à lancer la consigne. Réessaie." },
+  { file: "/voix/tata/dep-08.mp3", text: "Attention, le montant est élevé. Vérifie bien." },
+  { file: "/voix/tata/dep-09.mp3", text: "Tu n'as pas encore de dépense aujourd'hui." },
+  { file: "/voix/tata/dep-10.mp3", text: "Je n'ai pas compris combien tu as dépensé. Redis-moi le montant." },
+  { file: "/voix/tata/vente-07.mp3", text: "Que veux-tu vendre ?" },
+  { file: "/voix/tata/vente-08.mp3", text: "Touche-moi et dis ce que tu as vendu." },
+  { file: "/voix/tata/vente-09.mp3", text: "La vente n'a pas pu être enregistrée. Réessaie." },
   { file: "/voix/tata/vente-01.mp3", text: "Appuie sur moi et puis dis-moi ce que tu as vendu au marché." },
   { file: "/voix/tata/vente-02.mp3", text: "Je n'ai pas bien capté. Rapproche le téléphone de ta bouche et puis parle doucement." },
   { file: "/voix/tata/vente-03.mp3", text: "C'est rentré dans le panier. Tu ajoutes encore ou bien on encaisse l'argent ?" },
