@@ -21,8 +21,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
-import { startLiveDictation } from '../../voice-offline/offlineStt';
-import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
+import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 import { stopAllVoice } from '../../services/audioManager';
 import { quantiteDite, type QuantiteEntendue } from '../../services/quantiteDite';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
@@ -96,45 +95,30 @@ export function BoutonDireQuantite({ onNombre, onPasse, ouvrirToutSeul, question
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
-      // Web d'abord : même motif que les trois autres micros du parcours.
-      if (recoWebDispo()) {
-        cheminRef.current = 'web';
-        const web = demarrerRecoWeb({
-          interim: (texte) => {
-            const lu = quantiteDite(texte || '');
-            // EN DIRECT : elle voit le nombre poser pendant qu'elle parle.
-            if (lu && lu.genre === 'nombre') { aEntenduRef.current = true; onNombre(lu.nombre); }
-          },
-          conclure: (texte) => {
-            const lu = quantiteDite(texte || '');
-            void fermer();
-            if (livrer(lu)) return;
-            // Rien de lisible : on le dit, on ne referme pas le micro en
-            // silence. Le pavé reste là.
-            DIRE_CLE('STOCK_069', dire);
-          },
-          erreur: (code) => {
-            void fermer();
-            setIndisponible(true);
-            setEcoute(false);
-            DIRE_CLE(code === 'micro' ? 'STOCK_070' : 'STOCK_071', dire);
-          },
-        });
-        if (web) {
-          arretRef.current = web.conclure;
-          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
-          return;
-        }
-      }
-      cheminRef.current = 'sherpa';
-      const handle = await startLiveDictation(flux, (texte, estFinal) => {
-        if (!estFinal) return;
-        const lu = quantiteDite(texte || '');
-        void fermer();
-        if (livrer(lu)) return;
-        DIRE_CLE('STOCK_069', dire);
+      const capture = await demarrerCaptureVocale(flux, {
+        interim: (texte, moteur) => {
+          if (moteur === 'sherpa') return;
+          const lu = quantiteDite(texte || '');
+          // EN DIRECT : elle voit le nombre poser pendant qu'elle parle.
+          if (lu && lu.genre === 'nombre') { aEntenduRef.current = true; onNombre(lu.nombre); }
+        },
+        conclure: (texte) => {
+          const lu = quantiteDite(texte || '');
+          void fermer();
+          if (livrer(lu)) return;
+          // Rien de lisible : on le dit, on ne referme pas le micro en
+          // silence. Le pavé reste là.
+          DIRE_CLE('STOCK_069', dire);
+        },
+        erreurWeb: (code) => {
+          void fermer();
+          setIndisponible(true);
+          setEcoute(false);
+          DIRE_CLE(code === 'micro' ? 'STOCK_070' : 'STOCK_071', dire);
+        },
       });
-      arretRef.current = handle.stop;
+      cheminRef.current = capture.moteur;
+      arretRef.current = capture.conclure;
       minuteurRef.current = setTimeout(() => {
         void fermer();
         // VOX-06 — le silence ne se referme plus muet. Le chemin web relance

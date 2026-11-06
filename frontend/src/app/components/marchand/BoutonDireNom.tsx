@@ -42,8 +42,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
-import { startLiveDictation } from '../../voice-offline/offlineStt';
-import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
+import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 import { stopAllVoice } from '../../services/audioManager';
 import { nomLibreDicte, produitDit, type EcouteProduit } from '../../services/produitDit';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
@@ -109,43 +108,26 @@ export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutS
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
-      // Web : Sherpa est réservé à l'APK ; le même geste utilise la
-      // reconnaissance du navigateur quand elle existe (décision du 19/10),
-      // puis repasse au chemin Sherpa natif sur Capacitor.
-      if (recoWebDispo()) {
-        const web = demarrerRecoWeb({
-          interim: () => {},
-          conclure: (texte) => {
-            const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
-            void fermer();
-            if (!lu) { DIRE_CLE('STOCK_046', dire); return; }
-            onNom(lu);
-          },
-          erreur: (code) => {
-            void fermer();
-            setIndisponible(true);
-            setEcoute(false);
-            DIRE_CLE(code === 'micro' ? 'STOCK_060' : 'STOCK_061', dire);
-          },
-        });
-        if (web) {
-          arretRef.current = web.conclure;
-          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
-          return;
-        }
-      }
-      const handle = await startLiveDictation(flux, (texte, estFinal) => {
-        if (!estFinal) return;
-        // STK-25 AUX DEUX OREILLES — le lexique, puis SON étal, puis le nom
-        // libre. « Ajoute dix kassos » ne peut pas être jeté par le seul
-        // chemin qui l'a pourtant transcrit. Et la correction mot à mot
-        // (« non, pas kasso, gombo ») réfute le nom affiché.
-        const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
-        void fermer();
-        if (lu) { onNom(lu); return; }
-        DIRE_CLE('STOCK_046', dire);
+      const capture = await demarrerCaptureVocale(flux, {
+        interim: () => {},
+        conclure: (texte) => {
+          // STK-25 AUX DEUX OREILLES — le lexique, puis SON étal, puis le nom
+          // libre. « Ajoute dix kassos » ne peut pas être jeté par le seul
+          // chemin qui l'a pourtant transcrit. Et la correction mot à mot
+          // (« non, pas kasso, gombo ») réfute le nom affiché.
+          const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
+          void fermer();
+          if (lu) { onNom(lu); return; }
+          DIRE_CLE('STOCK_046', dire);
+        },
+        erreurWeb: (code) => {
+          void fermer();
+          setIndisponible(true);
+          setEcoute(false);
+          DIRE_CLE(code === 'micro' ? 'STOCK_060' : 'STOCK_061', dire);
+        },
       });
-      arretRef.current = handle.stop;
+      arretRef.current = capture.conclure;
       // Filet : une écoute qui ne se referme jamais retient le micro et vide
       // la batterie. Le champ reprend la main.
       minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);

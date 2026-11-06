@@ -26,8 +26,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
-import { startLiveDictation } from '../../voice-offline/offlineStt';
-import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
+import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 import { stopAllVoice } from '../../services/audioManager';
 import { uniteDite } from '../../services/uniteDite';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
@@ -95,42 +94,23 @@ export function BoutonDireUnite({ proposees, onUnite, ouvrirToutSeul, question, 
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
-      // Web d'abord : même motif que BoutonDireNom et BoutonDirePrix — Sherpa
-      // reste le moteur de l'APK, la reconnaissance du navigateur sert le web.
-      if (recoWebDispo()) {
-        cheminRef.current = 'web';
-        const web = demarrerRecoWeb({
-          interim: () => {},
-          conclure: (texte) => {
-            const u = lire(texte);
-            void fermer();
-            if (u) { aEntenduRef.current = true; onUnite(u); return; }
-            // Rien de lisible : on le dit, on ne referme pas le micro en
-            // silence. Les boutons restent là.
-            DIRE_CLE('STOCK_066', dire);
-          },
-          erreur: (code) => {
-            void fermer();
-            setIndisponible(true);
-            setEcoute(false);
-            DIRE_CLE(code === 'micro' ? 'STOCK_067' : 'STOCK_068', dire);
-          },
-        });
-        if (web) {
-          arretRef.current = web.conclure;
-          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
-          return;
-        }
-      }
-      cheminRef.current = 'sherpa';
-      const handle = await startLiveDictation(flux, (texte, estFinal) => {
-        if (!estFinal) return;
-        const u = lire(texte);
-        void fermer();
-        if (u) { aEntenduRef.current = true; onUnite(u); return; }
-        DIRE_CLE('STOCK_066', dire);
+      const capture = await demarrerCaptureVocale(flux, {
+        interim: () => {},
+        conclure: (texte) => {
+          const u = lire(texte);
+          void fermer();
+          if (u) { aEntenduRef.current = true; onUnite(u); return; }
+          DIRE_CLE('STOCK_066', dire);
+        },
+        erreurWeb: (code) => {
+          void fermer();
+          setIndisponible(true);
+          setEcoute(false);
+          DIRE_CLE(code === 'micro' ? 'STOCK_067' : 'STOCK_068', dire);
+        },
       });
-      arretRef.current = handle.stop;
+      cheminRef.current = capture.moteur;
+      arretRef.current = capture.conclure;
       minuteurRef.current = setTimeout(() => {
         void fermer();
         // VOX-06 — le silence ne se referme plus muet. Le chemin web relance

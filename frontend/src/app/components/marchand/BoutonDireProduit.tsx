@@ -26,8 +26,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
-import { startLiveDictation } from '../../voice-offline/offlineStt';
-import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
+import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 
 /** UNE SEULE SOURCE pour ce refus : l'écran l'affiche, la voix le dit, et les
  *  deux ne peuvent plus diverger. */
@@ -78,54 +77,24 @@ export function BoutonDireProduit({ sesProduits, onProduit, dire }: Props) {
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
-      // Web : Sherpa est réservé à l'APK. Le même geste utilise la
-      // reconnaissance du navigateur quand elle existe, puis repasse au
-      // chemin Sherpa natif sur Capacitor.
-      if (recoWebDispo()) {
-        const web = demarrerRecoWeb({
-          interim: () => {},
-          conclure: (texte) => {
-            // STK-25 AUX DEUX OREILLES — le nom libre était préservé sur le
-            // chemin Sherpa (APK) et JETÉ sur le chemin web : « ajoute dix
-            // kassos » dicté dans Chrome répondait « Je n'ai pas entendu de
-            // produit » alors que la même phrase sur l'APK ouvrait le
-            // parcours avec « Kassos ». Le repli `nomLibreDicte` est la même
-            // règle, pas une seconde : dictée web (19/10) et APK entendent
-            // désormais de la même façon.
-            const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '');
-            void fermer();
-            if (!lu) { dire?.("Je n'ai pas entendu de produit. Dis-moi ce que tu vends."); return; }
-            onProduit(lu);
-          },
-          erreur: (code) => {
-            void fermer();
-            setIndisponible(true);
-            setEcoute(false);
-            dire?.(code === 'micro' ? MICRO_INDISPONIBLE : "La dictée web n'a pas répondu. Touche « Ajouter un produit ».");
-          },
-        });
-        if (web) {
-          arretRef.current = web.conclure;
-          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
-          return;
-        }
-      }
-      const handle = await startLiveDictation(flux, (texte, estFinal) => {
-        if (!estFinal) return;
-        const lu = produitDit(texte || '', sesProduits);
-        void fermer();
-        if (lu) { onProduit(lu); return; }
-        // STK-25 — LE NOM HORS DE TOUS LES RÉFÉRENTIELS N'EST PLUS JETÉ.
-        // « Ajoute dix kassos » : le lexique et son étal ignorent « kasso »,
-        // mais le micro l'a TRANSCRIT. On pose ce nom dans le parcours guidé
-        // (unité et prix restent à donner), au lieu de dire à une non-lectrice
-        // qu'elle n'a rien dit. `null` = vraiment rien de nommable : on le dit,
-        // on n'ouvre pas un formulaire vide.
-        const libre = nomLibreDicte(texte || '');
-        if (libre) { onProduit(libre); return; }
-        dire?.("Je n'ai pas entendu de produit. Dis-moi ce que tu vends.");
+      const capture = await demarrerCaptureVocale(flux, {
+        interim: () => {},
+        conclure: (texte) => {
+          // STK-25 AUX DEUX OREILLES — le nom libre était préservé sur le
+          // chemin Sherpa et Web Speech garde ici son comportement historique.
+          const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '');
+          void fermer();
+          if (!lu) { dire?.("Je n'ai pas entendu de produit. Dis-moi ce que tu vends."); return; }
+          onProduit(lu);
+        },
+        erreurWeb: (code) => {
+          void fermer();
+          setIndisponible(true);
+          setEcoute(false);
+          dire?.(code === 'micro' ? MICRO_INDISPONIBLE : "La dictée web n'a pas répondu. Touche « Ajouter un produit ».");
+        },
       });
-      arretRef.current = handle.stop;
+      arretRef.current = capture.conclure;
       minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
     } catch {
       // STK-22 — LE MUR MUET. Cet écran affichait « Le micro ne répond pas »

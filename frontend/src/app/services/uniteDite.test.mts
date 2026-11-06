@@ -82,17 +82,22 @@ console.log('\n[5] L\'ÉCRAN PORTE L\'OREILLE — CÂBLAGE DU PARCOURS');
   ok(/<BoutonDireUnite[\s/>]/.test(guide), 'AjoutProduitGuide : l\'étape de l\'unité peut être DITE');
   ok(/<BoutonDireUnite[^>]*\souvrirToutSeul[\s/>]/.test(guide),
      'et le micro s\'ouvre tout seul (même arbitrage que le prix, VOX-03)');
+  ok(/question=\{resoudreMessage\('STOCK_048', \{ nom \}\)\.texte\}/.test(guide),
+     'la question parlée vient du catalogue vocal');
+  ok(!/else if \(etapeVue === 'unite'\) direMessage\('STOCK_048'/.test(guide),
+     'la question de l\'unité n\'est pas dite deux fois');
   ok(/TATA_UNITE_CHOISIE/.test(guide), 'l\'unité dite est RELITE — elle entend ce qui a été écrit');
   // LA GRILLE RESTE — la voix est le geste par défaut, pas le seul.
   ok(/unitesProposees\(sesUnites\)\.map/.test(guide), 'la grille de boutons reste disponible, en second');
   ok(/setUniteLibre\(true\)/.test(guide) && /Autre/.test(guide), 'et « Autre » reste — SON mot hors de tout lexique');
 
   const bouton = lire('BoutonDireUnite.tsx');
+  const capture = readFileSync(new URL('../voice-offline/captureVocale.ts', import.meta.url), 'utf-8');
   ok(/uniteDite\(/.test(bouton), 'le micro lit l\'unité par la règle, pas à sa façon');
   ok(!/parseInt|parseFloat|Number\(/.test(bouton), 'et personne ne relit une unité à côté de la règle');
-  ok(/demarrerRecoWeb\(/.test(bouton) && /recoWebDispo\(\)/.test(bouton),
+  ok(/demarrerCaptureVocale\(/.test(bouton) && /demarrerRecoWeb/.test(capture) && /recoWebDispo/.test(capture),
      'dictée web branchée — le web écoute comme le nom et le prix');
-  ok(/startLiveDictation\(/.test(bouton), 'sherpa reste le chemin de l\'APK');
+  ok(/startLiveDictation/.test(capture), 'sherpa reste le chemin de l\'APK');
   ok(/CONTRAINTES_MICRO_DICTEE/.test(bouton), 'anti-écho MIC-01 — les mêmes contraintes que tous les micros');
   ok(/DIRE_CLE\('STOCK_066', dire\)/.test(bouton), 'le silence est relancé à la voix (STOCK_066)');
   ok(/code === 'micro' \? 'STOCK_067' : 'STOCK_068'/.test(bouton), 'les pannes se disent (STOCK_067/068) — STK-22');

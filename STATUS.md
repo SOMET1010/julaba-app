@@ -17,6 +17,46 @@ avant toute fin de session.
 
 ---
 
+## Session 06/11 — fiabiliser trois commandes vocales
+
+**Livrable en cours** : entrée au démarrage, dictée de l’unité d’un produit et
+enregistrement vocal d’une dépense. Aucun changement backend, aucun commit,
+push ou déploiement.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| « Dis oui pour entrer » et variantes reconnues sans faire passer un refus pour un oui | ✅ code | `test:commandes-entree` |
+| La question de l’unité est dite une fois et le micro l’écoute | ✅ code | `test:parcours-guide-parle`, `test:unite-dite` |
+| Une dépense dite avec motif et montant rejoint la confirmation existante et conserve son motif à l’enregistrement | ✅ code | `test:depense-vocale`, garde positive/nulle/négative, vente exclue |
+| Capture Web/Sherpa mutualisée sans modifier les règles métier des six parcours | ✅ code | `captureVocale.ts`; gardes produit, nom, prix, unité, quantité et dépense |
+| Rendu du bouton dépense validé | ✅ | capture `docs/parcours/captures/bouton-depense-etats.png` |
+| Typage et build de production frontend | ✅ | `typecheck` et `build` terminés sans erreur |
+| Vérification frontend complète sans nouveau rouge | ⚠️ | 158/166 verts; rouge connu `test:garde-argent` (référence signalée 4 entrés / 14 perdues); 7 rouges hors diff : `jargon`, `enum-check-phone`, `warn-dev`, `voix-trace`, `voix-trace-source`, `i18n-source`, `micro-niveau-parole` |
+| `npm run check` | ❌ bloqueur de push | 1 test backend échoue : `backend/test/unit/pin-jamais-journalise.spec.ts:145` (préexistant, hors diff; non corrigé dans ce lot) |
+| Écoute au micro web et APK, puis recette sur preview déployée | ⬜ | non exécutées; aucune preview disponible |
+
+La relecture `relecteur` a demandé, avant tout push, une orchestration commune
+Web/Sherpa, l’alignement du bouton sur le design system et l’inventaire des
+clés. Les messages sont catalogués et l’inventaire documente leurs clés. Une
+fonction pure testée valide le type d’action et le montant. Patrick a autorisé
+le refactor partagé. Le designer a validé le rendu repos/écoute/indisponibilité
+(capture : `docs/parcours/captures/bouton-depense-etats.png`).
+
+**État** : refactor terminé. Typecheck, build, `test:depense-vocale`,
+`test:web-reco`, `test:micro-contraint` et les gardes des six parcours passent.
+`test:maillons-orphelins` passe; le nouveau banc dépense est déclaré dans
+`frontend/scripts/maillons-verify.json`, sans modification de `test:ci`.
+Le bouton dépense est découpé en visuel, hook et contrôleur; le test confirme
+que l’annulation Sherpa ne livre ni le final de `stop()` ni les résultats
+tardifs. Le verrou de démarrage empêche les doubles ouvertures et les
+notifications après démontage. Le relecteur confirme ces corrections.
+
+**Bloqueurs avant push** : `npm run check` reste rouge sur
+`backend/test/unit/pin-jamais-journalise.spec.ts:145`, hors diff; la vérification
+frontend complète reste à 158/166 avec les 8 rouges détaillés ci-dessus.
+L’écoute au micro réel (web et APK) et la recette sur preview restent à faire;
+aucune preview n’est disponible. Aucun commit, push ni déploiement.
+
 ## Session 05/11 — alignement du domaine d’accès Azure de test
 
 Domaine communiqué : `https://julaba-app.dev-dtdi.ansut.ci/`.

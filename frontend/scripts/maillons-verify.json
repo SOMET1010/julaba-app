@@ -93,6 +93,7 @@
     "test:compter-registre",
     "test:pave-montant",
     "test:depense-libelle",
+    "test:depense-vocale",
     "test:vente-hors-ligne-statut",
     "test:vente-synchronisee",
     "test:recu-statut",

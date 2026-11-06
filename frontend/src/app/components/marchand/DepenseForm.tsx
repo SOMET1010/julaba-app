@@ -15,9 +15,15 @@ import { PaveMontant } from '../shared/PaveMontant';
 import {
   CATEGORIES_DEPENSE, libelleParId, type IdCategorieDepense,
 } from '../../services/categorieDepense';
+import { rendreMessage } from '../../i18n/voice/contrat-audio';
+import { resoudreMessage } from '../../i18n/voice/runtime';
+import { BoutonDireDepense } from './BoutonDireDepense';
+import { estActionDepenseValide, lireDepenseVocale, phraseDepenseVocale } from '../../voice-offline/depenseVocale';
 
 const P = 'var(--commerce-action)';
 const BG = 'var(--commerce-paper)';
+const direMessage = (id: Parameters<typeof resoudreMessage>[0], dire: (texte: string) => void | Promise<void>) =>
+  rendreMessage(resoudreMessage(id), dire);
 
 // LES ONZE CATÉGORIES VIENNENT DE `services/categorieDepense.ts` — DEP-02.
 // Elles étaient écrites ici, en deux morceaux, et une TROISIÈME fois dans
@@ -64,44 +70,66 @@ export function DepenseForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   // Verrou SYNCHRONE anti double-clic (l'état React ne bloque qu'au render suivant).
   const enregEnCoursRef = useRef(false);
+  const motifVocalEnAttenteRef = useRef<string | null>(null);
   const [showOthers, setShowOthers]   = useState(false);
   const vocalHint = useMemo(() => getVocalHint(), []);
 
-  const { startRecording, stopRecording, isListening, confirmAction, cancelAction, pendingResponse, state: voiceState } = useVoiceCore({
+  const { sendText, confirmAction, cancelAction, pendingResponse, state: voiceState } = useVoiceCore({
     context: { module: 'depense', prenom: user?.firstName || 'ma chère', genre: (user as any)?.genre || 'femme', userId: user?.id },
     onAction: async (data) => {
-      const a = data.action as any;
-      const depenseOk =
-        a?.type === 'depense' && a.montant != null && Number(a.montant) > 0;
-      if (depenseOk) {
-        const desc = String(a.description || a.categorie || '').trim() || 'Dépense';
-        const montant = Number(a.montant);
-        try {
-          // Dictée : aucune catégorie n'a été TOUCHÉE. On envoie celle qui
-          // est éventuellement sélectionnée à l'écran, jamais une déduite des
-          // mots dictés.
-          await enregistrerDepense(montant, desc, categorie);
-          await reloadTransactions();
-          await speak('Dépense enregistrée');
-          setDescription('');
-          setMontant('');
-          setStep(1);
-        } catch (error) {
-          await speak('Erreur, réessaie');
-        }
-        return;
+      const { action } = data;
+      if (!estActionDepenseValide(action)) {
+        throw new Error('La commande vocale ne contient pas une dépense et un montant valides.');
       }
-      if (data.action) {
-        if (a.categorie || a.description) setDescription(a.description || a.categorie || '');
-        if (a.montant) { setMontant(String(a.montant)); setStep(2); }
+      if (enregEnCoursRef.current) return;
+      enregEnCoursRef.current = true;
+      setIsProcessing(true);
+      try {
+        await enregistrerDepense(
+          action.montant,
+          motifVocalEnAttenteRef.current || action.description?.trim() || 'Dépense',
+          categorie,
+        );
+        await reloadTransactions();
+        await speak('Dépense enregistrée');
+        motifVocalEnAttenteRef.current = null;
+        setDescription('');
+        setMontant('');
+        setStep(1);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : 'Erreur inconnue';
+        console.warn('[DepenseForm] voice save failed:', detail);
+        toast.error("Erreur lors de l'enregistrement de la dépense");
+        throw error;
+      } finally {
+        enregEnCoursRef.current = false;
+        setIsProcessing(false);
       }
-      if (data.transcript) setDescription(data.transcript);
     },
-    onError: () => { speak('Problème avec le micro — réessaie'); },
+    onError: (message) => { toast.error(message); },
   });
 
-  const handleMic = () => { if (isListening) stopRecording(); else startRecording(); };
   const isConfirming = voiceState === 'confirming';
+
+  const traiterDicteeDepense = (texte: string) => {
+    const depense = lireDepenseVocale(texte);
+    if (!depense) {
+      void direMessage('DEPENSE_007', speak);
+      return;
+    }
+    setDescription(depense.description);
+    setMontant(String(depense.montant));
+    setCategorie(undefined);
+    motifVocalEnAttenteRef.current = depense.description;
+    setStep(2);
+    void sendText(phraseDepenseVocale(depense)).catch((error: unknown) => {
+      motifVocalEnAttenteRef.current = null;
+      const detail = error instanceof Error ? error.message : 'Erreur inconnue';
+      console.warn('[DepenseForm] voice command failed:', detail);
+      toast.error("La dépense n'a pas pu être comprise. Réessaie.");
+      void direMessage('DEPENSE_007', speak);
+    });
+  };
 
   const handleSave = async () => {
     if (enregEnCoursRef.current) return; // anti double-clic (synchrone)
@@ -190,7 +218,7 @@ export function DepenseForm() {
         <p style={{fontSize:16,fontWeight:600,color:'var(--encre)',marginBottom:8}}>{pendingResponse.response || pendingResponse.reponse}</p>
         {pendingResponse.resume_action && <p style={{fontSize:12,fontWeight:700,color:'var(--encre-4)',marginBottom:16}}>{pendingResponse.resume_action}</p>}
         <div style={{display:'flex',gap:10}}>
-          <button onClick={cancelAction} style={{flex:1,padding:'14px 0',borderRadius:14,fontWeight:700,fontSize:15,border:'2px solid '+PC,color:PC,background:'white',cursor:'pointer'}}>Non</button>
+          <button onClick={() => { motifVocalEnAttenteRef.current = null; cancelAction(); }} style={{flex:1,padding:'14px 0',borderRadius:14,fontWeight:700,fontSize:15,border:'2px solid '+PC,color:PC,background:'white',cursor:'pointer'}}>Non</button>
           <button onClick={confirmAction} style={{flex:1,padding:'14px 0',borderRadius:14,fontWeight:700,fontSize:15,color:'white',background:PC,cursor:'pointer',border:'none'}}>Oui, enregistrer</button>
         </div>
       </div>
@@ -301,13 +329,12 @@ export function DepenseForm() {
           <motion.img src={TATA_BLEU} alt="Tantie Nanti Lou"
             style={{ width:160, height:160, objectFit:'contain', filter:'drop-shadow(0 12px 28px rgba(175,91,35,0.2))' }}
             animate={{ y:[0,-7,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }} />
-          <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
-            <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </motion.button>
+          <BoutonDireDepense
+            dire={speak}
+            question={resoudreMessage('DEPENSE_004').texte}
+            onTranscription={traiterDicteeDepense}
+            onErreur={toast.error}
+          />
           <div style={{ fontSize:12, color:'#B8937A', fontStyle:'italic', textAlign:'center' }}>{vocalHint}</div>
         </div>
       </div>
@@ -378,16 +405,12 @@ export function DepenseForm() {
           </span>
         </div>
 
-        {/* Micro */}
-        <div style={{ display:'flex', justifyContent:'center', marginBottom:8 }}>
-          <motion.button whileTap={{ scale:0.9 }} onClick={handleMic} style={{ background:'none', border:'none', cursor:'pointer', padding:8 }}>
-            <svg width="38" height="38" viewBox="0 0 22 22" fill="none">
-              <rect x="7" y="2" width="8" height="12" rx="4" fill={isListening ? 'var(--color-red-500)' : P}/>
-              <path d="M4 11c0 3.9 3.1 7 7 7s7-3.1 7-7" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round" fill="none"/>
-              <line x1="11" y1="18" x2="11" y2="21" stroke={isListening ? 'var(--color-red-500)' : P} strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </motion.button>
-        </div>
+        <BoutonDireDepense
+          dire={speak}
+          question={resoudreMessage('DEPENSE_004').texte}
+          onTranscription={traiterDicteeDepense}
+          onErreur={toast.error}
+        />
       </div>
 
     </SubPageLayout>

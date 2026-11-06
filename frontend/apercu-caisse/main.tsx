@@ -23,8 +23,9 @@ import '../src/styles/commerce.css';
 import '../src/styles/login.css';
 import { POSCaisse } from '../src/app/components/marchand/POSCaisse';
 import { MarchandHome } from '../src/app/components/marchand/MarchandHome';
+import { VisuelBoutonDireDepense } from '../src/app/components/marchand/BoutonDireDepense';
 import { enregistrerRenduVocal, RENDU_PAR_DEFAUT } from '../src/app/i18n/voice/contrat-audio';
-import { t } from '../src/app/i18n/voice/runtime';
+import { resoudreMessage, t } from '../src/app/i18n/voice/runtime';
 import * as audioManager from '../src/app/services/audioManager';
 import { AppProvider } from './stubs/AppContext';
 import { CaisseProvider } from './stubs/CaisseContext';
@@ -130,13 +131,62 @@ const bouton = () => document.querySelector<HTMLButtonElement>(
 // premier écran qu'elle voit chaque matin et que le banc ne savait pas rendre.
 // Mêmes stubs, même viewport : seule la racine change.
 const ACCUEIL = (() => { try { return new URLSearchParams(location.search).get('ecran') === 'accueil'; } catch { return false; } })();
+const APERCU_DEPENSE = (() => { try { return new URLSearchParams(location.search).get('ecran') === 'depense'; } catch { return false; } })();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <MemoryRouter initialEntries={[ACCUEIL ? '/marchand' : '/marchand/caisse']}>
-    <AppProvider>
-      <CaisseProvider>
-        {ACCUEIL ? <MarchandHome /> : <POSCaisse />}
-      </CaisseProvider>
-    </AppProvider>
-  </MemoryRouter>,
-);
+function ApercuBoutonDepense() {
+  const question = resoudreMessage('DEPENSE_004').texte;
+  const indisponible = resoudreMessage('DEPENSE_005').texte;
+  const carte = {
+    display: 'grid',
+    gap: 'var(--caisse-esp-2)',
+    padding: 'var(--caisse-esp-3)',
+    border: '1px solid var(--commerce-line)',
+    borderRadius: 'var(--caisse-rayon-4)',
+    background: 'var(--commerce-surface)',
+  } as const;
+
+  return (
+    <main style={{
+      minHeight: '100dvh',
+      display: 'grid',
+      alignContent: 'start',
+      gap: 'var(--caisse-esp-3)',
+      padding: 'var(--caisse-esp-4) var(--caisse-esp-3)',
+      background: 'var(--commerce-paper)',
+      color: 'var(--encre)',
+    }}>
+      <h1 style={{ margin: 0, font: 'var(--caisse-font-h1)' }}>Dire une dépense</h1>
+      <section style={carte}>
+        <h2 style={{ margin: 0, font: 'var(--caisse-font-h2)' }}>Au repos</h2>
+        <VisuelBoutonDireDepense etat="repos" question={question} />
+      </section>
+      <section style={carte}>
+        <h2 style={{ margin: 0, font: 'var(--caisse-font-h2)' }}>Écoute</h2>
+        <VisuelBoutonDireDepense etat="ecoute" question={question} />
+      </section>
+      <section style={carte}>
+        <h2 style={{ margin: 0, font: 'var(--caisse-font-h2)' }}>Micro indisponible</h2>
+        <VisuelBoutonDireDepense
+          etat="indisponible"
+          question={question}
+          messageIndisponible={indisponible}
+        />
+      </section>
+    </main>
+  );
+}
+
+const racine = ReactDOM.createRoot(document.getElementById('root')!);
+if (APERCU_DEPENSE) {
+  racine.render(<ApercuBoutonDepense />);
+} else {
+  racine.render(
+    <MemoryRouter initialEntries={[ACCUEIL ? '/marchand' : '/marchand/caisse']}>
+      <AppProvider>
+        <CaisseProvider>
+          {ACCUEIL ? <MarchandHome /> : <POSCaisse />}
+        </CaisseProvider>
+      </AppProvider>
+    </MemoryRouter>,
+  );
+}
