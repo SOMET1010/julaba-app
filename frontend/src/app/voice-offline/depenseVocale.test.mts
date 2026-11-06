@@ -35,6 +35,7 @@ verifier(!estActionDepenseValide({ type: 'depense', montant: '300' }), 'un monta
 if (transport) {
   const normalisee = intentLocal(phraseDepenseVocale(transport));
   verifier(normalisee?.action.type === 'depense', 'la phrase explicite atteint la confirmation financière existante');
+  verifier(normalisee?.action.description === 'transport marché', 'le libellé libre traverse aussi l’action locale');
 }
 
 const formulaire = readFileSync(join(ici, '..', 'components', 'marchand', 'DepenseForm.tsx'), 'utf-8');

@@ -146,7 +146,7 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   const demanderPrixAuParent = useContext(CtxDemandePrix);
   const { lang: selectedLang } = useLangPref();
   const navigate = useNavigate();
-  const { user, currentSession, getTodayStats, speak } = useApp();
+  const { user, currentSession, getTodayStats, speak, openDay } = useApp();
   // Les phrases de Tata sont des CLÉS du catalogue i18n (lot langues) : ce
   // composant ne connaît plus le français. `speakMessage` résout la clé dans
   // la langue active et la remet au rendu vocal (contrat-audio.ts), dont le
@@ -529,10 +529,22 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
         navigate('/marchand/ventes-passees'); // `/marchand/ventes` n'existe pas (404)
       } else if (action?.type === 'ajouter_stock' || data.intent === 'ajouter_stock') {
         navigate('/marchand/stock');
+      } else if (action?.type === 'ouvrir_journee' && typeof action.montant === 'number') {
+        // L'OUVERTURE DITE D'UN COUP, DEPUIS LA CAISSE (merge azure/dev 06/11,
+        // commit b9321d97) : « ouvre la caisse avec 5 000 francs » est comprise
+        // localement (intent ouvrir_journee) et CONFIRMÉE avant d'arriver ici
+        // (needsConfirmation strict, le doute ne profite pas au oui). Avant ce
+        // câblage, le oui de la marchande tombait dans le no-op ci-dessous :
+        // confirmation dite, rien d'écrit — une impasse vocale. Le chemin
+        // d'écriture est LE MÊME openDay que partout (réponse serveur faisant
+        // foi, optimiste hors ligne) ; le flux INTERACTIF (question → montant →
+        // confirmation) reste la porte de l'accueil (OuvertureCaisseVoix).
+        await openDay(action.montant);
+        speakMessage('MARCHAND_007', { montant: action.montant });
       }
-      // `consulter_solde`, `ouvrir_journee` et `fermer_journee` menaient à
-      // `/marchand/caisse` : on y EST déjà. Naviguer vers la page courante
-      // remonterait l'écran en haut sans rien changer — on ne fait rien.
+      // `consulter_solde` et `fermer_journee` menaient à `/marchand/caisse` :
+      // on y EST déjà. Naviguer vers la page courante remonterait l'écran en
+      // haut sans rien changer — on ne fait rien.
       try { await refreshTransactions(); } catch (e: any) { console.warn('[MicroVenteCaisse] refreshTransactions failed:', e?.message); }
     },
     onNavigate: (path) => { navigate(path); },

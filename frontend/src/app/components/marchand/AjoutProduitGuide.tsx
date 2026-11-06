@@ -336,7 +336,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       </AnimatePresence>
 
       {/* ─── A1. ELLE L'A DÉJÀ : COMBIEN ELLE EN AJOUTE ─────────────── */}
-      {existant && (
+      {existant && etapeVue === 'quantite' && (
         <ComplementEtal existant={existant} enCours={enCours}
           onValider={(ajout) => { void completer(existant, ajout, brouillon.prix); }}
           onAutre={() => { setExistant(null); setEtapeVue('unite'); }} />
@@ -411,7 +411,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       )}
 
       {/* ─── 2. SON UNITÉ ───────────────────────────────────────────── */}
-      {!existant && etapeVue === 'unite' && (
+      {etapeVue === 'unite' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             {nom}, tu le vends comment ?

@@ -21,6 +21,7 @@
 // ──────────────────────────────────────────────────────────────────────────
 
 import { extraire } from './extraction';
+import { descriptionDepenseVocale } from './depenseVocale';
 import { MOTS_PAS_UNE_VENTE } from './vocabulaire';
 import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
@@ -151,6 +152,20 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
   if (encaissement === 'oui_valide' || encaissement === 'combien_doit') return resultatEncaissement(texte, encaissement);
 
   const p = extraire(texte);
+  if (p.intention === 'ouvrir_journee') {
+    if (p.montant == null || p.montant < 0) return null;
+    return {
+      transcript: texte,
+      normalizedText: texte,
+      intent: 'ouvrir_journee',
+      action: { type: 'ouvrir_journee', montant: p.montant },
+      response: `Tu as ${p.montant} francs dans ta caisse aujourd'hui, c'est bien ça ?`,
+      needsConfirmation: true,
+      audioBase64: null,
+      navigate: null,
+      offline: true,
+    };
+  }
   const venteParEncaisse = encaissement === 'encaisser' && p.intention === null && !!p.produit;
 
   // « CINQ TOMATES » EST UNE VENTE — mais seulement là où on ne fait que
@@ -229,7 +244,14 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
   // se tromper sur les invariables.
   if (p.uniteParlee) action.unite = p.uniteParlee;
   if (p.montant != null) action.montant = p.montant;
-  if (intent === 'depense' && p.produit) action.description = p.produit;
+  if (intent === 'depense') {
+    // Le lexique produit est fermé, mais le motif d'une dépense ne l'est pas
+    // (« transport », « taxe mairie », « médicaments »...). Transporter le
+    // libellé ici évite que le chemin vocal générique n'enregistre seulement
+    // « Dépense vocale » quand aucun produit du catalogue n'a été prononcé.
+    const description = descriptionDepenseVocale(texte, p.montant!);
+    if (description) action.description = description;
+  }
 
   // Accord du pluriel (« Vente de 2 tomates », pas « 2 tomate ») — même règle
   // que les dialogues de la vente guidée.

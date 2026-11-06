@@ -106,7 +106,7 @@ export type CommandeEntree = 'entrer' | 'repeter';
 // le clip (« entrer »), les variantes naturelles de la même intention.
 // Terrain 06/11 : « entrons » et « entrez » restés dehors alors que le clip
 // dit « dis oui pour entrer » — les formes conjuguées du même verbe.
-const AVANCER = /\b(entree?|entrer|entrez|entrons|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
+const AVANCER = /\b(entree?|entrer|entrez|entrons|rentrons|rentre[rz]?|rentr[ée]e?|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
 
 // L'ACQUITTEMENT APLATI — les formes où l'ASR a PERDU l'apostrophe. Le
 // catalogue déclare « c'est bon » ; le STT la transcrit souvent « c est
@@ -119,6 +119,11 @@ const AVANCER = /\b(entree?|entrer|entrez|entrons|commence[rz]?|continue[rz]?|av
 // ici l'action n'écrit rien (une porte, un numéro à vérifier), et le refus
 // déclaré est TOUJOURS testé avant.
 const ACQUITTEMENT_APLATI = /\b(c ?est (bon|ca|exact)|wi|ui|wui|we|oui oui)\b/;
+
+// Les moteurs de dictée confondent régulièrement « dis » et « dit », et
+// avalent l'infinitif final (« pour rentré »). On reconnaît la phrase entière
+// sans rendre « oui » seul plus permissif : le refus explicite garde priorité.
+const OUI_POUR_ENTRER = /\b(?:dis|dit|dire|d[iî]s)\s+oui\s+(?:pour|afin de)\s+(?:entrer|rentrer|commencer|continuer|avancer|rentr[ée]e?)\b|\boui\s+(?:pour|afin de)\s+(?:entrer|rentrer|commencer|continuer|avancer|rentr[ée]e?)\b/;
 const REFUSER_ENTREE = /\b(non|attends?|annule|stop|arret|pas encore|pas maintenant|pas (?:entrer|rentrer|commencer|continuer|avancer)|je ne veux pas|je veux pas)\b/;
 
 // Faire rejouer — le même parti pris que REDIRE : se tromper de côté coûte
@@ -143,7 +148,7 @@ export function intentionEntree(texte: string, locale?: LocaleCode): CommandeEnt
   const reponse = acquiescement(brut, locale);
   if (reponse === 'oui') return 'entrer';
   if (ACQUITTEMENT_APLATI.test(t)) return 'entrer';
-  if (AVANCER.test(t) || /\b(rentre|rentrer|rentrons|rentre[z]?|oui pour entrer|oui pour rentrer)\b/.test(t)) return 'entrer';
+  if (OUI_POUR_ENTRER.test(t) || AVANCER.test(t)) return 'entrer';
   return null;
 }
 

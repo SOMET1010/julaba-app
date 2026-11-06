@@ -99,7 +99,8 @@ import { intentionEntree, intentionOuiNon } from './commandesEntree.js';
 console.log('\n[8] L\'ENTRÉE SE COMMANDE — « entrer » de l\'audit (écrans 1 et 2)');
 for (const phrase of ['entrer', 'entre', 'entrez', 'entrons', 'commencer', 'commence', 'continuer', 'continue',
                       'avancer', 'on y va', "c'est parti", "d'accord", 'ok',
-                      'dis oui pour entrer', 'oui pour entrer', 'oui pour rentrer', 'rentrer']) {
+                      'dis oui pour entrer', 'dit oui pour entrer', 'dis oui pour rentré',
+                      'oui pour entrer', 'oui pour rentrer', 'oui afin de commencer', 'rentrer']) {
   eq(intentionEntree(phrase), 'entrer', `« ${phrase} » → entrer`,
      `obtenu: ${String(intentionEntree(phrase))}`);
 }
