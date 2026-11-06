@@ -186,6 +186,14 @@ du `.env` inerte) ; `users.status` est la seule colonne de `users_status_enum`.
    ci-dessous reste à trancher ; elle décide du reste (APK à regénérer à la bascule).
 3. **Amorçage de l'historique de migrations sur Azure** (RUNBOOK § Phase 3 étape 2) si on
    veut la chaîne TypeORM ; sinon `DB_MIGRATIONS_RUN=false` — désormais protégé de toute façon.
+4. **Re-gel de l'empreinte `intentLocal`** (06/11, après le merge azure/dev `656cd973`) :
+   `test:i18n-empreintes-argent` crie VOLONTAIREMENT — le comportement d'`intentLocal` a
+   changé avec le travail absorbé du push Azure `b9321d97` (description libre des dépenses
+   qui ne se perd plus en « Dépense vocale » + l'intent `ouvrir_journee` compris
+   localement). Le correctif était demandé (retour terrain passé par l'autre canal) ;
+   l'empreinte ne se re-fige PAS sans Patrick (doctrine EMPREINTE-GARDES) — le geste
+   humain de re-gel reste à autoriser. Le piége no-op de l'`ouvrir_journee` confirmé sur
+   la caisse a été fermé au passage (`MicroVenteCaisse` exécute désormais `openDay`).
 
 Limites connues du rapport (assumées) : `gen_random_uuid()` au lieu de `uuid_generate_v4()`
 (extension non allow-listée Azure) ; rendu textuel de 2 CHECK (PG 16 vs 18) ; outils et
