@@ -11,8 +11,8 @@ avant toute fin de session.
 | relevé | **06/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `4b568139` — fix(marché) : la dépense vocale s'enregistre comme le doigt (`offlineLocalIntents ['depense']`) |
-| dernier lot applicatif | 3 `fix` voix du 06/11 (terrain Patrick) : l'entrée s'écoute vraiment sur l'APK + le oui réel du STT (`27127245`), le décollage des unités collées par l'ASR (`dc20365d`), la dépense vocale offline-first comme le tactile (`4b568139`) — à la suite du merge azure/dev `aa533692` (CI pipeline, domaine de test `julaba-app.dev-dtdi.ansut.ci`, fix auth, commandes vocales `9b4a2b66`) et des 3 `fix(db)` d'alignement (`97404d10`, `c8088ffc`, `97f06306`) |
+| dernier commit | `50f2013d` — feat(produit) : l'ajout se lance de l'accueil à la voix, un produit existant re-demande son unité |
+| dernier lot applicatif | 3 `feat` du 06/11 (ordre Patrick, 2 agents Explore) : la grammaire des commandes d'accueil (`cd51a5f8`), « Ouvrir ma caisse » — bouton + fond dit à la voix + confirmation + OpenDayModal enfin montée (`42fe5d10`), l'ajout produit par la voix + unité re-demandée sur produit existant (`50f2013d`) — à la suite des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) et du merge azure/dev `aa533692` |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -109,6 +109,30 @@ l'aperçu local**, pas sur une URL de preview.
 ---
 
 ## Livrable en cours
+
+### Session 06/11 — les deux portes du matin : la caisse s'ouvre en parlant, l'étal se pose à la voix
+
+Patrick (06/11) : un bouton d'ouverture de caisse sur l'accueil, accessible à
+la voix (« Tu as combien dans ta caisse aujourd'hui ? » → montant dit →
+confirmation vocale) ; l'ajout produit lancé par la voix, en reprenant
+EXACTEMENT le workflow graphique ; et un produit existant RE-DEMANDE son
+unité (elle peut varier d'une opération à l'autre). Deux agents Explore en
+parallèle ont inventorié ce qui existait AVANT d'écrire : `openDay` servait
+tel quel, `OpenDayModal` était ÉCRITE MAIS MONTÉE NULLE PART (orpheline),
+`BoutonDirePrix` + `intentionOuiNon` portaient déjà la dictée et la
+confirmation — seul le CÂBLAGE manquait, et l'intent `ouvrir_journee` était
+attendu par le moteur sans être reconnu par aucun.
+
+| Porte | Ce qui manquait | Ce qui est câblé |
+|---|---|---|
+| « Ouvrir ma caisse » | le bouton, la question, la dictée du fond, la confirmation, la modale orpheline | bouton du matin (ni ouverte, ni fermée le soir) → flux vocal (question → montant dit → RELIT + oui/non → `openDay` + MARCHAND_007) ; le doute n'écrit rien ; « non » → on redemande ; repli NOMMÉ : OpenDayModal enfin montée ; l'accueil écoute « ouvre la caisse » / « ajoute un produit » (`cd51a5f8`, `42fe5d10`) |
+| « Ajoute un produit » | l'intent (l'ancien `ajouter_stock` avait été retiré volontairement) et la navigation (le parcours n'a pas de route) | la commande route vers `/marchand/stock?ajout=1` → LA même modale d'ajout (un seul chemin de création), param consommé au montage (`50f2013d`) |
+| Unité re-demandée | la porte A1 imposait l'unité de la ligne existante | la porte au nom mène à L'ÉTAPE DE L'UNITÉ (même question, même micro) ; le TRI nom+unité vit dans UNE fonction lue par les trois chemins : même unité → complément du stock (le prix reste le sien), autre unité → NOUVELLE ligne à l'étape prix (`50f2013d`) |
+
+Preuves : typecheck vert ; `test:accueil-cable` NOUVEAU (garde transversal des
+deux portes) + 21 gardes vertes ; `test:jargon` et `test:nom-du-personnage`
+rouges PRÉEXISTANTS (prouvé par stash). **Reste à recetter sur appareil** :
+le micro réel web et APK.
 
 ### Session 06/11 — les trois oreilles vocales du terrain : entrer, vendre comment, payer où
 
