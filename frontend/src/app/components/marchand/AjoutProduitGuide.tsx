@@ -204,7 +204,6 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    */
   useEffect(() => {
     if (etapeVue === 'nom') direMessage('STOCK_047');
-    else if (etapeVue === 'unite') direMessage('STOCK_048', { nom });
     else if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
     else if (etapeVue === 'quantite') direMessage('STOCK_054');
     // On ne redit pas la question à chaque frappe : seul le changement
@@ -403,7 +402,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
                   entend ce qui a été écrit, comme au doigt. */}
               <BoutonDireUnite
                 ouvrirToutSeul
-                question={`${nom}, tu le vends comment ?`}
+                question={resoudreMessage('STOCK_048', { nom }).texte}
                 dire={dire}
                 proposees={unitesProposees(sesUnites)}
                 onUnite={(u) => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}

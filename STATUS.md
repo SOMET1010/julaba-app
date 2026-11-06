@@ -11,11 +11,68 @@ avant toute fin de session.
 | relevé | **06/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `97f06306` — fix(db) : `en_attente_activation` à la position du code dans la migration P0 (convergence avec l'alignement Azure) |
+| dernier commit | merge azure/dev — récupération du push direct Azure : CI pipeline (`e04c96f3`, `5b675305`), domaine de test `julaba-app.dev-dtdi.ansut.ci` (`e97284c5`), réponses d'échec login normalisées (`70abf50b`), commandes vocales fiabilisées (`9b4a2b66`) |
 | dernier lot applicatif | 3 `fix(db)` du 06/11 après alignement de la base Azure : boot base vierge sans `uuid-ossp` (`97404d10`), garde `DB_MIGRATIONS_RUN` sans historique amorcé (`c8088ffc`), position enum (`97f06306`) — à la suite du retrait Render (03/11) et du merge dev→master `569e1bb7` |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
+
+## Session 06/11 — fiabiliser trois commandes vocales
+
+**Livrable en cours** : entrée au démarrage, dictée de l’unité d’un produit et
+enregistrement vocal d’une dépense. Aucun changement backend, aucun commit,
+push ou déploiement.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| « Dis oui pour entrer » et variantes reconnues sans faire passer un refus pour un oui | ✅ code | `test:commandes-entree` |
+| La question de l’unité est dite une fois et le micro l’écoute | ✅ code | `test:parcours-guide-parle`, `test:unite-dite` |
+| Une dépense dite avec motif et montant rejoint la confirmation existante et conserve son motif à l’enregistrement | ✅ code | `test:depense-vocale`, garde positive/nulle/négative, vente exclue |
+| Capture Web/Sherpa mutualisée sans modifier les règles métier des six parcours | ✅ code | `captureVocale.ts`; gardes produit, nom, prix, unité, quantité et dépense |
+| Rendu du bouton dépense validé | ✅ | capture `docs/parcours/captures/bouton-depense-etats.png` |
+| Typage et build de production frontend | ✅ | `typecheck` et `build` terminés sans erreur |
+| Vérification frontend complète sans nouveau rouge | ⚠️ | 158/166 verts; rouge connu `test:garde-argent` (référence signalée 4 entrés / 14 perdues); 7 rouges hors diff : `jargon`, `enum-check-phone`, `warn-dev`, `voix-trace`, `voix-trace-source`, `i18n-source`, `micro-niveau-parole` |
+| `npm run check` | ❌ bloqueur de push | 1 test backend échoue : `backend/test/unit/pin-jamais-journalise.spec.ts:145` (préexistant, hors diff; non corrigé dans ce lot) |
+| Écoute au micro web et APK, puis recette sur preview déployée | ⬜ | non exécutées; aucune preview disponible |
+
+La relecture `relecteur` a demandé, avant tout push, une orchestration commune
+Web/Sherpa, l’alignement du bouton sur le design system et l’inventaire des
+clés. Les messages sont catalogués et l’inventaire documente leurs clés. Une
+fonction pure testée valide le type d’action et le montant. Patrick a autorisé
+le refactor partagé. Le designer a validé le rendu repos/écoute/indisponibilité
+(capture : `docs/parcours/captures/bouton-depense-etats.png`).
+
+**État** : refactor terminé. Typecheck, build, `test:depense-vocale`,
+`test:web-reco`, `test:micro-contraint` et les gardes des six parcours passent.
+`test:maillons-orphelins` passe; le nouveau banc dépense est déclaré dans
+`frontend/scripts/maillons-verify.json`, sans modification de `test:ci`.
+Le bouton dépense est découpé en visuel, hook et contrôleur; le test confirme
+que l’annulation Sherpa ne livre ni le final de `stop()` ni les résultats
+tardifs. Le verrou de démarrage empêche les doubles ouvertures et les
+notifications après démontage. Le relecteur confirme ces corrections.
+
+**Bloqueurs avant push** : `npm run check` reste rouge sur
+`backend/test/unit/pin-jamais-journalise.spec.ts:145`, hors diff; la vérification
+frontend complète reste à 158/166 avec les 8 rouges détaillés ci-dessus.
+L’écoute au micro réel (web et APK) et la recette sur preview restent à faire;
+aucune preview n’est disponible. Aucun commit, push ni déploiement.
+
+## Session 05/11 — alignement du domaine d’accès Azure de test
+
+Domaine communiqué : `https://julaba-app.dev-dtdi.ansut.ci/`.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| Routes API, CORS, WebSocket, WebAuthn, B-Pay et QR alignées sur le domaine | ✅ code | Cibles mises à jour dans backend/front et `.env.production.example` |
+| Tests WebAuthn et méthodes CORS | ✅ | Jest ciblé : 2 suites, 8 tests |
+| Build frontend et backend + typecheck frontend | ✅ | `npm run build`, `npm run typecheck --workspace frontend` |
+| Variables de l’instance Azure déployée mises à jour | ⬜ | Hors dépôt : à poser dans la configuration du backend Azure |
+| Passkeys ré-enregistrées sur le nouveau RP ID | ⬜ | Nécessaire après changement de domaine |
+| URLs de callback autorisées chez B-Pay et parcours paiement testés | ⬜ | À confirmer avant tout paiement réel |
+| Nouvel enregistrement audio du clip `login-50.mp3` | ⬜ | Le clip existant prononce encore l’ancien domaine ; ne pas désynchroniser texte et audio |
+
+Le `.env` local reste ignoré par Git. Le déploiement Azure et les paiements
+n’ont pas été exécutés depuis cette session.
 
 ## ⚠️ LE FAIT QUI CHANGE LE CADRE : IL N'Y A AUCUNE PREVIEW
 

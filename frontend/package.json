@@ -56,6 +56,7 @@
     "test:offline-stock": "tsx src/app/voice-offline/offlineStock.test.mts",
     "test:offline-voice-runtime": "tsx src/app/services/offlineVoiceRuntime.test.mts",
     "test:local-voice-choice": "tsx src/app/services/localVoiceChoice.test.mts",
+    "test:depense-vocale": "tsx src/app/voice-offline/depenseVocale.test.mts",
     "test:offline-voice-policy": "tsx src/app/voice-offline/offlineVoicePolicy.test.mts",
     "test:offline-voice-dispatch": "tsx src/app/voice-offline/offlineVoiceDispatch.test.mts",
     "test:offline-voice-hook": "tsx src/app/hooks/useVoiceCore.offline.integration.test.tsx",

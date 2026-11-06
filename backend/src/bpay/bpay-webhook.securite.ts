@@ -33,7 +33,7 @@
 //     d'aujourd'hui, rien n'est durci sans configuration (cf. contrôleurs) :
 //     `/bpay/callback` refuse tout (déjà fail-closed avant ce chantier) ;
 //     `/wallets/public/pay-callback` traite sans vérification (état actuel —
-//     le durcir d'autorité couperait la recette QR julaba.online). Dans les
+//     le durcir d'autorité couperait la recette QR). Dans les
 //     deux cas, un WARN invite à configurer le secret.
 //   - `BPAY_WEBHOOK_IPS` (CSV) → allowlist stricte : toute IP hors liste est
 //     refusée AVANT toute vérification de signature.

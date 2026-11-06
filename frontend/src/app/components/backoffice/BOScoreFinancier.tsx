@@ -236,7 +236,7 @@ async function generateScoreFinancierPdf(
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
     doc.setFont('helvetica', 'normal');
-    doc.text('Document généré par Julaba — julaba.online', margin, h - 36);
+    doc.text('Document généré par Julaba — julaba-app.dev-dtdi.ansut.ci', margin, h - 36);
     doc.text('Confidentiel — Usage bancaire uniquement', margin, h - 24);
   }
 

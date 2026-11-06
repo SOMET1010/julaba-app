@@ -44,8 +44,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
-import { startLiveDictation } from '../../voice-offline/offlineStt';
-import { demarrerRecoWeb, recoWebDispo } from '../../voice-offline/webReco';
+import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 import { stopAllVoice } from '../../services/audioManager';
 import { montantDit } from '../../services/montantDit';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
@@ -115,51 +114,33 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
       fluxRef.current = flux;
       setEcoute(true);
-      // WEB D'ABORD (VOIX-06) — Sherpa est réservé à l'APK ; le même geste
-      // utilise la reconnaissance du navigateur quand elle existe, comme les
-      // micros du nom et du produit depuis le 19/10. La lecture reste
-      // `montantDit` : un seul sens pour un prix.
-      if (recoWebDispo()) {
-        cheminRef.current = 'web';
-        const web = demarrerRecoWeb({
-          interim: (texte) => {
-            const m = montantDit(texte || '');
-            // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle.
-            if (m !== null) { aEntenduRef.current = true; onMontant(m); }
-          },
-          conclure: (texte) => {
-            const m = montantDit(texte || '');
+      const capture = await demarrerCaptureVocale(flux, {
+        interim: (texte) => {
+          const m = montantDit(texte || '');
+          // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle.
+          if (m !== null) { aEntenduRef.current = true; onMontant(m); }
+        },
+        conclure: (texte, moteur) => {
+          const m = montantDit(texte || '');
+          if (moteur === 'web') {
             void fermer();
             if (m !== null) { aEntenduRef.current = true; onMontant(m); return; }
-            // Rien de lisible dans ce qu'elle a dit : on le lui dit, on ne
-            // referme pas le micro en silence (STOCK_065).
             DIRE_CLE('STOCK_065', dire);
-          },
-          erreur: (code) => {
-            void fermer();
-            setIndisponible(true);
-            setEcoute(false);
-            DIRE_CLE(code === 'micro' ? 'STOCK_063' : 'STOCK_064', dire);
-          },
-        });
-        if (web) {
-          arretRef.current = web.conclure;
-          // Filet : une écoute qui ne se referme jamais retient le micro et
-          // vide la batterie. Le clavier reprend la main.
-          minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
-          return;
-        }
-      }
-      cheminRef.current = 'sherpa';
-      const handle = await startLiveDictation(flux, (texte, estFinal) => {
-        const m = montantDit(texte || '');
-        // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle, donc
-        // elle sait qu'on l'entend. `null` ne remplit rien — on n'efface pas
-        // ce qu'elle a déjà donné parce qu'un lot de son n'a rien rendu.
-        if (m !== null) { aEntenduRef.current = true; onMontant(m); }
-        if (estFinal && m !== null) void fermer();
+            return;
+          }
+          // Sherpa finalise le tampon pendant l'arrêt. Un texte final
+          // illisible suit le même filet de silence qu'avant.
+          if (m !== null) { aEntenduRef.current = true; onMontant(m); void fermer(); }
+        },
+        erreurWeb: (code) => {
+          void fermer();
+          setIndisponible(true);
+          setEcoute(false);
+          DIRE_CLE(code === 'micro' ? 'STOCK_063' : 'STOCK_064', dire);
+        },
       });
-      arretRef.current = handle.stop;
+      cheminRef.current = capture.moteur;
+      arretRef.current = capture.conclure;
       // Filet : une écoute qui ne se referme jamais retient le micro et vide
       // la batterie. Le clavier reprend la main.
       minuteurRef.current = setTimeout(() => {

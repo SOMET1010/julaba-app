@@ -20,9 +20,10 @@
  *   1. le réglage est UNIQUE (`services/contraintesMicro`), jamais recopié :
  *      recopié, il dérive, et le même geste serait entendu de deux façons
  *      selon l'écran — « ne jamais donner deux sens à la même donnée » ;
- *   2. tout chemin qui DICTE (`startLiveDictation`) ouvre son micro avec ce
- *      réglage — règle générale, pas liste de trois fichiers : un quatrième
- *      écran de dictée tombera dessus le jour où il sera écrit ;
+ *   2. tout chemin qui DICTE (`startLiveDictation` directement ou via
+ *      `demarrerCaptureVocale`) ouvre son micro avec ce réglage — règle
+ *      générale, pas liste de trois fichiers : un quatrième écran de dictée
+ *      tombera dessus le jour où il sera écrit ;
  *   3. plus aucun `getUserMedia` audio nu dans le dépôt, sauf des exemptions
  *      dont ce banc VÉRIFIE lui-même le motif. Une exemption qui ne serait
  *      qu'une ligne de liste serait un trou avec un nom.
@@ -124,7 +125,13 @@ console.log('\n[2] Une seule source — la liste n’est écrite qu’une fois')
 console.log('\n[3] Qui dicte ouvre le micro avec le réglage commun (règle, pas liste)');
 {
   // Le producteur de la dictée est exclu : il REÇOIT le flux, il ne l'ouvre pas.
-  const dicteurs = SOURCES.filter(f => /startLiveDictation\(/.test(lire(f)) && chemin(f) !== 'voice-offline/offlineStt.ts');
+  // Les boutons marchands passent par `demarrerCaptureVocale`, seul rouage
+  // autorisé à choisir entre Web Speech et Sherpa ; les autres appelants
+  // directs restent visibles par `startLiveDictation`.
+  const dicteurs = SOURCES.filter(f => {
+    const code = lire(f);
+    return /startLiveDictation\(/.test(code) || /demarrerCaptureVocale\(/.test(code);
+  }).filter(f => chemin(f) !== 'voice-offline/offlineStt.ts');
   ok(dicteurs.length >= 3, `au moins les trois chemins connus dictent (trouvés ${dicteurs.length} : ${JSON.stringify(dicteurs.map(chemin))})`);
   for (const f of dicteurs) {
     const code = lire(f);

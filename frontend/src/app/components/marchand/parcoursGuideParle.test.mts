@@ -71,8 +71,12 @@ for (const e of ETAPES) {
 console.log('\n[2] chaque étape DIT sa question');
 for (const e of ETAPES) {
   const motif = new RegExp(`etapeVue === '${e.etape}'\\)?\\s*direMessage\\('${e.id}'`);
-  ok(motif.test(src.replace(/\s+/g, ' ')),
-     `étape « ${e.etape} » → direMessage('${e.id}')`,
+  const ditParBoutonMicro = e.etape === 'unite'
+    && /<BoutonDireUnite[\s\S]*?question=\{resoudreMessage\('STOCK_048', \{ nom \}\)\.texte\}/.test(src);
+  ok(motif.test(src.replace(/\s+/g, ' ')) || ditParBoutonMicro,
+     ditParBoutonMicro
+       ? `étape « ${e.etape} » → question STOCK_048 transmise au bouton micro`
+       : `étape « ${e.etape} » → direMessage('${e.id}')`,
      'sans ça l\'étape s\'affiche et se tait : elle ne saura pas quoi dire');
 }
 

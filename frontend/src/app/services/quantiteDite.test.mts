@@ -88,12 +88,13 @@ console.log('\n[5] L\'ÉCRAN PORTE L\'OREILLE — CÂBLAGE DU PARCOURS');
   ok(/aria-label="Je ne sais pas combien j'en ai"/.test(guide), 'le bouton « Je ne sais pas » reste');
 
   const bouton = lire('BoutonDireQuantite.tsx');
+  const capture = readFileSync(new URL('../voice-offline/captureVocale.ts', import.meta.url), 'utf-8');
   ok(/quantiteDite\(/.test(bouton), 'le micro lit la quantité par la règle, pas à sa façon');
   ok(!/parseInt|parseFloat|Number\(/.test(bouton), 'et personne ne relit un nombre à côté de la règle');
   ok(!/montantDit/.test(bouton), 'et pas de lecteur de PRIX ici — les contrats ne se mélangent pas');
-  ok(/demarrerRecoWeb\(/.test(bouton) && /recoWebDispo\(\)/.test(bouton),
+  ok(/demarrerCaptureVocale\(/.test(bouton) && /demarrerRecoWeb/.test(capture) && /recoWebDispo/.test(capture),
      'dictée web branchée — le web écoute comme le nom, le prix et l\'unité');
-  ok(/startLiveDictation\(/.test(bouton), 'sherpa reste le chemin de l\'APK');
+  ok(/startLiveDictation/.test(capture), 'sherpa reste le chemin de l\'APK');
   ok(/CONTRAINTES_MICRO_DICTEE/.test(bouton), 'anti-écho MIC-01 — les mêmes contraintes que tous les micros');
   ok(/DIRE_CLE\('STOCK_069', dire\)/.test(bouton), 'le silence est relancé à la voix (STOCK_069)');
   ok(/code === 'micro' \? 'STOCK_070' : 'STOCK_071'/.test(bouton), 'les pannes se disent (STOCK_070/071) — STK-22');

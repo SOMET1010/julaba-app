@@ -103,12 +103,14 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   // Et le composant qui écoute passe bien par la règle pure : un second
   // lecteur de montants, ce serait deux vérités sur un prix.
   const bouton = lire('BoutonDirePrix.tsx');
+  const capture = readFileSync(new URL('../voice-offline/captureVocale.ts', import.meta.url), 'utf-8');
   ok(/montantDit\(/.test(bouton), 'le micro lit le montant par la règle, pas à sa façon');
   // ET PAS DEUX LECTEURS. Un `parseInt` glissé à côté, et « mille cinq cents »
   // vaudrait 1500 ici et rien là : deux sens pour la même donnée, sur un prix.
   ok(!/parseInt|parseFloat|Number\(/.test(bouton),
      'et personne d\'autre ne relit un montant dans ce fichier');
-  ok(/startLiveDictation\(/.test(bouton), 'et réutilise la dictée existante, sans en réécrire une');
+  ok(/demarrerCaptureVocale\(/.test(bouton), 'et délègue au cycle de capture partagé');
+  ok(/startLiveDictation/.test(capture), 'le cycle partagé réutilise la dictée Sherpa existante');
 
   // VOX-05a — ON ATTEND LA FIN RÉELLE DE LA PAROLE, PAS UNE DURÉE DEVINÉE.
   //
@@ -132,9 +134,9 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   // et un micro refermé sans prix lu ne disait rien du tout. Trois muettes
   // pour la même oreille — une non-lectrice ne savait jamais pourquoi le
   // micro « ne marchait pas ».
-  ok(/demarrerRecoWeb\(/.test(bouton), 'le micro du prix branche la dictée web (19/10), comme le nom et le produit');
-  ok(/recoWebDispo\(\)/.test(bouton), 'et d\'abord seulement quand le navigateur sait écouter');
-  ok(/cheminRef\.current = 'web'/.test(bouton), 'le chemin web est tracé — la relance du minuteur ne doit pas redoubler sa phrase');
+  ok(/demarrerRecoWeb/.test(capture), 'le cycle du prix garde la dictée Web Speech (19/10)');
+  ok(/recoWebDispo/.test(capture), 'le cycle ne la démarre que si le navigateur sait écouter');
+  ok(/cheminRef\.current = capture\.moteur/.test(bouton), 'le moteur retenu est tracé — la relance du minuteur ne double pas sa phrase');
   // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche. Un message
   // écrit seul est un message qu'elle n'entend jamais.
   ok(/DIRE_CLE\('STOCK_063', dire\)/.test(bouton),

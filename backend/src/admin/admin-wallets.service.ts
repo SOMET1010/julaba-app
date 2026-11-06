@@ -594,6 +594,6 @@ export class AdminWalletsService {
     const path = await import('path');
     const dest = path.join('/var/www/julaba/uploads/logos', filename);
     await fs.writeFile(dest, file.buffer);
-    return { url: `https://julaba.online/uploads/logos/${filename}` };
+    return { url: `https://julaba-app.dev-dtdi.ansut.ci/uploads/logos/${filename}` };
   }
 }

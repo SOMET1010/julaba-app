@@ -104,6 +104,7 @@ export type CommandeEntree = 'entrer' | 'repeter';
 // Avancer — large mais SANS ambiguïté : les verbes de l'action nommée dans
 // le clip (« entrer »), les variantes naturelles de la même intention.
 const AVANCER = /\b(entree?|entrer|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
+const REFUSER_ENTREE = /\b(non|attends?|annule|stop|arret|pas encore|pas maintenant|pas (?:entrer|rentrer|commencer|continuer|avancer)|je ne veux pas|je veux pas)\b/;
 
 // Faire rejouer — le même parti pris que REDIRE : se tromper de côté coûte
 // une écoute de plus, jamais une avancée fausse. « encore » seul → rejouer,
@@ -112,19 +113,21 @@ const AVANCER = /\b(entree?|entrer|commence[rz]?|continue[rz]?|avancer?|avance|o
 const REJOUER = /\b(repete[rz]?|repete|reecoute[rz]?|rejoue[rz]?|(?<!pas )encore|redis|redire|refais|refaire|recommence[rz]?)\b/;
 
 /**
- * « entrer » / « continuer » / « oui » → `entrer` ; « répète » / « réécouter »
+ * « entrer » / « continuer » / « oui pour entrer » → `entrer` ; « répète » / « réécouter »
  * → `repeter` ; le doute (une phrase du marché, un « non » seul) → `null`,
  * l'écoute continue. L'ORDRE ENCODE LA DOCTRINE : rejouer d'abord —
- * « non, répète » veut dire REJOUER, jamais avancer.
+ * « non, répète » veut dire REJOUER, jamais avancer ; un refus explicite ne
+ * peut pas être contredit par un « entrer » reconnu dans la même phrase.
  */
 export function intentionEntree(texte: string, locale?: LocaleCode): CommandeEntree | null {
   const brut = (texte || '').trim();
   if (!brut) return null;
   const t = normaliser(brut);
   if (REJOUER.test(t)) return 'repeter';
+  if (REFUSER_ENTREE.test(t)) return null;
   const reponse = acquiescement(brut, locale);
   if (reponse === 'oui') return 'entrer';
-  if (AVANCER.test(t)) return 'entrer';
+  if (AVANCER.test(t) || /\b(rentre|rentrer|rentrons|rentre[z]?|oui pour entrer|oui pour rentrer)\b/.test(t)) return 'entrer';
   return null;
 }
 

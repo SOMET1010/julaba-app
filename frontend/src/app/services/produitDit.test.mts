@@ -99,8 +99,11 @@ console.log("\n[6] L'ÉCRAN DU STOCK EST VRAIMENT REBRANCHÉ");
   // développeur : une non-lectrice ne peut ni la lire ni la retenir.
   ok(!/ajoute 10 piments/.test(stock), "l'exemple syntaxique ne lui est plus dicté");
   const bouton = lire('BoutonDireProduit.tsx');
+  const capture = readFileSync(new URL('../voice-offline/captureVocale.ts', import.meta.url), 'utf-8');
   ok(/produitDit\(/.test(bouton), "et ce micro lit par la règle, pas à sa façon");
-  ok(/startLiveDictation\(/.test(bouton), 'il réutilise la dictée existante, sans en réécrire une');
+  ok(/demarrerCaptureVocale\(/.test(bouton), 'il passe par l’orchestration de capture partagée');
+  ok(/startLiveDictation/.test(capture) && /demarrerRecoWeb/.test(capture),
+     'l’orchestration réutilise Web Speech et Sherpa, sans réécrire la dictée');
   // POURQUOI PAS `useVoiceCore` : mesuré le 24/09, quand `intentLocal` rend
   // `null`, `handleResponse` n'est jamais appelé — donc `onAction` non plus.
   // Brancher la règle là n'aurait RIEN changé, tout en donnant un test vert.

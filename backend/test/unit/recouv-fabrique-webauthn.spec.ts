@@ -36,8 +36,8 @@ import { generateRegistrationOptionsPourRecuperation } from '../../src/auth/recu
 // WeBAUTHN ne doit fuiter dans ce banc) — c'est la production nue qu'on prouve.
 delete process.env.WEBAUTHN_RP_ID;
 delete process.env.WEBAUTHN_ORIGIN;
-const RP_ID = 'julaba.online';
-const ORIGINE = 'https://julaba.online';
+const RP_ID = 'julaba-app.dev-dtdi.ansut.ci';
+const ORIGINE = 'https://julaba-app.dev-dtdi.ansut.ci';
 
 const COMPTE = {
   id: '0f0f0f0f-0f0f-4f0f-8f0f-0f0f0f0f0f0f',

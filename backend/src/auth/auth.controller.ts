@@ -120,16 +120,25 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto, @Request() req: any, @Res({ passthrough: true }) res: Response) {
-    const deviceInfo = req.headers['user-agent'];
-    const ipAddress = req.ip || req.headers['x-forwarded-for'];
-    const result = await this.authService.login(loginDto, deviceInfo, ipAddress);
-    const isBO = BO_ROLES.includes(result.user?.role);
-    this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
-    // On renvoie AUSSI les jetons dans le corps : sur mobile, les cookies
-    // cross-domaine (site et API sur des domaines différents) sont bloqués.
-    // Le frontend stocke
-    // ces jetons et les envoie en en-tête Authorization -> connexion fiable partout.
-    return { user: result.user, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
+    try {
+      const deviceInfo = req.headers['user-agent'];
+      const ipAddress = req.ip || req.headers['x-forwarded-for'];
+      const result = await this.authService.login(loginDto, deviceInfo, ipAddress);
+      const isBO = BO_ROLES.includes(result.user?.role);
+      this.setTokenCookies(res, result.accessToken, result.refreshToken, isBO);
+      // On renvoie AUSSI les jetons dans le corps : sur mobile, les cookies
+      // cross-domaine (site et API sur des domaines différents) sont bloqués.
+      // Le frontend stocke
+      // ces jetons et les envoie en en-tête Authorization -> connexion fiable partout.
+      return { user: result.user, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
+    } catch (error: any) {
+      // Erreurs d'authentification -> réponse dans le corps avec success: false
+      // On conserve le HttpCode OK car l'API communique les erreurs via le corps
+      const message = error.message || 'Erreur d\'authentification';
+      console.warn('[Auth] Login error:', message);
+      // Retourner une réponse d'erreur structurée dans le corps
+      return { success: false, message };
+    }
   }
 
   @Post('refresh')
@@ -862,7 +871,7 @@ export class AuthController {
     }));
     const options = await generateRegistrationOptions({
       rpName: 'Jùlaba',
-      rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+      rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       userName: user.phone,
       // userHandle = l'ID du compte : c'est CE QUE L'ASSERTION SANS IDENTIFIANT
       // (usernameless) rapportera au serveur pour savoir QUI se connecte.
@@ -893,8 +902,8 @@ export class AuthController {
       const { verified, registrationInfo } = await verifyRegistrationResponse({
         response: body,
         expectedChallenge: user.webauthnChallenge,
-        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
-        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba-app.dev-dtdi.ansut.ci',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       });
       if (verified && registrationInfo) {
         const { credential, credentialDeviceType, credentialBackedUp } = registrationInfo;
@@ -931,7 +940,7 @@ export class AuthController {
     // registre mémoire à TTL court, usage unique (challenge-usernameless.ts).
     if (!body.phone) {
       const options = await generateAuthenticationOptions({
-        rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
         userVerification: 'required',
       });
       enregistrerChallengeSansIdentifiant(options.challenge);
@@ -958,7 +967,7 @@ export class AuthController {
       transports: c.transports as any,
     }));
     const options = await generateAuthenticationOptions({
-      rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+      rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       userVerification: 'preferred',
       allowCredentials: allowCredentials as any,
     });
@@ -1008,8 +1017,8 @@ export class AuthController {
       const { verified, authenticationInfo } = await verifyAuthenticationResponse({
         response: body.response,
         expectedChallenge,
-        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
-        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba-app.dev-dtdi.ansut.ci',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
         credential: {
           id: credential.credentialID,
           publicKey: Buffer.from(credential.credentialPublicKey, 'base64url'),
