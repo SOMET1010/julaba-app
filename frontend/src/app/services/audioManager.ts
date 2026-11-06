@@ -29,6 +29,10 @@
  */
 
 import * as vtrace from "../utils/voiceTrace"; // VOICE-01 : journal de voix (observation seule, jamais de décision)
+// LOT 06/11 — l'index des clips enregistrés, consulté par `speak` : tout
+// message FIXE déjà enregistré part sur la voix embarquée, quel que soit
+// l'écran qui parle (voir audioManager.speak plus bas).
+import { tataUiClipForText } from "./tataUiClips";
 export type VoicePriority = "user" | "auto";
 export type PlayResult = "ended" | "failed" | "cancelled";
 
@@ -322,6 +326,20 @@ function runExclusive(job: (myGen: number) => Promise<void>, opts?: VoiceOptions
 export function speak(text: string, opts?: VoiceOptions): Promise<void> {
   vtrace.ttsDemande('audioManager.speak', text, opts);
   if (!text?.trim()) return Promise.resolve();
+  // LOT 06/11 — « LA VOIX POUR TOUTES LES ÉVENTUALITÉS » (Patrick). Avant ce
+  // câblage, seul useVoiceCore.ttsSpeak consultait l'index des clips : les
+  // messages passés par AppContext.speak — questions du parcours produit
+  // (« Quel produit tu veux ajouter ? »), consignes et erreurs de la dépense
+  // vocale (« Dis le motif… »), échecs d'enregistrement — sortaient TOUJOURS
+  // en voix de synthèse, MÊME QUAND LE CLIP EXISTAIT. La règle du dépôt est
+  // « on ne commande jamais en synthèse une phrase que la voix embarquée dit
+  // déjà » : elle s'applique maintenant À TOUTE phrase qui passe ici, et le
+  // filet reste (clip indisponible → synthèse, même créneau).
+  const clipUrl = tataUiClipForText(text);
+  if (clipUrl) {
+    vtrace.ttsChoix('audioManager.speak', text, 'clip', clipUrl);
+    return speakClipOrText({ clipUrl, text }, opts);
+  }
   return runExclusive((g) => playHandle(_ttsPlayer(text), g).then(() => {}), {
     priority: "user",
     ...opts,
