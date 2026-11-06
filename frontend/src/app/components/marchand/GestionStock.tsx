@@ -4,7 +4,7 @@ import { useVoiceCore } from '../../hooks/useVoiceCore';
 import { suggererProduits, getImageByNom, rechercherProduitCatalogue, CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react';
 import { Package, TrendingUp, AlertCircle, Plus, Search, Trash2, X, Mic, MicOff, Edit3, BarChart3, Eye, EyeOff, WifiOff } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { Montant } from '../shared/Montant';
 import { prixDicte } from '../../services/prixDeLaMarchande';
 import { AjoutProduitGuide } from './AjoutProduitGuide';
@@ -308,6 +308,19 @@ export function GestionStock() {
   const [sortByMargin, setSortByMargin] = useState(false);
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  // ── L'AJOUT PAR LA VOIX DEPUIS L'ACCUEIL (ordre Patrick 06/11) ──────────
+  // « Ajoute un produit » dit à l'accueil route vers /marchand/stock?ajout=1 :
+  // CET écran ouvre alors la MÊME modale que le doigt — UN SEUL chemin de
+  // création (garde produitDit), aucun doublon de parcours. Le paramètre est
+  // consommé une seule fois, au montage, et l'URL nettoyée : un refresh
+  // n'ouvre pas la modale à nouveau, un retour arrière non plus.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get('ajout') !== '1') return;
+    setShowAdd(true);
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showEdit, setShowEdit] = useState(false);
   const [showValue, setShowValue] = useState(false);
   const [reappQty, setReappQty] = useState('');

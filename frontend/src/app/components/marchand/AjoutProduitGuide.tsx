@@ -181,11 +181,37 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const avancer = () => {
     if (peutAvancer && etapeVue === 'nom') {
       const deja = produitDejaSurEtal({ nom, unite: '' }, products);
-      if (deja) { setExistant(deja); return; }
+      if (deja) {
+        // A1 v2 — L'UNITÉ EST RE-DEMANDÉE (Patrick, 06/11) : « celle-ci peut
+        // varier d'une opération à l'autre ». On ne pose plus l'unité de la
+        // ligne existante comme allant de soi : elle la re-dit ou la
+        // re-touche, et le TRI nom + unité décide ensuite (compléter le
+        // stock, ou une NOUVELLE ligne à l'unité du jour). La question de
+        // l'étape est dite par le bouton (STOCK_048) — elle sait quoi faire.
+        setEtapeVue('unite');
+        return;
+      }
     }
+    if (peutAvancer && etapeVue === 'unite') { poserUniteEtTrier(unite.trim()); return; }
     if (peutAvancer) { setEtapeVue(etapeSuivante(etapeVue)); return; }
     const refus = raisonDuRefus(etapeVue, brouillon);
     if (refus) direMessage(PHRASE_DU_REFUS[refus]);
+  };
+
+  /**
+   * A1 v2 — LE TRI SE FAIT À L'UNITÉ, PLUS AU NOM. Même accusé de réception
+   * (TATA_UNITE_CHOISIE), puis DEUX issues : une ligne homonyme À CETTE
+   * unité existe → son écran de complément (le stock s'ajoute, le prix
+   * reste le sien) ; une AUTRE unité → c'est une NOUVELLE ligne, l'étape du
+   * prix suit. Le doigt (grille), la voix (BoutonDireUnite) et le champ
+   * libre (avancer) passent TOUS par ici — une seule lecture de la règle.
+   */
+  const poserUniteEtTrier = (u: string) => {
+    setUnite(u);
+    direMessage('TATA_UNITE_CHOISIE', { unite: u });
+    const deja = produitDejaSurEtal({ nom, unite: u }, products);
+    if (deja) setExistant(deja);
+    else setEtapeVue('prix');
   };
 
   /**
@@ -405,12 +431,12 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
                 question={resoudreMessage('STOCK_048', { nom }).texte}
                 dire={dire}
                 proposees={unitesProposees(sesUnites)}
-                onUnite={(u) => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+                onUnite={poserUniteEtTrier}
               />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {unitesProposees(sesUnites).map(u => (
                   <motion.button key={u} type="button" whileTap={{ scale: 0.95 }}
-                    onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+                    onClick={() => poserUniteEtTrier(u)}
                     style={{ minHeight: CIBLE + 8, borderRadius: 14, border: '2px solid var(--trait)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                     {u}
                   </motion.button>
