@@ -181,7 +181,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
   const avancer = () => {
     if (peutAvancer && etapeVue === 'nom') {
       const deja = produitDejaSurEtal({ nom, unite: '' }, products);
-      if (deja) { setExistant(deja); return; }
+      if (deja) { setExistant(deja); setEtapeVue('unite'); return; }
     }
     if (peutAvancer) { setEtapeVue(etapeSuivante(etapeVue)); return; }
     const refus = raisonDuRefus(etapeVue, brouillon);
@@ -310,7 +310,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       </AnimatePresence>
 
       {/* ─── A1. ELLE L'A DÉJÀ : COMBIEN ELLE EN AJOUTE ─────────────── */}
-      {existant && (
+      {existant && etapeVue === 'quantite' && (
         <ComplementEtal existant={existant} enCours={enCours}
           onValider={(ajout) => { void completer(existant, ajout, brouillon.prix); }}
           onAutre={() => { setExistant(null); setEtapeVue('unite'); }} />
@@ -385,7 +385,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       )}
 
       {/* ─── 2. SON UNITÉ ───────────────────────────────────────────── */}
-      {!existant && etapeVue === 'unite' && (
+      {etapeVue === 'unite' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
             {nom}, tu le vends comment ?
@@ -405,12 +405,12 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
                 question={resoudreMessage('STOCK_048', { nom }).texte}
                 dire={dire}
                 proposees={unitesProposees(sesUnites)}
-                onUnite={(u) => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+                 onUnite={(u) => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue(existant ? 'quantite' : 'prix'); }}
               />
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {unitesProposees(sesUnites).map(u => (
                   <motion.button key={u} type="button" whileTap={{ scale: 0.95 }}
-                    onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue('prix'); }}
+                     onClick={() => { setUnite(u); direMessage('TATA_UNITE_CHOISIE', { unite: u }); setEtapeVue(existant ? 'quantite' : 'prix'); }}
                     style={{ minHeight: CIBLE + 8, borderRadius: 14, border: '2px solid var(--trait)', background: 'white', fontSize: 16, fontWeight: 800, color: 'var(--encre)', cursor: 'pointer', fontFamily: 'inherit' }}>
                     {u}
                   </motion.button>

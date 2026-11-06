@@ -5,7 +5,8 @@ export type Intention =
   | 'credit'         // on a vendu à crédit / un client doit de l'argent
   | 'remboursement'  // un client a remboursé / payé sa dette
   | 'recette'        // recette du jour, bénéfice, chiffre d'affaires
-  | 'reappro';       // stock reçu / arrivé / réapprovisionnement
+  | 'reappro'        // stock reçu / arrivé / réapprovisionnement
+  | 'ouvrir_journee';
 
 export interface PhraseCible {
   id: number;
@@ -111,6 +112,7 @@ export const INTENTIONS_MAP: Record<string, Intention> = {
   pris: 'depense', prise: 'depense',
   dépensé: 'depense', dépensée: 'depense', depensé: 'depense', depense: 'depense',
   dépense: 'depense',
+  ouvre: 'ouvrir_journee', ouvrir: 'ouvrir_journee', ouverture: 'ouvrir_journee',
   payé: 'depense', payée: 'depense', payés: 'depense', payer: 'depense',
   solde: 'solde', reste: 'solde',
   // ── Crédit / dettes ──
@@ -379,4 +381,3 @@ export const PHRASES_T1: PhraseCible[] = [
     note: "Quantité approximative (« un demi sac ») non gérée par le parseur d'entiers.",
   },
 ];
-

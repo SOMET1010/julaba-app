@@ -53,6 +53,8 @@ ok(lit('kilos') === '"kg"', '« kilos » → kg', lit('kilos'));
 ok(lit('au kilogramme') === '"kg"', '« au kilogramme » → kg', lit('au kilogramme'));
 ok(uniteDite('kilo', ['kilo', 'tas']) === 'kilo', '« kilo » sans kg proposé reste kilo — SON mot');
 ok(lit('à la pièce') === '"unité"', '« à la pièce » → unité, l\'étiquette du référentiel', lit('à la pièce'));
+ok(lit('je souhaite le vendre au sac') === '"sac"', 'la réponse complète à la question → sac', lit('je souhaite le vendre au sac'));
+ok(lit('euh, moi je le vends en kilos') === '"kg"', 'les mots de remplissage ne masquent pas kilos', lit('euh, moi je le vends en kilos'));
 ok(uniteDite('pièce', ['pièce']) === 'pièce', '« pièce » proposé reste pièce');
 
 console.log('\n[3] SON MOT DU MARCHÉ RESTE SON MOT — STK-25 AUX UNITÉS');

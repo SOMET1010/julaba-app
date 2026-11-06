@@ -10,7 +10,7 @@ import bandeauMarche from '../../../assets/redesign/bandeau-marche.webp';
 import { BrandSignature } from '../shared/BrandSignature';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
-import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
+import { ResumeModal, CloseDayModal, EditFondModal, OpenDayModal } from './MarchandModals';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -22,6 +22,7 @@ import { useLectureSessionCaisse } from '../../hooks/useLectureSessionCaisse';
 import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { guidageVocal } from '../../utils/accessMode';
+import { useVoiceCore } from '../../hooks/useVoiceCore';
 
 /**
  * Accueil marchand « voix & icônes d'abord ».
@@ -101,6 +102,20 @@ function MarchandAccueilVoiceInner() {
   const [reouvreEnCours, setReouvreEnCours] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showEditFond, setShowEditFond] = useState(false);
+  const [showOpenDay, setShowOpenDay] = useState(false);
+  const ouvertureVocale = useVoiceCore({
+    context: { module: 'accueil', userId: user?.id },
+    onAction: async ({ action }) => {
+      if (action.type !== 'ouvrir_journee' || typeof action.montant !== 'number') return;
+      await openDay(action.montant);
+      speakMessage('ACCUEIL_JOURNEE_ROUVERTE');
+    },
+    onError: (message) => { console.warn('[MarchandAccueilVoice] ouverture vocale:', message); },
+  });
+  const ouvrirEnParlant = async () => {
+    await ouvertureVocale.speak("Tu as combien dans ta caisse aujourd'hui ?");
+    await ouvertureVocale.startRecording();
+  };
 
   // Panier en cours : bannière de reprise. « Vendre » et « Reprendre » mènent
   // désormais au MÊME endroit — la caisse, seule surface de vente.
@@ -365,6 +380,21 @@ function MarchandAccueilVoiceInner() {
           <span className="commerce-sell-arrow" aria-hidden="true">›</span>
         </motion.button>
 
+        {!currentSession?.opened && (
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => setShowOpenDay(true)}
+            aria-label="Ouvrir la caisse"
+            style={{ width: '100%', marginTop: 12, minHeight: 56, border: '2px solid var(--commerce-action)', borderRadius: 16,
+              background: 'white', color: 'var(--commerce-action)', fontSize: 17, fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit' }}>
+            Ouvrir la caisse
+          </motion.button>
+          <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => void ouvrirEnParlant()}
+            aria-label="Ouvrir la caisse en parlant"
+            style={{ width: '100%', marginTop: 8, minHeight: 48, border: 'none', borderRadius: 14,
+              background: 'var(--commerce-action)', color: 'white', fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {ouvertureVocale.isListening ? "J'écoute le montant…" : 'Ouvrir en parlant'}
+          </motion.button>
+        )}
+
         {/* SA JOURNÉE EST FERMÉE — ET ELLE PEUT LA ROUVRIR. 25/09/2026.
             L'agent de test : « L'écran ne propose aucun bouton pour rouvrir la
             journée. J'ai dû rouvrir directement sur le serveur pour continuer
@@ -442,6 +472,7 @@ function MarchandAccueilVoiceInner() {
         onClose={() => setShowEditFond(false)}
         {...(currentSession ? { currentFond: currentSession.fondInitial } : {})}
       />
+      <OpenDayModal isOpen={showOpenDay} onClose={() => setShowOpenDay(false)} />
 
       {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après
           une entrée par code — Oui = le téléphone apprend à la reconnaître. */}

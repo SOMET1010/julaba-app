@@ -115,6 +115,10 @@ function etiquetteProposee(mot: string, proposees: readonly string[]): string | 
 export function uniteDite(cequelleADit: string, proposees: readonly string[]): string | null {
   const texte = normalise(cequelleADit ?? '');
   if (!texte) return null;
+  // Réponses naturelles à « comment souhaites-tu le vendre ? » : le moteur
+  // peut conserver la question (« je souhaite le vendre au sac ») ou ajouter
+  // un remplissage (« euh, moi je le vends en kilos »). Les mots d'action ne
+  // sont pas des unités ; on continue donc à chercher le premier mot reconnu.
   const mots = texte.split(' ').filter(Boolean);
 
   /** Les règles 1 à 4, portées par UN mot — le mot entier puis, s'il n'a rien
