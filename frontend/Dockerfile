@@ -13,8 +13,8 @@ COPY frontend/ ./
 RUN npm run build
 # Stage 2: nginx
 FROM nginx:alpine
-# Forcer les correctifs securite systeme (c-ares, libexpat, curl)
-RUN apk upgrade --no-cache c-ares libexpat curl libcurl
+# Tous les correctifs securite Alpine publies (gate Trivy CRITICAL/HIGH), meme si l image de base en cache sur l agent est ancienne
+RUN apk upgrade --no-cache
 COPY nginx/frontend.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 EXPOSE 80

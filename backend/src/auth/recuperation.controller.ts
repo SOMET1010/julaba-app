@@ -432,8 +432,8 @@ export class RecuperationController {
       const verdict = await verifyRegistrationResponse({
         response: body.reponse,
         expectedChallenge: session.challengeWebauthn,
-        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba.online',
-        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+        expectedOrigin: process.env.WEBAUTHN_ORIGIN || 'https://julaba-app.dev-dtdi.ansut.ci',
+        expectedRPID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
       });
       if (!verdict.verified || !verdict.registrationInfo) {
         // Le geste a échoué : la session SURVIT (le doigt se repose), le
@@ -522,7 +522,7 @@ export class RecuperationController {
 export async function generateRegistrationOptionsPourRecuperation(compte: User) {
   return generateRegistrationOptions({
     rpName: 'Jùlaba',
-    rpID: process.env.WEBAUTHN_RP_ID || 'julaba.online',
+    rpID: process.env.WEBAUTHN_RP_ID || 'julaba-app.dev-dtdi.ansut.ci',
     userName: (compte as any).phone,
     userID: new TextEncoder().encode(compte.id) as any,
     userDisplayName: `${(compte as any).firstName ?? ''} ${(compte as any).lastName ?? ''}`.trim(),

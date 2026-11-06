@@ -1,0 +1,36 @@
+trigger:
+  branches:
+    include:
+      #- main
+      - master
+ 
+variables:
+  - group: PIPELINE-ENV
+  - group: JULABA-DB-ENV
+  #- group: JULABA-APP-CONFIG
+  - group: JULABA-APP-SECRETS
+ 
+resources:
+  repositories:
+  - repository: templates
+    type: git
+    name: DevOps/Pipelines-templates
+ 
+extends:
+  template: main-julaba-app-pipeline.yml@templates
+  parameters:
+    acrConnection: $(ACR_CONN)
+    sonarConnection: $(SONAR_CONN)
+    sonarprojectKey: $(SONAR_PROJECT_KEY)
+    acrName: $(ACR_NAME)
+    environmentName: $(ENV_NAME)
+    backendImageName: $(BACK_IMAGE_NAME)
+    frontendImageName: $(FRONT_IMAGE_NAME)
+    cipoolName: $(CI_POOL)
+    cdpoolName: $(CD_POOL)
+    backdockerfile: $(BACK_DOCKERFILE)
+    frontdockerfile: $(FRONT_DOCKERFILE)
+    backBuildContext: $(BACK_BUILD_CONTEXT)
+    frontBuildContext: $(FRONT_BUILD_CONTEXT)
+    appDir: $(APP_DIR)
+    appUrl: $(APP_URL)

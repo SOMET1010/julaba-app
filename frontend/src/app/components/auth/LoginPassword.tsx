@@ -220,6 +220,11 @@ const TEST_PHONES = new Set<string>([
   '2200000000', // Compte institutionnel DGE
 ]);
 
+function logAuthApi(etape: string, endpoint: string, status?: number): void {
+  const url = new URL(`${API_URL}${endpoint}`, window.location.origin).toString();
+  console.warn('[AUTH API]', { etape, method: 'POST', url, ...(status === undefined ? {} : { status }) });
+}
+
 export function LoginPassword() {
   const navigate = useNavigate();
   const { setUser: setAppUser, setAccessToken, refreshUserData } = useApp();
@@ -641,6 +646,7 @@ export function LoginPassword() {
         setIsLoading(true);
         abortRef.current?.abort();
         abortRef.current = new AbortController();
+        logAuthApi('requête', '/auth/check-phone');
         const res = await fetch(`${API_URL}/auth/check-phone`, {
           method: 'POST',
           credentials: 'include',
@@ -648,6 +654,7 @@ export function LoginPassword() {
           body: JSON.stringify({ phone: curr.startsWith('+225') ? curr : '+225' + curr }),
           signal: abortRef.current.signal,
         });
+        logAuthApi('réponse', '/auth/check-phone', res.status);
         // MANUS REND ICI `check-phone` BLOQUANT (res.ok exigé, puis erreur au
         // lieu de l'étape code). C'est le point C7 du plan de récupération :
         // un changement de PARCOURS d'authentification, non repris. Le parcours
@@ -678,6 +685,7 @@ export function LoginPassword() {
         focusPin();
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
+        logAuthApi('échec réseau', '/auth/check-phone');
         warnDev('[LoginPassword] check-phone fetch failed:', err instanceof Error ? err.message : err);
         if (phoneRef.current !== curr) {
           setIsLoading(false);
@@ -1115,6 +1123,7 @@ export function LoginPassword() {
     // diagnostiquer « Erreur de connexion »
     // (URL fausse ? CORS ? statut HTTP ?) sans outils développeur.
     vlog('LOGIN_TRY', { url: `${API_URL}/auth/login` });
+    logAuthApi('requête', '/auth/login');
     try {
       const controller = new AbortController();
       const response = await fetch(`${API_URL}/auth/login`, {
@@ -1125,6 +1134,7 @@ export function LoginPassword() {
         signal: controller.signal,
       });
       vlog('LOGIN_HTTP', { status: response.status, ok: response.ok });
+      logAuthApi('réponse', '/auth/login', response.status);
       let result: {
         error?: string;
         user?: {
@@ -1147,8 +1157,8 @@ export function LoginPassword() {
       } catch (err) {
         warnDev('[LoginPassword] login json parse failed:', err instanceof Error ? err.message : err);
         vlog('LOGIN_JSON_FAIL', { msg: err instanceof Error ? err.message : String(err) });
-        // Un proxy Render peut répondre brièvement en HTML (502/503) pendant
-        // le réveil ou le redémarrage de l'API. Ce n'est pas un refus de code :
+        // Un reverse proxy peut répondre brièvement en HTML (502/503) pendant
+        // le redémarrage de l'API. Ce n'est pas un refus de code :
         // réutiliser le même repli que pour "Failed to fetch" évite d'abandonner
         // dès la première réponse illisible.
         if (retry < 2) {
@@ -1354,6 +1364,7 @@ export function LoginPassword() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       warnDev('[LoginPassword] login failed:', err instanceof Error ? err.message : err);
+      logAuthApi('échec réseau', '/auth/login');
       vlog('LOGIN_FAIL', { name: err instanceof Error ? err.name : '', msg: err instanceof Error ? err.message : String(err), retry });
       // « Failed to fetch » = souvent le backend gratuit encore en train de se
       // réveiller. On RETENTE automatiquement (jusqu'à 2 fois) en laissant le

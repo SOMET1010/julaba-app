@@ -8,14 +8,31 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **21/10/2026** |
+| relevé | **05/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `adc66a99` — docs(backend) : la règle `AUTH_TELEPHONES_TEST` est écrite dans `.env.example` (lot du 21/10 : 2 rouges hors `CONNUS` fermés) |
+| dernier commit | `5b675305` — ci: add validation stage to Azure pipeline |
 | dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
+
+## Session 05/11 — alignement du domaine d’accès Azure de test
+
+Domaine communiqué : `https://julaba-app.dev-dtdi.ansut.ci/`.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| Routes API, CORS, WebSocket, WebAuthn, B-Pay et QR alignées sur le domaine | ✅ code | Cibles mises à jour dans backend/front et `.env.production.example` |
+| Tests WebAuthn et méthodes CORS | ✅ | Jest ciblé : 2 suites, 8 tests |
+| Build frontend et backend + typecheck frontend | ✅ | `npm run build`, `npm run typecheck --workspace frontend` |
+| Variables de l’instance Azure déployée mises à jour | ⬜ | Hors dépôt : à poser dans la configuration du backend Azure |
+| Passkeys ré-enregistrées sur le nouveau RP ID | ⬜ | Nécessaire après changement de domaine |
+| URLs de callback autorisées chez B-Pay et parcours paiement testés | ⬜ | À confirmer avant tout paiement réel |
+| Nouvel enregistrement audio du clip `login-50.mp3` | ⬜ | Le clip existant prononce encore l’ancien domaine ; ne pas désynchroniser texte et audio |
+
+Le `.env` local reste ignoré par Git. Le déploiement Azure et les paiements
+n’ont pas été exécutés depuis cette session.
 
 ## ⚠️ LE FAIT QUI CHANGE LE CADRE : IL N'Y A AUCUNE PREVIEW
 

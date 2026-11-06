@@ -514,7 +514,7 @@ export class UsersController {
       throw new BadRequestException('Erreur lors de la sauvegarde du fichier');
     }
 
-    const photoUrl = `https://julaba.online/uploads/acteurs/${filename}`;
+    const photoUrl = `https://julaba-app.dev-dtdi.ansut.ci/uploads/acteurs/${filename}`;
     await this.usersService.update(id, { photoUrl } as any, req.user.id, req.ip);
 
     return { success: true, photoUrl, filename };
