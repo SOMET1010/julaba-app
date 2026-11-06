@@ -8,11 +8,11 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **21/10/2026** |
+| relevé | **06/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `adc66a99` — docs(backend) : la règle `AUTH_TELEPHONES_TEST` est écrite dans `.env.example` (lot du 21/10 : 2 rouges hors `CONNUS` fermés) |
-| dernier lot applicatif | `447d1ce` — AGENT-V1, sur `claude/agent-auth-idempotence` |
+| dernier commit | `97f06306` — fix(db) : `en_attente_activation` à la position du code dans la migration P0 (convergence avec l'alignement Azure) |
+| dernier lot applicatif | 3 `fix(db)` du 06/11 après alignement de la base Azure : boot base vierge sans `uuid-ossp` (`97404d10`), garde `DB_MIGRATIONS_RUN` sans historique amorcé (`c8088ffc`), position enum (`97f06306`) — à la suite du retrait Render (03/11) et du merge dev→master `569e1bb7` |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -52,6 +52,41 @@ l'aperçu local**, pas sur une URL de preview.
 ---
 
 ## Livrable en cours
+
+### Session 06/11 — la base Azure alignée sur le schéma du code ; le boot blindé contre les deux pièges Azure
+
+Le propriétaire a fait aligner la base Azure (`julaba_db`, PostgreSQL 18.6) sur la
+structure de référence locale (rapport d'alignement du 06/11, alignement strictement
+additif, sauvegarde préalable). Revue faite sur le dépôt — le rapport est vérifié
+exact sur tous les points contrôlables depuis le code : `raccourcis` n'a bien
+**aucune** entité (le contrôleur `raccourcis` opère sur `raccourcis_vocaux`) ; les
+migrations miroir (Tontines, CotisationsSociales, CodesRecuperation, AppellationChoisie,
+WidenUserPhone…) existent et correspondent aux 12 tables/colonnes créées ;
+`computeBootDbFlags` force bien `synchronize=false` sur base peuplée (`DB_SYNCHRONIZE=true`
+du `.env` inerte) ; `users.status` est la seule colonne de `users_status_enum`.
+
+**Corrections de code qui découlent de l'alignement (3 commits, le code rattrape la base)** :
+
+| Commit | Piège corrigé |
+|---|---|
+| `97404d10` | `main.ts` lançait `CREATE EXTENSION "uuid-ossp"` sur toute base VIERGE — extension **refusée par Azure** → boot mort. Désormais : si refusée, alias `public.uuid_generate_v4() → gen_random_uuid()` (même substitution que l'alignement) |
+| `c8088ffc` | `DB_MIGRATIONS_RUN=true` sans table `migrations` → TypeORM rejoue la baseline sur le schéma existant (incident 18/09) ; Azure aligné n'a **pas** de table `migrations` → le drapeau est ignoré avec avertissement tant que l'amorçage du RUNBOOK n'a pas été fait (aucune régression #19 : historique amorcé = drapeau respecté) |
+| `97f06306` | la migration miroir P0 ajoutait `en_attente_activation` **en fin d'enum** (`ADD VALUE`) — divergeant du code TS et d'Azure ; elle recrée désormais le type à la position du code |
+
+**Reste ouvert (arbitrages du propriétaire)** :
+1. **Dette de mots de passe** : les 16 comptes Azure portent le mot de passe publié du dépôt
+   (vérifié par comparaison bcrypt ; dont 2 `admin_general` actifs) — réinitialisation
+   forcée à arbitrer, en priorité pour les comptes back-office.
+2. **Quelle base est la production** : Render (encore la seule API vivante ce jour),
+   Azure (désormais alignée structurellement) ou Supabase — la contradiction §Accès
+   ci-dessous reste à trancher ; elle décide du reste (APK à regénérer à la bascule).
+3. **Amorçage de l'historique de migrations sur Azure** (RUNBOOK § Phase 3 étape 2) si on
+   veut la chaîne TypeORM ; sinon `DB_MIGRATIONS_RUN=false` — désormais protégé de toute façon.
+
+Limites connues du rapport (assumées) : `gen_random_uuid()` au lieu de `uuid_generate_v4()`
+(extension non allow-listée Azure) ; rendu textuel de 2 CHECK (PG 16 vs 18) ; outils et
+sauvegardes dans `/tmp` (éphémères) — porter le contrôle en `ci/` avec identifiants lus
+dans l'environnement si on veut qu'il survive.
 
 ### Session 21/10 — l'historique de `dev` rendu véridique, les 2 rouges hors `CONNUS` fermés
 
@@ -238,7 +273,7 @@ Voir `docs/DECISIONS.md` pour la liste datée complète. Les structurantes :
 
 | décision | source |
 |---|---|
-| Le schéma se construit par `DbInitService`, pas par les migrations (`migrationsRun` OFF) | `docs/adr/ADR-0002`, `backend/src/main.ts` |
+| Le schéma se construit par `DbInitService`/`synchronize` sur base VIERGE ; sur base EXISTANTE la chaîne de migrations est AUTORITAIRE depuis #10 et le drapeau d'env est respecté — **seulement si l'historique est amorcé** (garde du 06/11) | `docs/adr/ADR-0002`, `backend/src/main.ts`, `backend/src/database/schema-flags.ts`, `docs/etape4/RUNBOOK-bascule-migrations.md` |
 | `frontend_src/` est la source ; `frontend/` contient des **sorties de build** | `capacitor.config.ts` (`webDir: 'frontend/dist'`) |
 | `POST /caisse/vente` est le **seul** chemin de vente | `caisse-rest.controller.ts:261` — une autre route a été fermée avec ce message |
 | L'idempotence se juge **par marchande** | `fidelite_evenements` et `wallet_transactions` le faisaient déjà |

@@ -1835,3 +1835,19 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : plus rien du code ne pointe vers onrender — l'APK sans VITE_API_URL panne bruyamment au lieu d'appeler un mort, le web sans VITE_API_URL tape le même domaine en /api/v1, CORS ne connaît plus Render, le Blueprint est supprimé. Reste côté infonuagique (pas du code) : les services Render réels (julaba-api/julaba-web/julaba-db) et le dashboard — à éteindre côté compte Render quand la bascule Azure sera prouvée
+
+---
+Task ID: bd-alignement-azure-06-11
+Agent: Z.ai Code (session Patrick)
+Task: revue du rapport d'alignement de la base Azure et correction du code qui n'était pas au niveau
+
+Work Log:
+- ORDRE DE PATRICK : « regarde ceci et corrige » sur le rapport d'alignement 06/11 (base Azure julaba_db, PG 18.6, alignée sur la référence locale : 53 → 64 tables, 12 métier créées, phone élargi à 50, en_attente_activation positionnée, raccourcis supprimée, diff final 0 hors gen_random_uuid)
+- REVUE PREUVE PAR PREUVE depuis le dépôt : raccourcis n'a AUCUNE entité (le contrôleur opère sur raccourcis_vocaux) → suppression légitime ; migrations miroir présentes et conformes aux 12 tables/colonnes ; WidenUserPhone (varchar 50, placeholder 44) et AppellationChoisie (varchar 60) correspondent ; computeBootDbFlags force synchronize=false sur base peuplée (DB_SYNCHRONIZE=true inerte) ; users.status est la SEULE colonne de users_status_enum, ni vue ni index ne la référencent ; BaselineSchema contient encore CREATE TABLE raccourcis (les migrations vivent leur vie, la BD réelle est alignée autrement)
+- /tmp/pgcli et /tmp/backup-azure inexistants sur la sandbox (privatelink Azure injoignable d'Internet, prouvé en séance précédente) : l'alignement a été fait sur la machine du propriétaire — le rapport est cru sur pièces pour ce qui est hors dépôt
+- TROIS PIÈGES RÉELS TROUVÉS ET CORRIGÉS : (1) main.ts lançait CREATE EXTENSION "uuid-ossp" sur base vierge → refusée par Azure, boot mort — fallback alias public.uuid_generate_v4() → gen_random_uuid() ; (2) DB_MIGRATIONS_RUN=true sans table migrations → TypeORM rejoue la baseline sur le schéma existant (incident 18/09) — drapeau désormais ignoré avec avertissement tant que l'amorçage RUNBOOK n'est pas fait, sans régression #19 ; (3) la migration P0 ajoutait en_attente_activation EN FIN d'enum (ADD VALUE) divergeant du code TS et d'Azure — elle recrée le type à la position du code
+- BaselineSchema NON TOUCHÉ : le garde migrations-prod.spec.ts le lie à dessein (baseline non-adoptable) — le durcissement passe par un paramètre optionnel de computeBootDbFlags, défaut rétro-compatible, tests étendus (garde 06/11 : ignoré sans historique / respecté avec historique)
+- STATUS.md mis à jour : entrée de session 06/11 (alignement, revue, corrections, arbitrages restants), ligne « Décisions déduites » re-accordée à la réalité #10 + garde 06/11, relevé et dernier commit actualisés
+
+Stage Summary:
+- RÉPONSE À PATRICK : le rapport d'alignement est VRAI sur tous les points vérifiables depuis le dépôt — et il révélait trois mines dans le code : le boot exigeait une extension qu'Azure refuse (base vierge morte), un drapeau dashboard pouvait tuer le démarrage (l'incident 18/09 se rejouait sur Azure), et la migration miroir reconstruisait l'enum dans un ordre différent du code et d'Azure. Les trois commits (97404d10, c8088ffc, 97f06306) mettent le code au niveau de la base alignée. Restent des arbitrages du propriétaire : la dette de mots de passe des 16 comptes Azure (2 admin_general), le tranchement « quelle base est la prod », et l'amorçage éventuel de l'historique de migrations sur Azure
