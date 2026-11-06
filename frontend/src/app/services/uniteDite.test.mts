@@ -66,6 +66,27 @@ ok(uniteDite('en bouteilles', MARCHE) === 'bouteille', '« en bouteilles » → 
 ok(uniteDite('au grand sac', ['grand sac', 'tas']) === 'grand sac',
    '« au grand sac » avec « grand sac » proposé → l\'étiquette entière');
 
+console.log('\n[3bis] L\'ASR COLLE LES PRÉPOSITIONS — terrain 06/11, le décollage');
+// La question « tu le vends comment ? » reçoit « au kilo » ; l'ASR (web et
+// Sherpa) colle souvent la préposition au nom : « aukilo », « alapièce »,
+// « ensacs », « untas ». Chaque morceau décollé repasse par LES MÊMES règles
+// (étiquette proposée → famille kilo → pièce → mot du marché) — le
+// décollage ne devine rien, il déplie ce qu'elle a dit.
+ok(lit('aukilo') === '"kg"', '« aukilo » (collé) → kg — comme « au kilo »', lit('aukilo'));
+ok(lit('akilo') === '"kg"', '« akilo » (collé) → kg', lit('akilo'));
+ok(lit('alkilos') === '"kg"', '« alkilos » (collé) → kg', lit('alkilos'));
+ok(lit('alapièce') === '"unité"', '« alapièce » (collé) → unité — comme « à la pièce »', lit('alapièce'));
+ok(lit('unepièce') === '"unité"', '« unepièce » (collé) → unité — « une » décolle, pas « un » seul', lit('unepièce'));
+ok(lit('ensacs') === '"sac"', '« ensacs » (collé) → sac', lit('ensacs'));
+ok(lit('untas') === '"tas"', '« untas » (collé) → tas', lit('untas'));
+ok(lit('aubol') === '"bol"', '« aubol » (collé) → bol, SON mot reste SON mot', lit('aubol'));
+ok(lit('ungrand sac', ['grand sac', 'tas']) === '"grand sac"',
+   '« ungrand sac » (collé) → l\'étiquette entière', lit('ungrand sac', ['grand sac', 'tas']));
+// LE DÉCOLLAGE N'INVENTE RIEN — ce qui n'est pas une unité au bout reste null.
+ok(uniteDite('restaurant', MARCHE) === null, '« restaurant » → null (décollage ne fabrique pas « ta » de « restau-ta »)');
+ok(uniteDite('en vrac', MARCHE) === null, '« en vrac » → null (inchangé — vrac n\'est pas une unité)');
+ok(uniteDite('elevage', MARCHE) === null, '« elevage » → null (« en » décollé donne « levage », pas une unité)');
+
 console.log('\n[4] CE QUI N\'EST NI PROPOSÉ NI CONNU : NULL — ON RELANCE, ON N\'INVENTE PAS');
 ok(uniteDite('euh je sais pas trop', MARCHE) === null, '« euh je sais pas trop » → null');
 ok(uniteDite('en vrac', MARCHE) === null, '« en vrac » → null (pas un mot d\'unité reconnu)');

@@ -65,6 +65,39 @@ function sansAccent(s: string): string {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+// TERRAIN 06/11 — L'ASR COLLE LES PRÉPOSITIONS À L'UNITÉ. « à la pièce »
+// arrive « alapièce », « au kilo » arrive « aukilo », « un tas » arrive
+// « untas », « en sacs » arrive « ensacs » : le token n'existe dans aucune
+// liste, la règle rend null, et la marchande se fait relancer pour une
+// réponse qu'elle a pourtant bien donnée. Même fil que l'A3 de
+// `INT_ENCAISSER` (« en caisser », « on caisse ») : les formes que la
+// reconnaissance déforme. LE DÉCOLLAGE NE DEVINE RIEN : il retire
+// itérativement un préfixe de préposition française et rejoue LES MÊMES
+// règles au reste — une unité proposée, la famille kilo, la pièce, ou un mot
+// du marché connu. Ce qui n'est une unité au bout (« restaurant », « en
+// vrac ») rend toujours null. Longueur décroissante d'abord (« aux » avant
+// « a »), et les variantes s'explorent TOUTES (« unepièce » par « un » est
+// un cul-de-sac, par « une » trouve « pièce »).
+const PREFIXES_PREPOSITION = ['aux', 'au', 'en', 'des', 'du', 'de', 'la', 'le', 'les', 'un', 'une', 'a', 'd', 'l'];
+
+function decolle(mot: string): string[] {
+  const morceaux = new Set<string>();
+  const visites = new Set<string>();
+  const pousser = (courant: string, profondeur: number) => {
+    if (profondeur === 0 || visites.has(courant)) return;
+    visites.add(courant);
+    for (const pref of PREFIXES_PREPOSITION) {
+      if (courant.startsWith(pref) && courant.length > pref.length) {
+        const reste = courant.slice(pref.length);
+        morceaux.add(reste);
+        pousser(reste, profondeur - 1);
+      }
+    }
+  };
+  pousser(mot, 2);
+  return [...morceaux];
+}
+
 /** L'étiquette EXACTE proposée à l'écran pour ce mot, s'il y en a une —
  *  accent ignorée pour l'appariement, jamais pour l'écriture. */
 function etiquetteProposee(mot: string, proposees: readonly string[]): string | null {
@@ -84,18 +117,10 @@ export function uniteDite(cequelleADit: string, proposees: readonly string[]): s
   if (!texte) return null;
   const mots = texte.split(' ').filter(Boolean);
 
-  for (let i = 0; i < mots.length; i++) {
-    const mot = mots[i];
+  /** Les règles 1 à 4, portées par UN mot — le mot entier puis, s'il n'a rien
+   *  donné, chaque morceau décollé repasse par EXACTEMENT la même lecture. */
+  const lireUnMot = (mot: string): string | null => {
     const simple = singulier(mot);
-
-    // 0. LES ÉTIQUETTES À PLUSIEURS MOTS D'ABORD — ses unités à elle peuvent
-    //    être des phrases (« grand sac », « demi-tas »). Même lecture que le
-    //    parseur de produits : les bigrammes s'épuisent avant les mots seuls,
-    //    sinon « grand » passerait pour une unité seule.
-    if (i + 1 < mots.length) {
-      const paire = etiquetteProposee(`${simple} ${singulier(mots[i + 1])}`, proposees);
-      if (paire) return paire;
-    }
 
     // 1. L'ÉTIQUETTE QU'ELLE AURAIT TOUCHÉE — sa voix écrit ce que son doigt
     //    écrirait, au singulier près.
@@ -117,6 +142,38 @@ export function uniteDite(cequelleADit: string, proposees: readonly string[]): s
     //    « de » (une liaison, pas une unité) : il ne désigne rien ici.
     if (simple !== 'de' && (MOTS_UNITE.has(mot) || MOTS_UNITE.has(simple) || AUSSI_DU_MARCHE.has(mot) || AUSSI_DU_MARCHE.has(simple))) {
       return simple;
+    }
+
+    return null;
+  };
+
+  for (let i = 0; i < mots.length; i++) {
+    const mot = mots[i];
+    const simple = singulier(mot);
+
+    // 0. LES ÉTIQUETTES À PLUSIEURS MOTS D'ABORD — ses unités à elle peuvent
+    //    être des phrases (« grand sac », « demi-tas »). Même lecture que le
+    //    parseur de produits : les bigrammes s'épuisent avant les mots seuls,
+    //    sinon « grand » passerait pour une unité seule. Le PREMIER mot a pu
+    //    coller une préposition (« ungrand sac ») : ses morceaux décollés
+    //    sont candidats aussi — le bigramme reste la lecture prioritaire.
+    if (i + 1 < mots.length) {
+      const suivant = singulier(mots[i + 1]);
+      for (const candidat of [simple, ...decolle(simple)]) {
+        const paire = etiquetteProposee(`${candidat} ${suivant}`, proposees);
+        if (paire) return paire;
+      }
+    }
+
+    // 1 à 4 sur le mot ENTIER — le cas bien espacé d'abord, inchangé.
+    const entiere = lireUnMot(mot);
+    if (entiere) return entiere;
+
+    // 5. LE DÉCOLLAGE — le token collé par l'ASR (terrain 06/11) : chaque
+    //    morceau repasse par les MÊMES règles, jamais d'invention.
+    for (const morceau of decolle(mot)) {
+      const lu = lireUnMot(morceau);
+      if (lu) return lu;
     }
   }
 
