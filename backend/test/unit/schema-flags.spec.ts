@@ -27,4 +27,24 @@ describe('computeBootDbFlags — décision des flags de schéma au boot', () => 
     // migration ne s'appliquait en prod malgré l'activation #10.
     expect(computeBootDbFlags(false, { DB_MIGRATIONS_RUN: 'true' } as any).migrationsRun).toBe('true');
   });
+
+  it('GARDE 06/11/2026 : historique NON amorcé (pas de table migrations) → DB_MIGRATIONS_RUN=true est IGNORÉ', () => {
+    // Incident 18/09/2026 : sans la table `migrations`, TypeORM rejoue la baseline
+    // sur le schéma existant → uuid-ossp refusée (Azure) puis « already exists »,
+    // boot mort. La base Azure alignée en SQL direct le 06/11 est exactement dans
+    // ce cas : un drapeau resté à true n'y doit PAS tuer le démarrage.
+    expect(computeBootDbFlags(false, { DB_MIGRATIONS_RUN: 'true' } as any, false)).toEqual({
+      synchronize: 'false',
+      migrationsRun: 'false',
+    });
+  });
+
+  it('GARDE 06/11/2026 : historique amorcé → le drapeau reste respecté (aucune régression #19)', () => {
+    expect(computeBootDbFlags(false, { DB_MIGRATIONS_RUN: 'true' } as any, true)).toEqual({
+      synchronize: 'false',
+      migrationsRun: 'true',
+    });
+    // Défaut rétro-compatible : sans sonde, on suppose l'historique amorcé.
+    expect(computeBootDbFlags(false, { DB_MIGRATIONS_RUN: 'true' } as any).migrationsRun).toBe('true');
+  });
 });

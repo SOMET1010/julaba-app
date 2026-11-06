@@ -32,8 +32,11 @@ async function prepareDatabase(logger: Logger) {
   });
   try {
     await client.connect();
-    const res = await client.query("SELECT to_regclass('public.users') AS t");
+    const res = await client.query(
+      "SELECT to_regclass('public.users') AS t, to_regclass('public.migrations') AS m",
+    );
     const vierge = !res.rows[0].t;
+    const historiqueAmorce = Boolean(res.rows[0].m);
     if (vierge) {
       // Azure Database for PostgreSQL REFUSE l'extension uuid-ossp (non
       // allow-listée) : CREATE EXTENSION y échouait et tuait le boot de toute
@@ -60,9 +63,19 @@ async function prepareDatabase(logger: Logger) {
     // #10 la chaîne de migrations est AUTORITAIRE : sur base existante on RESPECTE
     // `DB_MIGRATIONS_RUN` d'env (dashboard) au lieu de le forcer à 'false' — c'est
     // ce forçage qui empêchait toute migration de s'appliquer en prod (bug #19).
-    const flags = computeBootDbFlags(vierge, process.env);
+    const flags = computeBootDbFlags(vierge, process.env, historiqueAmorce);
     process.env.DB_SYNCHRONIZE = flags.synchronize;
     process.env.DB_MIGRATIONS_RUN = flags.migrationsRun;
+    if (!vierge && !historiqueAmorce && process.env.DB_MIGRATIONS_RUN === 'true') {
+      // Le drapeau a été demandé mais l'historique n'est pas amorcé : le boot
+      // serait mort (incident 18/09/2026). On désactive ET on dit pourquoi.
+      logger.warn(
+        "[DB] DB_MIGRATIONS_RUN=true IGNORÉ : la table public.migrations n'existe pas — " +
+          'la chaîne rejouerait la baseline sur le schéma existant (uuid-ossp refusée sur ' +
+          'Azure, « already » partout). Amorcer d\'abord l\'historique : ' +
+          'docs/etape4/RUNBOOK-bascule-migrations.md § Phase 3, étape 2.',
+      );
+    }
     logger.log(vierge
       ? '[DB] Base vierge -> construction automatique du schéma.'
       : `[DB] Base existante -> schéma conservé ; migrationsRun=${flags.migrationsRun}.`);
