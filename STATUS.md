@@ -11,8 +11,8 @@ avant toute fin de session.
 | relevé | **06/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `50f2013d` — feat(produit) : l'ajout se lance de l'accueil à la voix, un produit existant re-demande son unité |
-| dernier lot applicatif | 3 `feat` du 06/11 (ordre Patrick, 2 agents Explore) : la grammaire des commandes d'accueil (`cd51a5f8`), « Ouvrir ma caisse » — bouton + fond dit à la voix + confirmation + OpenDayModal enfin montée (`42fe5d10`), l'ajout produit par la voix + unité re-demandée sur produit existant (`50f2013d`) — à la suite des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) et du merge azure/dev `aa533692` |
+| dernier commit | `1b1e5658` — feat(voix) : AppContext.speak joue enfin les clips (le câblage qui manquait) |
+| dernier lot applicatif | 2 `feat` voix du 06/11 (ordre Patrick : « la voix pour toutes les éventualités ») : 24 clips embarqués sur les textes EXACTS des trois flux (produit, dépense, caisse) + registre régénéré (`56a677d8`), le chemin AppContext.speak consulte l'index des clips (`1b1e5658`) — à la suite des 3 `feat` des deux portes du matin (`cd51a5f8`, `42fe5d10`, `50f2013d`) et des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -109,6 +109,45 @@ l'aperçu local**, pas sur une URL de preview.
 ---
 
 ## Livrable en cours
+
+### Session 06/11 (après-midi) — la voix pour toutes les éventualités des trois flux
+
+Patrick (06/11) : « Assure-toi qu'on a la voix pour toutes les éventualités de
+ces fonctionnalités » — l'entrée, l'ajout de produit, la dépense vocale.
+
+CE QUE L'AUDIT A TROUVÉ (preuve d'abord, script one-shot supprimé) : 26 textes
+fixes des trois flux partaient TOUJOURS à la synthèse. Deux causes : (1) les
+clips du parcours produit et de la dépense n'existaient pas — le catalogue les
+porte (`audioMode: 'none'`), l'audio n'a jamais suivi ; (2) pire, les quatre
+replis de confirmation d'argent de la caisse (core-err-01..04) ONT un clip —
+mais il dit une AUTRE formulation (« Je n'ai pas bien capté… » contre « Je
+n'ai pas bien compris… »). L'appariement exact ne tombait jamais dessus :
+« un mot d'écart = muet » (leçon login-41), sur les quatre phrases les plus
+critiques. Et le défaut structurel derrière : AppContext.speak →
+audioManager.speak ne consultait JAMAIS l'index des clips — même « Dépense
+enregistrée » (ui-034, vraie voix de Tantie, pré-cachée) sortait en synthèse.
+
+| Flux | Ce qui manquait | Ce qui est livré |
+|---|---|---|
+| Produit (parcours guidé) | aucun audio pour STK_047/051/052/053/054/060/063/067/070 | 9 clips `stk-*`, textes mot pour mot du catalogue (`56a677d8`) |
+| Dépense vocale | aucun audio pour DEPENSE_001/003/004/005/006/007/009 + montant incompris | 8 clips `dep-03..10` (`56a677d8`) |
+| Caisse (replis d'argent) | core-err-01..04 portaient des variantes | audio régénéré sur le texte EXACT de `useVoiceCore` l.924-944, mêmes fichiers (`56a677d8`) |
+| Vente (micro) | aucun audio pour TATA_QUE_VENDRE / TATA_INVITE / TATA_VENTE_ECHEC | 3 clips `vente-07..09` (`56a677d8`) |
+| Le câblage | audioManager.speak allait droit à la synthèse | `speak` consulte `tataUiClipForText` : clip d'abord, synthèse en repli dans le même créneau (`1b1e5658`) |
+
+Specs des clips (mêmes règles que les lots 43-85) : voix de synthèse
+contrôlée distincte de Tantie (aucune imitation), 24 kHz mono 96 kbps,
+−16 LUFS, silences coupés, débit ralenti ; le texte dynamique (montants,
+noms, unités) reste à la synthèse — on ne pré-enregistre pas ce qui change.
+Registre régénéré : **277 clips mappés, 285 fichiers**, cohérence prouvée.
+
+Preuves : `test:registre-voix`, `test:clips-embarques`, `test:audio`,
+`test:clip-echec-caisse`, `test:voix`, `test:vendre-unifie`,
+`test:tata-actions`, `test:niveau-voix`, `test:offline-voice-hook`,
+`test:voice-confirmation-bypass`, `typecheck` : tous verts ; audit final
+26/26 textes des trois flux tombent sur un clip. **Reste à recetter** : une
+oreille ivoirienne au studio (`atteste` reste FAUX, règle lot B) et le micro
+réel sur appareil.
 
 ### Session 06/11 — les deux portes du matin : la caisse s'ouvre en parlant, l'étal se pose à la voix
 

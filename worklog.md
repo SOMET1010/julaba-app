@@ -1884,3 +1884,21 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : le matin, le bouton « Ouvrir ma caisse » (ou « ouvre la caisse » dit) pose LA question demandée, écoute le montant, le RELIT et confirme vocalement avant d'écrire — le doute n'écrit rien, et le comptage à la main (OpenDayModal orpheline) est enfin monté comme repli nommé ; « ajoute un produit » ouvre le MÊME parcours graphique depuis l'accueil ; un produit existant re-demande SON unité chaque fois — même nom à une autre unité crée une NOUVELLE ligne, même unité complète le stock. À recetter sur appareil (micro réel)
+
+---
+Task ID: voix-eventualites-06-11
+Agent: Z.ai Code (session Patrick)
+Task: la voix embarquée pour toutes les éventualités des trois flux — connexion, produit, dépense
+
+Work Log:
+- ORDRE DE PATRICK (06/11) : « Assure-toi qu'on a la voix pour toutes les éventualités de ces fonctionnalités »
+- PREUVE D'ABORD (audit scripté sur l'état, puis supprimé) : 26 textes fixes des trois flux partaient TOUJOURS à la synthèse — stk/dep n'avaient AUCUN clip (catalogue audioMode « none », audio jamais produit), et core-err-01..04 avaient un clip portant une AUTRE formulation (« Je n'ai pas bien capté… » vs « Je n'ai pas bien compris… ») → appariement exact jamais atteint sur les 4 replis d'argent
+- DÉFAUT STRUCTUREL TROUVÉ AU PASSAGE : AppContext.speak → audioManager.speak ne consultait JAMAIS tataUiClipForText — même « Dépense enregistrée » (ui-034, vraie voix, pré-cachée) sortait en synthèse ; seul useVoiceCore.ttsSpeak résolvait les clips
+- 24 CLIPS GÉNÉRÉS (z-ai TTS, voix tongtong fr-FR — IA distincte, aucune imitation de Tantie) : core-err-01..04 régénérés sur le texte EXACT de useVoiceCore l.924-944 ; stk-09/10/12/13/14/17/18/19/20 (parcours guidé produit) ; dep-03..10 (dépense vocale) ; vente-07/08/09 (micro de vente) ; prises sélectionnées à la durée (2 passages, les trop lents refaits à vitesse 1.0) ; post-traitement ffmpeg : silences tête/queue ≤ 80 ms, loudnorm −16 LUFS (TP −1,5), atempo par prise, 24 kHz mono 96 kbps
+- INDEX (tataUiClips.ts) : 4 textes core-err passés de la variante au texte du code + 20 entrées nouvelles MOT POUR MOT (frActuel, y compris l'apostrophe typographique de DEPENSE_005) — contrôle ASR aller-retour sur échantillon (structure des phrases reconnue)
+- CÂBLAGE (audioManager.speak) : consultation de l'index AVANT la synthèse → clip d'abord, synthèse en repli DANS LE MÊME CRÉNEAU (speakClipOrText, filet qui parle) ; speakAuto et useVoiceCore.ttsSpeak inchangés ; signature de speak inchangée
+- REGISTRE régénéré par le script officiel : 277 clips mappés, 285 fichiers, 8 orphelins inchangés ; texte/empreinte/taille/durée vérifiés par la garde --check
+- PREUVES : typecheck vert ; 14 gardes vertes (registre-voix, clips-embarques, audio, clip-echec-caisse, voix, vendre-unifie, tata-actions, niveau-voix, offline-voice-hook, voice-confirmation-bypass, local-voice-choice, akwaba-voix, entree-numero-voix, voix-connexion-lot-a) ; audit final 26/26 textes des trois flux tombent sur un clip ; 2 commits (56a677d8 clips+index+registre, 1b1e5658 câblage), poussés sur origin/dev avec identité « Akoun Bernard Aboa » vérifiée
+
+Stage Summary:
+- RÉPONSE À PATRICK : toute phrase FIXE des trois flux a désormais SON clip embarqué, et TOUTE phrase qui passe par AppContext.speak joue le clip quand il existe (synthèse seulement en repli ou pour le dynamique : montants, noms, unités) ; les quatre replis de confirmation d'argent disent enfin ce que l'écran écrit. RESTE À RECETTER : oreille ivoirienne au studio (atteste reste FAUX, règle lot B) et micro réel sur appareil
