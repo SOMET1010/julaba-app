@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CONTRAINTES_MICRO_DICTEE } from '../services/contraintesMicro';
 import { vlog } from '../utils/voiceDebug';
 import { demarrerRecoWeb, recoWebDispo } from '../voice-offline/webReco';
-import { offlineModelReady, startLiveDictation } from '../voice-offline/offlineStt';
+import { ensureOfflineModel, startLiveDictation } from '../voice-offline/offlineStt';
 import { intentionConfirmationNumero, type CommandeNumero } from '../voice-offline/commandesEntree';
 
 /**
@@ -96,8 +96,17 @@ export function useCommandesVocales<C = CommandeNumero>() {
   const demarrer = useCallback((cfg: CommandesVocalesCfg<C>) => {
     if (stopRef.current || ouvertARef.current) return; // déjà en écoute (ou en vol)
     const surWeb = recoWebDispo();
-    if (!surWeb && !offlineModelReady()) { vlog('COMMANDES_NON_PRETE'); return; }
-
+    // TERRAIN 06/11 — LE MICRO NE S'OUVAIT JAMAIS À L'ENTRÉE SUR L'APK. La
+    // garde `!offlineModelReady()` lit un drapeau FIGÉ à l'instant T : le
+    // plugin natif s'enregistre APRÈS le premier écran (voir B3 dans
+    // `offlineStt`), et Welcome est EXACTEMENT ce premier écran — la sonde
+    // lancée au boot tombait encore sur un moteur absent, le drapeau restait
+    // faux, et `demarrer` sortait en `COMMANDES_NON_PRETE` sans un mot.
+    // « Dis oui pour entrer » ne pouvait pas être compris : RIEN n'écoutait.
+    // La sonde devient ASYNCHRONE : on attend qu'elle réponde (elle est déjà
+    // en vol au boot, le bonjour et la consigne laissent le plugin se monter)
+    // avant de juger le moteur absent. Le micro n'est ouvert QUE si elle
+    // passe — jamais dans le noir.
     cfgRef.current = cfg;
     ouvertARef.current = Date.now();
     const garde = cfg.gardeAntiEchoMs ?? GARDE_DEFAUT_MS;
@@ -148,8 +157,16 @@ export function useCommandesVocales<C = CommandeNumero>() {
     }
 
     // APK — sherpa natif, le MÊME rouage que la dictée : micro contraint
-    // (MIC-01), moteur live, texte final par morceau.
+    // (MIC-01), moteur live, texte final par morceau. LA SONDE D'ABORD
+    // (terrain 06/11, voir le commentaire d'en-tête de `demarrer`) : le
+    // drapeau figé disait non au premier écran, la sonde attend le plugin.
     void (async () => {
+      try { await ensureOfflineModel(); } catch {
+        vlog('COMMANDES_NON_PRETE');
+        cfgRef.current = null; ouvertARef.current = 0;
+        return;
+      }
+      if (!cfgRef.current) return; // arrêté pendant la sonde
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);

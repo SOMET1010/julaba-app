@@ -33,7 +33,7 @@ import { direEntreeAvantConnexion } from '../../services/entreeVoixAvantConnexio
 import { tParle } from '../../i18n/voice/runtime';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
 import { recoWebDispo } from '../../voice-offline/webReco';
-import { offlineModelReady } from '../../voice-offline/offlineStt';
+import { offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { intentionEntree, type CommandeEntree } from '../../voice-offline/commandesEntree';
 import { useCommandesVocales } from '../../hooks/useCommandesVocales';
 import { ENTREE_VOICE_CLIPS, direEntreeTexte } from '../../services/entreeVoix';
@@ -112,7 +112,11 @@ export function OnboardingSlides({ onComplete }: OnboardingSlidesProps) {
       try { sonSorti = await direOuLire('histoire1', 'TANTIE_PRESENTATION'); } catch { /* ignore */ }
       setIsSpeaking(false);
       if (!sonSorti || doneRef.current) return; // rien n'est sorti → pas de micro dans le noir
-      const moteurPret = (() => { try { return recoWebDispo() || offlineModelReady(); } catch { return false; } })();
+      // TERRAIN 06/11 : drapeau persistant (`offlineModelInstalled`) au lieu
+      // du figé (`offlineModelReady`) — même correction que Welcome : le
+      // plugin natif se monte après le premier écran, l'écoute doit le
+      // laisser arriver (le rouage sonde avant d'ouvrir le micro).
+      const moteurPret = (() => { try { return recoWebDispo() || offlineModelInstalled(); } catch { return false; } })();
       if (!moteurPret) return;
       try {
         const consignePassee = await parlerAvantConnexion('onboarding', ENTREE_VOICE_CLIPS.onboardingConsigneVoix.texte, direEntreeTexte);

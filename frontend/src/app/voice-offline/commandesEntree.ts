@@ -81,6 +81,7 @@ export function intentionConfirmationNumero(
   const t = normaliser(brut);
   if (REDIRE.test(t)) return 'redire';
   if (reponse === 'oui') return 'confirmer';
+  if (ACQUITTEMENT_APLATI.test(t)) return 'confirmer';
   if (CONFIRMER_NUMERO.test(t)) return 'confirmer';
   if (CLAVIER.test(t)) return 'clavier';
   return null;
@@ -103,7 +104,21 @@ export type CommandeEntree = 'entrer' | 'repeter';
 
 // Avancer — large mais SANS ambiguïté : les verbes de l'action nommée dans
 // le clip (« entrer »), les variantes naturelles de la même intention.
-const AVANCER = /\b(entree?|entrer|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
+// Terrain 06/11 : « entrons » et « entrez » restés dehors alors que le clip
+// dit « dis oui pour entrer » — les formes conjuguées du même verbe.
+const AVANCER = /\b(entree?|entrer|entrez|entrons|commence[rz]?|continue[rz]?|avancer?|avance|on y va|c est parti|cest parti|aller y|allons y|d ?accord|d ?ac)\b/;
+
+// L'ACQUITTEMENT APLATI — les formes où l'ASR a PERDU l'apostrophe. Le
+// catalogue déclare « c'est bon » ; le STT la transcrit souvent « c est
+// bon » — et la normalisation du runtime (qui plie l'apostrophe SANS espace)
+// ne rencontre jamais la forme espacée. Mesuré le 06/11 : « c'est bon » avec
+// apostrophe passe, « c est bon » rendait NULL — Tantie restait sans réponse
+// sur le « oui » le plus courant. Idem pour les formes courtes du « oui » :
+// « wi », « ui », « wui », « we » — ce que rend un « oui » bref au marché.
+// PAS DE CETTE LISTE DANS L'ARGENT : `MOTS_CONFIRME` (vente) reste gelé —
+// ici l'action n'écrit rien (une porte, un numéro à vérifier), et le refus
+// déclaré est TOUJOURS testé avant.
+const ACQUITTEMENT_APLATI = /\b(c ?est (bon|ca|exact)|wi|ui|wui|we|oui oui)\b/;
 const REFUSER_ENTREE = /\b(non|attends?|annule|stop|arret|pas encore|pas maintenant|pas (?:entrer|rentrer|commencer|continuer|avancer)|je ne veux pas|je veux pas)\b/;
 
 // Faire rejouer — le même parti pris que REDIRE : se tromper de côté coûte
@@ -127,6 +142,7 @@ export function intentionEntree(texte: string, locale?: LocaleCode): CommandeEnt
   if (REFUSER_ENTREE.test(t)) return null;
   const reponse = acquiescement(brut, locale);
   if (reponse === 'oui') return 'entrer';
+  if (ACQUITTEMENT_APLATI.test(t)) return 'entrer';
   if (AVANCER.test(t) || /\b(rentre|rentrer|rentrons|rentre[z]?|oui pour entrer|oui pour rentrer)\b/.test(t)) return 'entrer';
   return null;
 }

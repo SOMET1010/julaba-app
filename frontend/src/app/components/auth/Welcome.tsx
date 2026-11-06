@@ -15,7 +15,7 @@ import { tParle } from '../../i18n/voice/runtime';
 import { parlerAvantConnexion } from '../../services/paroleEntree';
 import { estHabituee } from '../../utils/parcours';
 import { recoWebDispo } from '../../voice-offline/webReco';
-import { offlineModelReady } from '../../voice-offline/offlineStt';
+import { offlineModelInstalled } from '../../voice-offline/offlineStt';
 import { intentionEntree, type CommandeEntree } from '../../voice-offline/commandesEntree';
 import { useCommandesVocales } from '../../hooks/useCommandesVocales';
 import { ENTREE_VOICE_CLIPS } from '../../services/entreeVoix';
@@ -86,7 +86,13 @@ export function Welcome({ onComplete }: WelcomeProps) {
       } catch { /* un bonjour qui casse ne bloque pas l'entrée */ }
       // RIEN N'EST SORTI → RIEN NE S'OUVRE. Un micro ouvert dans le noir,
       // sans qu'on sache que l'écran écoute, serait une oreille sans visage.
-      const moteurPret = (() => { try { return recoWebDispo() || offlineModelReady(); } catch { return false; } })();
+      // TERRAIN 06/11 : `offlineModelReady()` (drapeau figé) disait NON au
+      // premier écran — le plugin natif n'était pas encore monté — et
+      // l'écoute ne s'ouvrait JAMAIS : « dis oui pour entrer » tombait sur un
+      // écran muet. Le drapeau PERSISTANT (`offlineModelInstalled`) dit ce
+      // qu'on veut ici : le moteur a déjà été vu sur CET appareil, on tente —
+      // et le rouage attend la sonde réelle avant d'ouvrir le micro.
+      const moteurPret = (() => { try { return recoWebDispo() || offlineModelInstalled(); } catch { return false; } })();
       if (!sonSorti || !moteurPret) return;
       try {
         const consignePassee = await parlerAvantConnexion('akwaba', ENTREE_VOICE_CLIPS.entreeConsigneVoix.texte, direEntreeTexte);

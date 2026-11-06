@@ -29,6 +29,15 @@ for (const phrase of ['oui', 'ouais', "d'accord", 'ok', "c'est bon", "c'est ça"
      `obtenu: ${String(intentionConfirmationNumero(phrase))}`);
 }
 
+// TERRAIN 06/11 — L'ACQUITTEMENT APLATI : l'ASR perd l'apostrophe et coupe
+// le « oui » bref. L'action n'écrit rien (un numéro à vérifier), le refus
+// déclaré reste testé avant — mêmes doctrines, surface élargie.
+console.log('\n[1bis] L\'ACQUITTEMENT APLATI — apostrophe perdue, « oui » coupé');
+for (const phrase of ['c est bon', "c'est bon", 'c est ca', 'c est exact', 'wi', 'ui', 'wui', 'we']) {
+  eq(intentionConfirmationNumero(phrase), 'confirmer', `« ${phrase} » → confirmer`,
+     `obtenu: ${String(intentionConfirmationNumero(phrase))}`);
+}
+
 console.log('\n[2] LE NOM DU BOUTON, DIT À VOIX HAUTE');
 eq(intentionConfirmationNumero("c'est mon numéro"), 'confirmer', '« c\'est mon numéro » → confirmer');
 eq(intentionConfirmationNumero('mon numéro'), 'confirmer', '« mon numéro » → confirmer');
@@ -88,9 +97,18 @@ eq(intentionConfirmationNumero('C\'est mon numéro…'), 'confirmer', '« C\'est
 import { intentionEntree, intentionOuiNon } from './commandesEntree.js';
 
 console.log('\n[8] L\'ENTRÉE SE COMMANDE — « entrer » de l\'audit (écrans 1 et 2)');
-for (const phrase of ['entrer', 'entre', 'commencer', 'commence', 'continuer', 'continue',
+for (const phrase of ['entrer', 'entre', 'entrez', 'entrons', 'commencer', 'commence', 'continuer', 'continue',
                       'avancer', 'on y va', "c'est parti", "d'accord", 'ok',
                       'dis oui pour entrer', 'oui pour entrer', 'oui pour rentrer', 'rentrer']) {
+  eq(intentionEntree(phrase), 'entrer', `« ${phrase} » → entrer`,
+     `obtenu: ${String(intentionEntree(phrase))}`);
+}
+
+console.log('\n[8bis] LE OUI RÉEL DU STT — apostrophe perdue, « oui » coupé, terrain 06/11');
+// Le clip dit « dis oui pour entrer » : elle dit « oui », l'ASR le rend
+// parfois « wi », « ui », « we » — ou aplati « c est bon ». Une porte, pas
+// de l'argent : on la comprend, le refus reste le premier testé.
+for (const phrase of ['wi', 'ui', 'wui', 'we', 'c est bon', "c'est bon", 'c est ca', 'c est exact']) {
   eq(intentionEntree(phrase), 'entrer', `« ${phrase} » → entrer`,
      `obtenu: ${String(intentionEntree(phrase))}`);
 }
@@ -111,12 +129,15 @@ for (const phrase of ['répète', 'repète', 'réécouter', 'rejoue', 'encore', 
 console.log('\n[11] LE DOUTE N\'AVANCE JAMAIS — le marché ne déclenche pas la porte');
 for (const phrase of ['', '   ', 'non', 'pas encore', 'attends', 'hein', 'bon alors',
                       'ça fait combien', 'zéro sept zéro zéro', 'non, oui pour entrer',
-                      'je ne veux pas entrer', 'pas entrer']) {
+                      'je ne veux pas entrer', 'pas entrer', 'c est pas bon',
+                      'c est pas ca']) {
   eq(intentionEntree(phrase), null, `« ${phrase} » → null`,
      `obtenu: ${String(intentionEntree(phrase))}`);
 }
 // « PAS ENCORE » NE REJOUE PAS — le refus déclaré gagne sur le « encore »
 // qu'il contient (même piège que « c'est pas mon numéro » au lot A).
+// « C EST PAS BON » ne franchit pas la porte non plus : le refus déclaré est
+// testé AVANT l'acquittement aplati — l'ordre est la doctrine.
 
 console.log('\n[12] LA PROPOSITION S\'ENTEND RÉPONDRE — oui clair, non clair');
 for (const phrase of ['oui', 'ouais', "d'accord", "c'est bon"]) {
