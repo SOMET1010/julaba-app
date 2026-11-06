@@ -34,7 +34,27 @@ async function prepareDatabase(logger: Logger) {
     await client.connect();
     const res = await client.query("SELECT to_regclass('public.users') AS t");
     const vierge = !res.rows[0].t;
-    if (vierge) await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    if (vierge) {
+      // Azure Database for PostgreSQL REFUSE l'extension uuid-ossp (non
+      // allow-listée) : CREATE EXTENSION y échouait et tuait le boot de toute
+      // base NEUVE. Substitution appliquée sur la base Azure le 06/11/2026
+      // (rapport d'alignement) et portée ici : si l'extension est refusée, on
+      // pose un alias SQL public.uuid_generate_v4() -> gen_random_uuid()
+      // (natif, PG 13+). Même type, même résultat : les DEFAULT que
+      // `synchronize` génère pour @PrimaryGeneratedColumn('uuid') restent
+      // créables, sans dépendre d'une extension.
+      try {
+        await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+      } catch {
+        await client.query(
+          'CREATE OR REPLACE FUNCTION public.uuid_generate_v4() RETURNS uuid ' +
+            "LANGUAGE sql AS 'SELECT gen_random_uuid()'",
+        );
+        logger.log(
+          '[DB] extension uuid-ossp refusée (Azure) — alias public.uuid_generate_v4() -> gen_random_uuid() posé.',
+        );
+      }
+    }
     // Base vierge -> on construit le schéma (synchronize) ; base déjà remplie ->
     // surtout PAS de reconstruction (sinon "relation ... already exists"). Depuis
     // #10 la chaîne de migrations est AUTORITAIRE : sur base existante on RESPECTE
