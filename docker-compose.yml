@@ -3,42 +3,43 @@
 # DB_HOST=postgres (nom du service, PAS localhost ni host.docker.internal).
 # Modele d'env : backend/.env.production.example (cp -> .env.production).
 services:
-  postgres:
+  #postgres:
     # BD de la stack — version de reference du projet (CI invariants, .env.example)
-    image: postgres:16-alpine
-    container_name: julaba_postgres
-    restart: always
-    environment:
+  #  image: postgres:16-alpine
+   # container_name: julaba_postgres
+    #restart: always
+    #environment:
       # Garder cohérent avec backend/.env.production :
       # DB_USERNAME / DB_PASSWORD / DB_NAME
-      POSTGRES_USER: julaba
-      POSTGRES_PASSWORD: julaba
-      POSTGRES_DB: julaba_dev
-    ports:
+     # POSTGRES_DB: ${DB_NAME}
+      #POSTGRES_USER: ${DB_USER}
+      #POSTGRES_PASSWORD: ${DB_PASSWORD}
+    #ports:
       # Outils depuis l'hote (psql, pg_dump) : 5433 pour ne pas heurter
       # un PostgreSQL local deja present sur 5432. Le backend, lui,
       # passe par le reseau interne (DB_HOST=postgres, port 5432).
-      - "127.0.0.1:5433:5432"
-    volumes:
-      - julaba_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U julaba -d julaba_dev"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
+     # - "127.0.0.1:5433:5432"
+    #volumes:
+     # - julaba_pgdata:/var/lib/postgresql/data
+   # healthcheck:
+    #  test: ["CMD-SHELL", "pg_isready -U julaba -d julaba_dev"]
+    #  interval: 5s
+     # timeout: 5s
+     # retries: 12
+      #start_period: 10s
 
   backend:
-    build: ./backend
+    # Noms d'images = ceux pousses par la pipeline (BACK/FRONT_IMAGE_NAME)
+    image: ${ACR_LOGIN_SERVER}/${BACKEND_IMAGE:-julaba-backend}:${IMAGE_TAG:-latest}
     container_name: julaba_backend
     restart: always
     # Attend la BD saine avant le boot (prepareDatabase construit le
     # schema tout seul sur base vierge — voir backend/src/main.ts).
-    depends_on:
-      postgres:
-        condition: service_healthy
+    #depends_on:
+    #  postgres:
+    #    condition: service_healthy
     ports:
-      - "3001:3000"
+      - "3008:3000"
     env_file:
       - ./backend/.env.production
     volumes:
@@ -46,22 +47,22 @@ services:
       - /var/www/julaba/piper-voices:/var/www/julaba/piper-voices:ro
       - /tmp/piper-cache:/tmp/piper-cache
       - /var/www/julaba/uploads:/var/www/julaba/uploads
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/v1/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    #extra_hosts:
+     # - "host.docker.internal:host-gateway"
+    #healthcheck:
+     # test: ["CMD", "node", "-e", "require('http').get('http://localhost:3008/api/v1/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      #interval: 30s
+      #timeout: 10s
+      #retries: 3
 
   frontend:
-    image: nginx:alpine
+    image: ${ACR_LOGIN_SERVER}/${FRONTEND_IMAGE:-julaba-frontend}:${IMAGE_TAG:-latest}
     container_name: julaba_frontend
     restart: always
     ports:
-      - "8080:80"
+      - "3009:80"
+    # Le build Vite est dans l'image : ne pas le masquer par un volume ./frontend/dist
     volumes:
-      - ./frontend/dist:/usr/share/nginx/html
       - ./nginx/frontend.conf:/etc/nginx/conf.d/default.conf
 
 volumes:

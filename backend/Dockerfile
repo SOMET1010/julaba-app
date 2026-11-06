@@ -12,7 +12,7 @@ RUN ./node_modules/.bin/nest build
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk upgrade --no-cache libjxl && apk add --no-cache ffmpeg
+RUN apk upgrade --no-cache && apk add --no-cache ffmpeg
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
