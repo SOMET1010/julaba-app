@@ -10,7 +10,8 @@ import bandeauMarche from '../../../assets/redesign/bandeau-marche.webp';
 import { BrandSignature } from '../shared/BrandSignature';
 import { PropositionReconnaissance } from '../auth/PropositionReconnaissance';
 import { getConfortVisuel, setConfortVisuel, CONFORT_EVENT } from '../../utils/confortVisuel';
-import { ResumeModal, CloseDayModal, EditFondModal } from './MarchandModals';
+import { ResumeModal, CloseDayModal, EditFondModal, OpenDayModal } from './MarchandModals';
+import { OuvertureCaisseVoix } from './OuvertureCaisseVoix';
 import { RaccourcisProvider } from '../../contexts/RaccourcisContext';
 import { RapportHebdoProvider } from '../../contexts/RapportHebdoContext';
 import { ObjectifProvider } from '../../contexts/ObjectifContext';
@@ -22,6 +23,10 @@ import { useLectureSessionCaisse } from '../../hooks/useLectureSessionCaisse';
 import { ventesEnAttenteEnvoi } from '../../voice-offline/incidentsHorsLigne';
 import { useSpeakMessage } from '../../i18n/voice/speakMessage';
 import { guidageVocal } from '../../utils/accessMode';
+import { intentionAccueil, type CommandeAccueil } from '../../voice-offline/commandesAccueil';
+import { useCommandesVocales } from '../../hooks/useCommandesVocales';
+import { recoWebDispo } from '../../voice-offline/webReco';
+import { offlineModelInstalled } from '../../voice-offline/offlineStt';
 
 /**
  * Accueil marchand « voix & icônes d'abord ».
@@ -33,7 +38,7 @@ import { guidageVocal } from '../../utils/accessMode';
  */
 function MarchandAccueilVoiceInner() {
   const navigate = useNavigate();
-  const { user, getTodayStats, currentSession, transactions, openDay } = useApp();
+  const { user, getTodayStats, currentSession, transactions, openDay, speak } = useApp();
   const stats = getTodayStats();
   const speakMessage = useSpeakMessage();
 
@@ -101,6 +106,19 @@ function MarchandAccueilVoiceInner() {
   const [reouvreEnCours, setReouvreEnCours] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [showEditFond, setShowEditFond] = useState(false);
+  // ── OUVRIR SA CAISSE (ordre Patrick 06/11) — LA PORTE DU MATIN ───────────
+  // L'ouverture de journée n'avait AUCUNE porte : ni bouton, ni flux vocal —
+  // OpenDayModal était écrite mais montée nulle part. Le bouton ouvre le flux
+  // VOCAL (Tantie demande le fond, elle répond, Tantie relit et confirme) ;
+  // le comptage à la main reste un repli NOMMÉ (OpenDayModal, enfin montée).
+  const [showOuverture, setShowOuverture] = useState(false);
+  const [showOpenDay, setShowOpenDay] = useState(false);
+  // LE MATIN UNIQUEMENT : ni ouverte, ni fermée le soir (cette dernière a SA
+  // bannière « Rouvrir ma journée » — rouvrir, c'est rejouer la MÊME journée,
+  // pas en déclarer une nouvelle). Session inconnue (hors ligne) : la porte
+  // s'affiche — openDay écrit d'abord localement, on ne bloque jamais la
+  // vendeuse.
+  const journeeAouvrir = !currentSession || (currentSession.opened === false && !currentSession.closedAt);
 
   // Panier en cours : bannière de reprise. « Vendre » et « Reprendre » mènent
   // désormais au MÊME endroit — la caisse, seule surface de vente.
@@ -182,6 +200,40 @@ function MarchandAccueilVoiceInner() {
     // d'un plancher réel sans changer le type.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etatCaisse.type, (etatCaisse as { raison?: string }).raison, ditAuMontage]);
+
+  // ── L'ACCUEIL ÉCOUTE DEUX COMMANDES (ordre Patrick 06/11) ────────────────
+  // « ouvre la caisse » et « ajoute un produit » — les deux portes du matin,
+  // sans lire. La grammaire déclarée (`commandesAccueil.intentionAccueil`)
+  // est ÉTROITE : verbe + nom, le doute rend null, le refus gagne. La fenêtre
+  // s'ouvre APRÈS la phrase de caisse (l'ordre est la doctrine MIC-01 : rien
+  // n'est écouté tant que Tantie parle) + une respiration ; et seulement si
+  // un moteur peut écouter — drapeau PERSISTANT (même correction terrain
+  // 06/11 que Welcome : le plugin natif se monte après l'écran, le rouage
+  // sonde avant d'ouvrir le micro). LA COURSE POSSIBLE avec la proposition
+  // de reconnaissance est bornée : les deux grammaires sont disjointes (un
+  // « oui » ne route rien ici, une porte d'accueil n'enrôle rien), et le
+  // micro est rendu AVANT chaque action (le rouage le garantit).
+  const { demarrer: demarrerCommandesAccueil } = useCommandesVocales<CommandeAccueil>();
+  useEffect(() => {
+    if (!ditAuMontage) return;            // la phrase d'argent passe d'abord
+    if (!guidageVocal()) return;          // profil « je lis » : pas d'oreille
+    if (showOuverture) return;            // le flux a SA propre écoute
+    const moteur = (() => { try { return recoWebDispo() || offlineModelInstalled(); } catch { return false; } })();
+    if (!moteur) return;
+    const t = setTimeout(() => {
+      demarrerCommandesAccueil({
+        grammaire: intentionAccueil,
+        dureeMs: 8_000,
+        surCommande: (cmd) => {
+          // Le micro est DÉJÀ rendu (le hook arrête l'écoute avant d'appeler).
+          if (cmd === 'ouvrir_caisse') setShowOuverture(true);
+          else navigate('/marchand/stock?ajout=1');
+        },
+      });
+    }, 2_500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ditAuMontage, showOuverture]);
 
   // Grosses tuiles : icônes vectorielles LOCALES (marchent hors-ligne, aucune
   // dépendance réseau) + un seul libellé clair. Avant : illustrations distantes
@@ -349,6 +401,40 @@ function MarchandAccueilVoiceInner() {
           </motion.button>
         ) : null}
 
+        {/* ── OUVRIR SA CAISSE — LA PORTE DU MATIN (ordre Patrick 06/11) ──
+            Un bouton qui n'existait pas, un flux qui n'existait pas. Le matin,
+            avant de vendre, elle déclare ce qu'elle a dans sa boîte : Tantie
+            demande « Tu as combien dans ta caisse aujourd'hui ? », elle
+            répond en parlant, Tantie RELIT et demande confirmation, son oui
+            déclare la journée (openDay). Le comptage à la main reste NOMMÉ —
+            OpenDayModal, enfin montée. */}
+        {journeeAouvrir && !showOuverture && (
+          <motion.button
+            whileTap={{ scale: 0.97 }} onClick={() => setShowOuverture(true)}
+            aria-label="Ouvrir ma caisse"
+            style={{ width: '100%', minHeight: 56, borderRadius: 18, border: '2px solid var(--commerce-action)',
+              background: 'var(--commerce-orange-50)', color: 'var(--commerce-action)', fontSize: 16, fontWeight: 900,
+              cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              marginBottom: 14 }}>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 12v3"/></svg>
+            Ouvrir ma caisse
+          </motion.button>
+        )}
+        {showOuverture && (
+          <OuvertureCaisseVoix
+            // LE TEXTE BRUT passe par `speak` (AppContext) : le muet et le
+            // profil « je lis » y sont déjà bornés — la même voix que partout.
+            dire={(t) => speak(t)}
+            onFondDeclare={async (montant) => {
+              await openDay(montant);
+              speakMessage('MARCHAND_007', { montant });
+              setShowOuverture(false);
+            }}
+            onManuel={() => { setShowOuverture(false); setShowOpenDay(true); }}
+            onFermer={() => setShowOuverture(false)}
+          />
+        )}
+
         {/* UN SEUL geste évident pour vendre, et il ouvre LA CAISSE (lot B —
             VOIX-01, arbitrage du 20/09/2026). Il ouvrait auparavant un écran
             vocal distinct qui, la ligne une fois au panier, renvoyait vers la
@@ -442,6 +528,12 @@ function MarchandAccueilVoiceInner() {
         onClose={() => setShowEditFond(false)}
         {...(currentSession ? { currentFond: currentSession.fondInitial } : {})}
       />
+      {/* LE REPLI TACTILE DE L'OUVERTURE — OpenDayModal (comptage de billets
+          et de pièces, écran complet) était ÉCRITE mais montée NULLE PART :
+          orpheline depuis sa création. Le flux vocal la nomme comme repli
+          (« Le compter à la main ») ; elle appelle openDay et dit
+          MARCHAND_007 elle-même — un seul chemin d'écriture. */}
+      <OpenDayModal isOpen={showOpenDay} onClose={() => setShowOpenDay(false)} />
 
       {/* « Tata propose de me reconnaître » (lot 2) : une seule fois, juste après
           une entrée par code — Oui = le téléphone apprend à la reconnaître. */}

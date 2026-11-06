@@ -73,9 +73,15 @@ interface Props {
    *  la parole. Sinon on retombe sur le délai fixe, pour les appelants qui ne
    *  savent pas dire quand ils ont fini. */
   dire?: (texte: string) => void | Promise<void>;
+  /** OUVERTURE DE CAISSE (06/11) — LA PHRASE NOMME LE GESTE DE CET ÉCRAN
+   *  (STK-22) : un fond de caisse n'est pas « le prix ». Défauts inchangés
+   *  (STOCK_065/063/064) — les écrans existants ne voient rien bouger. */
+  cleSilence?: string;
+  cleMicro?: string;
+  cleReseau?: string;
 }
 
-export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Props) {
+export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire, cleSilence = 'STOCK_065', cleMicro = 'STOCK_063', cleReseau = 'STOCK_064' }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
   const arretRef = useRef<null | (() => Promise<void>)>(null);
@@ -125,7 +131,7 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
           if (moteur === 'web') {
             void fermer();
             if (m !== null) { aEntenduRef.current = true; onMontant(m); return; }
-            DIRE_CLE('STOCK_065', dire);
+            DIRE_CLE(cleSilence, dire);
             return;
           }
           // Sherpa finalise le tampon pendant l'arrêt. Un texte final
@@ -136,7 +142,7 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
           void fermer();
           setIndisponible(true);
           setEcoute(false);
-          DIRE_CLE(code === 'micro' ? 'STOCK_063' : 'STOCK_064', dire);
+          DIRE_CLE(code === 'micro' ? cleMicro : cleReseau, dire);
         },
       });
       cheminRef.current = capture.moteur;
@@ -149,12 +155,12 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire }: Pr
         // l'a pas comprise, et que le clavier reste. Le chemin web relance
         // lui-même via `conclure` ; relancer ici aussi ferait deux fois la
         // phrase.
-        if (cheminRef.current === 'sherpa' && !aEntenduRef.current) DIRE_CLE('STOCK_065', dire);
+        if (cheminRef.current === 'sherpa' && !aEntenduRef.current) DIRE_CLE(cleSilence, dire);
       }, ECOUTE_MAX_MS);
     } catch {
       // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche
       // (STOCK_063). Le clavier reste le repli, et la phrase le nomme.
-      DIRE_CLE('STOCK_063', dire);
+      DIRE_CLE(cleMicro, dire);
       setIndisponible(true);
       setEcoute(false);
     }

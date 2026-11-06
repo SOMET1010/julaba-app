@@ -139,12 +139,16 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   ok(/cheminRef\.current = capture\.moteur/.test(bouton), 'le moteur retenu est tracé — la relance du minuteur ne double pas sa phrase');
   // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche. Un message
   // écrit seul est un message qu'elle n'entend jamais.
-  ok(/DIRE_CLE\('STOCK_063', dire\)/.test(bouton),
-     'la panne du micro se DIT (STOCK_063), comme le nom le fait avec STOCK_060');
-  ok(/DIRE_CLE\(code === 'micro' \? 'STOCK_063' : 'STOCK_064', dire\)/.test(bouton),
-     'l\'erreur web dit sa cause et le repli (STOCK_064)');
-  ok(/DIRE_CLE\('STOCK_065', dire\)/.test(bouton),
-     'le silence est relancé à la voix (STOCK_065) — le micro ne se referme plus muet');
+  // OUVERTURE DE CAISSE (06/11) : les clés deviennent des PROPS avec défauts
+  // — le fond de caisse n'est pas « le prix », sa panne nomme SON geste —
+  // mais les DÉFAUTS restent exactement STOCK_063/064/065 : aucun écran
+  // existant ne change d'un mot.
+  ok(/cleSilence = 'STOCK_065', cleMicro = 'STOCK_063', cleReseau = 'STOCK_064'/.test(bouton),
+     'les refus du prix restent STOCK_063/064/065 par défaut — extensibles par clés');
+  ok(/DIRE_CLE\(cleSilence, dire\)/.test(bouton),
+     'la panne du micro se DIT depuis la clé (défaut STOCK_063), comme le nom le fait avec STOCK_060');
+  ok(/DIRE_CLE\(code === 'micro' \? cleMicro : cleReseau, dire\)/.test(bouton),
+     'l\'erreur web dit sa cause et le repli (défaut STOCK_064)');
   ok(/cheminRef\.current === 'sherpa' && !aEntenduRef\.current/.test(bouton),
      'la relance du minuteur ne parle que si rien n\'a été compris — et pas sur le chemin web');
   // L'AFFICHAGE ET LA VOIX SORTENT DE LA MÊME CLÉ — jamais deux sources.
