@@ -76,6 +76,14 @@ export function DepenseForm() {
 
   const { sendText, confirmAction, cancelAction, pendingResponse, state: voiceState } = useVoiceCore({
     context: { module: 'depense', prenom: user?.firstName || 'ma chère', genre: (user as any)?.genre || 'femme', userId: user?.id },
+    // TERRAIN 06/11 — LA DÉPENSE VOCALE NE S'ENREGISTRAIT PAS AU MARCHÉ.
+    // Sans `offlineLocalIntents`, `dispatchVoiceAction` mettait la commande en
+    // file dès que le réseau était perçu absent — `enregistrerDepense` n'était
+    // JAMAIS appelé, et la dépense tactile, elle, partait bien dans la file
+    // offline-first du même appel. La voix emprunte désormais LE MÊME chemin
+    // que le doigt : l'exception policy exécute ici même, et c'est
+    // `enregistrerDepense` (offline-first : file avec clé d'idempotence,
+    // rejeu à la reconnexion) qui décide — sur le réseau, sinon en file.
     onAction: async (data) => {
       const { action } = data;
       if (!estActionDepenseValide(action)) {
@@ -107,6 +115,7 @@ export function DepenseForm() {
       }
     },
     onError: (message) => { toast.error(message); },
+    offlineLocalIntents: ['depense'],
   });
 
   const isConfirming = voiceState === 'confirming';

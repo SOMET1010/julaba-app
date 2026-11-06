@@ -46,6 +46,14 @@ const boutonsDuParcours = ['BoutonDireProduit', 'BoutonDireNom', 'BoutonDireUnit
 verifier(formulaire.includes('<BoutonDireDepense'), 'le formulaire utilise son écoute dédiée');
 verifier(formulaire.includes('sendText(phraseDepenseVocale(depense))'), 'la commande est reliée à la confirmation et à l’enregistrement');
 verifier(formulaire.includes('motifVocalEnAttenteRef.current || action.description?.trim()'), 'le motif dit traverse jusqu’à l’enregistrement sans modifier le parseur financier global');
+// TERRAIN 06/11 — LA DÉPENSE DITE S'ENREGISTRE COMME LE DOIGT. Sans
+// `offlineLocalIntents: ['depense']`, `dispatchVoiceAction` mettait la
+// commande en file hors ligne : `enregistrerDepense` n'était jamais appelé
+// alors que la voie tactile, elle, notait bien sa dépense (file offline-first
+// avec clé d'idempotence). La garde fige le câblage : la voix emprunte le
+// même chemin que le doigt, hors ligne compris.
+verifier(formulaire.includes("offlineLocalIntents: ['depense']"),
+  'la dépense vocale s\'exécute hors ligne par le MÊME chemin offline-first que le tactile');
 verifier(bouton.includes('VisuelBoutonDireDepense') && visuel.includes('aria-pressed={ecoute}'),
   'le bouton réutilise le rendu validé, en exposant son état d’écoute');
 verifier(controleur.includes('demarrerCaptureVocale('), 'la dépense délègue sa capture au cycle partagé');
