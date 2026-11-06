@@ -11,8 +11,8 @@ avant toute fin de session.
 | relevé | **06/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | merge azure/dev — récupération du push direct Azure : CI pipeline (`e04c96f3`, `5b675305`), domaine de test `julaba-app.dev-dtdi.ansut.ci` (`e97284c5`), réponses d'échec login normalisées (`70abf50b`), commandes vocales fiabilisées (`9b4a2b66`) |
-| dernier lot applicatif | 3 `fix(db)` du 06/11 après alignement de la base Azure : boot base vierge sans `uuid-ossp` (`97404d10`), garde `DB_MIGRATIONS_RUN` sans historique amorcé (`c8088ffc`), position enum (`97f06306`) — à la suite du retrait Render (03/11) et du merge dev→master `569e1bb7` |
+| dernier commit | `4b568139` — fix(marché) : la dépense vocale s'enregistre comme le doigt (`offlineLocalIntents ['depense']`) |
+| dernier lot applicatif | 3 `fix` voix du 06/11 (terrain Patrick) : l'entrée s'écoute vraiment sur l'APK + le oui réel du STT (`27127245`), le décollage des unités collées par l'ASR (`dc20365d`), la dépense vocale offline-first comme le tactile (`4b568139`) — à la suite du merge azure/dev `aa533692` (CI pipeline, domaine de test `julaba-app.dev-dtdi.ansut.ci`, fix auth, commandes vocales `9b4a2b66`) et des 3 `fix(db)` d'alignement (`97404d10`, `c8088ffc`, `97f06306`) |
 | dépôt | `SOMET1010/julaba-app` |
 
 ---
@@ -109,6 +109,29 @@ l'aperçu local**, pas sur une URL de preview.
 ---
 
 ## Livrable en cours
+
+### Session 06/11 — les trois oreilles vocales du terrain : entrer, vendre comment, payer où
+
+Patrick relève trois défauts (06/11) : « dis oui pour entrer » pas compris,
+la transcription mauvaise à « comment souhaites-tu le vendre ? », et
+l'enregistrement des dépenses vocales qui ne marche pas. Mesuré AVANT de
+corriger (script one-shot sur l'état) : le parse de la dépense est sain, ce
+sont l'OREILLE (le micro ne s'ouvrait jamais sur l'APK — drapeau figé lu avant
+que le plugin natif ne se monte) et la LECTURE (les formes réelles du STT —
+« wi », « c est bon », « aukilo », « alapièce » — rendaient null) qui
+défaillent, plus une asymétrie doigt/voix au dispatch.
+
+| Défaut rapporté | Cause mesurée | Correctif |
+|---|---|---|
+| « Dis oui pour entrer » pas compris | `offlineModelReady()` FIGÉ disait non au premier écran (plugin natif pas encore monté, B3) → l'écoute ne s'ouvrait JAMAIS ; et le « oui » réel du STT (« wi », « c est bon ») rendait null | sonde ASYNCHRONE dans `useCommandesVocales` (le micro n'ouvre que si elle passe) ; écrans sur le drapeau persistant ; `ACQUITTEMENT_APLATI` dans la grammaire d'entrée/numéro — PAS dans l'argent (`27127245`) |
+| « Comment souhaites-tu le vendre ? » mal transcrite | l'ASR colle la préposition à l'unité : « aukilo », « alapièce », « ensacs », « untas » → null → relance pour une réponse déjà donnée | le DÉCOLLAGE dans `uniteDite` : itératif borné, toutes les variantes explorées, chaque morceau repasse par LES MÊMES règles, rien n'est inventé (« restaurant » → null) (`dc20365d`) |
+| Dépense vocale non enregistrée | parse sain ; `DepenseForm` sans `offlineLocalIntents` → mise en file de rejeu hors ligne, `enregistrerDepense` jamais appelé — alors que le TACTILE notait sa dépense (offline-first, clé d'idempotence) | `offlineLocalIntents: ['depense']` : la voix emprunte le chemin du doigt, hors ligne compris ; la policy dit la vérité élargie (`4b568139`) |
+
+Preuves : typecheck vert ; 11 gardes vertes (commandes-entree, unite-dite,
+depense-vocale, depense-libelle, offline-voice-policy, offline-voice-dispatch,
+parole-entree, auth-charte, entree-unique, entree-numero-voix,
+parcours-guide-parle). **Reste à recetter sur appareil** : le micro réel web
+et APK — la grammaire et le câblage sont prouvés ici, l'écoute ne l'est pas.
 
 ### Session 06/11 — la base Azure alignée sur le schéma du code ; le boot blindé contre les deux pièges Azure
 
