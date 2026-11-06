@@ -18,9 +18,38 @@ export class P0ActivationEnrolement1780500000000 implements MigrationInterface {
   name = 'P0ActivationEnrolement1780500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // `en_attente_activation` doit naître À LA POSITION du code TypeScript
+    // (UserStatus, user.entity.ts : … en_attente_validation, en_attente_activation,
+    // supprime). Un simple `ADD VALUE` la mettrait EN FIN de liste — divergeant du
+    // code ET de la base Azure alignée le 06/11/2026 (type recréé à la main à cette
+    // même position, cf. rapport d'alignement). PostgreSQL ne sait pas insérer une
+    // valeur d'enum : on recrée le type. `users.status` est la SEULE colonne du
+    // type (vérifié sur la baseline et toute la chaîne de migrations), ni vue ni
+    // index ne la référencent ; le cast convertit les lignes existantes. Contrairement
+    // à `ADD VALUE`, recréer le type n'a pas de restriction « unsafe use of new
+    // value » : le type naît complet dans la transaction.
     await queryRunner.query(
-      `ALTER TYPE public.users_status_enum ADD VALUE IF NOT EXISTS 'en_attente_activation'`,
+      `ALTER TYPE public.users_status_enum RENAME TO users_status_enum_pre_p0`,
     );
+    await queryRunner.query(`
+      CREATE TYPE public.users_status_enum AS ENUM (
+        'pending',
+        'actif',
+        'suspendu',
+        'rejete',
+        'en_attente_validation',
+        'en_attente_activation',
+        'supprime'
+      )
+    `);
+    await queryRunner.query(
+      `ALTER TABLE public.users ALTER COLUMN status TYPE public.users_status_enum
+       USING status::text::public.users_status_enum`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE public.users ALTER COLUMN status SET DEFAULT 'pending'::public.users_status_enum`,
+    );
+    await queryRunner.query(`DROP TYPE public.users_status_enum_pre_p0`);
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS public.activation_codes (
@@ -50,7 +79,8 @@ export class P0ActivationEnrolement1780500000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS public.activation_codes`);
-    // La valeur d'enum ajoutée et l'invalidation des mots de passe ne sont pas
-    // réversibles proprement (PG ne sait pas retirer une valeur d'enum) — assumé.
+    // Le statut `en_attente_activation` et l'invalidation des mots de passe ne sont
+    // pas réversibles proprement : PostgreSQL ne sait pas retirer une valeur d'enum
+    // (et des comptes peuvent la porter) — assumé.
   }
 }
