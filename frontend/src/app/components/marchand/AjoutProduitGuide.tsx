@@ -33,7 +33,7 @@ import { resoudreMessage } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 import {
   etapeCourante, unitesProposees, produitACreer, peutValider, etapeSuivante, raisonDuRefus,
-  produitDejaSurEtal, stockComplete,
+  produitDejaSurEtal, produitNomDejaSurEtal, stockComplete,
   type BrouillonProduit, type EtapeAjout, type RaisonRefus,
 } from '../../services/premierProduit';
 import type { CaisseProduct } from '../../contexts/CaisseContext';
@@ -94,8 +94,9 @@ const PHRASE_DU_REFUS: Record<RaisonRefus, string> = {
 export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Props) {
   const { speak } = useApp();
   const { addProduct, updateProduct, refreshProducts, products } = useCaisse();
+  const produitDejaNomme = Boolean(depart?.nom && produitNomDejaSurEtal(depart.nom, products));
   const [nom, setNom] = useState(depart?.nom ?? '');
-  const [unite, setUnite] = useState(depart?.unite ?? '');
+  const [unite, setUnite] = useState(produitDejaNomme ? '' : depart?.unite ?? '');
   const [prix, setPrix] = useState(
     typeof depart?.prix === 'number' && depart.prix > 0 ? String(depart.prix) : '');
   const [uniteLibre, setUniteLibre] = useState(false);
@@ -157,7 +158,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    * explicite. `etapeCourante` reste la règle de complétude — elle sert ici à
    * DÉMARRER au bon endroit quand elle a déjà parlé (STK-05).
    */
-  const [etapeVue, setEtapeVue] = useState<EtapeAjout>(() => etapeCourante({
+  const [etapeVue, setEtapeVue] = useState<EtapeAjout>(() => produitDejaNomme ? 'unite' : etapeCourante({
     nom: depart?.nom ?? '', unite: depart?.unite ?? '',
     prix: typeof depart?.prix === 'number' && depart.prix > 0 ? depart.prix : null,
   }));
@@ -166,8 +167,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    * qu'elle l'a nommé : on ne lui fait pas reposer un produit qui est sur son
    * étal, on lui demande combien elle en AJOUTE.
    */
-  const [existant, setExistant] = useState<CaisseProduct | null>(() => (depart?.nom
-    ? produitDejaSurEtal({ nom: depart.nom, unite: depart.unite ?? '' }, products) : null));
+  const [existant, setExistant] = useState<CaisseProduct | null>(null);
   const aCreer = produitACreer(brouillon);
   const peutAvancer = peutValider(etapeVue, brouillon);
   /**
@@ -180,14 +180,15 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    */
   const avancer = () => {
     if (peutAvancer && etapeVue === 'nom') {
-      const deja = produitDejaSurEtal({ nom, unite: '' }, products);
-      if (deja) {
+      if (produitNomDejaSurEtal(nom, products)) {
         // A1 v2 — L'UNITÉ EST RE-DEMANDÉE (Patrick, 06/11) : « celle-ci peut
         // varier d'une opération à l'autre ». On ne pose plus l'unité de la
         // ligne existante comme allant de soi : elle la re-dit ou la
         // re-touche, et le TRI nom + unité décide ensuite (compléter le
         // stock, ou une NOUVELLE ligne à l'unité du jour). La question de
         // l'étape est dite par le bouton (STOCK_048) — elle sait quoi faire.
+        setUnite('');
+        setExistant(null);
         setEtapeVue('unite');
         return;
       }
@@ -210,8 +211,13 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
     setUnite(u);
     direMessage('TATA_UNITE_CHOISIE', { unite: u });
     const deja = produitDejaSurEtal({ nom, unite: u }, products);
-    if (deja) setExistant(deja);
-    else setEtapeVue('prix');
+    if (deja) {
+      setExistant(deja);
+      setEtapeVue('quantite');
+    } else {
+      setExistant(null);
+      setEtapeVue('prix');
+    }
   };
 
   /**
@@ -229,8 +235,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    * forme parlée compte, et c'est déjà la raison d'être de cette fonction.
    */
   useEffect(() => {
-    if (etapeVue === 'nom') direMessage('STOCK_047');
-    else if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
+    if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
     else if (etapeVue === 'quantite') direMessage('STOCK_054');
     // On ne redit pas la question à chaque frappe : seul le changement
     // d'ÉTAPE la déclenche.
@@ -346,7 +351,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
       {!existant && etapeVue === 'nom' && (
         <>
           <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--encre)', margin: 0 }}>
-            Quel produit tu veux ajouter ?
+            {resoudreMessage('STOCK_047').texte}
           </p>
           <input autoFocus value={nom} onChange={e => setNom(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); avancer(); } }}
@@ -375,7 +380,10 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               dans le champ ci-dessus, qui reste éditable. */}
           <BoutonDireNom
             ouvrirToutSeul
-            question="Quel produit tu veux ajouter ?"
+            question={resoudreMessage('STOCK_047').texte}
+            messageQuestion={resoudreMessage('STOCK_047')}
+            afficherEcoutePleinEcran
+            onAnnulerEcoute={onAnnuler}
             sesProduits={(products || []).map(p => ({ nom: p.nom }))}
             dire={dire}
             nomActuel={nom}
@@ -429,6 +437,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               <BoutonDireUnite
                 ouvrirToutSeul
                 question={resoudreMessage('STOCK_048', { nom }).texte}
+                messageQuestion={resoudreMessage('STOCK_048', { nom })}
                 dire={dire}
                 proposees={unitesProposees(sesUnites)}
                 onUnite={poserUniteEtTrier}

@@ -15,7 +15,7 @@
  * étapes ». Mesuré étape par étape : trois sur trois muettes.
  *
  * CE QUE CETTE GARDE TIENT :
- *  · chaque étape déclenche SA question, et une seule ;
+ *  · chaque étape déclenche SA question, et une seule, via le rendu catalogue ;
  *  · le texte dit est EXACTEMENT le texte affiché — jamais deux sens pour la
  *    même donnée ; un mot d'écart et l'oreille reçoit autre chose que l'œil ;
  *  · la question passe par `direMessage`, donc par `rendreMessage`, donc par
@@ -31,6 +31,8 @@ const ici = dirname(fileURLToPath(import.meta.url));
 const app = join(ici, '..', '..');
 
 const brut = readFileSync(join(ici, 'AjoutProduitGuide.tsx'), 'utf8');
+const boutonNom = readFileSync(join(ici, 'BoutonDireNom.tsx'), 'utf8');
+const boutonUnite = readFileSync(join(ici, 'BoutonDireUnite.tsx'), 'utf8');
 const catalogue = readFileSync(join(app, 'i18n/voice/catalog.ts'), 'utf8');
 
 /** On juge le CODE, pas ce qu'on en raconte : le commentaire qui explique le
@@ -71,11 +73,13 @@ for (const e of ETAPES) {
 console.log('\n[2] chaque étape DIT sa question');
 for (const e of ETAPES) {
   const motif = new RegExp(`etapeVue === '${e.etape}'\\)?\\s*direMessage\\('${e.id}'`);
-  const ditParBoutonMicro = e.etape === 'unite'
-    && /<BoutonDireUnite[\s\S]*?question=\{resoudreMessage\('STOCK_048', \{ nom \}\)\.texte\}/.test(src);
+  const ditParBoutonMicro = e.etape === 'nom'
+    ? /<BoutonDireNom[\s\S]*?messageQuestion=\{resoudreMessage\('STOCK_047'\)\}/.test(src)
+    : e.etape === 'unite'
+      && /<BoutonDireUnite[\s\S]*?messageQuestion=\{resoudreMessage\('STOCK_048', \{ nom \}\)\}/.test(src);
   ok(motif.test(src.replace(/\s+/g, ' ')) || ditParBoutonMicro,
      ditParBoutonMicro
-       ? `étape « ${e.etape} » → question STOCK_048 transmise au bouton micro`
+       ? `étape « ${e.etape} » → message catalogue transmis au bouton micro`
        : `étape « ${e.etape} » → direMessage('${e.id}')`,
      'sans ça l\'étape s\'affiche et se tait : elle ne saura pas quoi dire');
 }
@@ -102,6 +106,9 @@ console.log('\n[4] on passe par le RENDU, pas par la forme écran');
 // raccourci `dire(resoudreMessage(id).texte)` faisait épeler les montants.
 ok(/const direMessage = /.test(src), '`direMessage` existe');
 ok(/rendreMessage\(m, dire\)/.test(src), '`direMessage` passe par `rendreMessage`');
+ok(/rendreMessage\(messageQuestion, dire\)/.test(boutonNom)
+   && /rendreMessage\(messageQuestion, dire\)/.test(boutonUnite),
+   'les questions nom/unité transmettent leur message résolu au rendu vocal');
 for (const e of ETAPES) {
   ok(!new RegExp(`dire\\([^)]*${e.id}`).test(src),
      `${e.id} n'est pas envoyée à \`dire\` en contournant le rendu`);

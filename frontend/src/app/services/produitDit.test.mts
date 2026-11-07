@@ -117,7 +117,8 @@ console.log("\n[6] L'ÉCRAN DU STOCK EST VRAIMENT REBRANCHÉ");
   // `/depart/` seul restait vert alors que le parcours redemandait tout —
   // exactement le vert pour la mauvaise raison que ce dépôt traque.
   ok(/useState\(depart\?\.nom/.test(guide), "le nom qu'elle a dit n'est pas redemandé");
-  ok(/useState\(depart\?\.unite/.test(guide), "ni l'unité, quand elle l'a donnée");
+  ok(/useState\(produitDejaNomme \? '' : depart\?\.unite/.test(guide),
+     "l'unité dite est gardée pour un produit neuf, mais réinitialisée si le nom existe déjà");
   ok(/depart\?\.prix/.test(guide), "ni le prix, quand elle l'a dit");
   // VOIX-06 — la quantité dite dans la même phrase n'est PLUS JETÉE : elle
   // préremplit la question « Tu en as combien ? » (qui reste posée — elle

@@ -24,7 +24,7 @@
  * Lancer : npm run test:montant-dit
  */
 import { readFileSync } from 'node:fs';
-import { montantDit } from './montantDit.js';
+import { creerCycleMontantDicte, montantDit } from './montantDit.js';
 
 let echecs = 0;
 const ok = (c: boolean, quoi: string) => {
@@ -42,6 +42,18 @@ console.log('[1] CE QU\'ELLE DIT VRAIMENT À L\'ÉCRAN DU PRIX');
   ok(montantDit('mille cinq cents francs') === 1500, 'en toutes lettres avec la devise');
   ok(montantDit('deux mille') === 2000, '« deux mille » → 2000');
   ok(montantDit('cinq cents') === 500, '« cinq cents » → 500');
+}
+
+console.log("\n[1b] UN PROVISOIRE N'EST PAS UNE VALIDATION — FINAL UNIQUE");
+{
+  const cycle = creerCycleMontantDicte();
+  ok(cycle.provisoire('deux mille') === 2000, 'le provisoire peut alimenter l’aperçu');
+  ok(cycle.final('deux mille cinq cents') === 2500, 'le final fournit le montant validable');
+  ok(cycle.final('trois mille') === null, 'un second final ne valide jamais une seconde fois');
+  ok(cycle.provisoire('quatre mille') === null, 'après validation, le cycle est fermé');
+  const annule = creerCycleMontantDicte();
+  annule.annuler();
+  ok(annule.final('deux mille') === null, 'après annulation, aucun montant ne peut être livré');
 }
 
 console.log('\n[2] ELLE RÉPOND À LA QUESTION, PAS EN CHIFFRES SECS');
@@ -104,7 +116,14 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   // lecteur de montants, ce serait deux vérités sur un prix.
   const bouton = lire('BoutonDirePrix.tsx');
   const capture = readFileSync(new URL('../voice-offline/captureVocale.ts', import.meta.url), 'utf-8');
-  ok(/montantDit\(/.test(bouton), 'le micro lit le montant par la règle, pas à sa façon');
+  ok(/run\.cycle\.provisoire\(texte \|\| ''\)/.test(bouton)
+     && /onMontantIntermediaire\?\.\(montant\)/.test(bouton),
+     'l’interim ne passe que par l’aperçu intermédiaire');
+  ok(/run\.cycle\.final\(final\)/.test(bouton)
+     && /if \(montant !== null\) onMontant\(montant\)/.test(bouton),
+     'onMontant ne reçoit que le final après conclure');
+  ok(/if \(run\.fermeture\) return run\.fermeture/.test(bouton),
+     'l’arrêt normal et la confirmation finale sont protégés contre le double callback');
   // ET PAS DEUX LECTEURS. Un `parseInt` glissé à côté, et « mille cinq cents »
   // vaudrait 1500 ici et rien là : deux sens pour la même donnée, sur un prix.
   ok(!/parseInt|parseFloat|Number\(/.test(bouton),
@@ -136,7 +155,8 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
   // micro « ne marchait pas ».
   ok(/demarrerRecoWeb/.test(capture), 'le cycle du prix garde la dictée Web Speech (19/10)');
   ok(/recoWebDispo/.test(capture), 'le cycle ne la démarre que si le navigateur sait écouter');
-  ok(/cheminRef\.current = capture\.moteur/.test(bouton), 'le moteur retenu est tracé — la relance du minuteur ne double pas sa phrase');
+  ok(/if \(run\.fermeture\) return run\.fermeture/.test(bouton),
+     'l’arrêt unifié des moteurs ne peut pas relancer deux fois la phrase');
   // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche. Un message
   // écrit seul est un message qu'elle n'entend jamais.
   // OUVERTURE DE CAISSE (06/11) : les clés deviennent des PROPS avec défauts
@@ -149,8 +169,9 @@ console.log('\n[5] LES DEUX ÉCRANS DU PRIX LAISSENT PARLER — ET AUCUN NE FAIT
      'la panne du micro se DIT depuis la clé (défaut STOCK_063), comme le nom le fait avec STOCK_060');
   ok(/DIRE_CLE\(code === 'micro' \? cleMicro : cleReseau, dire\)/.test(bouton),
      'l\'erreur web dit sa cause et le repli (défaut STOCK_064)');
-  ok(/cheminRef\.current === 'sherpa' && !aEntenduRef\.current/.test(bouton),
-     'la relance du minuteur ne parle que si rien n\'a été compris — et pas sur le chemin web');
+  ok(/capture\?\.annuler\(\)/.test(bouton)
+     && /useEffect\(\(\) => \(\) => \{ void annulerCapture\(\); \}/.test(bouton),
+     'X et démontage annulent la capture sans valider le transcript');
   // L'AFFICHAGE ET LA VOIX SORTENT DE LA MÊME CLÉ — jamais deux sources.
   ok(/resoudreMessage\('STOCK_063'\)/.test(bouton),
      'l\'affichage de la panne sort de la même clé que la voix');

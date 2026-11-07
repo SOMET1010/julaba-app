@@ -36,3 +36,24 @@ export function montantDit(cequelleADit: string): number | null {
     ? Math.round(montant)
     : null;
 }
+
+/**
+ * Cycle pur d'une dictée de montant : un provisoire n'est jamais une validation,
+ * le final ne peut être consommé qu'une fois, et annuler invalide le cycle.
+ */
+export function creerCycleMontantDicte() {
+  let termine = false;
+  return {
+    provisoire(texte: string): number | null {
+      return termine ? null : montantDit(texte);
+    },
+    final(texte: string): number | null {
+      if (termine) return null;
+      termine = true;
+      return montantDit(texte);
+    },
+    annuler(): void {
+      termine = true;
+    },
+  };
+}

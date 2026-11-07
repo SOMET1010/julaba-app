@@ -192,6 +192,7 @@
     "test:commandes-entree": "tsx src/app/voice-offline/commandesEntree.test.mts",
     "test:commandes-accueil": "tsx src/app/voice-offline/commandesAccueil.test.mts",
     "test:accueil-cable": "tsx src/app/components/marchand/accueilCableVoix.test.mts",
+    "test:ouverture-caisse-react": "tsx src/app/components/marchand/OuvertureCaisseVoix.react.test.tsx",
     "test:objectif-dit": "tsx src/app/contexts/objectifDit.test.mts",
     "test:encaissement-deux-formes": "tsx src/app/services/encaissementDeuxFormes.test.mts",
     "test:panier-fidele": "tsx src/app/services/panierFidele.test.mts",

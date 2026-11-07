@@ -46,10 +46,15 @@ import { motion } from 'motion/react';
 import { Mic, Loader } from 'lucide-react';
 import { demarrerCaptureVocale } from '../../voice-offline/captureVocale';
 import { stopAllVoice } from '../../services/audioManager';
-import { montantDit } from '../../services/montantDit';
+import { creerCycleMontantDicte } from '../../services/montantDit';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 import { resoudreMessage } from '../../i18n/voice/runtime';
+import type { MessageVocal } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
+import { EcranEcoutePleinEcran } from './EcranEcoutePleinEcran';
+import type { SessionCaptureVocale } from '../../voice-offline/captureVocale';
+import { creerSessionAsyncExclusive } from '../../services/sessionAsyncExclusive';
+import type { JetonSessionAsync } from '../../services/sessionAsyncExclusive';
 
 /** Une seule clé pour un refus : l'écran l'affiche et la voix le dit. */
 const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
@@ -62,13 +67,33 @@ const CIBLE = 44;
 /** Au-delà, ce n'est plus un prix qu'on dit : on rend la main au clavier. */
 const ECOUTE_MAX_MS = 12000;
 
+interface CapturePrixEnCours {
+  jeton: JetonSessionAsync;
+  flux: MediaStream | null;
+  capture: SessionCaptureVocale | null;
+  cycle: ReturnType<typeof creerCycleMontantDicte>;
+  final: string | null;
+  terminee: boolean;
+  annulee: boolean;
+  fermeture: Promise<void> | null;
+  minuteur: ReturnType<typeof setTimeout> | null;
+}
+
 interface Props {
   /** Reçoit le montant dès qu'il est lisible — en direct, elle voit monter. */
   onMontant: (montant: number) => void;
+  /** Reçoit seulement l'aperçu; ne valide jamais le champ métier. */
+  onMontantIntermediaire?: (montant: number) => void;
   /** Vrai pour ouvrir le micro de lui-même dès l'arrivée sur l'écran du prix. */
   ouvrirToutSeul?: boolean;
   /** Dit avant d'écouter. Rien n'est écouté tant que Tantie parle. */
   question?: string;
+  /** Passe par le rendu du catalogue lorsqu'un message résolu est disponible. */
+  messageQuestion?: MessageVocal;
+  /** Présentation de l'écoute sans texte, réservée aux parcours qui la demandent. */
+  afficherEcoutePleinEcran?: boolean;
+  /** Ferme aussi le parcours parent quand l'écoute plein écran est quittée. */
+  onAnnulerEcoute?: () => void;
   /** VOX-05a — si cette fonction rend une promesse, on ATTEND la fin réelle de
    *  la parole. Sinon on retombe sur le délai fixe, pour les appelants qui ne
    *  savent pas dire quand ils ont fini. */
@@ -81,89 +106,127 @@ interface Props {
   cleReseau?: string;
 }
 
-export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire, cleSilence = 'STOCK_065', cleMicro = 'STOCK_063', cleReseau = 'STOCK_064' }: Props) {
+export function BoutonDirePrix({ onMontant, onMontantIntermediaire, ouvrirToutSeul, question, messageQuestion, afficherEcoutePleinEcran, onAnnulerEcoute, dire, cleSilence = 'STOCK_065', cleMicro = 'STOCK_063', cleReseau = 'STOCK_064' }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
-  const arretRef = useRef<null | (() => Promise<void>)>(null);
-  const fluxRef = useRef<MediaStream | null>(null);
-  const minuteurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ecouteRef = useRef(false);
+  const gardeRef = useRef(creerSessionAsyncExclusive());
+  const sessionRef = useRef<CapturePrixEnCours | null>(null);
   const demarreRef = useRef(false);
-  /** VOX-06 — a-t-elle été comprise ? Le silence du minuteur ne se referme
-   *  muet que si NON ; sur le chemin web, c'est `conclure` qui relance. */
-  const aEntenduRef = useRef(false);
-  /** Le chemin actif : seul le chemin sherpa laisse le minuteur relancer
-   *  (sur le chemin web, `conclure` livre le texte final et relance lui-même
-   *  — relancer ici aussi ferait deux fois la phrase). */
-  const cheminRef = useRef<null | 'web' | 'sherpa'>(null);
+  const sessionCourante = (run: CapturePrixEnCours) =>
+    gardeRef.current.estCourante(run.jeton) && sessionRef.current === run && !run.annulee;
 
-  const fermer = async () => {
-    if (minuteurRef.current) { clearTimeout(minuteurRef.current); minuteurRef.current = null; }
-    try { await arretRef.current?.(); } catch { /* ignore */ }
-    arretRef.current = null;
-    try { fluxRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-    fluxRef.current = null;
+  const libererMicro = (run: CapturePrixEnCours) => {
+    if (!sessionCourante(run)) return;
+    if (run.minuteur) clearTimeout(run.minuteur);
+    run.minuteur = null;
+    try { run.flux?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    run.flux = null;
+    run.capture = null;
+    sessionRef.current = null;
+    ecouteRef.current = false;
+    gardeRef.current.terminer(run.jeton);
     setEcoute(false);
   };
 
-  const ecouter = async () => {
-    if (ecoute) { void fermer(); return; }
-    aEntenduRef.current = false;
-    cheminRef.current = null;
-    // VERROU PAROLE / ÉCOUTE : si Tantie parle encore, le micro l'entend elle
-    // et transcrit sa propre voix. On coupe tout avant d'ouvrir l'oreille.
-    try { stopAllVoice(); } catch { /* ignore */ }
+  /** Arrêt normal : le moteur livre son final, puis seulement le montant valide. */
+  const terminerCapture = (run: CapturePrixEnCours): Promise<void> => {
+    if (!sessionCourante(run)) return Promise.resolve();
+    if (run.fermeture) return run.fermeture;
+    run.fermeture = (async () => {
+      try { await run.capture?.conclure(); } catch { /* résultat vide */ }
+      if (!sessionCourante(run)) return;
+      const final = run.final;
+      libererMicro(run);
+      if (!final || run.terminee) return;
+      run.terminee = true;
+      const montant = run.cycle.final(final);
+      if (montant !== null) onMontant(montant);
+      else DIRE_CLE(cleSilence, dire);
+    })();
+    return run.fermeture;
+  };
+
+  /** X et démontage invalident d'abord la session, y compris si un await pend. */
+  const annulerCapture = async (run = sessionRef.current) => {
+    if (!run || !sessionCourante(run)) return;
+    run.annulee = true;
+    gardeRef.current.annuler(run.jeton);
+    sessionRef.current = null;
+    ecouteRef.current = false;
+    setEcoute(false);
+    if (run.minuteur) clearTimeout(run.minuteur);
+    run.minuteur = null;
+    run.cycle.annuler();
+    try { run.flux?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    run.flux = null;
+    const capture = run.capture;
+    run.capture = null;
+    try { await capture?.annuler(); } catch { /* annulation best effort */ }
+  };
+
+  const demarrerCapture = async (run: CapturePrixEnCours) => {
     try {
-      // MIC-01 — anti-écho : le micro s'ouvre JUSTE APRÈS la question dite par
-      // Tantie. Nu (`{ audio: true }`), il reprenait le haut-parleur et le
-      // moteur transcrivait l'application elle-même. Le réglage vit dans
-      // `services/contraintesMicro` — une seule liste pour tous les micros.
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
-      fluxRef.current = flux;
-      setEcoute(true);
+      if (!sessionCourante(run)) {
+        flux.getTracks().forEach(t => t.stop());
+        return;
+      }
+      run.flux = flux;
       const capture = await demarrerCaptureVocale(flux, {
         interim: (texte) => {
-          const m = montantDit(texte || '');
-          // EN DIRECT : elle voit le chiffre monter pendant qu'elle parle.
-          if (m !== null) { aEntenduRef.current = true; onMontant(m); }
+          if (!sessionCourante(run)) return;
+          const montant = run.cycle.provisoire(texte || '');
+          if (montant !== null) onMontantIntermediaire?.(montant);
         },
-        conclure: (texte, moteur) => {
-          const m = montantDit(texte || '');
-          if (moteur === 'web') {
-            void fermer();
-            if (m !== null) { aEntenduRef.current = true; onMontant(m); return; }
-            DIRE_CLE(cleSilence, dire);
-            return;
-          }
-          // Sherpa finalise le tampon pendant l'arrêt. Un texte final
-          // illisible suit le même filet de silence qu'avant.
-          if (m !== null) { aEntenduRef.current = true; onMontant(m); void fermer(); }
+        conclure: (texte) => {
+          if (!sessionCourante(run) || run.terminee || run.final !== null) return;
+          run.final = texte;
+          if (!run.fermeture) void terminerCapture(run).catch(() => {});
         },
         erreurWeb: (code) => {
-          void fermer();
+          if (!sessionCourante(run)) return;
+          void annulerCapture(run);
           setIndisponible(true);
-          setEcoute(false);
           DIRE_CLE(code === 'micro' ? cleMicro : cleReseau, dire);
         },
       });
-      cheminRef.current = capture.moteur;
-      arretRef.current = capture.conclure;
-      // Filet : une écoute qui ne se referme jamais retient le micro et vide
-      // la batterie. Le clavier reprend la main.
-      minuteurRef.current = setTimeout(() => {
-        void fermer();
-        // VOX-06 — le silence ne se referme plus muet : elle sait qu'on ne
-        // l'a pas comprise, et que le clavier reste. Le chemin web relance
-        // lui-même via `conclure` ; relancer ici aussi ferait deux fois la
-        // phrase.
-        if (cheminRef.current === 'sherpa' && !aEntenduRef.current) DIRE_CLE(cleSilence, dire);
+      if (!sessionCourante(run)) {
+        try { await capture.annuler(); } catch { /* annulation best effort */ }
+        try { flux.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+        return;
+      }
+      run.capture = capture;
+      ecouteRef.current = true;
+      setEcoute(true);
+      run.minuteur = setTimeout(() => {
+        void terminerCapture(run).then(() => {
+          if (!run.annulee && !run.final) DIRE_CLE(cleSilence, dire);
+        }).catch(() => {});
       }, ECOUTE_MAX_MS);
     } catch {
-      // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche
-      // (STOCK_063). Le clavier reste le repli, et la phrase le nomme.
+      if (!sessionCourante(run)) return;
+      void annulerCapture(run);
       DIRE_CLE(cleMicro, dire);
       setIndisponible(true);
-      setEcoute(false);
     }
+  };
+
+  const ecouter = () => {
+    const existante = sessionRef.current;
+    if (existante) {
+      if (ecouteRef.current) void terminerCapture(existante).catch(() => {});
+      return;
+    }
+    const jeton = gardeRef.current.demarrer();
+    if (!jeton) return;
+    const run: CapturePrixEnCours = {
+      jeton, flux: null, capture: null, cycle: creerCycleMontantDicte(),
+      final: null, terminee: false, annulee: false, fermeture: null, minuteur: null,
+    };
+    sessionRef.current = run;
+    try { stopAllVoice(); } catch { /* ignore */ }
+    void demarrerCapture(run);
   };
 
   useEffect(() => {
@@ -192,8 +255,10 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire, cleS
     let minuteur: ReturnType<typeof setTimeout> | null = null;
     const ouvrir = () => { if (!annule) void ecouter(); };
 
-    if (question && dire) {
-      const parle = dire(question) as unknown;
+    if ((messageQuestion || question) && dire) {
+      const parle = messageQuestion
+        ? rendreMessage(messageQuestion, dire)
+        : dire(question!) as unknown;
       if (parle && typeof (parle as Promise<void>).then === 'function') {
         // Une marge courte après la dernière syllabe : le haut-parleur finit
         // de rendre, et le micro n'avale pas la queue de la voix de Tantie.
@@ -211,7 +276,11 @@ export function BoutonDirePrix({ onMontant, ouvrirToutSeul, question, dire, cleS
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule ouverture par écran
   }, []);
 
-  useEffect(() => () => { void fermer(); }, []);
+  useEffect(() => () => { void annulerCapture(); }, []);
+
+  if (afficherEcoutePleinEcran && ecoute) {
+    return <EcranEcoutePleinEcran onFermer={() => { void annulerCapture(); onAnnulerEcoute?.(); }} />;
+  }
 
   if (indisponible) {
     return (

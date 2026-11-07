@@ -297,6 +297,12 @@ export interface ProduitSurEtal {
   readonly stock: number | null;
 }
 
+/** Le nom suffit à savoir qu'une unité doit être redemandée pour l'opération. */
+export function produitNomDejaSurEtal(nomDit: string, etal: readonly Pick<ProduitSurEtal, 'nom'>[]): boolean {
+  const nom = normaliserNom(nomDit);
+  return !!nom && etal.some(p => normaliserNom(p.nom ?? '') === nom);
+}
+
 export function produitDejaSurEtal<P extends ProduitSurEtal>(
   b: Pick<BrouillonProduit, 'nom' | 'unite'>, etal: readonly P[],
 ): P | null {

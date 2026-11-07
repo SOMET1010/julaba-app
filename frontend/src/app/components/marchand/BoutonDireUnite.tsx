@@ -31,6 +31,7 @@ import { stopAllVoice } from '../../services/audioManager';
 import { uniteDite } from '../../services/uniteDite';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 import { resoudreMessage } from '../../i18n/voice/runtime';
+import type { MessageVocal } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
 
 const ORANGE = 'var(--commerce-action)';
@@ -48,6 +49,8 @@ interface Props {
   ouvrirToutSeul?: boolean;
   /** Dit avant d'écouter. Rien n'est écouté tant que Tantie parle. */
   question?: string;
+  /** Passe par le rendu du catalogue lorsqu'un message résolu est disponible. */
+  messageQuestion?: MessageVocal;
   /** Fait parler l'écran (le guidage vocal de la caisse). */
   dire?: (texte: string) => void | Promise<void>;
 }
@@ -57,7 +60,7 @@ const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
   void rendreMessage(resoudreMessage(id), (t) => dire?.(t));
 };
 
-export function BoutonDireUnite({ proposees, onUnite, ouvrirToutSeul, question, dire }: Props) {
+export function BoutonDireUnite({ proposees, onUnite, ouvrirToutSeul, question, messageQuestion, dire }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
   const arretRef = useRef<null | (() => Promise<void>)>(null);
@@ -137,8 +140,10 @@ export function BoutonDireUnite({ proposees, onUnite, ouvrirToutSeul, question, 
     let minuteur: ReturnType<typeof setTimeout> | null = null;
     const ouvrir = () => { if (!annule) void ecouter(); };
 
-    if (question && dire) {
-      const parle = dire(question) as unknown;
+    if ((messageQuestion || question) && dire) {
+      const parle = messageQuestion
+        ? rendreMessage(messageQuestion, dire)
+        : dire(question!) as unknown;
       if (parle && typeof (parle as Promise<void>).then === 'function') {
         void (parle as Promise<void>).then(
           () => { minuteur = setTimeout(ouvrir, 250); },

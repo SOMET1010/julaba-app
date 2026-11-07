@@ -47,13 +47,28 @@ import { stopAllVoice } from '../../services/audioManager';
 import { nomLibreDicte, produitDit, type EcouteProduit } from '../../services/produitDit';
 import { CONTRAINTES_MICRO_DICTEE } from '../../services/contraintesMicro';
 import { resoudreMessage } from '../../i18n/voice/runtime';
+import type { MessageVocal } from '../../i18n/voice/runtime';
 import { rendreMessage } from '../../i18n/voice/contrat-audio';
+import { EcranEcoutePleinEcran } from './EcranEcoutePleinEcran';
+import type { SessionCaptureVocale } from '../../voice-offline/captureVocale';
+import { creerSessionAsyncExclusive } from '../../services/sessionAsyncExclusive';
+import type { JetonSessionAsync } from '../../services/sessionAsyncExclusive';
 
 const ORANGE = 'var(--commerce-action)';
 /** Même cible tactile que le reste de la caisse : un doigt, pas un curseur. */
 const CIBLE = 44;
 /** Au-delà, ce n'est plus un nom qu'on dit : on rend la main au champ. */
 const ECOUTE_MAX_MS = 12000;
+
+interface CaptureNomEnCours {
+  jeton: JetonSessionAsync;
+  flux: MediaStream | null;
+  capture: SessionCaptureVocale | null;
+  finale: boolean;
+  annulee: boolean;
+  fermeture: Promise<void> | null;
+  minuteur: ReturnType<typeof setTimeout> | null;
+}
 
 interface Props {
   /** Son étal, pour reprendre SON orthographe au lieu d'en créer une seconde. */
@@ -72,6 +87,12 @@ interface Props {
   ouvrirToutSeul?: boolean;
   /** Dit avant d'écouter. Rien n'est écouté tant que Tantie parle. */
   question?: string;
+  /** Passe par le rendu du catalogue lorsqu'un message résolu est disponible. */
+  messageQuestion?: MessageVocal;
+  /** Présentation de l'écoute sans texte, réservée aux parcours qui la demandent. */
+  afficherEcoutePleinEcran?: boolean;
+  /** Ferme aussi le parcours parent quand l'écoute plein écran est quittée. */
+  onAnnulerEcoute?: () => void;
 }
 
 /** Une seule clé pour un refus : l'écran l'affiche et la voix le dit. */
@@ -79,68 +100,126 @@ const DIRE_CLE = (id: string, dire?: (t: string) => void) => {
   void rendreMessage(resoudreMessage(id), (t) => dire?.(t));
 };
 
-export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutSeul, question }: Props) {
+export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutSeul, question, messageQuestion, afficherEcoutePleinEcran, onAnnulerEcoute }: Props) {
   const [ecoute, setEcoute] = useState(false);
   const [indisponible, setIndisponible] = useState(false);
-  const arretRef = useRef<null | (() => Promise<void>)>(null);
-  const fluxRef = useRef<MediaStream | null>(null);
-  const minuteurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ecouteRef = useRef(false);
+  const gardeRef = useRef(creerSessionAsyncExclusive());
+  const sessionRef = useRef<CaptureNomEnCours | null>(null);
   const demarreRef = useRef(false);
 
-  const fermer = async () => {
-    if (minuteurRef.current) { clearTimeout(minuteurRef.current); minuteurRef.current = null; }
-    try { await arretRef.current?.(); } catch { /* ignore */ }
-    arretRef.current = null;
-    try { fluxRef.current?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
-    fluxRef.current = null;
+  const sessionCourante = (run: CaptureNomEnCours) =>
+    gardeRef.current.estCourante(run.jeton) && sessionRef.current === run && !run.annulee;
+
+  const libererMicro = (run: CaptureNomEnCours) => {
+    if (!sessionCourante(run)) return;
+    if (run.minuteur) clearTimeout(run.minuteur);
+    run.minuteur = null;
+    try { run.flux?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    run.flux = null;
+    run.capture = null;
+    sessionRef.current = null;
+    ecouteRef.current = false;
+    gardeRef.current.terminer(run.jeton);
     setEcoute(false);
   };
 
-  const ecouter = async () => {
-    if (ecoute) { void fermer(); return; }
-    // VERROU PAROLE / ÉCOUTE : si Tantie parle encore (STOCK_047, la relecture
-    // d'une dictée précédente), le micro l'entendrait elle. On coupe tout
-    // avant d'ouvrir l'oreille.
-    try { stopAllVoice(); } catch { /* ignore */ }
+  const fermer = (run: CaptureNomEnCours): Promise<void> => {
+    if (!sessionCourante(run)) return Promise.resolve();
+    if (run.fermeture) return run.fermeture;
+    run.fermeture = (async () => {
+      try { await run.capture?.conclure(); } catch { /* résultat vide */ }
+      libererMicro(run);
+    })();
+    return run.fermeture;
+  };
+
+  const annulerCapture = async (run = sessionRef.current) => {
+    if (!run || !sessionCourante(run)) return;
+    run.annulee = true;
+    gardeRef.current.annuler(run.jeton);
+    sessionRef.current = null;
+    ecouteRef.current = false;
+    setEcoute(false);
+    if (run.minuteur) clearTimeout(run.minuteur);
+    run.minuteur = null;
+    try { run.flux?.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+    run.flux = null;
+    const capture = run.capture;
+    run.capture = null;
+    try { await capture?.annuler(); } catch { /* annulation best effort */ }
+  };
+
+  const demarrerCapture = async (run: CaptureNomEnCours) => {
     try {
       // MIC-01 — anti-écho : même réglage que tous les micros de la caisse
       // (`services/contraintesMicro`, une seule liste).
       const flux = await navigator.mediaDevices.getUserMedia(CONTRAINTES_MICRO_DICTEE);
-      fluxRef.current = flux;
-      setEcoute(true);
+      if (!sessionCourante(run)) {
+        flux.getTracks().forEach(t => t.stop());
+        return;
+      }
+      run.flux = flux;
       const capture = await demarrerCaptureVocale(flux, {
         interim: () => {},
         conclure: (texte) => {
+          if (!sessionCourante(run) || run.finale) return;
+          run.finale = true;
           // STK-25 AUX DEUX OREILLES — le lexique, puis SON étal, puis le nom
           // libre. « Ajoute dix kassos » ne peut pas être jeté par le seul
           // chemin qui l'a pourtant transcrit. Et la correction mot à mot
           // (« non, pas kasso, gombo ») réfute le nom affiché.
           const lu = produitDit(texte || '', sesProduits) ?? nomLibreDicte(texte || '', nomActuel);
-          void fermer();
+          libererMicro(run);
           if (lu) { onNom(lu); return; }
           DIRE_CLE('STOCK_046', dire);
         },
         erreurWeb: (code) => {
-          void fermer();
+          if (!sessionCourante(run)) return;
+          void annulerCapture(run);
           setIndisponible(true);
-          setEcoute(false);
           DIRE_CLE(code === 'micro' ? 'STOCK_060' : 'STOCK_061', dire);
         },
       });
-      arretRef.current = capture.conclure;
+      if (!sessionCourante(run)) {
+        try { await capture.annuler(); } catch { /* annulation best effort */ }
+        try { flux.getTracks().forEach(t => t.stop()); } catch { /* ignore */ }
+        return;
+      }
+      run.capture = capture;
+      ecouteRef.current = true;
+      setEcoute(true);
       // Filet : une écoute qui ne se referme jamais retient le micro et vide
       // la batterie. Le champ reprend la main.
-      minuteurRef.current = setTimeout(() => { void fermer(); }, ECOUTE_MAX_MS);
+      run.minuteur = setTimeout(() => { void fermer(run).catch(() => {}); }, ECOUTE_MAX_MS);
     } catch {
+      if (!sessionCourante(run)) return;
+      void annulerCapture(run);
       // STK-22 — LA PANNE SE DIT, depuis la même clé qu'elle affiche
       // (STOCK_060). Le champ texte reste le repli, et la phrase le nomme.
       DIRE_CLE('STOCK_060', dire);
       setIndisponible(true);
-      setEcoute(false);
     }
   };
 
-  useEffect(() => () => { void fermer(); }, []);
+  const ecouter = () => {
+    const existante = sessionRef.current;
+    if (existante) {
+      if (ecouteRef.current) void fermer(existante).catch(() => {});
+      return;
+    }
+    const jeton = gardeRef.current.demarrer();
+    if (!jeton) return;
+    const run: CaptureNomEnCours = {
+      jeton, flux: null, capture: null, finale: false,
+      annulee: false, fermeture: null, minuteur: null,
+    };
+    sessionRef.current = run;
+    try { stopAllVoice(); } catch { /* ignore */ }
+    void demarrerCapture(run);
+  };
+
+  useEffect(() => () => { void annulerCapture(); }, []);
 
   useEffect(() => {
     if (!ouvrirToutSeul || demarreRef.current) return;
@@ -156,8 +235,10 @@ export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutS
     let minuteur: ReturnType<typeof setTimeout> | null = null;
     const ouvrir = () => { if (!annule) void ecouter(); };
 
-    if (question && dire) {
-      const parle = dire(question) as unknown;
+    if ((messageQuestion || question) && dire) {
+      const parle = messageQuestion
+        ? rendreMessage(messageQuestion, dire)
+        : dire(question!) as unknown;
       if (parle && typeof (parle as Promise<void>).then === 'function') {
         void (parle as Promise<void>).then(
           () => { minuteur = setTimeout(ouvrir, 250); },
@@ -172,6 +253,10 @@ export function BoutonDireNom({ sesProduits, onNom, dire, nomActuel, ouvrirToutS
     return () => { annule = true; if (minuteur) clearTimeout(minuteur); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule ouverture par écran
   }, []);
+
+  if (afficherEcoutePleinEcran && ecoute) {
+    return <EcranEcoutePleinEcran onFermer={() => { void annulerCapture(); onAnnulerEcoute?.(); }} />;
+  }
 
   if (indisponible) {
     return (

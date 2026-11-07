@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import {
   etapeCourante, unitesProposees, produitPret, produitACreer,
   UNITES_DU_MARCHE, type BrouillonProduit,
-  peutValider, etapeSuivante, produitDejaSurEtal, stockComplete,
+  peutValider, etapeSuivante, produitDejaSurEtal, produitNomDejaSurEtal, stockComplete,
 } from './premierProduit.js';
 
 let echecs = 0;
@@ -325,6 +325,10 @@ console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
   ok(produitDejaSurEtal({ nom: 'Tomate', unite: '' },
        [...etal, { id: 't3', nom: 'Tomate', unite: 'tas', prix: 200, stock: 1 }]) === null,
      'même nom sous deux unités, unité pas encore dite : ambigu → null');
+  ok(produitNomDejaSurEtal('Tomaté', etal), 'le nom seul détecte un produit existant avant de re-demander son unité');
+  ok(produitNomDejaSurEtal('Tomate', [...etal, { id: 't3', nom: 'Tomate', unite: 'tas', prix: 200, stock: 1 }]),
+     'le nom seul détecte aussi les produits existants sous plusieurs unités');
+  ok(!produitNomDejaSurEtal('Piment', etal), 'un nom nouveau ne force pas l’étape de re-choix');
   ok(produitDejaSurEtal({ nom: 'Piment', unite: 'kg' }, etal) === null, 'un nom neuf : rien à compléter');
   ok(produitDejaSurEtal({ nom: '', unite: '' }, etal) === null, 'un nom vide ne retrouve rien');
 
@@ -346,6 +350,8 @@ console.log("\n[7] CE QU'ELLE ENTEND N'EST PAS CE QU'ON AFFICHE");
      "AjoutProduitGuide consulte `produitDejaSurEtal` AVANT d'appeler `addProduct`");
   ok(/updateProduct\s*\([^)]*\{\s*stock\s*:/.test(ap),
      "un produit déjà là se complète par `updateProduct(id, { stock })`, le chemin de « + Ajouter »");
+  ok(/produitNomDejaSurEtal\(nom, products\)/.test(ap) && /setUnite\(''\)/.test(ap),
+     'un produit existant recommence avec une unité vide, même si la dictée l’avait préremplie');
   ok(/useCaisse\(\)/.test(ap) && /\bproducts\b/.test(ap), "l'écran lit son étal (`products` de la caisse)");
 }
 
@@ -372,4 +378,3 @@ console.log(echecs === 0
   ? '\n✅ Trois questions, son prix, un seul enregistrement.\n'
   : `\n❌ ${echecs} échec(s)\n`);
 process.exit(echecs === 0 ? 0 : 1);
-

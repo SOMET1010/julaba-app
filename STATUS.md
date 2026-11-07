@@ -8,12 +8,90 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **06/11/2026** |
+| relevé | **07/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `1b1e5658` — feat(voix) : AppContext.speak joue enfin les clips (le câblage qui manquait) |
+| dernier commit | `34ba9c24` — docs(worklog): voix-eventualites-06-11 |
 | dernier lot applicatif | 2 `feat` voix du 06/11 (ordre Patrick : « la voix pour toutes les éventualités ») : 24 clips embarqués sur les textes EXACTS des trois flux (produit, dépense, caisse) + registre régénéré (`56a677d8`), le chemin AppContext.speak consulte l'index des clips (`1b1e5658`) — à la suite des 3 `feat` des deux portes du matin (`cd51a5f8`, `42fe5d10`, `50f2013d`) et des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) |
 | dépôt | `SOMET1010/julaba-app` |
+
+---
+
+## Session 07/11 — portes vocales, ajout produit et corrections de relecture
+
+**Livrable en cours** : alignement des deux parcours vocaux sur l’aperçu
+non-prod en réutilisant les parcours existants, puis sécurisation des cycles
+final/interim, de la parole de confirmation et des annulations. La maquette
+`frontend/apercu-accueil-voix/` reste non suivie et inchangée. Aucun commit,
+push ni déploiement.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| « Ouvrir ma caisse » disponible au bon état, par voix depuis l’accueil | ✅ ciblé | `MarchandAccueilVoice.tsx`, `test:commandes-accueil`, `test:accueil-cable` |
+| Question exacte et relecture catalogue/parlée; seul un oui compris ouvre la caisse | ✅ ciblé | `OuvertureCaisseVoix.tsx`, `BoutonDirePrix.tsx`, `test:accueil-cable`, `test:clips-embarques` |
+| Interim distinct de la validation; un seul montant final après arrêt du micro | ✅ ciblé | cycle pur `montantDit.ts`; `test:montant-dit` couvre interim/final/annulation; `test:accueil-cable` |
+| Double démarrage et annulation pendant les awaits (prix/nom) | ✅ corrigé | verrou synchrone et jeton de session dans `sessionAsyncExclusive.ts`, `BoutonDirePrix.tsx`, `BoutonDireNom.tsx`; tests comportementaux dans `test:accueil-cable` |
+| Échec de parole de confirmation ou rejet de `openDay` : aucune fausse confirmation; reprise sans double écriture | ✅ corrigé | `tentativeOuverture.ts`, `OuvertureCaisseVoix.tsx`, clé catalogue `CAI_OUVERTURE_ECHEC`; test comportemental dans `test:accueil-cable` |
+| X/démontage des dictées prix et nom n’expédient ni ne conservent de session obsolète | ✅ corrigé | annulation immédiate du jeton et capture locale dans `BoutonDirePrix.tsx` et `BoutonDireNom.tsx`; `test:montant-dit`, `test:accueil-cable` |
+| Écoute sans texte; annulation de confirmation sans écriture | ✅ ciblé | `EcranEcoutePleinEcran.tsx`, garde `test:accueil-cable` |
+| Ajout vocal routé au guide graphique existant; unité re-demandée pour chaque opération, même produit existant | ✅ ciblé | `GestionStock.tsx`, `AjoutProduitGuide.tsx`, `premierProduit.ts`; `test:premier-produit`, `test:produit-dit`, `test:parcours-guide-parle`, `test:accueil-cable` |
+| `test:commandes-accueil` et `test:accueil-cable` rattachés à `verify`; `test:ci` inchangé | ✅ | `frontend/scripts/maillons-verify.json`, `test:maillons-orphelins`; `frontend/package.json` non modifié |
+| Typecheck et build frontend | ✅ | `npm run typecheck`, `npm run build` verts |
+| Chaîne `verify` sans rouge nouveau | ⚠️ non conforme | dernière exécution : 159/168 verts; 1 🟠 connu (`test:garde-argent`) et 8 ❌ non résolus, hors périmètre (`test:jargon`, `test:enum-check-phone`, `test:warn-dev`, `test:voix-trace`, `test:voix-trace-source`, `test:i18n-source`, `test:i18n-empreintes-argent`, `test:micro-niveau-parole`); aucun n’a été modifié dans ce lot |
+| Écoute au micro web/APK et recette terrain | ⬜ | non exécutées; couverture ciblée de source/pure seulement |
+
+**Relecture des bloqueurs (07/11)** : les doubles appels sont verrouillés dès
+l’entrée dans la fonction, avant le premier `await`. Chaque session invalide
+ses callbacks et ne peut libérer ni remplacer la session suivante; X et
+démontage arrêtent également une capture dont le démarrage est encore pendant.
+Un rejet de l’ouverture garde le montant confirmé, annonce l’échec via le
+catalogue, puis réarme la confirmation vocale et tactile après la parole. La
+tentative ignore les appels simultanés et n’autorise un nouvel essai qu’après
+rejet; un succès la ferme. Les tests comportementaux ont été ajoutés au maillon
+existant `test:accueil-cable`, déjà inscrit dans
+`frontend/scripts/maillons-verify.json`; aucun maillon ajouté et `test:ci` reste
+inchangé.
+
+**Preuves de relecture (07/11)** : `test:accueil-cable`,
+`test:montant-dit`, `test:produit-dit`, `typecheck` et `build` passent.
+`npm run verify --workspace frontend` termine à 159/168 (1 🟠 et 8 ❌ hors
+périmètre détaillés ci-dessus); le lot ne corrige aucun de ces rouges. Le
+micro web/APK et la recette terrain restent non exécutés.
+
+### Seconde relecture — bloqueurs de confirmation et parcours comportemental
+
+La reprise après rejet de `openDay` vérifie maintenant le résultat booléen de
+`paroleConfirmationTerminee`. Si le TTS d’erreur échoue, l’état reste non
+confirmé : aucun écouteur oui/non ne démarre et `paroleRef` interdit une autre
+écriture. L’écran affiche l’échec et propose « Réessayer la parole » ou « Plus
+tard ». Un test React/JSDOM avec les composants réels couvre le rejet de
+`openDay`, le TTS de reprise en échec puis réussi, l’absence d’écriture avant
+un nouveau oui, et les annulations durant `getUserMedia` et la résolution de
+`demarrerCaptureVocale`.
+
+Le nouveau maillon `test:ouverture-caisse-react` est inscrit dans
+`frontend/scripts/maillons-verify.json`; `test:ci` n’a pas été modifié.
+Validations exécutées : `npm run test:ouverture-caisse-react --workspace
+frontend`, `npm run test:accueil-cable --workspace frontend`, `npm run
+test:montant-dit --workspace frontend`, `npm run test:maillons-orphelins
+--workspace frontend`, `npm run typecheck --workspace frontend` et `npm run
+build --workspace frontend` passent. La dernière chaîne
+`npm run verify --workspace frontend` sort **1** : 160/169 verts, 1 🟠 connu
+(`test:garde-argent`) et 8 ❌ déjà signalés, sans rouge nouveau :
+`test:jargon`, `test:enum-check-phone`, `test:warn-dev`, `test:voix-trace`,
+`test:voix-trace-source`, `test:i18n-source`,
+`test:i18n-empreintes-argent`, `test:micro-niveau-parole`.
+Une commande `npm run build` lancée initialement à la racine a aussi exécuté
+le build du workspace backend; elle s’est terminée sans erreur et aucun fichier
+backend n’a été modifié. Les validations finales ont été relancées sur le seul
+workspace frontend. Deux premières commandes de tests appelées sans
+`--workspace frontend` ont retourné `Missing script`; les lancements workspace
+corrects cités ci-dessus passent.
+
+`npm run check` reste rouge sur l’échec backend préexistant
+`backend/test/unit/pin-jamais-journalise.spec.ts:145` / `auth.controller.ts:138`;
+il n’a pas été relancé ni corrigé, hors périmètre.
+Aucun fichier gelé, backend, `Caddyfile` ou base distante touché.
 
 ---
 
