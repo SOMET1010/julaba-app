@@ -22,6 +22,7 @@ describe('Lien Commande ↔ Négociation (🟢)', () => {
   let marchandToken: string;
   let producteurToken: string;
   let producteurId: string;
+  let publicationId: string;
 
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] })
@@ -62,13 +63,34 @@ describe('Lien Commande ↔ Négociation (🟢)', () => {
     const p = await creer('+2250700000092', 'Benito', 'producteur', 'homme');
     producteurToken = p.token;
     producteurId = p.id;
+
+    // Depuis le 20/10/2026 (verrous marché), une négociation d'approvisionnement
+    // exige (1) un circuit autorisé — ici grossiste → producteur — et (2) une
+    // offre publiée et disponible du vendeur (publicationId). Le test suit ce
+    // flux réel : la propriété vérifiée (lien commande↔négociation + backfill)
+    // est inchangée, seul le setup rejoint les règles du marché.
+    await ds.query(`UPDATE users SET sous_profil_marchand = 'grossiste' WHERE id = $1`, [m.id]);
+    const [pub] = await ds.query(
+      `INSERT INTO publications
+         (user_id, produit, culture, quantite_disponible, quantite_initiale, unite,
+          prix_unitaire, qualite, active, statut, type_marche, date_publication)
+       VALUES ($1, 'IgnameLien', 'Igname', 500, 500, 'kg', 400, 'standard',
+               true, 'disponible', 'producteur', now())
+       RETURNING id`,
+      [producteurId],
+    );
+    publicationId = pub.id;
   }, 60000);
 
   afterAll(async () => {
     if (ds?.isInitialized) {
       // Base partagée entre suites : on retire nos données pour ne pas polluer.
+      await ds.query(
+        `DELETE FROM stock_reservations WHERE commande_id IN (SELECT id FROM commandes WHERE produit LIKE 'IgnameLien%')`,
+      );
       await ds.query(`DELETE FROM commandes WHERE produit LIKE 'IgnameLien%'`);
       await ds.query(`DELETE FROM negociations WHERE produit LIKE 'IgnameLien%'`);
+      await ds.query(`DELETE FROM publications WHERE id = $1`, [publicationId]);
     }
     if (app) await app.close();
   });
@@ -78,7 +100,7 @@ describe('Lien Commande ↔ Négociation (🟢)', () => {
     const prop = await request(app.getHttpServer())
       .post('/api/v1/commandes/negociation')
       .set('Authorization', `Bearer ${marchandToken}`)
-      .send({ vendeurId: producteurId, produit: 'IgnameLien', quantite: 50, prixOriginal: 400, prixPropose: 300, unite: 'kg' });
+      .send({ vendeurId: producteurId, produit: 'IgnameLien', quantite: 50, prixOriginal: 400, prixPropose: 300, unite: 'kg', publicationId });
     expect([200, 201]).toContain(prop.status);
     const negId: string = prop.body.negociation.id;
     expect(negId).toBeTruthy();
@@ -113,7 +135,7 @@ describe('Lien Commande ↔ Négociation (🟢)', () => {
     const prop = await request(app.getHttpServer())
       .post('/api/v1/commandes/negociation')
       .set('Authorization', `Bearer ${marchandToken}`)
-      .send({ vendeurId: producteurId, produit: 'IgnameLienHisto', quantite: 10, prixOriginal: 400, prixPropose: 350, unite: 'kg' });
+      .send({ vendeurId: producteurId, produit: 'IgnameLienHisto', quantite: 10, prixOriginal: 400, prixPropose: 350, unite: 'kg', publicationId });
     const negId: string = prop.body.negociation.id;
 
     // Deux commandes « historiques » sans lien : l'une pointe une négociation
