@@ -47,7 +47,23 @@ export const EMPREINTES_BASE = {
   // « unité » — 14 phrases sur 844 gagnent leur unité, aucun montant, quantité,
   // produit ni intention ne change (passation SESSION-2026-10-03 §3.4).
   // Ancienne valeur : f6c8bc76ebd92dcccddb9424b86ab749d70b3053db3c8dfccd07535d90dcaedd.
-  intentLocal: '86044262df2ac1a388f91bf9b449b48e9ec7b014605045420709975f948bff6c',
+  //
+  // REFIGÉE le 09/11/2026 sur GO de Patrick (clôture de la recette vocale,
+  // avant ITF du 11/11). Deux évolutions VOULUES et relues, dans l'ordre :
+  //   1. `b9321d97` (feat, 06/11) : ouverture de caisse par commande vocale
+  //      avec montant, descriptions libres des dépenses, réponses naturelles
+  //      — l'intention locale répond à plus de phrases, c'est la feature.
+  //   2. `7ab60c91` (RC) : la confirmation du fond de caisse dicté passe par
+  //      le catalogue (tParle 'CAISSE_OUVERTURE_CONFIRME_FOND', critiqueArgent)
+  //      — le montant relu est désormais dit EN TOUTES LETTRES, doctrine
+  //      « dit = affiché », au lieu du gabarit en dur. C'est le seul texte
+  //      de réponse qui change ; aucune intention, aucun montant, aucune
+  //      écriture ne bougent.
+  // Les NEUF autres empreintes de la table sont INCHANGÉES (machine, grammaire,
+  // dialogues, relecture, vendreVocal, questions, coupures, rupture, et
+  // l'énumération exhaustive : 2 560 000 conversations, 0 violation).
+  // Valeur précédente : 86044262df2ac1a388f91bf9b449b48e9ec7b014605045420709975f948bff6c.
+  intentLocal: '033d150f43dde244be3325e49ed131f37dcac2d74b5bcf7658ba4e6909745722',
   dialogues: 'a28182d631c714a973e9a1ac7f49a447d5f64a561c87462802b81f847d89cb09',
   relecture: 'dcb722cc97358781a2a3eb0e2d58b89bee9c5dd6051dc90c0bf03a17bc64dd89',
   // REFIGÉE le 21/09/2026 — la seule empreinte de cette table qui ne vienne

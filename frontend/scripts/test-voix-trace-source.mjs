@@ -28,6 +28,21 @@
  *     d'autres fichiers (useVoiceCore, AppLayout, ObjectifContext — rail
  *     voix Manus/VOICE-01) restent VOLONTAIREMENT hors référence : elles
  *     rougissent ici tant que leur lot n'a pas été relu.
+ *     HISTORIQUE — 09/11/2026 : référence RE-BÉNIE en clôture de la recette
+ *     vocale (GO de Patrick), après revue ligne à ligne des 4 divergences :
+ *       - audioManager.ts (empreinte + inventaire) : `1b1e5658` câble la
+ *         priorité aux clips enregistrés dans speak() — c'est la voix de Tata
+ *         qui prime, évolution VOULUE, cœur de la recette ;
+ *       - tataUiClips.ts (empreinte) : `56a677d8` étend la voix embarquée à
+ *         toutes les éventualités des trois flux — VOULU ;
+ *       - AppLayout.tsx (empreinte) : `fe8d94d9` skip-link clavier (a11y),
+ *         hors chemin vocal — VOULU ;
+ *       - LoginPassword.tsx (inventaire) : `e38692a1` (LOT-MULTI-COMPTES) —
+ *         le sélecteur de comptes parle via speakClipOrText + clés catalogue
+ *         CONN_SEL_QUI / CONN_SEL_AUTRE — VOULU.
+ *     Aucune divergence ne venait du lot RC (d74f2e48 prouvé à 0 appel de
+ *     parole touché). La méta-garde anti-assouplissement n'est pas affectée :
+ *     seule la donnée de référence bouge, aucun libellé d'assertion.
  *
  *  C. « Le Rapport de test est atteignable connecté, depuis UNE seule surface. »
  *     HISTORIQUE : l'écran de connexion portait un second bouton 🐞 ; il a été

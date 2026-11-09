@@ -1,15 +1,15 @@
 {
   "reference": "3917bb7",
   "empreintes": {
-    "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
+    "services/audioManager.ts": "bd547e46bf56ffc6cf93312cc881f62438d5f26c93e6dff8ed2ff7d4e1332f84",
     "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
     "hooks/useVoiceCore.ts": "874d8039cae9c59c2fcdcee42f0c213db330d351f52ac43dbd11a4a3f50df829",
     "contexts/AppContext.tsx": "64f884e022b9db7781596ef7fd17d04f48737f71ddd610b563f058e11406c224",
     "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
     "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
-    "components/layout/AppLayout.tsx": "39573bdd3be96a1a8c862c73a8ce6eaac2b4bcfbefa0124fd8f97a79276e46be",
+    "components/layout/AppLayout.tsx": "39ef74cabacda3521902576b7fa1cdcbc2bc799b3837f32955aacf07457e4ca7",
     "services/tataVoice.ts": "7c55d2de5405a1bb6d16ef9dec0f7c4295c7e06a0f91b05961982d3033382dfc",
-    "services/tataUiClips.ts": "4fb93b1d987c8f1edd7ea389237158d02cce3d902550ff6e90a41d0a48931830",
+    "services/tataUiClips.ts": "712842e7788294387a1f1e6375387f4e8395ca05265cb4d2e5ffa4a70020f50f",
     "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
     "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
     "services/onboardingVoix.ts": "5eee52588c74af2e7659a21327b447b1f55e61c54fa97bc069a1d5b985b72cec",
@@ -18,7 +18,8 @@
   },
   "appels": {
     "services/audioManager.ts": [
-      "speakBrowser(chunk)"
+      "speakBrowser(chunk)",
+      "speakClipOrText({ clipUrl, text }, opts)"
     ],
     "services/elevenlabs.ts": [
       "speak(u)"
@@ -69,8 +70,12 @@
     ],
     "components/auth/LoginPassword.tsx": [
       "parle(next ? ENTREE_VOICE_CLIPS.pinImagesAccueil.texte : 'Voilà les chiffres maintenant. Mets ton code comme d\\'habitude.')",
+      "speakClipOrText({ text: tParle('CONN_SEL_QUI') })",
+      "speakClipOrText({ text: tParle('CONN_SEL_AUTRE') })",
       "parle(error)",
       "parleSuite(ENTREE_VOICE_CLIPS.codeAccueil.texte, ENTREE_VOICE_CLIPS.codeDiscretionAccueil.texte,)",
+      "speakClipOrText({ text: tParle('CONN_SEL_QUI') })",
+      "speakClipOrText({ text: tParle('CONN_SEL_AUTRE') })",
       "parle('D\\'accord, c\\'est calé comme ça.')",
       "parle('D\\'accord, on continue comme d\\'habitude.')",
       "parleSuite(ENTREE_VOICE_CLIPS.dicteeNumeroIncomprise.texte, ENTREE_VOICE_CLIPS.dicteeNumeroClavier.texte,)",
