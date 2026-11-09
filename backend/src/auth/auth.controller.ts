@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards, Request, Res, ForbiddenException, HttpException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards, Request, Res, ForbiddenException, HttpException, Logger } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService, BO_ROLES, ACTEUR_ROLES, getDefaultPasswordForRole } from './auth.service';
@@ -40,6 +40,10 @@ import { stripSensitiveUserFields } from '../users/sanitize-user.util';
 
 @Controller('auth')
 export class AuthController {
+  // SEC-01 : aucun console.* dans un module qui touche des identifiants —
+  // le garde-fou pin-jamais-journalise le vérifie.
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
@@ -146,7 +150,7 @@ export class AuthController {
           ? (exceptionBody as Record<string, unknown>).message
           : undefined) as string | undefined;
       const messageFinal = message ?? error.message ?? 'Erreur d\'authentification';
-      console.warn('[Auth] Login error:', messageFinal);
+      this.logger.warn(`[Auth] Login error: ${messageFinal}`);
       res.status(status);
       return {
         success: false,
