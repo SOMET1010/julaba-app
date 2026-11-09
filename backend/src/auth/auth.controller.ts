@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards, Request, Res, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Param, Body, HttpCode, HttpStatus, UseGuards, Request, Res, ForbiddenException, HttpException } from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService, BO_ROLES, ACTEUR_ROLES, getDefaultPasswordForRole } from './auth.service';
@@ -132,12 +132,28 @@ export class AuthController {
       // ces jetons et les envoie en en-tête Authorization -> connexion fiable partout.
       return { user: result.user, success: true, accessToken: result.accessToken, refreshToken: result.refreshToken };
     } catch (error: any) {
-      // Erreurs d'authentification -> réponse dans le corps avec success: false
-      // On conserve le HttpCode OK car l'API communique les erreurs via le corps
-      const message = error.message || 'Erreur d\'authentification';
-      console.warn('[Auth] Login error:', message);
-      // Retourner une réponse d'erreur structurée dans le corps
-      return { success: false, message };
+      // Erreurs d'authentification -> statut HTTP RÉEL (401/403/…) + corps
+      // structuré. Avant, tout était avalé en 200 { success: false } : un PIN
+      // '0000' rejeté par le service « réussissait » côté HTTP (P0.0 /
+      // SEC-10 / SEC-08b), et le corps perdait les champs locked /
+      // attenteMs / essaisRestants que le frontend sait déjà lire (sa
+      // branche d'erreur se déclenche sur !response.ok).
+      const isHttp = error instanceof HttpException;
+      const status = isHttp ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+      const exceptionBody = isHttp ? error.getResponse() : null;
+      const message =
+        (typeof exceptionBody === 'object' && exceptionBody !== null
+          ? (exceptionBody as Record<string, unknown>).message
+          : undefined) as string | undefined;
+      const messageFinal = message ?? error.message ?? 'Erreur d\'authentification';
+      console.warn('[Auth] Login error:', messageFinal);
+      res.status(status);
+      return {
+        success: false,
+        ...(typeof exceptionBody === 'object' && exceptionBody !== null
+          ? exceptionBody
+          : { message: messageFinal }),
+      };
     }
   }
 
