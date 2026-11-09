@@ -25,7 +25,7 @@ import { descriptionDepenseVocale } from './depenseVocale';
 import { MOTS_PAS_UNE_VENTE } from './vocabulaire';
 import { detecterEncaissement, type IntentionEncaissement } from './grammaireEncaissement';
 import { plurielNom } from '../services/dialoguesTata';
-import { localeActive, t } from '../i18n/voice/runtime';
+import { localeActive, t, tParle } from '../i18n/voice/runtime';
 import type { LocaleCode } from '../i18n/voice/types';
 
 // Réponse minimale au MÊME format que le serveur (champs utiles au flux).
@@ -159,7 +159,7 @@ function analyser(texte: string, locale: LocaleCode, venteSansVerbeAutorisee: bo
       normalizedText: texte,
       intent: 'ouvrir_journee',
       action: { type: 'ouvrir_journee', montant: p.montant },
-      response: `Tu as ${p.montant} francs dans ta caisse aujourd'hui, c'est bien ça ?`,
+      response: tParle('CAISSE_OUVERTURE_CONFIRME_FOND', { montant: String(p.montant) }),
       needsConfirmation: true,
       audioBase64: null,
       navigate: null,
