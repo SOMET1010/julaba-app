@@ -160,8 +160,12 @@ describe('Invariant B2 — négociation couverte par la réservation de stock', 
   it('refuse les circuits détaillant → producteur et demi-grossiste → producteur', async () => {
     const repo = ds.getRepository(User);
     for (const [index, sousProfil] of ['detaillant', 'demi_grossiste'].entries()) {
+      // Bloc 07000592xx : le bloc 07000591xx est réservé à
+      // bpay-retrait-reconciliation.spec.ts (0700059101/102) — la base de test
+      // est partagée entre suites et la collision rendait les DEUX suites
+      // dépendantes de l'ordre d'exécution (duplicate key UQ users.phone).
       const buyer: any = await repo.save(repo.create({
-        phone: `+22507000591${index}1`, firstName: 'Acheteur', lastName: sousProfil, genre: 'femme',
+        phone: `+22507000592${index}1`, firstName: 'Acheteur', lastName: sousProfil, genre: 'femme',
         role: UserRole.MARCHAND, sousProfilMarchand: sousProfil, status: UserStatus.ACTIF,
         passwordHash: await bcrypt.hash('1234', 10),
       } as any));
