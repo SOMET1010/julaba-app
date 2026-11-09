@@ -131,6 +131,39 @@ describe('Invariant DGE-03/07 — l\u2019analytique institution est réelle et s
     expect((r.body.inscriptionsParJour || []).length).toBe(7);
   });
 
+  it('DGE-03-e : une transaction HORS périmètre un jour creux ne fait pas disparaître le jour', async () => {
+    // Régression du 09/11/2026 : le filtre de périmètre vivait dans le WHERE
+    // (`t.id IS NULL OR (filtre)`) — un jour SANS vente du périmètre mais AVEC
+    // une vente d'une autre zone voyait sa ligne « jour » supprimée : le
+    // graphique tombait sous 7 jours (et le test devenait dépendant de l'ordre
+    // des suites, la base étant partagée). Le filtre vit désormais dans les
+    // clauses FILTER, comme celui des inscriptions vit dans le JOIN.
+    const horsZone = await ds.getRepository(User).save(ds.getRepository(User).create({
+      phone: '+225070092005', firstName: 'Test', lastName: 'HorsZone', genre: 'homme',
+      role: UserRole.MARCHAND, status: UserStatus.ACTIF, validated: true,
+      passwordHash: await bcrypt.hash('1234', 10),
+      zoneId: '6b222222-4222-4222-8222-222222222222', // ZONE_B, hors périmètre
+    } as any));
+    await ds.query(
+      `INSERT INTO caisse_transactions (type, montant, user_id, statut, source, created_at)
+       VALUES ('vente', 999999, $1, 'validee', 'kassa', CURRENT_DATE - INTERVAL '3 days')`,
+      [horsZone.id],
+    );
+
+    const r = await api()
+      .get('/api/v1/institution/analytics')
+      .set('Authorization', `Bearer ${tokenInstitution}`);
+    expect(r.status).toBe(200);
+    // Le jour creux reste : 7 jours, toujours.
+    expect((r.body.graphique || []).length).toBe(7);
+    // …et le volume hors périmètre n'apparaît nulle part.
+    for (const g of r.body.graphique || []) {
+      expect(Number(g.volume)).toBeLessThan(999999);
+    }
+
+    await ds.query(`DELETE FROM caisse_transactions WHERE user_id = $1`, [horsZone.id]);
+  });
+
   it('DGE-03-b : la vente de caisse écrite par l\u2019API est dans le volume du jour', async () => {
     const r = await api()
       .get('/api/v1/institution/analytics')

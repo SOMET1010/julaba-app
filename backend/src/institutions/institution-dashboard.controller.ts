@@ -198,9 +198,12 @@ export class InstitutionDashboardController {
       paramsInsc,
     );
 
-    // Ventes de caisse par jour — la définition unique (conditionVenteRetenue),
-    // périmètre appliqué sur les lignes EXISTANTES seulement (t.id IS NULL
-    // garde les jours vides).
+    // Ventes de caisse par jour — la définition unique (conditionVenteRetenue).
+    // Le filtre de périmètre vit DANS les clauses FILTER (comme le filtre des
+    // inscriptions vit dans le JOIN) : un jour où seules des transactions HORS
+    // périmètre existent doit rester visible à zéro. Avec le filtre en WHERE,
+    // la ligne « jour » disparaissait dès qu'une transaction hors périmètre
+    // existait ce jour-là — le graphique affichait alors moins de 7 jours.
     const paramsVentes: unknown[] = [];
     let filtreVentes = '';
     if (user.role === 'institution') {
@@ -209,12 +212,11 @@ export class InstitutionDashboardController {
     }
     const graphique = await this.ventesRepo.query(
       `SELECT TO_CHAR(d.day, 'YYYY-MM-DD') AS jour,
-              COUNT(t.id) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee')::int AS transactions,
-              COALESCE(SUM(t.montant) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee'), 0)::float AS volume
+              COUNT(t.id) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee' ${filtreVentes})::int AS transactions,
+              COALESCE(SUM(t.montant) FILTER (WHERE t.type = 'vente' AND t.statut <> 'annulee' ${filtreVentes}), 0)::float AS volume
          FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
          LEFT JOIN caisse_transactions t ON t.created_at::date = d.day::date
          LEFT JOIN users u ON u.id::text = t.user_id::text
-        WHERE t.id IS NULL OR (TRUE ${filtreVentes})
         GROUP BY d.day ORDER BY d.day`,
       paramsVentes,
     );
