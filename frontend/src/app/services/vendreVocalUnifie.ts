@@ -339,7 +339,14 @@ export function vendreVocalUnifie(
     // « 3 tomates » est ce qui lui permet d'entendre un malentendu AVANT
     // d'encaisser.
     const uniteLigne = produitCat?.unite || uniteParlee || null;
-    deps.speak(phraseCompris({ nom: ligne.nom, quantite: qte, total: ligne.total, unite: uniteLigne }));
+    deps.speak(phraseCompris({
+      nom: ligne.nom,
+      quantite: qte,
+      prixUnitaire: ligne.prix,
+      total: ligne.total,
+      lecture: prix.lecture,
+      unite: uniteLigne,
+    }));
   }
 
   if (!produitCat && !enAttenteConfirmation) {

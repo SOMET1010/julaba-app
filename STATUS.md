@@ -8,12 +8,44 @@ avant toute fin de session.
 
 | | |
 |---|---|
-| relevé | **07/11/2026** |
+| relevé | **08/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
 | dernier commit | `34ba9c24` — docs(worklog): voix-eventualites-06-11 |
 | dernier lot applicatif | 2 `feat` voix du 06/11 (ordre Patrick : « la voix pour toutes les éventualités ») : 24 clips embarqués sur les textes EXACTS des trois flux (produit, dépense, caisse) + registre régénéré (`56a677d8`), le chemin AppContext.speak consulte l'index des clips (`1b1e5658`) — à la suite des 3 `feat` des deux portes du matin (`cd51a5f8`, `42fe5d10`, `50f2013d`) et des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) |
 | dépôt | `SOMET1010/julaba-app` |
+
+---
+
+## Session 08/11 — clarifier la vente et l’encaissement vocaux
+
+**Livrable** : reconnaître « payer en espèces » comme une formulation
+d’encaissement, sans contourner la confirmation existante, et relire le prix
+unitaire séparément du total calculé. Changements non commités sur `dev`;
+aucun push ni déploiement.
+
+| Critère (DoD) | Statut | Preuve |
+|---|---|---|
+| « payer en espèce(s) » rejoint l’intention `INT_ENCAISSER`; une négation ne déclenche pas l’action | ✅ | `test:encaisser-formes-dites` dans `verify` |
+| Une vente « 3 à 500 » annonce 500 F par article et 1 500 F au total | ✅ | `test:prix-unitaire`; le calcul source distingue déjà montant unitaire et montant du lot |
+| Un montant donné pour le lot annonce son total exact et un prix unitaire approximatif | ✅ | `test:prix-unitaire`; 500 F au total pour 3 donne environ 167 F par article |
+| Aucun changement au calcul métier, au panier ou à la porte de confirmation d’encaissement | ✅ ciblé | `test:vendre-unifie-unite`, `test:encaissement-deux-formes`, `test:prix-ambigu`, `test:vente-sans-prix`, `test:vente-au-catalogue` |
+| Catalogue i18n, typecheck et build | ✅ | `test:i18n-locales`, `test:i18n-argent`, `typecheck`, `build`, `git diff --check` |
+| Chaîne `verify` | ⚠️ non conforme | 160/169 verts; 8 rouges et 1 🟠. Échecs signalés : `test:jargon`, `test:enum-check-phone`, `test:warn-dev`, `test:voix-trace`, `test:voix-trace-source`, `test:i18n-source`, `test:i18n-empreintes-argent`, `test:micro-niveau-parole`; aucun test rouge ne porte sur la reconnaissance de l’encaissement ou le calcul vocal |
+| Empreintes d’argent | ⚠️ refigeage réservé | `test:i18n-empreintes-argent` détecte deux changements voulus (`intentLocal`, `vendreVocal`). Elles n’ont pas été recalculées; les options de refigeage sont réservées au propriétaire |
+| Inventaire vocal | ✅ | `docs/langues/INVENTAIRE-VOIX.md` régénéré; 470 sites et 241 phrases |
+| Micro réel / APK et preview déployée | ⬜ | non testés; aucun déploiement demandé |
+
+`test:i18n-source` reste en échec sur un gabarit d’ouverture de caisse dans
+`voice-offline/localIntent.ts` et trois phrases de composants producteur, hors
+des fichiers modifiés ici. `node ci/garde-argent.mjs` signale aussi des dérives
+globales préexistantes du périmètre, de `test:ci` et de assertions; aucune
+empreinte ni garde n’a été refigée ou assouplie. La chaîne `verify` classe
+également comme « nouveaux » les huit rouges listés ci-dessus; ils ne concernent
+pas ce diff, sauf les deux empreintes correspondant aux changements demandés.
+
+Branche `dev`, dernier commit `34ba9c24`; aucun agent mobilisé. Prochaine étape :
+validation micro/APK et décision propriétaire sur le refigeage réservé.
 
 ---
 

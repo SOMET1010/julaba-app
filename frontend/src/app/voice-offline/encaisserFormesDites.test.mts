@@ -34,6 +34,7 @@ const fin: EtatFinancier = {
 console.log('\n[A3] Les formes COUPÉES de « encaisser » traversent jusqu\'à la machine\n');
 const POSITIVES = ['en caisser', 'en caissé', 'En caissé !', 'on caisse', 'on caisser', 'in caisser',
   'encaissez', 'en caisse', 'en caisse.', 'on en caisse', 'je en caisse',
+  'payer en espèces', 'payer en espèce',
   // Les formes déjà reconnues ne régressent pas.
   'encaisser', 'encaisse', 'on encaisse'];
 for (const f of POSITIVES) {
@@ -50,7 +51,7 @@ for (const f of POSITIVES) {
 console.log('\n[A3] Ce qui n\'est PAS « encaisser » ne le devient pas\n');
 const NEGATIVES = ['combien il me reste en caisse', "j'ai mis en caisse", 'caisse', 'la caisse',
   'ma caisse', 'ouvre la caisse', 'ferme la caisse', 'il y a combien en caisse',
-  "c'est en caisse", 'mets ça en caisse'];
+  "c'est en caisse", 'mets ça en caisse', 'je ne veux pas payer en espèces'];
 for (const f of NEGATIVES) {
   ok(detecterEncaissement(f) !== 'encaisser' && intentLocal(f)?.action?.type !== 'encaisser'
      && intentLocalCaisse(f)?.action?.type !== 'encaisser',

@@ -83,6 +83,8 @@ export function phraseCompris(args: {
   nom: string;
   quantite: number;
   total: number;
+  prixUnitaire?: number;
+  lecture?: 'unitaire' | 'total';
   /** Unité de la ligne — « tas », « sac », « kg »… Facultative : une vente
    *  d'avant le 19/09/2026, ou un article libre, n'en a pas. */
   unite?: string | null;
@@ -96,6 +98,18 @@ export function phraseCompris(args: {
   const quantite = uniteParlable(args.unite)
     ? t('TATA_MESURE_DE_PRODUIT', { mesure: quantiteAvecUnite(args.quantite, args.unite), produit: args.nom })
     : t('TATA_QUANTITE_PRODUIT', { quantite: String(args.quantite), produit: nom });
+  if (args.prixUnitaire != null && args.lecture) {
+    const variables = {
+      quantite,
+      prixUnitaire: r(args.prixUnitaire),
+      total: r(args.total),
+      suite: ajoutPanier(),
+    };
+    const cle = args.lecture === 'total' && args.quantite > 1
+      ? 'TATA_COMPRIS_TOTAL'
+      : 'TATA_COMPRIS_UNITAIRE';
+    return tParle(cle, variables);
+  }
   // DITE UNIQUEMENT (vendreVocalUnifie l'envoie à `speak`) : on prend la forme
   // PARLÉE. `t(...)` rendrait la forme ÉCRAN, avec son espace fine — et la
   // synthèse épellerait « 2 zéro zéro zéro ». Terrain du 24/09.

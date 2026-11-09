@@ -50,6 +50,7 @@ interface Jouee {
   total: number;
   lignes: Array<{ nom: string; qte: number; prix: number; total: number }>;
   demandes: Array<{ raison: string; montant?: number; quantite: number }>;
+  annonces: string[];
 }
 
 /** Dicte une phrase sur la caisse et rend ce que le PANIER en a retenu. */
@@ -58,10 +59,11 @@ function dicter(phrase: string, produits: typeof CATALOGUE = CATALOGUE): Jouee {
   const res = intentLocalCaisse(phrase);
   const lignes: Jouee['lignes'] = [];
   const demandes: Jouee['demandes'] = [];
+  const annonces: Jouee['annonces'] = [];
   const deps: DependancesVendreVocalUnifie = {
     products: produits,
     addToCart: (p, qte, totalExact) => { lignes.push({ nom: p.nom, qte, prix: p.prix, total: totalExact ?? p.prix * qte }); },
-    speak: () => {},
+    speak: (texte) => { annonces.push(texte); },
     vibrerSucces: () => {},
     notifierAjoutPanier: () => {},
     proposerCreationProduit: () => {},
@@ -69,13 +71,13 @@ function dicter(phrase: string, produits: typeof CATALOGUE = CATALOGUE): Jouee {
     estEnLigne: () => false,
     creerIdLigne: () => 'X',
     planifier: () => {},
-    guidageVocalActif: () => false,
+    guidageVocalActif: () => true,
     demanderPrix: (d) => { demandes.push({ raison: d.raison, montant: d.montant, quantite: d.quantite }); },
   };
   if (res && res.intent === 'vendre') {
     vendreVocalUnifie(res.action.produit, res.action.quantite ?? 1, res.action.montant ?? 0, deps, lu.uniteParlee, lu.lecturePrix);
   }
-  return { total: lignes.reduce((s, l) => s + l.total, 0), lignes, demandes };
+  return { total: lignes.reduce((s, l) => s + l.total, 0), lignes, demandes, annonces };
 }
 
 console.log('\n[le montant dicté] « à » n\'est pas « pour », et la différence vaut le triple');
@@ -87,6 +89,9 @@ console.log('\n[1] « trois tas de tomates À 500 » → 500 LE TAS → 1 500');
   ok(v.lignes[0]?.qte === 3, 'avec les trois tas dictés', v.lignes[0]);
   ok(v.total === 1500, 'et la vente vaut 1 500 F — pas 500, son tiers', v.total);
   ok(v.lignes[0]?.prix === 500, 'le prix unitaire reste celui qu\'elle a dit : 500', v.lignes[0]);
+  ok(/prix de chaque article est de cinq cents francs/.test(v.annonces[0] ?? '')
+    && /mille cinq cents francs/.test(v.annonces[0] ?? ''),
+    'la voix distingue 500 F par article de 1 500 F au total', v.annonces[0]);
 }
 
 console.log('\n[2] « trois tas de tomates POUR 500 » → 500 LE LOT → 500');
@@ -95,6 +100,9 @@ console.log('\n[2] « trois tas de tomates POUR 500 » → 500 LE LOT → 500');
   ok(v.total === 500, 'la vente vaut 500 F — « pour » désigne le lot entier', v.total);
   ok(v.lignes[0]?.qte === 3, 'sur les trois tas', v.lignes[0]);
   ok(v.lignes[0]?.prix === 167, 'et le prix du tas s\'en déduit, arrondi : 167', v.lignes[0]);
+  ok(/cinq cents francs au total/.test(v.annonces[0] ?? '')
+    && /prix de chaque article revient à environ cent soixante-sept francs/.test(v.annonces[0] ?? ''),
+    'la voix nomme le total dicté et précise que le prix unitaire est calculé', v.annonces[0]);
 }
 
 console.log('\n[3] « deux tas de tomates À 400 » → 800');

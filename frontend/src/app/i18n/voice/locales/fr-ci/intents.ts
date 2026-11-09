@@ -81,6 +81,7 @@ export const INTENTS_FR_CI: Readonly<Record<IntentId, IntentLocalise>> = {
       '\\bon caisse\\b',
       '^ en caisse $',
       '\\b(on|je) en caisse\\b',
+      '^ payer en espece(s)? $',
     ] },
     validation: PILOTE,
   },
