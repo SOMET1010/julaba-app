@@ -113,8 +113,16 @@ console.log('\n[4] LA PREUVE TRAVERSE — l\'écran ne peut pas revenir à l\'an
   // au fond), donc l'appel porte un second argument. Le LIBELLÉ de cette garde
   // ne change pas : elle surveille toujours que le NIVEAU du micro arrive à la
   // règle pure. Elle surveille en plus que le seuil vient de l'écoute en cours.
-  ok(/parleMaintenant\(niveauRef\.current,\s*seuilRef\.current\)/.test(src),
+  //
+  // Depuis la preuve web (dictée vivante), l'écran appelle elleParle(niveau,
+  // seuil, dictee) — la règle pure parleMaintenant(niveau, seuil) reste le
+  // premier critère DANS elleParle (services/ecouteCaisse.ts) : la garde
+  // vérifie les DEUX bouts de la chaîne, pas seulement l'appelant.
+  ok(/elleParle\(niveauRef\.current,\s*seuilRef\.current,/.test(src),
      'le niveau du micro est bien lu par la règle pure');
+  const srcEcoute = readFileSync(new URL('./ecouteCaisse.ts', import.meta.url), 'utf8');
+  ok(/parleMaintenant\(niveau,\s*seuil\)/.test(srcEcoute),
+     'elleParle délègue bien à la règle pure parleMaintenant(niveau, seuil)');
 
   // MIC-02B — LA CONTRAINTE DE PATRICK, 02/10/2026, TENUE PAR UNE GARDE.
   // Le plancher doit être FIGÉ au début de l'écoute, jamais recalculé : sinon
