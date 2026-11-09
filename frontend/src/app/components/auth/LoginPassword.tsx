@@ -222,7 +222,9 @@ const TEST_PHONES = new Set<string>([
 
 function logAuthApi(etape: string, endpoint: string, status?: number): void {
   const url = new URL(`${API_URL}${endpoint}`, window.location.origin).toString();
-  console.warn('[AUTH API]', { etape, method: 'POST', url, ...(status === undefined ? {} : { status }) });
+  // warnDev : le miroir console ne parle qu'en développement (le journal
+  // terrain, lui, reste assuré par vlog — voir voiceDebug.ts).
+  warnDev('[AUTH API]', { etape, method: 'POST', url, ...(status === undefined ? {} : { status }) });
 }
 
 export function LoginPassword() {
@@ -1604,9 +1606,12 @@ export function LoginPassword() {
               <div className="login-selection-liste" role="group" aria-label="Choisis ton compte">
                 {comptes.map((c) => {
                   const nom = nomAffiche(c);
+                  // L'indice de canal hors du gabarit : le nom de propriété ne
+                  // doit pas vivre dans une chaîne (garde anti-jargon).
+                  const indiceCanal = c.biometrie ? ' — le téléphone te reconnaîtra' : ' — avec ton code';
                   return (
                     <button key={c.phone} type="button" className="login-selection-carte"
-                      aria-label={`Entrer comme ${nom}${c.biometrie ? ' — le téléphone te reconnaîtra' : ' — avec ton code'}`}
+                      aria-label={`Entrer comme ${nom}${indiceCanal}`}
                       onClick={() => choisirCompte(c)} disabled={isLoading}>
                       {c.photo ? <img src={c.photo} alt="" /> : <span className="login-selection-placeholder"><UserRound aria-hidden="true" size={30} /></span>}
                       <span className="login-selection-nom">{nom}</span>

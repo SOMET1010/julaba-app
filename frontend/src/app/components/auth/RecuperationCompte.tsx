@@ -139,7 +139,7 @@ export function RecuperationCompte() {
           setEtape('doigt');
           dire(tParle('RECOUV_CONSIGNE_DOIGT'));
         } else {
-          setMessageErreur('Session expirée. Reprends du début.');
+          setMessageErreur(tParle('RECOUV_SESSION_EXPIREE'));
           dire(tParle('RECOUV_SESSION_EXPIREE'));
           setEtape('code');
           setJeton(null);
@@ -185,8 +185,8 @@ export function RecuperationCompte() {
       const options = await optRes.json().catch(() => ({}));
       if (!mountedRef.current) return;
       if (!options || options.error || !options.challenge) {
-        setMessageErreur('Session expirée. Reprends du début.');
-        dire('Session expirée. Reprends du début.');
+        setMessageErreur(tParle('RECOUV_SESSION_EXPIREE'));
+        dire(tParle('RECOUV_SESSION_EXPIREE'));
         setEtape('code');
         setJeton(null);
         return;

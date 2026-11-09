@@ -168,6 +168,8 @@
     "test:base-api-temps-reel",
     "test:image-produit",
     "test:debordements-demo",
+    "test:commandes-accueil",
+    "test:accueil-cable",
     "test:fiche-membre",
     "test:compteurs-acteurs-bo",
     "test:accueil-institution",
