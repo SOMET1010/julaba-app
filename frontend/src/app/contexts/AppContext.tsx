@@ -216,7 +216,11 @@ interface AppContextType {
   globalVoiceOpen: boolean;
   setGlobalVoiceOpen: (open: boolean) => void;
   setVoiceEnabled: (enabled: boolean) => void;
-  speak: (text: string) => void;
+  /** VOX-05a — la promesse résout quand Tantie a RÉELLEMENT fini de parler
+   *  (fin du dernier morceau, natif ou navigateur). Les appelants qui ont
+   *  besoin d'ordonnancer (ouvrir le micro, passer l'écran) DOIVENT l'attendre ;
+   *  les annonces fire-and-forget conservent l'usage sans `await`. */
+  speak: (text: string) => Promise<void>;
   voiceMuted: boolean;
   toggleVoiceMuted: () => void;
   /** Combien Tantie parle (B5). « complet » par défaut — un réglage ne peut
@@ -1380,7 +1384,7 @@ export function useApp() {
       globalVoiceOpen: false,
       setGlobalVoiceOpen: () => {},
       setVoiceEnabled: () => {},
-      speak: () => {},
+      speak: async () => {},
       voiceMuted: false,
       toggleVoiceMuted: () => {},
       niveauVoix: NIVEAU_VOIX_PAR_DEFAUT,

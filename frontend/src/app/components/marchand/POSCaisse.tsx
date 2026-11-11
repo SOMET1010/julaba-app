@@ -82,7 +82,14 @@ function POSCaisseInner() {
   // (`await audioManager.speak`). On rend sa promesse : c'est elle qui permet
   // à `BoutonDirePrix` d'ouvrir le micro quand Tantie a fini, et non après un
   // délai deviné. Les appelants qui l'ignorent ne changent pas de comportement.
-  const dire = (t: string) => { if (guidageVocal()) return speak(t) as unknown as void | Promise<void>; };
+  const dire = (t: string) => { if (guidageVocal()) return speak(t); };
+  // CONTRAT VOX-05a (10/11, lot séparation voix/affichage) : l'interface
+  // déclarait avant `speak: (text) => void` alors que l'implémentation rend
+  // la PROMESSE de fin réelle de parole. Le cast qui le masquait dans `dire`
+  // rendait futurement possible la perte SILENCIEUSE du wait côté appelants
+  // (BoutonDirePrix ouvre le micro sur la fin réelle — un wrapper similaire
+  // qui déposerait la promesse recréerait le chevauchement observé sur APK).
+  // `return speak(t)` nu restaure la chaîne ; les appelants ne bougent pas.
   // LES PHRASES SONT DES CLÉS (lot langues, 20/09/2026). `direMessage` suit
   // la même règle de profil que `dire`, mais résout une clé du catalogue i18n
   // dans la langue active et la remet au rendu vocal (contrat-audio.ts), dont

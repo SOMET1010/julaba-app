@@ -218,7 +218,8 @@
     "test:montants-oraux": "node scripts/verif-montants-oraux.mjs",
     "test:a11y-axe": "tsx src/app/a11y/axe.test.mts",
     "test:console-prod": "node scripts/test-console-prod.mjs",
-    "test:charte-globale": "node scripts/test-charte-globale.mjs"
+    "test:charte-globale": "node scripts/test-charte-globale.mjs",
+    "test:poscaisse-dire": "tsx src/app/components/marchand/poscaisse-dire.test.mts"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
