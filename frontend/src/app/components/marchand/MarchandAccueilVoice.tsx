@@ -409,7 +409,12 @@ function MarchandAccueilVoiceInner() {
             style={{ width: 'calc(100% - 2 * var(--julaba-gouttiere))', boxSizing: 'border-box', minHeight: 56, borderRadius: 18, border: '2px solid var(--commerce-action)',
               background: 'var(--commerce-orange-50)', color: 'var(--commerce-action)', fontSize: 16, fontWeight: 900,
               cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              marginBottom: 14 }}>
+              // La RESPIRATION du bloc (ordre Patrick 12/11) : le bouton s'était
+              // collé au bloc solde au-dessus (pas de marge haute) pendant que le
+              // grand bouton « Vendre » en dessous garde son `margin-top: 1rem`.
+              // 16 px des deux côtés — la même valeur que les bannières qui
+              // s'intercalent (marginTop: 16) et que le `.commerce-sell`.
+              marginTop: 16, marginBottom: 16 }}>
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M12 12v3"/></svg>
             Ouvrir ma caisse
           </motion.button>
