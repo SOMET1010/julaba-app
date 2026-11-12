@@ -469,11 +469,18 @@ export function MarchandDepenses() {
         )}
       </div>
 
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'12px 14px max(28px, env(safe-area-inset-bottom))', background:`linear-gradient(to top,${BG} 70%,transparent)`, zIndex:10, boxSizing:'border-box' }}>
-        <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/depense')}
-          style={{ display:'block', width:'100%', boxSizing:'border-box', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 16px', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px', whiteSpace:'normal', lineHeight:1.25 }}>
-          + Faire une dépense
-        </motion.button>
+      {/* LA BARRE DU BAS RESPECTE LA SIDEBAR (ordre Patrick 12/11 : « le bouton
+          '+ Faire une dépense' en w-full, mais regarde les limites »). Le bouton
+          reste pleine largeur DE SA ZONE : en desktop, la sidebar (280/320 px,
+          z-[45]) recouvrait les premiers pixels d'une barre `left:0 right:0` —
+          le wrapper porte le décalage, la barre garde son fond et son padding. */}
+      <div className="lg:pl-[280px] xl:pl-[320px]" style={{ position:'fixed', bottom:0, left:0, right:0, zIndex:10 }}>
+        <div style={{ padding:'12px 14px max(28px, env(safe-area-inset-bottom))', background:`linear-gradient(to top,${BG} 70%,transparent)`, boxSizing:'border-box' }}>
+          <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/depense')}
+            style={{ display:'block', width:'100%', boxSizing:'border-box', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 16px', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px', whiteSpace:'normal', lineHeight:1.25 }}>
+            + Faire une dépense
+          </motion.button>
+        </div>
       </div>
     </div>
   );

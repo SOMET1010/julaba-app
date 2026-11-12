@@ -39,6 +39,13 @@ export function SubPageLayout({
   // caisse garde son en-tête clair (`variante="caisse"`), et les autres rôles
   // gardent l'en-tête sombre par défaut — rien ne change pour eux.
   const orange = role === 'marchand' && !clair;
+  // Les sous-écrans montés sous AppLayout reçoivent DÉJÀ le décalage de la
+  // sidebar par le `main` (lg:pl-[280px] xl:pl-[320px]) : le contenu ne doit
+  // pas le cumuler, sinon il flotte à 576 px du bord pendant que l'en-tête
+  // fixe reste à 280 px. fullWidth existait pour éviter ce cumul — il tient
+  // le même rôle pour toute vue sous AppLayout.
+  const sousAppLayout = role === 'marchand' || role === 'producteur' || role === 'cooperative';
+  const plContenu = fullWidth || sousAppLayout ? '' : 'lg:pl-[296px]';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: bgWarm, width: '100%' }}>
@@ -51,7 +58,15 @@ export function SubPageLayout({
               ? 'linear-gradient(160deg, var(--commerce-action) 0%, var(--commerce-orange-700) 100%)'
               : 'var(--commerce-sidebar)',
           borderBottom: clair ? '1px solid var(--commerce-line)' : 'none' }}
-        className={fullWidth ? '' : 'lg:pl-[280px]'}
+        /* LE BOUTON RETOUR RESTE À DROITE DE LA SIDEBAR (ordre Patrick 12/11 :
+           « même position que Mes dépenses »). L'en-tête étant fixed, le main
+           d'AppLayout ne le décale pas lui-même : c'est ICI que se joue le
+           décalage — sur TOUTES les largeurs où la sidebar existe (280 px en
+           lg, 320 px en xl). Avant, `xl` restait à 280 px : les 40 premiers
+           pixels du bouton retour passaient SOUS la sidebar (z-[45] > z-40)
+           et le bouton semblait « en dessous de la sidebar ». fullWidth n'y
+           change rien : la caisse aussi a son retour visible. */
+        className="lg:pl-[280px] xl:pl-[320px]"
       >
         <div style={{ height: clair ? 12 : 16 }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: clair ? '0 16px 12px' : '0 16px 18px' }}>
@@ -97,7 +112,7 @@ export function SubPageLayout({
           paddingLeft: noPadding ? 0 : 16,
           paddingRight: noPadding ? 0 : 16,
         }}
-        className={fullWidth ? '' : 'lg:pl-[296px]'}
+        className={plContenu}
       >
         {children}
       </div>
@@ -108,7 +123,10 @@ export function SubPageLayout({
           style={{ position: 'fixed', bottom: 80, left: 0, right: 0,
             padding: '8px 16px', background: bgWarm,
             borderTop: `1px solid ${primaryColor}22`, zIndex: 30 }}
-          className={fullWidth ? '' : 'lg:pl-[296px]'}
+          /* Même loi que l'en-tête : une barre fixe ne reçoit pas le décalage
+             du main — elle le porte elle-même, sinon son bouton pleine largeur
+             passe sous la sidebar en desktop. */
+          className="lg:pl-[280px] xl:pl-[320px]"
         >
           {bottomAction}
         </div>
