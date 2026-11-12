@@ -102,7 +102,10 @@ export function ProducteurHome() {
         navigate={navigate}
         customGreeting={customGreeting as any}
         hasSessionManagement={false}
-        showKeiwa={true}
+        // LE CARD « MON ARGENT » EST MASQUÉ (ordre Patrick 12/11) — la porte
+        // visible du wallet se ferme comme sur l'accueil marchand : rien n'est
+        // supprimé (routes et code keiwa en place), la carte ne se montre plus.
+        // showKeiwa={true}
         tataLouImgSrc={tataLouImgProducteur}
         onAcademyClick={() => navigate('/producteur/academy')}
       />
