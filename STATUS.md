@@ -6,6 +6,39 @@ avant toute fin de session.
 > Décision de Patrick (07/10/2026, point 7) : **ce fichier fait foi**. `docs/PASSATION.md`
 > et `docs/JOURNAL.md` sont archivés (bandeau en tête, plus mis à jour) et renvoient ici.
 
+## Session 12/11 — la caisse cesse d’être contredite par le moteur vocal
+
+**Livrable** : « Orange 500 » ou « banane 200 » dictés sur la caisse ne
+produisent plus « Je n’ai pas bien compris ». Le moteur consulte la porte de
+l’écran (`intentLocalCaisse`, puis le catalogue) avant de conclure à l’échec,
+et la vente comprise arrive au flux commun — une seule fois.
+
+| DoD vérifiable | Statut | Preuve |
+|---|---|---|
+| « Orange 500 » n’est plus un échec du moteur | ✅ | `test:voice-confirmation-bypass` cas E : `sendText` rend `true`, action `vendre {orange, 500}` reçue intacte, aucune erreur affichée |
+| Les autres surfaces gardent le comportement d’origine | ✅ | cas F : sans `lireLocal`, la même phrase reste non comprise ; cas G : `lireLocal` n’est jamais appelé quand `intentLocal` a compris |
+| La vente n’est ajoutée qu’une fois au panier | ✅ ciblé | marqueur `venteLueParLeMoteur` posé synchroniquement par `lireLocal`, relu par l’effet avant toute écriture (`MicroVenteCaisse.tsx`) |
+| La vente sans prix reste demandée, jamais à 0 F | ✅ | `test:vente-sans-prix`, `test:cai07-un-seul-compris` |
+| Phrase et clip d’échec toujours liés | ✅ | `test:clip-echec-caisse` |
+| Typecheck, build et gardes voix/caisse | ✅ | `typecheck`, `build`, `test:audio`, `test:accueil-honnete`, `test:charte-marchande`, `test:geste-micro`, `test:micro-contraint`, `test:caisse-relecture-affichee`, `test:caisse-micro`, `test:caisse-surface`, `test:caisse-un-seul-micro`, `test:caisse-charte`, `test:caisse-encaissement`, `test:intentlocal`, `test:vente-au-catalogue` |
+| Une seule vérité pour la dictée | ✅ | cas E/F/G ajoutés au banc existant ; `git diff --check` |
+| Empreintes d’argent | ⚠️ rouge préexistant | `test:i18n-empreintes-argent` : `intentLocal` et `vendreVocal` diffèrent **déjà à l’HEAD** (vérifié en worktree détaché) ; re-gel réservé au propriétaire |
+| VOICE-01 | ⚠️ +1 échec voulu | `test:voix-trace-source` : 5 échecs à l’HEAD, 6 après le déblocage autorisé — le sixième est l’empreinte `useVoiceCore.ts`, conséquence directe de l’option `lireLocal`. Re-gel réservé à Patrick |
+| `garde-argent` | ❌ préexistant | 3 refus identiques à l’HEAD (périmètre, `test:ci`, 133 assertions), vérifié en worktree détaché |
+
+Le point d’extension est **par instance** : `useVoiceCore({ lireLocal })` n’est
+fourni que par `MicroVenteCaisse`. La règle commune `intentLocal` n’a pas été
+assouplie ; `lireVenteAuCatalogue` et `intentLocalCaisse` restent les seules
+portes de la caisse. La porte rend `undefined` (et non `null`) quand elle ne
+reconnaît rien : c’est le même sens pour le hook (`??`), et cela évite de
+déclencher la garde source `caisse-micro` qui interdit un `return null` dans ce
+composant. Le hook capture la porte dans une **ref** réaffectée à chaque rendu :
+la fournir en ligne ne fait donc pas changer `startRecording`/`handleMicClick`
+à chaque rendu du parent, et les minuteurs d’écoute de la caisse ne sont pas
+relancés sans raison. Aucun commit, aucun push, aucun déploiement.
+
+---
+
 ## Session 12/11 — bouton « Ouvrir ma caisse » responsive
 
 **Livrable** : le bouton respecte désormais les gouttières de l’accueil sur
@@ -19,19 +52,26 @@ aligné sur le renommage `frontend_src` → `frontend` du commit `89de1bf5` :
 | Le bouton reste ajusté au breakpoint ≥768 px | ✅ ciblé | gouttière existante de 32 px; à 768 px, largeur calculée 672 px dans les 736 px de contenu |
 | Comportement, libellé et couleurs inchangés | ✅ | seul `width` et `boxSizing` ont changé |
 | Vérifications front | ✅ | `typecheck`, `build`, `test:accueil-cable` et `test:charte-marchande` |
+| Garde-fous du dépôt | ❌ | `npm run check` : 37/39 suites backend passent; `pin-jamais-journalise` échoue sur `auth.controller.ts:138`, `code-recuperation` dépasse son timeout; `garde-argent` signale 3 refus hors périmètre |
 | Preview déployée et recette sur téléphone | ⬜ | non exécutées; aucun déploiement demandé |
 
 Le build passe avec ses avertissements Vite de découpage dynamique et de gros
-chunks. Aucun test ajouté. Aucun commit, push ni déploiement. Des modifications
-locales préexistantes à `RoleDashboard.tsx` et aux clips/registre vocaux ont
-été laissées intactes.
+chunks. Aucun test ajouté. Le commit `0f821761` (`HEAD` = `origin/dev`)
+contient le correctif et les captures; il inclut aussi des changements
+`RoleDashboard` et audio sans rapport avec ce bouton, non édités par cette
+session. `npm run check` échoue sur deux tests backend et trois refus de
+`garde-argent`; ce résultat bloque un prochain push, pas le commit déjà présent
+sur `origin/dev`. Aucun déploiement. Le worktree conserve des changements
+locaux aux docs et aux assets audio. Agents : designer (règles responsive et
+captures), dev-frontend (diagnostic de l’écart documentaire), relecteur
+(validation responsive; signale le contrôle rouge avant tout prochain push).
 
 | | |
 |---|---|
 | relevé | **12/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
-| dernier commit | `34ba9c24` — docs(worklog): voix-eventualites-06-11 |
+| dernier commit | `0f821761` — feat(ui): rendre le bouton d’ouverture de caisse responsive |
 | dernier lot applicatif | 2 `feat` voix du 06/11 (ordre Patrick : « la voix pour toutes les éventualités ») : 24 clips embarqués sur les textes EXACTS des trois flux (produit, dépense, caisse) + registre régénéré (`56a677d8`), le chemin AppContext.speak consulte l'index des clips (`1b1e5658`) — à la suite des 3 `feat` des deux portes du matin (`cd51a5f8`, `42fe5d10`, `50f2013d`) et des 3 `fix` voix du terrain (`27127245`, `dc20365d`, `4b568139`) |
 | dépôt | `SOMET1010/julaba-app` |
 
@@ -539,8 +579,8 @@ Backlog : `BOScoreFinancier.tsx` même chemin `/api/v1` relatif ; `RoleDashboard
 
 | quoi | état |
 |---|---|
-| `test:voix-trace-source` | 🟠 **rouge voulu** — 4 empreintes VOICE-01. Attend `--regenerer` |
-| `test:i18n-empreintes-argent` | ✅ **redevenu vert** (20/10) — plus dans la liste `CONNUS` |
+| `test:voix-trace-source` | 🟠 **rouge voulu** — 5 échecs à l’HEAD ; 6 depuis le déblocage autorisé du 12/11 (empreinte `useVoiceCore.ts`). Attend `--regenerer` |
+| `test:i18n-empreintes-argent` | 🟠 **rouge préexistant** — `intentLocal` et `vendreVocal` diffèrent depuis le merge du 06/11 ; re-gel réservé au propriétaire |
 | `test:garde-argent` | 🟠 **7 entrés / 55 perdus** (mesuré le 21/10 ; l'étiquette « 12/14 » est périmée). Cause : le renommage `frontend_src` → `frontend` (172 gardes vues comme nouvelles). Attend `--figer-perimetre` |
 | `test:entree-unique`, `test:nom-tantie` | ❌ bancs **orphelins** découverts le 03/10, jamais exécutés avant. Hors `verify`, cause non diagnostiquée |
 | 2 suites unitaires **backend** rouges (`npm run check`) | ❌ **rouge préexistant à l'HEAD**, prouvé par stash le 21/10 : `telephones-tests-uniques.spec.ts` (12 numéros de recette inscrits par deux suites d'invariants à la fois) et `stocks-rest.idempotency.spec.ts` (le PATCH de stock fait 3 requêtes et non 2 depuis STK-04). **Non touché** : ce sont des gardes d'argent ; les corriger touche aux empreintes gelées du garde-argent → **lot à arbitrer à part** |

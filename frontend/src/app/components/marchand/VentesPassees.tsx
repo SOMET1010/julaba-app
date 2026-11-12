@@ -94,6 +94,13 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
   const estAnnulee = sale.statut === 'annulee';
   const estAnnulable = (sale.type === 'vente' || sale.type === undefined) && !estAnnulee && isToday(dateObj) && !!sale.id;
   const [annulEtat, setAnnulEtat] = useState<'idle' | 'confirm' | 'loading'>('idle');
+  // L'accusé core-ack-07 puis la conséquence sur le stock sont DEUX phrases :
+  // si la carte est démontée entre les deux, la seconde ne doit pas partir.
+  const monteRef = useRef(true);
+  useEffect(() => {
+    monteRef.current = true;
+    return () => { monteRef.current = false; };
+  }, []);
   const demanderAnnulation = (e: React.MouseEvent) => {
     e.stopPropagation();
     setAnnulEtat('confirm');
@@ -114,7 +121,17 @@ function VenteCard({ sale, index, query, montantsMasques }: { sale: VenteAffiche
       // rechargée est désormais estAnnulee → aucun bouton d'annulation réapparaît.
       setAnnulEtat('idle');
       toast.success('Vente annulée — stock rendu');
-      if (guidageVocal()) { try { speak('Vente annulée. Le stock a été rendu.'); } catch { /* ignore */ } }
+      if (guidageVocal()) {
+        // L'ACCUSÉ D'ANNULATION (clip core-ack-07, voix embarquée) d'abord,
+        // puis la conséquence sur le stock : deux phrases, jamais superposées
+        // (audioManager coupe la première si la seconde part trop tôt).
+        void Promise.resolve(speak("D'accord, j'annule ça. Y'a pas de souci."))
+          .then(() => {
+            if (!monteRef.current) return;
+            return speak('Vente annulée. Le stock a été rendu.');
+          })
+          .catch(() => { /* ignore */ });
+      }
     } catch {
       toast.error("Impossible d'annuler cette vente");
       if (guidageVocal()) { try { speak("Je n'ai pas pu annuler cette vente."); } catch { /* ignore */ } }

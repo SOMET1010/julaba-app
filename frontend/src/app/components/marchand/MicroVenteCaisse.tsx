@@ -40,7 +40,8 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
 import { useLangPref } from '../../hooks/useLangPref';
-import { useVoiceCore } from '../../hooks/useVoiceCore';
+import { useAudioUnlockFallback } from '../../hooks/useAudioUnlockFallback';
+import { useVoiceCore, type VoiceProcessResponse } from '../../hooks/useVoiceCore';
 import { useApp } from '../../contexts/AppContext';
 import { useCaisse } from '../../contexts/CaisseContext';
 import { useRaccourcis } from '../../contexts/RaccourcisContext';
@@ -164,6 +165,17 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
   // marchande n'a pas saisi ce qui a été compris, elle doit pouvoir le
   // réentendre — sinon son seul recours est de refaire la vente.
   const dernierePhraseRef = useRef<string>('');
+  /**
+   * LA DICTÉE QUE LE MOTEUR A DÉJÀ TRAITÉE AVEC LA PORTE DE LA CAISSE.
+   *
+   * Le moteur ne conclut plus à l'échec quand `lireLocal` comprend (voir
+   * `useVoiceCore({ lireLocal })` plus bas). Mais l'effet de relecture de cet
+   * écran, lui, tourne aussi sur `transcript` : sans ce marqueur, la même
+   * phrase serait ajoutée DEUX fois au panier. Le marqueur est posé
+   * SYNCHRONEMENT par `lireLocal`, avant tout rendu, donc l'effet le voit
+   * toujours à temps.
+   */
+  const venteLueParLeMoteur = useRef('');
   const direEtRetenir = useCallback((texte: string) => {
     dernierePhraseRef.current = texte;
     speak(texte);
@@ -396,6 +408,50 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     // APRÈS — le journal voix enregistre TTS_APPEL « La voix sur le navigateur
     // a besoin d'internet… » → TTS_DEMANDE → TTS_DEBUT → TTS_FIN (dit, vraiment).
     onError: (message) => direEtRetenir(message),
+    // LA PORTE DE LA CAISSE SERT AUSSI AU MOTEUR — VOICE-01 levé pour ce seul
+    // point d'extension, décision du 12/11/2026.
+    //
+    // LE DÉFAUT QU'ON FERME, mesuré sur navigateur de bureau. « Orange 500 »
+    // (produit + prix, sans verbe) : `intentLocal` rend `null`, le moteur lance
+    // « Je n'ai pas bien compris… », PUIS la relecture de cet écran comprend la
+    // vente et dit « J'ai compris : 1 Orange… » — que le premier message vient
+    // de couper. Deux vérités pour la même phrase, et c'est la fausse qui parle
+    // en dernier. La marchande n'entend que « il ne comprend pas ».
+    //
+    // Ce que ce lecteur N'EST PAS : un assouplissement d'`intentLocal`, ni une
+    // seconde règle métier. C'est EXACTEMENT la relecture qui existait déjà
+    // dans l'effet plus bas — la porte `intentLocalCaisse`, puis le catalogue
+    // de la marchande —, simplement consultée AVANT que le moteur ne conclue à
+    // l'échec, et seulement par CETTE instance. Les autres écrans n'en voient
+    // rien : le moteur garde `intentLocal` tel quel pour eux.
+    lireLocal: (texte) => {
+      const dit = (texte || '').trim();
+      if (!dit) return undefined;
+      // Le hook ne l'appelle qu'après `intentLocal`. Cette garde refait la
+      // règle de l'écran (« jamais par-dessus le moteur ») au cas où l'ordre
+      // changerait un jour : elle ne peut rien recouvrir ni doubler.
+      if (intentLocal(dit)) return undefined;
+      const local = intentLocalCaisse(dit);
+      if (local?.action?.type === 'vendre') {
+        venteLueParLeMoteur.current = dit; // l'effet de relecture s'effacera
+        return local as Partial<VoiceProcessResponse>;
+      }
+      // CAT-01 — son catalogue peut nommer ce que le lexique ignore (« deux
+      // maniocs »). Même relecture que l'effet, même point d'entrée : le
+      // moteur ne dit pas « pas compris » sur une vente que l'écran sait lire.
+      const vente = lireVenteAuCatalogue(dit, products);
+      if (!vente) return undefined;
+      venteLueParLeMoteur.current = dit;
+      return {
+        transcript: dit,
+        normalizedText: dit,
+        intent: 'vendre',
+        action: vente,
+        response: '',
+        needsConfirmation: true,
+        audioBase64: null,
+      } as Partial<VoiceProcessResponse>;
+    },
     onAction: async (data) => {
       // L'ENCAISSEMENT N'EST PAS À MOI. Transmis à la caisse, et on s'arrête :
       // pas de vente, pas de rafraîchissement, rien. Tout ce qui suit dans ce
@@ -560,12 +616,18 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
       : ['TATA_QUE_VENDRE', {}]
   ), [produitPreselectionne]);
   const introLigne = useCallback(() => t(...introMessage()), [introMessage]);
+  const direIntro = useCallback(() => {
+    if (guidageVocal()) speakMessage(...introMessage());
+  }, [introMessage, speakMessage]);
 
   useEffect(() => {
-    if (!guidageVocal()) return;
-    speakMessage(...introMessage());
+    direIntro();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois à l'arrivée sur la caisse, pas à chaque re-render
   }, []);
+  // Le montage peut être le premier affichage d'une WebView : le navigateur
+  // bloque alors la synthèse automatique. Le premier toucher la rejoue, sans
+  // filtrer la cible (micro, produit ou autre bouton).
+  useAudioUnlockFallback(direIntro, guidageVocal());
 
   // REPRISE (§3, suite) — à l'arrivée sur la caisse : une ligne CONFIRMÉE et
   // résolue qui n'est jamais entrée au panier est REPROPOSÉE — remise en
@@ -804,6 +866,11 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     dernierRelu.current = texte;
     // Le moteur a compris : il a déjà agi, on ne repasse pas derrière lui.
     if (intentLocal(texte)) return;
+    // MÊME RÈGLE POUR LA PORTE DE LA CAISSE. Depuis le 12/11, `lireLocal`
+    // donne cette lecture AU MOTEUR avant qu'il ne conclue à l'échec : quand
+    // c'est lui qui a lu, son `onAction` a déjà ajouté la ligne (ou ouvert la
+    // question de prix). Repasser ici la doublerait.
+    if (venteLueParLeMoteur.current === texte) return;
     const local = intentLocalCaisse(texte);
     // Une intention qui n'est PAS une vente (encaissement, dépense) est
     // traitée ailleurs : on ne la relit pas en vente.

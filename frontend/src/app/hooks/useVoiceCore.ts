@@ -89,6 +89,25 @@ export interface VoiceCoreOptions {
   onNavigate?: (path: string) => void;
   onError?: (message: string) => void;
   onTranscript?: (text: string) => void;
+  /**
+   * LA PORTE DE L'ÉCRAN, POUR QUE LE MOTEUR NE LA CONTREDISE PAS — 12/11/2026.
+   *
+   * `intentLocal` est la lecture COMMUNE, et elle est volontairement stricte :
+   * « Orange 500 » (produit + prix, sans verbe) n'y est pas une vente, parce
+   * que la même phrase ne veut pas dire la même chose sur le stock ou chez
+   * l'assistante. La caisse, elle, a sa propre porte (`intentLocalCaisse`,
+   * puis son catalogue) — mais elle arrivait APRÈS : le moteur disait
+   * « Je n'ai pas bien compris » et coupait la phrase que l'écran venait de
+   * comprendre.
+   *
+   * Ce point d'extension, PORTÉ PAR L'INSTANCE, donne au moteur la lecture de
+   * l'écran avant qu'il ne conclue à l'échec. Il n'est consulté QUE si
+   * `intentLocal` rend `null`, et seulement par l'instance qui le fournit :
+   * aucune autre surface ne change de comportement. Absent par défaut, le
+   * chemin d'origine est intact. `null` et `undefined` veulent dire la même
+   * chose : « l'écran ne reconnaît rien ici ».
+   */
+  lireLocal?: (texte: string) => Partial<VoiceProcessResponse> | null | undefined;
   /** Intentions pour lesquelles CETTE instance de useVoiceCore n'exige jamais
    * de confirmation orale « oui/non », même si la source (ex. intentLocal)
    * la demande (`needsConfirmation: true`). Absent par défaut : comportement
@@ -353,6 +372,7 @@ export function useVoiceCore({
   onAction,
   onNavigate,
   onError,
+  lireLocal,
   confirmationBypassIntents,
   offlineLocalIntents,
 }: VoiceCoreOptions = {}): VoiceCoreResult {
@@ -439,6 +459,14 @@ export function useVoiceCore({
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
   const sendTextRef = useRef<((text: string) => Promise<boolean>) | null>(null);
+  // La porte de l'écran (`lireLocal`) passe par une ref : un appelant peut la
+  // fournir en ligne (identité neuve à chaque rendu), et la glisser dans les
+  // dépendances de `sendText`/`processAudio` ferait changer `startRecording`
+  // puis `handleMicClick` à chaque rendu du parent — de quoi relancer les
+  // minuteurs d'écoute de la caisse sans raison. La ref est réaffectée à
+  // chaque rendu, donc la dernière version est toujours celle qui répond.
+  const lireLocalRef = useRef<VoiceCoreOptions["lireLocal"]>(undefined);
+  lireLocalRef.current = lireLocal;
   // Confirmation vocale (« c'est bien ça ? » → oui/non). Refs pour appeler ces
   // fonctions depuis processAudio sans dépendances circulaires.
   const pendingResponseRef = useRef<VoiceProcessResponse | null>(null);
@@ -929,7 +957,10 @@ export function useVoiceCore({
         return;
       }
 
-      const local = texte ? intentLocal(texte) : null;
+      // LA LECTURE DE L'ÉCRAN PASSE AVANT L'ÉCHEC (voir `lireLocal` dans les
+      // options). Si elle comprend, le flux commun traite la réponse : on ne
+      // dit jamais « pas compris » sur une vente que la caisse a comprise.
+      const local = texte ? (intentLocal(texte) ?? lireLocalRef.current?.(texte) ?? null) : null;
       vtrace.intention('useVoiceCore.processAudio', texte || '', local);
       if (local) {
         clearThinkingTimer();
@@ -1004,7 +1035,10 @@ export function useVoiceCore({
       // C'est ce chemin qu'empruntent les exemples « ce que tu peux dire » et le
       // mot-réveil : avant, il passait par le serveur (mort) et donnait « souci
       // technique » au tout début. Désormais, tout est compris localement.
-      const local = intentLocal(text);
+      // LA LECTURE DE L'ÉCRAN PASSE AVANT L'ÉCHEC (voir `lireLocal` dans les
+      // options). Si elle comprend, le flux commun traite la réponse : on ne
+      // dit jamais « pas compris » sur une vente que la caisse a comprise.
+      const local = intentLocal(text) ?? lireLocalRef.current?.(text) ?? null;
       vtrace.intention('useVoiceCore.sendText', text, local);
       if (local) {
         clearThinkingTimer();

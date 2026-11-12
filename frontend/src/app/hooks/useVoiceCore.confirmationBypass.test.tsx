@@ -9,6 +9,13 @@
  * - ne bypasse QUE les intentions listées : « dépense » reste confirmée même
  *   quand « vendre » est bypassée pour la même instance.
  *
+ * Et, depuis le 12/11/2026, la PORTE DE L'ÉCRAN (`lireLocal`) :
+ * - une phrase que `intentLocal` refuse (« Orange 500 ») mais que la caisse
+ *   sait lire n'est plus un échec — elle arrive au flux commun intacte ;
+ * - sans `lireLocal`, la même phrase reste non comprise (défaut inchangé
+ *   pour toutes les autres surfaces : l'option est PAR INSTANCE) ;
+ * - `lireLocal` n'est jamais appelé quand `intentLocal` a déjà compris.
+ *
  * Lancer : npm run test:voice-confirmation-bypass
  */
 import { JSDOM } from "jsdom";
@@ -67,6 +74,7 @@ type Core = ReturnType<typeof useVoiceCore>;
 function makeHarness(options: {
   confirmationBypassIntents?: string[];
   onAction?: (data: unknown) => void;
+  lireLocal?: (texte: string) => Partial<import("./useVoiceCore.js").VoiceProcessResponse> | null;
 }) {
   let core: Core | null = null;
   const stateHistory: string[] = [];
@@ -74,6 +82,7 @@ function makeHarness(options: {
     const value = useVoiceCore({
       context: { module: "caisse", userId: "user-test", sessionOpen: true },
       confirmationBypassIntents: options.confirmationBypassIntents,
+      lireLocal: options.lireLocal,
       onAction: async (data) => { options.onAction?.(data); },
     });
     React.useEffect(() => { core = value; stateHistory.push(value.state); }, [value]);
@@ -154,6 +163,76 @@ async function run() {
     //    pas seulement ne pas être remplacée par une nouvelle question.
     await act(async () => { await h.core?.sendText("vends 2 tomates à 1000 francs"); });
     ok(h.core?.response === null, "D la carte de réponse résiduelle est explicitement effacée (pas juste laissée telle quelle)");
+  }
+
+  // E — PORTE DE L'ÉCRAN (`lireLocal`) : « Orange 500 », produit + prix sans
+  // verbe, que `intentLocal` refuse volontairement (strict, partagé). Avant ce
+  // point d'extension, le moteur disait « Je n'ai pas bien compris » et coupait
+  // la relecture de la caisse, qui avait pourtant compris la vente.
+  {
+    const vus: string[] = [];
+    let recu: any = null;
+    const h = makeHarness({
+      confirmationBypassIntents: ["vendre"],
+      lireLocal: (texte) => {
+        vus.push(texte);
+        return {
+          transcript: texte,
+          normalizedText: texte,
+          intent: "vendre",
+          action: { type: "vendre", produit: "orange", montant: 500 },
+          response: "J'ai compris : 1 Orange.",
+          needsConfirmation: true,
+          audioBase64: null,
+        };
+      },
+      onAction: (data) => { recu = data; },
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    render(React.createElement(h.Harness), { container });
+
+    let resultat: boolean | undefined;
+    await act(async () => { resultat = await h.core?.sendText("Orange 500"); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+
+    ok(vus.length === 1 && vus[0] === "Orange 500", "E la porte de l'écran est consultée UNE fois, avec la phrase exacte");
+    ok(resultat === true, "E la dictée est un SUCCÈS (plus de « pas compris » sur une vente que l'écran a comprise)");
+    ok(recu?.action?.type === "vendre" && recu?.action?.produit === "orange" && recu?.action?.montant === 500,
+      "E l'action de l'écran arrive intacte au flux commun (produit + montant)");
+    ok(h.core?.error === "", "E aucune erreur affichée sur cette phrase");
+  }
+
+  // F — SANS `lireLocal` (toutes les autres surfaces) : la même phrase reste
+  // un échec, exactement comme avant. L'option est PAR INSTANCE, pas globale.
+  {
+    let onActionCalls = 0;
+    const h = makeHarness({ confirmationBypassIntents: ["vendre"], onAction: () => { onActionCalls++; } });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    render(React.createElement(h.Harness), { container });
+
+    let resultat: boolean | undefined;
+    await act(async () => { resultat = await h.core?.sendText("Orange 500"); });
+
+    ok(resultat === false, "F sans lireLocal, « Orange 500 » reste non comprise (comportement par défaut intact)");
+    ok(onActionCalls === 0, "F aucune action métier déclenchée pour une phrase que le moteur commun refuse");
+  }
+
+  // G — L'ORDRE EST CELUI PROMIS : `lireLocal` n'est JAMAIS appelé quand
+  // `intentLocal` comprend déjà. La porte de l'écran ne recouvre rien.
+  {
+    const vus: string[] = [];
+    const h = makeHarness({
+      confirmationBypassIntents: ["vendre"],
+      lireLocal: (texte) => { vus.push(texte); return null; },
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    render(React.createElement(h.Harness), { container });
+
+    await act(async () => { await h.core?.sendText("vends 2 tomates à 1000 francs"); });
+    ok(vus.length === 0, "G lireLocal n'est pas consulté quand intentLocal a compris (aucun recouvrement)");
   }
 
   audioManager.__resetPlayers();

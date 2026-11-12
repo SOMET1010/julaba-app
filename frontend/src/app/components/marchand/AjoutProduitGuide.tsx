@@ -51,6 +51,17 @@ const CIBLE = 44;
 
 const CHIFFRES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
+/**
+ * LA QUESTION DU PRIX A SA VRAIE VOIX — clip `vente-06.mp3`.
+ *
+ * Le texte ci-dessous est EXACTEMENT celui que `tataUiClips` associe au clip :
+ * `speak` le reconnaît et joue la voix embarquée de Tata, hors-ligne, au lieu
+ * de la synthèse. L'écran garde sa formulation avec l'unité (« Le tas, à
+ * combien ? ») : l'oreille entend la question du prix, l'œil garde de quoi
+ * lever l'ambiguïté entre le tas et le kilo.
+ */
+const QUESTION_PRIX_EMBARQUEE = "Et puis c'est à combien ?";
+
 interface Props {
   /** Ses unités déjà employées : elles passent devant celles du marché. */
   sesUnites: readonly string[];
@@ -114,7 +125,11 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    *  contrat audio — qui choisit la forme PARLÉE. Passer par le catalogue ne
    *  suffit pas : `.texte` est la forme ÉCRAN, avec son espace fine, et la
    *  synthèse l'épelle chiffre par chiffre. */
-  const direMessage = (id: string, vars?: Record<string, string | number>) => {
+  const direMessage = (id: string, vars?: Record<string, string | number>, texteEmbarque?: string) => {
+    // Une phrase dont la voix existe déjà en clip : on dit le texte EXACT du
+    // clip au lieu de la synthèse. L'écran garde sa formulation (ici l'unité),
+    // l'oreille reçoit la vraie voix de Tata.
+    if (texteEmbarque) { void dire(texteEmbarque); return; }
     // LA FORME PARLÉE, PAS LA FORME ÉCRAN — terrain du 24/09.
     //
     // Ici on faisait `dire(resoudreMessage(id, vars).texte)`. Or un message du
@@ -235,7 +250,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
    * forme parlée compte, et c'est déjà la raison d'être de cette fonction.
    */
   useEffect(() => {
-    if (etapeVue === 'prix') direMessage('STOCK_049', { unite });
+    if (etapeVue === 'prix') direMessage('STOCK_049', { unite }, QUESTION_PRIX_EMBARQUEE);
     else if (etapeVue === 'quantite') direMessage('STOCK_054');
     // On ne redit pas la question à chaque frappe : seul le changement
     // d'ÉTAPE la déclenche.
@@ -503,7 +518,7 @@ export function AjoutProduitGuide({ sesUnites, depart, onPose, onAnnuler }: Prop
               juste dessous pour qui préfère taper. */}
           <BoutonDirePrix
             ouvrirToutSeul
-            question={`Le ${unite}, à combien ?`}
+            question={QUESTION_PRIX_EMBARQUEE}
             dire={dire}
             onMontant={(m) => setPrix(String(m))}
           />

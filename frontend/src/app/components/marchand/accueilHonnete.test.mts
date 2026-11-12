@@ -98,6 +98,23 @@ ok(/if \(!soldeVisible\)/.test(code),
      'la phrase « je n\'ai pas pu lire » ne reçoit aucun montant à prononcer');
 }
 
+console.log('\n[4b] Le geste de cacher / montrer le solde SE DIT');
+{
+  // Signalé au banc : l'œil de « Ma caisse aujourd'hui » masquait le chiffre
+  // en silence. Deux phrases, deux clips embarqués (wlt-01 / wlt-08) : les
+  // textes doivent rester EXACTEMENT ceux de tataUiClips, sinon `speak`
+  // retombe sur la synthèse au lieu de jouer la voix de Tantie.
+  ok(/basculerSolde/.test(code) && /onClick=\{basculerSolde\}/.test(code),
+     'l\'œil du solde passe par un geste nommé, pas directement par `basculerMontants`');
+  const geste = code.match(/const basculerSolde = \(\) => \{[\s\S]*?\n  \};/)?.[0] ?? '';
+  ok(geste.includes("'Ton argent est caché'"),
+     'le solde masqué dit le texte exact du clip wlt-01');
+  ok(geste.includes("'Ton argent est affiché'"),
+     'le solde affiché dit le texte exact du clip wlt-08');
+  ok(/speak\(soldeVisible \?/.test(geste),
+     'la phrase dépend de l\'état AVANT bascule — pas de l\'état déjà changé');
+}
+
 console.log('\n[5] La logique métier n\'a pas bougé');
 ok(/getTodayStats\(\)/.test(code),
    'le montant vient toujours de getTodayStats() — on n\'a pas recalculé la caisse');
@@ -149,14 +166,15 @@ console.log("\n[PILOTE] SEPT PORTES, PAS VINGT-SIX");
   // KEIWA — HISTORIQUE DES DÉCISIONS. Le 24/09 (CIBLE-UX-MARCHANDE-PILOTE.md),
   // la tuile « Mon argent » avait été retirée : elle tombait sur « Keiwa
   // verrouillé · Entre ton code PIN », un écran de sécurité muet devant une
-  // femme qui ne lit pas. Le 06/10 (arbitrage §8.3 d'AUDIT-UX-ROLES-2026-10-06,
-  // sur délégation explicite — commit UX-6/M-P1-2), la tuile est RESTAURÉE :
-  // le défaut racine a été traité à la source (Tata parle aux trois rôles,
-  // UX-2/T1) et keiwa n'avait PLUS AUCUNE porte pour la marchande. La garde
-  // est recalée sur la décision actuelle : PORTE UNIQUE, visible, sur l'accueil.
-  ok(/\/marchand\/keiwa/.test(accueil),
-     "l'accueil ouvre Keiwa par la tuile « Mon argent » — porte UNIQUE (arbitrage §8.3 du 06/10)");
-  ok(/Mon argent/.test(accueil), "et la tuile « Mon argent » est bien sur l'accueil");
+  // femme qui ne lit pas. Le 06/10 (arbitrage §8.3 d'AUDIT-UX-ROLES-2026-10-06),
+  // la tuile avait été RESTAURÉE. Le 12/11/2026, Patrick la MASQUE de nouveau :
+  // l'accueil ne garde que les trois gestes du comptoir (stock, dépenses,
+  // ventes). La route `/marchand/keiwa` et le portefeuille restent en place —
+  // seule la porte visible se ferme.
+  ok(!/Mon argent/.test(accueil),
+     "la tuile « Mon argent » reste masquée sur l'accueil (12/11/2026)");
+  ok(!/\/marchand\/keiwa/.test(accueil),
+     "l'accueil ne rouvre pas Keiwa par une autre tuile");
 
   // LE MARCHÉ VIRTUEL — s'approvisionner est un autre métier que vendre.
   const barreMarchand = roles.match(/marchand:\s*\{[\s\S]*?bottomBar:\s*\{[\s\S]*?\]/)?.[0] ?? '';

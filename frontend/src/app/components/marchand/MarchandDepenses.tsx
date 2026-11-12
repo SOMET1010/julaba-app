@@ -469,9 +469,9 @@ export function MarchandDepenses() {
         )}
       </div>
 
-      <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'12px 14px 28px', background:`linear-gradient(to top,${BG} 70%,transparent)`, zIndex:10 }}>
+      <div style={{ position:'fixed', bottom:0, left:0, right:0, padding:'12px 14px max(28px, env(safe-area-inset-bottom))', background:`linear-gradient(to top,${BG} 70%,transparent)`, zIndex:10, boxSizing:'border-box' }}>
         <motion.button whileTap={{ scale:0.97 }} onClick={() => navigate('/marchand/depense')}
-          style={{ width:'100%', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 0', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px' }}>
+          style={{ display:'block', width:'100%', boxSizing:'border-box', background:P, color:'white', border:'none', borderRadius:20, padding:'17px 16px', fontSize:16, fontWeight:800, cursor:'pointer', fontFamily:'inherit', boxShadow:`0 4px 16px ${P}55`, letterSpacing:'-0.2px', whiteSpace:'normal', lineHeight:1.25 }}>
           + Faire une dépense
         </motion.button>
       </div>

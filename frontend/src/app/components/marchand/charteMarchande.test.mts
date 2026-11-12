@@ -145,5 +145,30 @@ for (const [c, nom] of [['#b74725', '--commerce-action'], ['#f6f0e4', '--commerc
 
 const total = mesures.reduce((s, [, n]) => s + n, 0);
 console.log(`\nCouleurs en dur restantes dans le parcours marchande : ${total}`);
+
+console.log("\n[5] les en-têtes marchands suivent « Mes dépenses »");
+// 12/11/2026 — Patrick : « les boutons de retours des headers des autres vues
+// marchands ne sont pas comme pour Mes dépenses ». Les sous-écrans marchands
+// (hors caisse, qui garde son en-tête clair) prennent donc le gradient orange,
+// le rayon 13 et la flèche 16 px de « Mes dépenses ». Cette garde fige les
+// quatre marqueurs pour qu'une retouche isolée ne réintroduise pas l'écart.
+const sousPage = sansCommentaires(lire('../layout/SubPageLayout.tsx'));
+ok(/role === 'marchand' && !clair/.test(sousPage),
+   "SubPageLayout : variante marchande distincte de la caisse");
+ok(/linear-gradient\(160deg, var\(--commerce-action\) 0%, var\(--commerce-orange-700\) 100%\)/.test(sousPage),
+   "SubPageLayout : gradient orange de « Mes dépenses »");
+ok(/orange \? 13 : 14/.test(sousPage),
+   "SubPageLayout : bouton retour au rayon 13, comme « Mes dépenses »");
+ok(/<svg width="16" height="16"[\s\S]*?strokeWidth="2\.5"/.test(sousPage),
+   "SubPageLayout : flèche retour 16 px, comme « Mes dépenses »");
+
+const accueil = sansCommentaires(lire('./MarchandAccueilVoice.tsx'));
+ok(!/Mon argent/.test(accueil),
+   "l'accueil ne montre plus la carte « Mon argent » (12/11/2026)");
+
+const codeDepenses = sansCommentaires(lire('./MarchandDepenses.tsx'));
+ok(/width:'100%'/.test(codeDepenses) && !/maxWidth:560/.test(codeDepenses),
+   "« + Faire une dépense » occupe toute la largeur, sans limite de 560 px");
+
 if (failures > 0) { console.log(`\n${failures} refus.`); process.exit(1); }
 console.log("Charte marchande : garde verte ✅");

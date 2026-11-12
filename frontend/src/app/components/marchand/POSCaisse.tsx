@@ -119,6 +119,14 @@ function POSCaisseInner() {
   /** Posé AVANT le rendu suivant : un `useState` arriverait trop tard entre
    *  deux relevés de dictée espacés de quelques dizaines de millisecondes. */
   const arbitrageDemandeRef = useRef(false);
+  // Une confirmation de vente est dite en DEUX phrases (accusé core-ack-06,
+  // puis le montant). Si l'écran est quitté entre les deux, la seconde ne doit
+  // pas partir seule sur un autre écran.
+  const monteRef = useRef(true);
+  useEffect(() => {
+    monteRef.current = true;
+    return () => { monteRef.current = false; };
+  }, []);
   /**
    * AMB-02 — PENDANT L'ARBITRAGE, LA FEUILLE NE DOIT RIEN DEMANDER D'ÉCRIT.
    *
@@ -566,8 +574,15 @@ function POSCaisseInner() {
         // Confirmation qui se VOIT (écran vert), s'ENTEND (parlée) et se SENT
         // (vibration) : une non-lectrice ou une sourde sait que c'est passé.
         vibrerSucces();
-        if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
-        else direMessage('TATA_VENTE_ENREGISTREE', { total });
+        // L'ACCUSÉ DE RÉCEPTION DE LA VENTE (clip core-ack-06, voix embarquée).
+        // Il est dit AVANT le montant, puis on enchaîne : le montant reste la
+        // dernière chose entendue, et les deux phrases ne se coupent pas
+        // (audioManager ne joue qu'une source à la fois — d'où l'attente).
+        void Promise.resolve(dire("C'est calé, ta vente est bien entrée dans la machine.")).then(() => {
+          if (!monteRef.current) return;
+          if (avertRupture) direMessage('TATA_VENTE_ENREGISTREE_RUPTURE', { total, avertissement: avertRupture });
+          else direMessage('TATA_VENTE_ENREGISTREE', { total });
+        });
       } else {
         // EN ATTENTE D'ENVOI. Aucun signe de succès : pas de `vibrerSucces()`,
         // et surtout pas sous un autre nom. Mais l'attente DOIT se sentir —

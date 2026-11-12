@@ -87,6 +87,14 @@ function MarchandAccueilVoiceInner() {
 
   const { montantsMasques, basculerMontants } = useMontantsPrives();
   const soldeVisible = !montantsMasques;
+  // Masquer / afficher le solde de la caisse est un geste qui DOIT se dire :
+  // c'est la même règle que le reste de la voix (aucune information importante
+  // uniquement visuelle). Les deux phrases sont les textes EXACTS des clips
+  // wlt-01 / wlt-08, donc `speak` joue l'enregistrement au lieu de synthétiser.
+  const basculerSolde = () => {
+    speak(soldeVisible ? 'Ton argent est caché' : 'Ton argent est affiché');
+    basculerMontants();
+  };
   // Mode SOLEIL (inclusion §2.4) : un seul geste, visible sur l'accueil — pas
   // caché dans les réglages. Tout devient plus grand et plus franc.
   const [soleil, setSoleil] = useState(() => getConfortVisuel() === 'soleil');
@@ -247,9 +255,6 @@ function MarchandAccueilVoiceInner() {
   //   stock    → vert        (les produits, comme la grille de la caisse)
   //   dépenses → alerte      (le seul registre où l'argent SORT)
   //   ventes   → vert foncé  (« montants forts » : ce qui est déjà rentré)
-  //   argent   → gris texte  (le portefeuille, neutre vis-à-vis de la caisse ;
-  //              c'est la correspondance la plus faible des quatre — la charte
-  //              n'a pas de jeton « portefeuille »)
   const tuiles: Array<{ icon: ReactNode; label: string; go: () => void; teinte: string }> = [
     { icon: svg(<><path d="M21 8V16a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4z"/><path d="M3.27 6.96 12 12l8.73-5.04"/><path d="M12 22V12"/></>), label: 'Mon stock',    go: () => navigate('/marchand/stock'),          teinte: 'var(--caisse-vert)' },
     { icon: svg(<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>), label: 'Mes dépenses', go: () => navigate('/marchand/cahier'),         teinte: 'var(--caisse-alerte)' },
@@ -264,23 +269,12 @@ function MarchandAccueilVoiceInner() {
     //
     // Décision déjà rendue : « "Résumé caisse" n'est plus une destination
     // concurrente : il appartient à "Mes ventes". »
-    // LA TUILE « MON ARGENT » EST RESTAURÉE — arbitrage §8.3 de l'audit UX
-    // (06/10/2026, AUDIT-UX-ROLES-2026-10-06, sur délégation explicite).
-    //
-    // HISTORIQUE. Retirée par Patrick le 24/09 parce qu'elle tombait sur
-    // « Keiwa verrouillé · Entre ton code PIN » : un écran de sécurité, devant
-    // une femme qui ne lit pas, avec ZÉRO parole. Ce défaut-là est traité à la
-    // racine le même jour : la voix Tata est ouverte aux trois rôles
-    // (AppContext.speak, décision §8.1) — l'écran n'est plus une porte muette.
-    // Depuis le retrait, keiwa n'avait PLUS AUCUNE porte pour la marchande
-    // (seul lien vivant : une notification) — M-P1-2/T5.
-    //
-    // L'ARBITRAGE : porte UNIQUE, sur l'accueil — l'accueil est la porte
-    // naturelle d'un produit voice-first, le profil est texte (conforme au
-    // commentaire d'UniversalProfil : « Keiwa vit uniquement sur la tuile
-    // "Mon argent" de l'accueil, une seule porte suffit »). Pas de ligne keiwa
-    // dans le profil.
-    { icon: svg(<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></>), label: 'Mon argent', go: () => navigate('/marchand/keiwa'), teinte: 'var(--caisse-gris-texte)' },
+    // LA TUILE « MON ARGENT » EST MASQUÉE — 12/11/2026.
+    // Décision de Patrick : l'accueil ne montre plus que les trois gestes du
+    // comptoir (stock, dépenses, ventes). La route `/marchand/keiwa` et le code
+    // du portefeuille restent en place ; seule cette porte visible se ferme,
+    // comme le prévoit la règle du pilote (« rien n'est supprimé, seules les
+    // portes visibles se réduisent »).
   ];
 
   return (
@@ -346,7 +340,7 @@ function MarchandAccueilVoiceInner() {
             <motion.button whileTap={{ scale: 0.9 }} onClick={direCaisse} aria-label="Écouter ma caisse">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a9 9 0 0 1 0 14"/></svg>
             </motion.button>
-            <motion.button whileTap={{ scale: 0.9 }} onClick={basculerMontants}
+            <motion.button whileTap={{ scale: 0.9 }} onClick={basculerSolde}
               aria-label={soldeVisible ? 'Cacher mes montants' : 'Montrer mes montants'}>
               {soldeVisible
                 ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>

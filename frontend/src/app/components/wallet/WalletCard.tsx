@@ -37,7 +37,9 @@ export function WalletCard({ roleColor = '#2E8B57', onNavigate }: WalletCardProp
 
   const handleToggleBalance = () => {
     setShowBalance(!showBalance);
-    speak(showBalance ? 'Solde masqué' : 'Solde affiché');
+    // La voix embarquée (wlt-01 / wlt-08) : ces deux phrases sont les textes
+    // EXACTS des clips, donc `speak` les joue au lieu de la synthèse.
+    speak(showBalance ? 'Ton argent est caché' : 'Ton argent est affiché');
   };
 
   const handleToggleExpand = () => {

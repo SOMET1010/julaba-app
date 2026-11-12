@@ -119,7 +119,7 @@ copie**.
 | garde | ce qu'elle tient |
 |---|---|
 | `frontend` → `npm run verify` | **132 maillons, tous exécutés** (runner VER-01). Attendu : **exit 1, 3 rouges CONNUS, aucun rouge nouveau** |
-| `scripts/maillons-verify.json` | **la source unique** de la liste des maillons. Une garde non inscrite ne s'exécute jamais |
+| `frontend/scripts/maillons-verify.json` | **la source unique** de la liste des maillons. Une garde non inscrite ne s'exécute jamais |
 | `test:maillons-orphelins` | refuse tout `test:*` qui n'est ni dans `verify`, ni dans `test:ci`, ni déclaré hors-verify **avec motif** |
 | `test:ci` | **figé à 44 maillons.** On n'y ajoute rien |
 | `ci/garde-argent.mjs` | périmètre d'argent + empreintes des gardes. État de référence : **12 entrés / 14 perdues** |
