@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowDownCircle,
-  ArrowLeft,
   ArrowUpCircle,
   Lock,
   Percent,
@@ -135,15 +134,18 @@ export function HistoriquePage() {
     <div className="min-h-screen pb-safe" style={{ backgroundColor: PAGE_BG }}>
       <header style={{ backgroundColor: HEADER_COLOR }} className="pt-safe pb-4">
         <div className="flex items-center gap-3 px-4 pt-4">
+          {/* RETOUR AU MODÈLE « MES DÉPENSES » (ordre Patrick 12/11) : 44 px,
+              rayon 13, flèche 16 px — même cible tactile que les sous-écrans
+              marchands, au lieu du rond 36 px qui les distinguait. */}
           <motion.button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)' }}
+            className="flex items-center justify-center flex-shrink-0"
+            style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', cursor: 'pointer' }}
             whileTap={{ scale: 0.9 }}
-            aria-label="Retour"
+            aria-label="Revenir en arrière"
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
           </motion.button>
           <h1 className="text-lg font-bold text-white flex-1">Transactions</h1>
         </div>

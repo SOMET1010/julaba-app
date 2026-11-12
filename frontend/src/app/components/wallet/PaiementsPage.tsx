@@ -112,12 +112,16 @@ export function PaiementsPage() {
       <div style={{ background: C, padding: '22px 20px 28px', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '50%', background: 'linear-gradient(to bottom, rgba(255,255,255,0.1), transparent)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 16 }}>
+          {/* RETOUR AU MODÈLE « MES DÉPENSES » (ordre Patrick 12/11) : 44 px,
+              rayon 13, flèche 16 px — même cible tactile que les sous-écrans
+              marchands, au lieu du rond 38 px qui les distinguait. */}
           <motion.button
             onClick={() => navigate(-1)}
-            style={{ width: 38, height: 38, borderRadius: '50%', background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            aria-label="Revenir en arrière"
+            style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
             whileTap={{ scale: 0.9 }}
           >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="white" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
           </motion.button>
           <div style={{ textAlign: 'center' }}>
             <p style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>Paiements</p>

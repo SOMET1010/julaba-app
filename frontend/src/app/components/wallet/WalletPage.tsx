@@ -3,7 +3,7 @@ import { verifierPin, definirPin } from '../../services/api/auth-api';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Eye, EyeOff, Menu, ArrowLeft, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint, X } from 'lucide-react';
+import { Eye, EyeOff, Menu, ChevronRight, Shield, MessageCircle, MapPin, Lock, Monitor, CreditCard, Check, Fingerprint, X } from 'lucide-react';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
 import { useUser } from '../../contexts/UserContext';
 import { useApp } from '../../contexts/AppContext';
@@ -778,12 +778,16 @@ export function WalletPage() {
 
         {/* Top bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 20 }}>
+          {/* RETOUR AU MODÈLE « MES DÉPENSES » (ordre Patrick 12/11) : 44 px,
+              rayon 13, flèche 16 px — la même cible tactile et le même trait
+              que tous les sous-écrans marchands. */}
           <motion.button
             onClick={() => navigate(-1)}
-            style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            aria-label="Revenir en arrière"
+            style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}
             whileTap={{ scale: 0.9 }}
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7" /></svg>
           </motion.button>
           <motion.button
             onClick={() => setShowBalance(v => !v)}
