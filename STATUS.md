@@ -6,9 +6,29 @@ avant toute fin de session.
 > Décision de Patrick (07/10/2026, point 7) : **ce fichier fait foi**. `docs/PASSATION.md`
 > et `docs/JOURNAL.md` sont archivés (bandeau en tête, plus mis à jour) et renvoient ici.
 
+## Session 12/11 — bouton « Ouvrir ma caisse » responsive
+
+**Livrable** : le bouton respecte désormais les gouttières de l’accueil sur
+petit écran et au breakpoint tablette. `docs/ARCHITECTURE.md` a aussi été
+aligné sur le renommage `frontend_src` → `frontend` du commit `89de1bf5` :
+`frontend/src/` est bien la source actuelle, `frontend/dist/` la sortie générée.
+
+| DoD vérifiable | Statut | Preuve |
+|---|---|---|
+| Le bouton ne déborde pas des gouttières à 320 et 390 px | ✅ | largeur calculée `100% - 2 × 14 px` : 292 et 362 px; captures dans `docs/parcours/captures/` |
+| Le bouton reste ajusté au breakpoint ≥768 px | ✅ ciblé | gouttière existante de 32 px; à 768 px, largeur calculée 672 px dans les 736 px de contenu |
+| Comportement, libellé et couleurs inchangés | ✅ | seul `width` et `boxSizing` ont changé |
+| Vérifications front | ✅ | `typecheck`, `build`, `test:accueil-cable` et `test:charte-marchande` |
+| Preview déployée et recette sur téléphone | ⬜ | non exécutées; aucun déploiement demandé |
+
+Le build passe avec ses avertissements Vite de découpage dynamique et de gros
+chunks. Aucun test ajouté. Aucun commit, push ni déploiement. Des modifications
+locales préexistantes à `RoleDashboard.tsx` et aux clips/registre vocaux ont
+été laissées intactes.
+
 | | |
 |---|---|
-| relevé | **08/11/2026** |
+| relevé | **12/11/2026** |
 | branche par défaut | `main` |
 | branche en cours | `dev` |
 | dernier commit | `34ba9c24` — docs(worklog): voix-eventualites-06-11 |

@@ -412,7 +412,7 @@ function MarchandAccueilVoiceInner() {
           <motion.button
             whileTap={{ scale: 0.97 }} onClick={() => setShowOuverture(true)}
             aria-label="Ouvrir ma caisse"
-            style={{ width: '100%', minHeight: 56, borderRadius: 18, border: '2px solid var(--commerce-action)',
+            style={{ width: 'calc(100% - 2 * var(--julaba-gouttiere))', boxSizing: 'border-box', minHeight: 56, borderRadius: 18, border: '2px solid var(--commerce-action)',
               background: 'var(--commerce-orange-50)', color: 'var(--commerce-action)', fontSize: 16, fontWeight: 900,
               cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
               marginBottom: 14 }}>

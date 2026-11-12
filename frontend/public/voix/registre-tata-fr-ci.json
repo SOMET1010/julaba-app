@@ -11,8 +11,8 @@
     "validation_par_locutrice_ivoirienne": "à documenter"
   },
   "couverture": {
-    "fichiers_mp3": 285,
-    "clips_mappes": 277,
+    "fichiers_mp3": 282,
+    "clips_mappes": 274,
     "fichiers_orphelins": [
       "ui-037.mp3",
       "ui-041.mp3",
@@ -3467,45 +3467,6 @@
       "sha256": "66b9ecec1e22485986960deb646b1adbd09998de6318851fdf9d06b1749027f6",
       "octets": 137132,
       "duree_ms": 11400
-    },
-    {
-      "id": "vente-07",
-      "locale": "fr-CI",
-      "role": "guide-ivoirienne",
-      "texte_exact": "Que veux-tu vendre ?",
-      "fichier": "/voix/tata/vente-07.mp3",
-      "criticite": "a_classer",
-      "validation_humaine": "a_documenter",
-      "consentement": "a_relier_au_dossier_de_production",
-      "sha256": "a4100b0789b44a60a75056e7f196d3ccf823d3cc2b30e56d57a98b12068ed412",
-      "octets": 22220,
-      "duree_ms": 1824
-    },
-    {
-      "id": "vente-08",
-      "locale": "fr-CI",
-      "role": "guide-ivoirienne",
-      "texte_exact": "Touche-moi et dis ce que tu as vendu.",
-      "fichier": "/voix/tata/vente-08.mp3",
-      "criticite": "a_classer",
-      "validation_humaine": "a_documenter",
-      "consentement": "a_relier_au_dossier_de_production",
-      "sha256": "6dc7fbaeb8b48012620be0e2eee0494c16962d79499f7d0da0328b89df6ab02c",
-      "octets": 77516,
-      "duree_ms": 6432
-    },
-    {
-      "id": "vente-09",
-      "locale": "fr-CI",
-      "role": "guide-ivoirienne",
-      "texte_exact": "La vente n'a pas pu être enregistrée. Réessaie.",
-      "fichier": "/voix/tata/vente-09.mp3",
-      "criticite": "a_classer",
-      "validation_humaine": "a_documenter",
-      "consentement": "a_relier_au_dossier_de_production",
-      "sha256": "0bb7ba02a8088878ce266e49957e80ddc041174ebe48b5a8b88fcd35e84ba594",
-      "octets": 37196,
-      "duree_ms": 3072
     },
     {
       "id": "vente-01",

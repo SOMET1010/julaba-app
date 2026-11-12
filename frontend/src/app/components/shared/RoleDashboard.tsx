@@ -473,7 +473,6 @@ export function RoleDashboard({
                 handleDisabledClick('Ouvre d\'abord ta journée avant d\'utiliser le terminal POS');
                 return;
               }
-              speak('Bienvenue sur le terminal de vente. Ajoute tes produits au panier');
               navigate('/marchand/caisse');
             }}
             whileHover={{ scale: 1.02, y: -3 }}

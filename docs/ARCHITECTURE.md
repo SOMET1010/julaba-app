@@ -5,7 +5,9 @@ code s'y range. Si rien ne convient, on met **d'abord** ce document à jour —
 c'est la règle, et elle existe pour que l'architecture reste une décision et
 non un résultat.
 
-Relevé du **05/10/2026**. Les volumétries viennent de `find … | wc -l`.
+Chemins vérifiés le **12/11/2026** après le renommage `frontend_src` → `frontend`
+du commit `89de1bf5`. Les volumétries ci-dessous sont celles du relevé du
+05/10/2026.
 
 ---
 
@@ -13,9 +15,10 @@ Relevé du **05/10/2026**. Les volumétries viennent de `find … | wc -l`.
 
 | dossier | rôle | fichiers | état |
 |---|---|---|---|
-| **`frontend_src/`** | **LE front, celui qu'on modifie** — React 18 + Vite + TS | 668 | vivant |
+| **`frontend/`** | **LE front, celui qu'on modifie** — React 18 + Vite + TS | 668 | vivant |
 | **`backend/`** | **L'API** — NestJS 11 + TypeORM, 56 modules, 47 entités | 365 | vivant |
-| `frontend/` | **sorties de build** (`dist`, `dist-recette`) + clips audio servis | 984 | **généré — ne pas éditer** |
+| `frontend/public/voix/` | clips audio embarqués et servis par le front | — | vivant |
+| `frontend/dist/` | **sortie de build Vite** | — | **généré — ne pas éditer** |
 | `ci/` | gardes transverses : `garde-argent.mjs`, `PERIMETRE-ARGENT.json`, `EMPREINTE-GARDES.json` | 9 | vivant |
 | `docs/` | documentation, ADR, passations, jalon du pilote | 349 | vivant |
 | `scripts/` | utilitaires de dépôt | 19 | vivant |
@@ -25,11 +28,11 @@ Relevé du **05/10/2026**. Les volumétries viennent de `find … | wc -l`.
 | `spike/` | `oss-02-vad/` — expérience VAD **REJETÉE** | 24 | **mort, à statuer** |
 | `tests/`, `database/`, `coordination/`, `nginx/` | reliquats de volumétrie faible | 15 | **à statuer** |
 
-> **`frontend/` contre `frontend_src/`** — le piège le plus coûteux de ce
-> dépôt pour qui arrive. `frontend_src/` est **la source** ; `frontend/`
-> contient des **sorties de build** (`capacitor.config.ts` pointe
-> `webDir: 'frontend/dist'`). **Modifier un fichier de `frontend/` ne sert à
-> rien** : il sera écrasé au prochain build.
+> **`frontend/src/` contre `frontend/dist/`** — `frontend/` contient
+> désormais la source React et Vite ; `frontend/dist/` contient les sorties
+> de build (`capacitor.config.ts` pointe `webDir: 'frontend/dist'`).
+> **Modifier un fichier de `frontend/dist/` ne sert à rien** : il sera écrasé
+> au prochain build.
 
 ---
 
@@ -50,7 +53,7 @@ qui permet de prouver une règle d'argent sans monter React ni base — et c'est
 ainsi que cinq défauts ont été reproduits en quelques minutes le 03/10, sans
 construire un seul APK.
 
-### Où va quoi, dans `frontend_src/src/app/`
+### Où va quoi, dans `frontend/src/app/`
 
 | dossier | ce qu'on y met |
 |---|---|
@@ -115,7 +118,7 @@ copie**.
 
 | garde | ce qu'elle tient |
 |---|---|
-| `frontend_src` → `npm run verify` | **132 maillons, tous exécutés** (runner VER-01). Attendu : **exit 1, 3 rouges CONNUS, aucun rouge nouveau** |
+| `frontend` → `npm run verify` | **132 maillons, tous exécutés** (runner VER-01). Attendu : **exit 1, 3 rouges CONNUS, aucun rouge nouveau** |
 | `scripts/maillons-verify.json` | **la source unique** de la liste des maillons. Une garde non inscrite ne s'exécute jamais |
 | `test:maillons-orphelins` | refuse tout `test:*` qui n'est ni dans `verify`, ni dans `test:ci`, ni déclaré hors-verify **avec motif** |
 | `test:ci` | **figé à 44 maillons.** On n'y ajoute rien |
