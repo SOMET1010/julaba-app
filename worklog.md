@@ -1902,3 +1902,18 @@ Work Log:
 
 Stage Summary:
 - RÉPONSE À PATRICK : toute phrase FIXE des trois flux a désormais SON clip embarqué, et TOUTE phrase qui passe par AppContext.speak joue le clip quand il existe (synthèse seulement en repli ou pour le dynamique : montants, noms, unités) ; les quatre replis de confirmation d'argent disent enfin ce que l'écran écrit. RESTE À RECETTER : oreille ivoirienne au studio (atteste reste FAUX, règle lot B) et micro réel sur appareil
+
+---
+Task ID: push-azure-vente-13-11
+Agent: Z.ai Code (session Patrick)
+Task: « fais le push sur azure » — et portage du correctif « enregistrer une vente » sur la ligne dev
+
+Work Log:
+- ORDRE DE PATRICK (13/11) : « fais le push sur azure »
+- ÉTAT CONSTATÉ : le miroir GitHub → Azure tournait déjà vert sur chaque push (runs 212-215, tous succès, dernier 12/11 21:52 sur dev 360864d1) — tout ce qui vivait sur GitHub (bouton caisse responsive + « respire des deux côtés », sidebar, « Mon argent » masqué, boutons « Mes dépenses », banc de captures, RC release/rc-2026-11, fix/vox-05a-dire-promesse) ÉTAIT DÉJÀ chez Azure
+- DÉCOUVERTE : le correctif du retour vocal de Patrick (« Quand je veux enregistrer une vente, il ne comprenait pas », 13/11) ne vivait que dans le SANDBOX sur la vieille ligne frontend_src (commit d'instantané 89d117ad) — dev, elle, gardait les trois défauts : TantieSagesseModal avalait « vends 3 tomates » en silence (`montant <= 0 → return`), « enregistre une vente » posait une ligne fantôme à 1 F (article « une » lu comme montant, sans venteSansProduit), et la bulle d'échec de la caisse mentait sur la cause (micro refusé annoncé « Je n'ai pas compris »)
+- PORTAGE SUR LA STRUCTURE DEV (frontend/ renommé, caisse refondée) : branche fix/cai-vente-non-comprise depuis origin/dev 360864d1 ; CAI-10 — la branche `vendre` de l'assistante relit la phrase par les MÊMES portes que sa caisse (lireVenteAuCatalogue → venteSansProduit → extraire pour unité/lecture) et vendreUnifie transmet enfin uniteDictee/lectureDictee ; CAI-09 — la bulle affiche le message réel porté par `error`, la phrase de Patrick reste le repli d'un échec de compréhension réel (contrat clipEchecCaisse intact) ; CAI-08 — gardes de source figés sur la forme dev : le mécanisme du sandbox (`siSurfaceComprend`) est SUPERSEDED par `lireLocal` (déjà en place, meilleur : le moteur traite la vente et dit UN seul « compris ») — deux nouveaux gardes inscrits au verify (test:cai08-un-seul-compris, test:cai10-assistante-vente)
+- PREUVES : tsc -b vert ; gardes verts cai07/cai08/cai10/clipEchecCaisse/venteVocaleSansPrix/caisseTutoie ; commit d42ce72d « fix(voix): CAI-08/09/10 » poussé sur origin/dev ET sur la branche fix/cai-vente-non-comprise ; miroir run 43354809158 vert : « Miroir : 11 références poussées, 0 divergente(s) » — log : `360864d1..d42ce72d origin/dev -> dev` et `* [new branch] origin/fix/cai-vente-non-comprise` vers https://dev.azure.com/DevOps-ANSUT/julaba-app/_git/julaba-app
+
+Stage Summary:
+- RÉPONSE À PATRICK : le push sur Azure est fait — dev chez Azure porte désormais le correctif « enregistrer une vente » (l'assistante comprend « vends 3 tomates » sans prix, ne crée plus de ligne fantôme à 1 F, et la caisse ne ment plus quand le micro est refusé), en plus de tout ce qui y était déjà ; prochaine étape suggérée : recette vocale sur appareil réel puis nouvelle APK de recette
