@@ -16,6 +16,8 @@ import { stopAllAudio, preloadAudioContext } from '../../services/elevenlabs';
 import { unlockAudioContextIOS } from '../../services/earlyAudioCache';
 import { executerActionTataMarchand } from '../../services/tataMarchandActions';
 import { vendreVocalUnifie } from '../../services/vendreVocalUnifie';
+import { lireVenteAuCatalogue, venteSansProduit } from '../../services/venteAuCatalogue';
+import { extraire } from '../../voice-offline/extraction';
 import { guidageVocal } from '../../utils/accessMode';
 import { vibrerSucces } from '../../utils/haptique';
 import { toast } from 'sonner';
@@ -82,7 +84,14 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
   // vocal restant qui écrivait encore directement enregistrerVente). Aucune
   // confirmation vocale bloquante pour un simple ajout panier, ni de mise en
   // attente hors-ligne : le panier peut être manipulé immédiatement.
-  const vendreUnifie = (nomParle?: string, quantite?: number, montant?: number) =>
+  // CAI-10 — L'ASSISTANTE LIT UNE VENTE COMME SA CAISSE (13/11/2026).
+  // Ses trois arguments supplémentaires existaient dans vendreVocalUnifie et
+  // n'arrivaient jamais ici : ni l'unité prononcée, ni ce que le montant veut
+  // dire (« à »/« pour »), ni la relecture au catalogue. Une vente dictée à
+  // l'assistante était donc jugée par moins de renseignements que la même
+  // vente dictée à sa caisse — et deux lectures de la même phrase pouvaient
+  // diverger sur l'argent.
+  const vendreUnifie = (nomParle?: string, quantite?: number, montant?: number, uniteDictee?: string | null, lectureDictee?: 'unitaire' | 'total' | null) =>
     vendreVocalUnifie(nomParle, quantite || 1, montant || 0, {
       products,
       addToCart,
@@ -102,7 +111,7 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
       // NI mot, NI écran — la vente comprise disparaissait en silence. Le
       // texte vient du catalogue i18n, résolu par vendreVocalUnifie.
       signalerBlocage: ({ texte }) => { toast.warning(texte); },
-    });
+    }, uniteDictee, lectureDictee);
 
   const {
     state: step, response: result, transcript, error, recordingTime, history,
@@ -131,9 +140,40 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
         return;
       }
       if (action.type === 'vendre') {
-        const montant = action.montant || 0;
-        if (!montant || montant <= 0 || isNaN(montant)) return;
-        vendreUnifie(action.produit, action.quantite || 1, montant);
+        // CAI-10 — LA MÊME LECTURE QUE LA CAISSE, ET PLUS AUCUN SILENCE
+        // (13/11/2026). Trois défauts vivaient ici, tous sur des ventes réelles :
+        //
+        //   1. `montant <= 0 → return` avalait la vente TOUTE ENTIERE sans un
+        //      mot. « vends 3 tomates », « enregistre une vente de tomate » :
+        //      l'extraction comprenait produit et quantité, seul le montant
+        //      manquait — or le prix, son catalogue le connaît. La caisse passe
+        //      0 à vendreVocalUnifie et laisse le catalogue décider (et demander
+        //      à défaut) ; l'assistante, elle, jeta la phrase. C'est son
+        //      « quand je veux enregistrer une vente, il ne comprend pas ».
+        //
+        //   2. « enregistre une vente » devenait une ligne fantôme à UN franc :
+        //      l'article « une » était lu comme le MONTANT (extraire rend
+        //      montant=1), et sans la correction `venteSansProduit` (qui existe
+        //      pour ça, et que la caisse applique), l'article libre « Produit
+        //      vocal » partait au panier à 1 F, en silence.
+        //
+        //   3. Ni l'unité prononcée ni le « à »/« pour » dicté n'arrivaient à
+        //      la résolution du prix : la même phrase dictée ici et à la caisse
+        //      pouvait entrer pour deux montants différents.
+        //
+        // La lecture ci-dessous est la branche `vendre` de MicroVenteCaisse,
+        // à l'identique : son catalogue d'abord, la correction CAT-02 ensuite,
+        // puis l'extraction UNIQUEMENT pour l'unité et la lecture du prix.
+        const reluAuCatalogue = lireVenteAuCatalogue(data.transcript || '', products);
+        const corrige = reluAuCatalogue ? null : venteSansProduit(action, data.transcript || '');
+        const vente = reluAuCatalogue ?? (corrige ? { ...action, ...corrige } : action);
+        const brut = Number(vente.montant);
+        // 0 = rien n'a été dicté : le catalogue fournit le prix, et à défaut il
+        // est DEMANDÉ (signalerBlocage ci-dessus) — jamais une ligne à 0 F.
+        const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
+        const quantite = vente.quantite || 1;
+        const lu = extraire(data.transcript || '');
+        vendreUnifie(vente.produit, quantite, montant, lu.uniteParlee, lu.lecturePrix);
         return;
       }
       try {

@@ -169,6 +169,8 @@
     "test:caisse-tutoie": "tsx src/app/components/marchand/caisseTutoie.test.mts",
     "test:ecoute-caisse": "tsx src/app/services/ecouteCaisse.test.mts",
     "test:cai07-un-seul-compris": "tsx src/app/services/cai07-un-seul-jai-compris.test.mts",
+    "test:cai08-un-seul-compris": "tsx src/app/components/marchand/cai08UnSeulCompris.test.mts",
+    "test:cai10-assistante-vente": "tsx src/app/components/assistant/cai10AssistanteVente.test.mts",
     "test:resume-periode": "tsx src/app/services/resumePeriode.test.mts",
     "test:categorie-depense": "tsx src/app/services/categorieDepense.test.mts",
     "test:geste-tactile": "tsx src/app/services/motsDuGesteTactile.test.mts",

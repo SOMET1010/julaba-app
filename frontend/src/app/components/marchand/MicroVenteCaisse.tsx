@@ -984,7 +984,18 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     // désormais MOT POUR MOT celle à enregistrer en ui-138.mp3 : le jour où
     // le fichier arrive, `tataUiClipForText` l'associe sans qu'on touche à
     // rien. Le contrat est figé par `clipEchecCaisse.test.mts`.
-    : isError ? "Je n'ai pas compris. Touche le micro et redis-moi."
+    //
+    // CAI-09 — LA BULLE NE MENT PLUS SUR LA CAUSE (13/11/2026). Cette phrase
+    // répond à un échec de COMPRÉHENSION : elle a parlé, l'écran n'a rien
+    // saisi. Or `state === "error"` couvre AUSSI les échecs AVANT d'avoir
+    // écouté : micro refusé ou occupé (« Micro introuvable ou déjà utilisé… »),
+    // moteur absent (web : « La dictée n'est disponible que dans
+    // l'application… »). Dans ces cas-là, « Je n'ai pas compris » est un
+    // mensonge — elle n'a pas encore pu parler. Le message RÉEL porté par
+    // `error` (le même que la carte d'erreur plus bas) prend sa place : une
+    // seule vérité, écran et bulle. La phrase de Patrick reste le repli quand
+    // l'échec est bien une phrase non comprise.
+    : isError ? (error || "Je n'ai pas compris. Touche le micro et redis-moi.")
     : produitPreselectionne ? `Dis ce que tu as vendu de ${produitPreselectionne.nom}`
     : 'Dis-moi ce que tu vends';
 

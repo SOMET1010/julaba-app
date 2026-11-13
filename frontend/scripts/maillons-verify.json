@@ -121,6 +121,8 @@
     "test:caisse-tutoie",
     "test:ecoute-caisse",
     "test:cai07-un-seul-compris",
+    "test:cai08-un-seul-compris",
+    "test:cai10-assistante-vente",
     "test:resume-periode",
     "test:categorie-depense",
     "test:geste-tactile",
