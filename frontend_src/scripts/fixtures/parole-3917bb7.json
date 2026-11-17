@@ -1,20 +1,20 @@
 {
   "reference": "3917bb7",
   "empreintes": {
-    "services/audioManager.ts": "41496e7ba86a22101544c6e38f5a019529d39ec62b1c65b7c7c81ebf9d8c9b35",
-    "services/elevenlabs.ts": "33fb3b14eef9f5cd8e8d4c8140a3dad7e26a7fcc29db840f056113a8cf353907",
-    "hooks/useVoiceCore.ts": "65ea3c8d2f3401dc28cf8bdf557b08b2864e9c3c7af3703b7bc7334628f34d67",
-    "contexts/AppContext.tsx": "c00184e5f8e5342419e83a0d11f31a4aa0165f096095e7ee491a34e4aac37b8f",
-    "voice-offline/offlineStt.ts": "bac7b80e1c36b8e7a78b2252b8c82b6d7e9d325f0917b72c9b6e27d013a3d5d0",
-    "voice-offline/nativeTts.ts": "60b237ffe615d5bbc530c51827d978f8e6a011d9fc52a9c388598a9529eb101d",
-    "components/layout/AppLayout.tsx": "addfe8f95e5f505683f552d1efbcbe26e6fb128c2f03d6e19fb7cc6d427af9c2",
-    "services/tataVoice.ts": "7c55d2de5405a1bb6d16ef9dec0f7c4295c7e06a0f91b05961982d3033382dfc",
-    "services/tataUiClips.ts": "8c6765330fcee5df3868b8f8b587ec72f4707b9a47e598b01d9baf9bcbc41076",
-    "services/localVoiceChoice.ts": "60278cad1f3cebbc33d6aa0e1817db83fa7e7d3a04e3acf8273e525844f01918",
-    "services/voicePacksRuntime.ts": "bc382c1d23f66733363e61016a8d0f9854fc44599cbda0c292997f6258531eb1",
-    "services/onboardingVoix.ts": "5eee52588c74af2e7659a21327b447b1f55e61c54fa97bc069a1d5b985b72cec",
-    "voice-offline/nativeStt.ts": "c1b87d795378cdf4c9953241e35f0bc48038a6bcb73fb93bbbc2bb15da97a995",
-    "contexts/ObjectifContext.tsx": "1e6093003b78398829391edad8cfc12479e6d8dbd4b8fb285f17c11058a14d46"
+    "services/audioManager.ts": "66f4478c12a70d95affadd7d3ebd68624e1325d5d7197897ad0f54736923a16f",
+    "services/elevenlabs.ts": "3bf9bc3968e474337c7753c252fe86dd56e923c8458c75aa7a2ec42f5c587003",
+    "hooks/useVoiceCore.ts": "fde7f008dd7ec1d1915f2790a94cf83d1ecdb2ea5859d10b328188707f13e807",
+    "contexts/AppContext.tsx": "2f37beae4d5b87083842bf623b673855d5cb5a1991774aebc2e666e1ea5d2ca3",
+    "voice-offline/offlineStt.ts": "264f0768fdd58362eb805bf703bf2c9119ddf3226c0c249621842b2f16e1cda4",
+    "voice-offline/nativeTts.ts": "b12644f97324280205ce3e79ba426f81aebb5f697530324aa899c3f3b99d5995",
+    "components/layout/AppLayout.tsx": "c291a93c8deed91d58f7c797e89267017ca2def23c11f0b0acb9aecc9f6e66e0",
+    "services/tataVoice.ts": "e2b97bd1a85c8237d60db361f17ec139fff429314cddfaeded790ff939c60d30",
+    "services/tataUiClips.ts": "b6351a25919809c7785d810b88b6793a1c7d404825b99a4eb8b36dc831d807bf",
+    "services/localVoiceChoice.ts": "50b9a3256b82a0bb3d1630f39fb87c72a670ca6fa0e8bab0b7b7197c263677e9",
+    "services/voicePacksRuntime.ts": "6620285ea3334033e0c3c4a9407dc0750772de0a80f5a116dbf8e71e8f2ab306",
+    "services/onboardingVoix.ts": "236f032c354dacc24ba84c6b75c2e72b4248264eac1b6cca42060fe31a5688a0",
+    "voice-offline/nativeStt.ts": "4aaa5ea6a1271a503e92b5be8746c395f96b79bbaa16323cd2f6b44ddc4cb214",
+    "contexts/ObjectifContext.tsx": "c5f409014f425b0de53f217a329eccec9f5f06c173b14201408abcde38df4ab1"
   },
   "appels": {
     "services/audioManager.ts": [
@@ -62,10 +62,10 @@
     ],
     "voice-offline/nativeStt.ts": [],
     "contexts/ObjectifContext.tsx": [
+      "speak(texte, { priority: 'user' })",
+      "speakAuto(texte, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 })",
       "speakAuto(`Félicitations ! Tu as atteint 50% de ton objectif. Continue ma chère, tu es sur la bonne voie !`, { dedupeKey: 'objectif-50', minRepeatMs: 5 * 60 * 1000 })",
-      "speakAuto(`Bravo ! Tu es à 80% de ton objectif. Plus que ${Math.round(state.objectif - ventes).toLocaleString('fr-FR')} FCFA, allez courage !`, { dedupeKey: 'objectif-80', minRepeatMs: 5 * 60 * 1000 })",
-      "speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 })",
-      "speak(`Super ! Ton objectif du jour est fixé à ${montant.toLocaleString('fr-FR')} FCFA. Bonne chance ma chère !`, { priority: 'user' })"
+      "speakAuto(`Incroyable ! Tu as atteint ton objectif du jour ! Tu es trop forte ma chère !`, { dedupeKey: 'objectif-100', minRepeatMs: 10 * 60 * 1000 })"
     ],
     "components/auth/LoginPassword.tsx": [
       "parle(next ? 'Voilà les photos qui sont sorties à la place des chiffres. Ton code n\\'a pas changé.' : 'Voilà les chiffres maintenant. Mets ton code comme d\\'habitude.')",
