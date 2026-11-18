@@ -28,6 +28,7 @@ import { SubPageLayout } from '../layout/SubPageLayout';
 import { useStock } from '../../contexts/StockContext';
 import { useApp } from '../../contexts/AppContext';
 import { construireReappro, coutTotalReappro, partagerReappro, telechargerReapproPDF } from '../../utils/reappro.utils';
+import { construireAlertesStock, lireAlertesMasquees } from '../../utils/alertesStock.utils';
 import { montantPrive, useMontantsPrives } from '../../hooks/useMontantsPrives';
 import { cheminMasque } from '../../config/modulesPilote';
 
@@ -165,14 +166,18 @@ function EcranVide() {
 export function MarchandAlertes() {
   const navigate = useNavigate();
   const { speak, user, isOnline } = useApp();
-  const { stock, getStockFaible, getValeurTotaleStock } = useStock();
+  const { stock } = useStock();
   const { montantsMasques, basculerMontants } = useMontantsPrives();
 
   const marchandNom = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || (user as any)?.nom || 'Marchande';
 
   // Liste de réapprovisionnement automatique (dérivée des seuils) — écart CDC 8.1.2.
+  // P2 (rapport 17/11/2026) : le coût affiché est un coût D'ACHAT (prix d'achat),
+  // jamais une estimation sur les prix de vente. Les produits sans prix d'achat
+  // renseigné ne sont pas comptés — et l'écran le dit.
   const reappro = construireReappro(stock);
   const coutReappro = coutTotalReappro(reappro);
+  const sansPrixAchat = reappro.filter(l => !l.prixAchatConnu).length;
   const [partageEnCours, setPartageEnCours] = useState(false);
   const envoyerReappro = async () => {
     if (partageEnCours || reappro.length === 0) return;
@@ -186,12 +191,7 @@ export function MarchandAlertes() {
     }
   };
 
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('julaba_alertes_dismissed');
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set();
-    } catch { return new Set(); }
-  });
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => lireAlertesMasquees());
   const dismiss = (id: string) => {
     setDismissedIds(prev => {
       const next = new Set([...prev, id]);
@@ -201,6 +201,13 @@ export function MarchandAlertes() {
   };
 
   // ── Construire la liste d'alertes ─────────────────────────────
+  //
+  // P3 (rapport 17/11/2026) : la liste vient de la SEULE fonction partagée
+  // `construireAlertesStock` — celle que « Mes produits » lit aussi pour son
+  // badge. Règles et identifiants d'ici ne peuvent plus diverger de la page
+  // de stock : c'était « 2 alertes » d'un côté, « 3 » de l'autre. Ici, on ne
+  // fait que l'habillage : textes, icônes et actions, mots pour mots ceux
+  // d'avant.
 
   type AlerteItem = {
     id: string;
@@ -214,104 +221,84 @@ export function MarchandAlertes() {
   };
 
   const items: AlerteItem[] = [];
-  const stockFaible = getStockFaible();
-
-  // Produits en rupture (quantité = 0)
-  const ruptures = stockFaible.filter(s => s.quantite === 0);
-  ruptures.forEach(s => {
-    items.push({
-      id: `rupture-${s.id}`,
-      urgence: 'critique',
-      icon: Package,
-      title: `${s.produit} — Rupture de stock`,
-      subtitle: 'Ce produit n\'est plus disponible à la vente',
-      detail: 'Réapprovisionnez rapidement pour ne pas perdre de ventes',
-      actionLabel: 'Ouvrir le stock',
-      onAction: () => navigate('/marchand/stock'),
-    });
-  });
-
-  // Produits à stock bas : quantité > 0 mais sous le SEUIL DU PRODUIT (seuil_alerte
-  // configuré ; à défaut 5). C'est l'alerte de rupture demandée au CDC, basée sur
-  // les seuils de stock.
-  const SEUIL_DEFAUT = 5;
-  const basMaisNonVides = stockFaible.filter(s => s.quantite > 0);
-  basMaisNonVides.forEach(s => {
-    const seuil = s.seuilAlerte ?? SEUIL_DEFAUT;
-    const pct = seuil > 0 ? Math.round((s.quantite / seuil) * 100) : 100;
-    items.push({
-      id: `stock-bas-${s.id}`,
-      urgence: pct < 50 ? 'haute' : 'moyenne',
-      icon: TrendingDown,
-      title: `${s.produit} — Stock faible`,
-      subtitle: `${s.quantite} ${s.unite} restant(s) · seuil : ${seuil} ${s.unite}`,
-      detail: 'Pensez à commander avant la rupture',
-      actionLabel: 'Voir le stock',
-      onAction: () => navigate('/marchand/stock'),
-    });
-  });
-
-  // Produits proches de la péremption (≤ 7 jours) ou déjà périmés (écart CDC 8.1.2).
-  const auj = new Date(); auj.setHours(0, 0, 0, 0);
-  stock.forEach(s => {
-    if (!s.datePeremption) return;
-    const dp = new Date(s.datePeremption);
-    if (isNaN(dp.getTime())) return;
-    const jours = Math.ceil((dp.getTime() - auj.getTime()) / 86400000);
-    if (jours > 7) return;
-    const perime = jours < 0;
-    items.push({
-      id: `peremption-${s.id}`,
-      urgence: (perime || jours <= 2) ? 'haute' : 'moyenne',
-      icon: Clock,
-      title: perime ? `${s.produit} — Périmé` : `${s.produit} — Bientôt périmé`,
-      subtitle: perime
-        ? `Périmé depuis ${Math.abs(jours)} jour${Math.abs(jours) > 1 ? 's' : ''}`
-        : (jours === 0 ? 'Se périme aujourd’hui' : `Se périme dans ${jours} jour${jours > 1 ? 's' : ''}`),
-      detail: perime ? 'À retirer de la vente' : 'À vendre en priorité',
-      actionLabel: 'Voir le stock',
-      onAction: () => navigate('/marchand/stock'),
-    });
-  });
+  for (const a of construireAlertesStock(stock)) {
+    switch (a.type) {
+      case 'rupture':
+        items.push({
+          id: a.id,
+          urgence: a.urgence,
+          icon: Package,
+          title: `${a.produit} — Rupture de stock`,
+          subtitle: 'Ce produit n\'est plus disponible à la vente',
+          detail: 'Réapprovisionnez rapidement pour ne pas perdre de ventes',
+          actionLabel: 'Ouvrir le stock',
+          onAction: () => navigate('/marchand/stock'),
+        });
+        break;
+      case 'stock-bas':
+        items.push({
+          id: a.id,
+          urgence: a.urgence,
+          icon: TrendingDown,
+          title: `${a.produit} — Stock faible`,
+          subtitle: `${a.quantite} ${a.unite} restant(s) · seuil : ${a.seuil} ${a.unite}`,
+          detail: 'Pensez à commander avant la rupture',
+          actionLabel: 'Voir le stock',
+          onAction: () => navigate('/marchand/stock'),
+        });
+        break;
+      case 'peremption': {
+        const j = a.jours ?? 0;
+        const perime = j < 0;
+        items.push({
+          id: a.id,
+          urgence: a.urgence,
+          icon: Clock,
+          title: perime ? `${a.produit} — Périmé` : `${a.produit} — Bientôt périmé`,
+          subtitle: perime
+            ? `Périmé depuis ${Math.abs(j)} jour${Math.abs(j) > 1 ? 's' : ''}`
+            : (j === 0 ? 'Se périme aujourd’hui' : `Se périme dans ${j} jour${j > 1 ? 's' : ''}`),
+          detail: perime ? 'À retirer de la vente' : 'À vendre en priorité',
+          actionLabel: 'Voir le stock',
+          onAction: () => navigate('/marchand/stock'),
+        });
+        break;
+      }
+      case 'valeur-elevee':
+        items.push({
+          id: a.id,
+          urgence: a.urgence,
+          icon: DollarSign,
+          title: 'Valeur stock importante',
+          subtitle: montantsMasques ? 'Valeur du stock cachée' : `${(a.valeur || 0).toLocaleString()} FCFA de stock en cours`,
+          detail: 'Assurez-vous que vos produits sont bien sécurisés',
+          actionLabel: 'Voir le détail',
+          onAction: () => navigate('/marchand/stock'),
+        });
+        break;
+      case 'surstock':
+        items.push({
+          id: a.id,
+          urgence: a.urgence,
+          icon: ShoppingCart,
+          title: `${a.nbProduits} produit(s) en surstock`,
+          subtitle: 'Certains stocks sont 3x au-dessus du seuil normal',
+          detail: 'Envisagez des promotions pour écouler ces stocks',
+          // Le marché virtuel paie (keiwa, mobile money) : hors pilote, il est
+          // masqué hors drapeau. L'alerte reste — elle dit vrai — mais sans
+          // bouton qui rebondirait sur l'accueil (config/modulesPilote.ts).
+          ...(cheminMasque('/marchand/marche') ? {} : {
+            actionLabel: 'Voir le marché',
+            onAction: () => navigate('/marchand/marche'),
+          }),
+        });
+        break;
+    }
+  }
 
   // (Phase 2) Plus d'alerte « Journée non ouverte » : l'ouverture de journée est
   // désormais automatique (le back-end ouvre la session à la 1re vente) et vendre
   // n'est jamais bloqué. Prévenir « ouvre ta journée » était obsolète et trompeur.
-
-  // Valeur stock élevée (> 500 000 FCFA) — info de gestion
-  const valeurStock = getValeurTotaleStock();
-  if (valeurStock > 500000) {
-    items.push({
-      id: 'stock-valeur-elevee',
-      urgence: 'info',
-      icon: DollarSign,
-      title: 'Valeur stock importante',
-      subtitle: montantsMasques ? 'Valeur du stock cachée' : `${(valeurStock || 0).toLocaleString()} FCFA de stock en cours`,
-      detail: 'Assurez-vous que vos produits sont bien sécurisés',
-      actionLabel: 'Voir le détail',
-      onAction: () => navigate('/marchand/stock'),
-    });
-  }
-
-  // Trop de produits différents (> 8) sans vente — conseils
-  const produitsSansVente = stock.filter(s => s.quantite > SEUIL_DEFAUT * 3);
-  if (produitsSansVente.length > 0) {
-    items.push({
-      id: 'surstock',
-      urgence: 'info',
-      icon: ShoppingCart,
-      title: `${produitsSansVente.length} produit(s) en surstock`,
-      subtitle: 'Certains stocks sont 3x au-dessus du seuil normal',
-      detail: 'Envisagez des promotions pour écouler ces stocks',
-      // Le marché virtuel paie (keiwa, mobile money) : hors pilote, il est
-      // masqué hors drapeau. L'alerte reste — elle dit vrai — mais sans
-      // bouton qui rebondirait sur l'accueil (config/modulesPilote.ts).
-      ...(cheminMasque('/marchand/marche') ? {} : {
-        actionLabel: 'Voir le marché',
-        onAction: () => navigate('/marchand/marche'),
-      }),
-    });
-  }
 
   const visibles = items.filter(a => !dismissedIds.has(a.id));
   const count = visibles.length;
@@ -399,8 +386,14 @@ export function MarchandAlertes() {
                 <p className="font-bold" style={{ color: COLOR }}>Liste de réappro prête</p>
                 <p className="text-sm text-gray-700">
                   {reappro.length} produit{reappro.length > 1 ? 's' : ''} à commander
-                  {coutReappro > 0 && <> · ≈ {montantPrive(coutReappro, montantsMasques, 'FCFA')}</>}
+                  {coutReappro > 0 && <> · ≈ {montantPrive(coutReappro, montantsMasques, 'FCFA')} d'achats (prix d'achat)</>}
                 </p>
+                {coutReappro === 0 && sansPrixAchat > 0 && (
+                  <p className="text-xs text-amber-700 mt-1">Aucun prix d'achat renseigné : le coût des achats ne peut pas être estimé.</p>
+                )}
+                {coutReappro > 0 && sansPrixAchat > 0 && (
+                  <p className="text-xs text-amber-700 mt-1">Prix d'achat non renseigné pour {sansPrixAchat} produit{sansPrixAchat > 1 ? 's' : ''} — le coût estimé ne les compte pas.</p>
+                )}
               </div>
             </div>
 

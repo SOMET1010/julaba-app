@@ -19,7 +19,8 @@ export interface LigneReappro {
   quantite: number;      // stock actuel
   seuil: number;         // seuil d'alerte du produit
   suggere: number;       // quantité suggérée à commander
-  coutEstime: number;    // suggere × prix d'achat unitaire (0 si inconnu)
+  coutEstime: number;    // suggere × prix d'ACHAT unitaire (0 si inconnu)
+  prixAchatConnu: boolean; // false = le coût de cette ligne n'est pas compté
   rupture: boolean;      // quantite === 0
 }
 
@@ -39,7 +40,13 @@ export function construireReappro(stock: ReapproSource[]): LigneReappro[] {
     if (q > seuil) continue; // stock suffisant → pas de réappro
     const cible = seuil * 2;
     const suggere = Math.max(1, Math.ceil(cible - q));
-    const pu = Number(s.prixAchat ?? s.prixUnitaire ?? 0) || 0;
+    // P2 (rapport 17/11/2026) — LE COÛT DE RÉAPPRO EST UN COÛT D'ACHAT.
+    // L'ancien repli `?? s.prixUnitaire` estimait les achats avec le prix de
+    // VENTE : la marchande prévoyait un budget trop grand (rapport : 172 500 F
+    // affichés au lieu de 146 750 F pour 15 régimes de bananes et 11 sacs de
+    // riz). Sans prix d'achat renseigné, le coût vaut 0 et l'écran le dit —
+    // on n'invente jamais un prix d'achat à partir d'un prix de vente.
+    const pu = Number(s.prixAchat ?? 0) || 0;
     lignes.push({
       produit: s.produit,
       unite: s.unite || 'unité',
@@ -47,6 +54,7 @@ export function construireReappro(stock: ReapproSource[]): LigneReappro[] {
       seuil,
       suggere,
       coutEstime: Math.round(suggere * pu),
+      prixAchatConnu: pu > 0,
       rupture: q === 0,
     });
   }
@@ -78,7 +86,7 @@ export function texteReappro(lignes: LigneReappro[], marchand: string): string {
     '',
     ...corps,
     '',
-    cout > 0 ? `Coût estimé : ${cout.toLocaleString('fr-FR')} FCFA` : '',
+    cout > 0 ? `Coût estimé des achats (prix d'achat) : ${cout.toLocaleString('fr-FR')} FCFA` : '',
     'Merci !',
   ].join('\n');
 }
@@ -134,7 +142,7 @@ export async function telechargerReapproPDF(lignes: LigneReappro[], marchand: st
   if (cout > 0) {
     y += 2; doc.setDrawColor(210); doc.line(14, y, 134, y); y += 7;
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-    doc.text('Coût estimé', 14, y);
+    doc.text('Coût estimé des achats', 14, y);
     doc.text(`${cout.toLocaleString('fr-FR')} FCFA`, 134, y, { align: 'right' });
   }
   doc.save(`reappro-julaba-${d.toISOString().slice(0, 10)}.pdf`);

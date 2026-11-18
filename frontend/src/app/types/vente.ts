@@ -154,6 +154,10 @@ export interface StockServeur {
   unite?: string;
   prix_unitaire?: number | string;
   prix?: number | string;
+  /** Prix d'ACHAT renvoyé par le serveur (stocks-rest). Le réapprovisionnement
+   *  estime le coût des achats avec lui (rapport de tests 17/11/2026, P2) —
+   *  distinct du prix de vente, jamais replié dessus. */
+  prix_achat?: number | string | null;
   seuil_alerte?: number | string | null;
   categorie?: string;
   image?: string | null;

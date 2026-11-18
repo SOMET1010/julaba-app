@@ -6,6 +6,38 @@ avant toute fin de session.
 > Décision de Patrick (07/10/2026, point 7) : **ce fichier fait foi**. `docs/PASSATION.md`
 > et `docs/JOURNAL.md` sont archivés (bandeau en tête, plus mis à jour) et renvoient ici.
 
+## Session 18/11 — audit du rapport de tests du 17/11 : les 5 anomalies closes
+
+**Livrable** : les anomalies du rapport de tests (`rapport-tests-julaba`, APK 0f821761 du
+12/11 matin — construit AVANT les correctifs du 12/11 soir) sont closes sur dev :
+résultat financier, budget de réapprovisionnement, compteur d'alertes, vente vocale,
+« Mon argent » (caduc). Récupération Azure faite au passage : le miroir pousse toutes
+les branches à chaque push, donc Azure = GitHub (dev 6a8899c1) ; les empreintes de voix
+du 17/11 de Patrick (sauvegarde/voix-6-moments-wip-20261117) sont vérifiées déjà intégrées.
+
+| Anomalie | Correctif | Preuve |
+|---|---|---|
+| P1 — « Tu as gagné net : 3 000 » sur une perte | Label du KPI dynamique (>= 0 → gagné, < 0 → perdu), ResumeCaisse.tsx | agent-browser : dépense 3 000 F créée → « 3 000 FCFA Tu as perdu net » (rouge) + bilan « Attention ! … plus dépensé que gagné » + caisse −3 000 |
+| P2 — réappro calculé sur les prix de VENTE | StockContext.normalize mappe `prix_achat` (jamais mappé) ; reappro.utils coût = prixAchat SEUL, `prixAchatConnu` par ligne, écran étiquetté « d'achats (prix d'achat) » + note si prix manquant | unitaire : bananes/riz du rapport → 146 750 F exact ; runtime : « 1 produit à commander · ≈ 130 000 FCFA d'achats (prix d'achat) » (10 × 13 000, pas 15 000) |
+| P3 — « 2 alertes » ici, « 3 » là | Nouveau util partagé alertesStock.utils.ts — UNE seule liste (règles + ids dismiss de la page Alertes) pour MarchandAlertes ET le sous-titre/badge de GestionStock ; KPI renommé « Stock faible » (il filtre les produits sous seuil) | runtime : « Mes produits : 3 produits · 2 alertes » = « Alertes : 2 actives au total » |
+| P4 — « 10 bananes à 5 000 » lu « 1 banane à 5 000 » | extraction.ts : fusion des milliers (« 5 000 » ne se coupait plus en « 5 »+« 000 ») + FCFA/CFA marqueurs après ; replis quantité `|| 1` des deux chemins relisent lu.quantite (MicroVenteCaisse :886, TantieSagesseModal :174) | unitaire : {q:10, m:5000} → catalogue banane 500 → total 5 000, environ 500 l'article, reformulation TATA_COMPRIS_TOTAL ; arbitrage « on ne devine jamais » (23/09) INTACT, garde prix-ambigu verte |
+| Anomalie 3 — bouton « Mon argent » ne fonctionne pas | CADUC : l'APK testé datait d'avant le masquage (ordre Patrick 12/11, gardes charteMarchande/accueilHonnete). Résidu fermé : rangée Keiwa du profil producteur/coop/institution gate par moduleVisible('keiwa') | accueil marchand sans card Mon argent ; profil producteur sans rangée Keiwa (capture 05) |
+
+| DoD vérifiable | Statut | Preuve |
+|---|---|---|
+| tsc -b et lint | ✅ | typecheck vert, 0 erreur eslint |
+| 30+ gardes concernées | ✅ | intentlocal, voix, vendre-unifie×2, vente-au-catalogue, prix-* (unitaire/ambigu/sans-quantite/catalogue/marchande), fcfa, bambara, mandingue, montants-oraux, depense-vocale, cai08/cai10, source-vente, charte-marchande, accueil-honnete, alerte-vivante, caisse-* (surface/micro/charte/pilote/tutoie/encaissement), clip-echec-caisse, rupture |
+| Rouges documentés inchangés | ✅ mesuré | i18n-empreintes-argent (intentLocal 033d≠8604 + vendreVocal : même valeur 033d obtenue avec extraction.ts d'origine = préexistant) ; voix-trace-source 6 échecs (baseline STATUS) |
+| Recette runtime 390 px | ✅ | agent-browser 390×844 : parcours P1/P2/P3 rejoués, aucun débordement (scrollWidth 390), captures 01-05 |
+| Micro réel | ⚠️ à recetter sur appareil | aucun micro dans ce sandbox — grammaire, extraction et résolution de prix prouvées au niveau moteur (script + gardes) |
+
+La règle de divisibilité unitaire/total PROPOSÉE puis RETIRÉE de prixVocal.ts est
+consignée dans le code : le cas du rapport se tranche par l'arbitrage catalogue
+(5 000 ≈ 10 × 500 → total), et la garde test:prix-ambigu refuse de deviner même
+divisible — l'arbitrage Patrick du 23/09 tient.
+
+---
+
 ## Session 12/11 — la caisse cesse d’être contredite par le moteur vocal
 
 **Livrable** : « Orange 500 » ou « banane 200 » dictés sur la caisse ne

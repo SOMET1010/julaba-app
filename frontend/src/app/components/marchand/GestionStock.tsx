@@ -23,6 +23,7 @@ import { useCaisse } from '../../contexts/CaisseContext';
 import { useStock } from '../../contexts/StockContext';
 import { eventBus, EVENTS } from '../../services/eventBus';
 import { guidageVocal } from '../../utils/accessMode';
+import { construireAlertesStock, lireAlertesMasquees } from '../../utils/alertesStock.utils';
 import { toast } from 'sonner';
 import { UNITES_COURANTES } from '../../config/unites';
 import { API_URL } from '../../utils/api';
@@ -441,6 +442,18 @@ export function GestionStock() {
   // un stock inconnu — le badge le dit déjà (◌ Stock non suivi), le compteur
   // et la voix de Tantie le disent maintenant aussi.
   const lowStocks = useMemo(() => stocks.filter(s => s.stockTracked !== false && s.quantity < s.threshold), [stocks]);
+  // P3 (rapport 17/11/2026) — LE COMPTEUR D'ALERTES EST CELUI DE LA PAGE
+  // ALERTES, mot pour mot. La même fonction partagée construit la liste
+  // complète (ruptures + stock bas + péremption + valeur + surstock) depuis
+  // le MÊME stock du StockContext, et les alertes masquées là-bas ne comptent
+  // plus ici : « 2 » d'un côté et « 3 » de l'autre ne peut plus arriver.
+  // Le KPI « Stock faible » reste, lui, le compteur du filtre de la liste
+  // (produits sous leur seuil) — son étiquette dit maintenant ce qu'il compte.
+  const alertesStock = useMemo(() => construireAlertesStock(stockCtx.stock), [stockCtx.stock]);
+  const alertesTotal = useMemo(() => {
+    const masquees = lireAlertesMasquees();
+    return alertesStock.filter(a => !masquees.has(a.id)).length;
+  }, [alertesStock]);
   const totalValue = useMemo(() => stocks.reduce((s, p) => s + p.quantity * p.salePrice, 0), [stocks]);
 
   // Mouvements RÉELS lus sur le ledger stock_mouvements (ventes + annulations),
@@ -651,7 +664,7 @@ export function GestionStock() {
     <SubPageLayout
       role="marchand"
       title="Mes produits"
-      subtitle={`${stocks.length} produit${stocks.length > 1 ? 's' : ''} · ${lowStocks.length} alerte${lowStocks.length > 1 ? 's' : ''}`}
+      subtitle={`${stocks.length} produit${stocks.length > 1 ? 's' : ''} · ${alertesTotal} alerte${alertesTotal > 1 ? 's' : ''}`}
       rightContent={
         <div style={{ display: 'flex', gap: 7 }}>
           <motion.button whileTap={{ scale: 0.9 }}
@@ -667,9 +680,9 @@ export function GestionStock() {
           <motion.button whileTap={{ scale: 0.9 }} onClick={() => navigate('/marchand/alertes')} aria-label="Voir les alertes de stock"
             style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.28)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
             <AlertCircle size={19} color="rgba(255,255,255,0.9)" strokeWidth={2} />
-            {lowStocks.length > 0 && (
+            {alertesTotal > 0 && (
               <span style={{ position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, padding: '0 3px', background: 'var(--color-red-500)', borderRadius: 9, fontSize: 9, fontWeight: 900, color: 'var(--herite-blanc-pur)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid rgba(143,68,24,0.9)' }}>
-                {lowStocks.length > 9 ? '9+' : lowStocks.length}
+                {alertesTotal > 9 ? '9+' : alertesTotal}
               </span>
             )}
           </motion.button>
@@ -688,7 +701,7 @@ export function GestionStock() {
 
           <KPIGrid cols={2}>
             <UniversalKPI label="Produits" animatedTarget={stocks.length} icon={Package} color="var(--herite-bleu-vif)" bgColor="rgba(239,246,255,0.9)" borderColor="rgba(59,130,246,0.35)" iconAnimation="bounce" onClick={() => setActiveKPI('all')} active={activeKPI==='all'} />
-            <UniversalKPI label="Alertes" animatedTarget={lowStocks.length} icon={AlertCircle} color="var(--color-orange-600)" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
+            <UniversalKPI label="Stock faible" animatedTarget={lowStocks.length} icon={AlertCircle} color="var(--color-orange-600)" bgColor="rgba(255,247,237,0.9)" borderColor="rgba(249,115,22,0.35)" iconAnimation="pulse" onClick={() => setActiveKPI(activeKPI==='alerts'?'all':'alerts')} active={activeKPI==='alerts'} />
             <UniversalKPI label="Valeur stock" value={totalValue.toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={TrendingUp} color="var(--color-green-600)" bgColor="rgba(240,253,244,0.9)" borderColor="rgba(34,197,94,0.35)" iconAnimation="none" onClick={() => setShowValue(true)} />
             <UniversalKPI label="Prix moyen" value={(stocks.length > 0 ? Math.round(totalValue / stocks.length) : 0).toLocaleString('fr-FR')} masque={montantsMasques} suffix="FCFA" icon={BarChart3} color="#9F8170" bgColor="rgba(249,244,240,0.9)" borderColor="rgba(159,129,112,0.35)" iconAnimation="none" />
           </KPIGrid>

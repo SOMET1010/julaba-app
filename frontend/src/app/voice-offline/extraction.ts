@@ -210,8 +210,12 @@ export const TOURNURES_TOTAL: string[] = [
   'je te mets', 'le tout', 'tout ca', 'tout ça', 'en tout',
   'dernier prix', 'prix final',
 ];
-// Marqueurs APRÈS le nombre → montant (« 2000 francs »)
-export const MARQUEURS_APRES = new Set(['francs', 'franc']);
+// Marqueurs APRÈS le nombre → montant (« 2000 francs », « 5000 FCFA »).
+// FCFA/CFA ajoutés le 17/11/2026 (rapport de tests P4) : « J'ai vendu 10
+// bananes à 5 000 FCFA » laissait le montant orphelin après la fusion des
+// milliers — sans ce marqueur, le nombre collé à « FCFA » n'était pas lu
+// comme un prix.
+export const MARQUEURS_APRES = new Set(['francs', 'franc', 'fcfa', 'cfa']);
 // Mots intermédiaires tolérés entre le nombre et le produit (pour la quantité)
 export const MOTS_UNITE = new Set([
   'tas', 'sac', 'sacs', 'kilo', 'kilos', 'kilogramme', 'kilogrammes',
@@ -258,6 +262,26 @@ export function normalise(text: string): string {
     .replace(/\bl'/g, 'le ')
     .replace(/[.,!?;:]/g, ' ')
     .replace(/\s+/g, ' ')
+    // ── FUSION DES MILLIERS — P4, rapport de tests du 17/11/2026 ──
+    //
+    // CE QUE ÇA COÛTAIT, mesuré sur la transcription exacte du rapport :
+    //   « J'ai vendu 10 bananes à 5 000 FCFA » → montant lu = 5.
+    //
+    // Le STT écrit les milliers avec un séparateur — espace, espace
+    // insécable, ou point (déjà plié en espace par la ligne au-dessus).
+    // Chaque groupe repartait en UN mot : « 5 » et « 000 » devenaient deux
+    // tokens, « 000 » valant zéro. Le montant dicté perdait la partie : « à
+    // 5 000 » se lisait « à 5 », et la vente entière se décidait sur un
+    // chiffre qu'elle n'avait jamais dit.
+    //
+    // LA RÈGLE, VOLONTAIREMENT ÉTROITE : un groupe de CHIFFRES suivi d'un
+    // groupe de EXACTEMENT TROIS chiffres est un même nombre — « 5 000 » →
+    // 5000, « 1 200 000 » → 1200000. Un groupe de 1-2 chiffres n'est JAMAIS
+    // fusionné (« 2 15 » reste deux nombres : quantité 2, montant 15), et
+    // un mot entre deux nombres empêche la fusion (« 10 bananes 5 000 » ne
+    // touche pas au « 10 »). Les quantités écrites normalement (« 10
+    // bananes ») ne changent pas de sens.
+    .replace(/(?<=\d) (\d{3})(?!\d)/g, '$1')
     .trim();
 }
 

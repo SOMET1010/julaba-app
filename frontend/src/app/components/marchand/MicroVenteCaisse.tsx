@@ -881,9 +881,13 @@ export function MicroVenteCaisse({ produitPreselectionne = null, onIntentionEnca
     const brut = Number(vente.montant);
     const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
     const lu = extraire(texte);
+    // P4 (rapport 17/11/2026) : la quantité dite ne se perd plus en route.
+    // Si le moteur/le catalogue n'a pas lu de quantité mais que la même
+    // phrase en porte une pour l'extraction, c'est ELLE qui gagne — le « 1 »
+    // ne vient que quand AUCUN nombre n'a été dit (F4NT-B intact).
     vendreUnifie(
       produitPourVente(vente.produit, produitPreselectionne),
-      vente.quantite || 1,
+      vente.quantite || lu.quantite || 1,
       montant,
       lu.uniteParlee,
       lu.lecturePrix,

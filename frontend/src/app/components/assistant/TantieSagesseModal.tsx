@@ -171,8 +171,12 @@ function TantieSagesseVoice({ onClose, role }: Pick<TantieSagesseModalProps, 'on
         // 0 = rien n'a été dicté : le catalogue fournit le prix, et à défaut il
         // est DEMANDÉ (signalerBlocage ci-dessus) — jamais une ligne à 0 F.
         const montant = Number.isFinite(brut) && brut > 0 ? brut : 0;
-        const quantite = vente.quantite || 1;
+        // P4 (rapport 17/11/2026) : la quantité dite ne se perd plus en route.
+        // L'extraction relit la MÊME phrase ; si elle a vu un nombre que le
+        // moteur/le catalogue n'a pas lu, c'est lui qui gagne. Le « 1 » ne
+        // vient que quand AUCUN nombre n'a été dit (F4NT-B intact).
         const lu = extraire(data.transcript || '');
+        const quantite = vente.quantite || lu.quantite || 1;
         vendreUnifie(vente.produit, quantite, montant, lu.uniteParlee, lu.lecturePrix);
         return;
       }

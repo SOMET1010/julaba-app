@@ -182,6 +182,18 @@ export function resoudrePrixVocal(args: {
     // trois tas vaut 1 500 ou 500 selon ce qu'elle voulait dire, et se
     // tromper coûte le triple. Aucune ligne n'entre au panier ; la question
     // lui est posée, sur le MÊME écran que le prix manquant.
+    //
+    // P4 (rapport de tests du 17/11/2026) — LE CAS « 10 BANANES À 5 000 FCFA »
+    // N'ATTEINT PLUS CET ENDROIT. Il se tranchait mal AVANT, par deux pertes
+    // en amont — le montant « 5 000 » tronqué à « 5 » (fusion des milliers
+    // ajoutée dans extraction.ts) et la quantité perdue puis repliée à 1
+    // (replis corrigés dans MicroVenteCaisse et TantieSagesseModal). Montant
+    // et quantité intacts, l'arbitrage par CATALOGUE du dessous suffit :
+    // 5 000 ≈ 10 × 500 (le prix connu de la banane) → lecture « total »,
+    // environ 500 l'article, reformulée puis confirmée — exactement ce que
+    // le rapport attend. Sans prix catalogue cohérent, l'arbitrage de
+    // Patrick du 23/09 tient toujours : même divisible, ON DEMANDE (garde
+    // test:prix-ambigu, « 5 tas de gombos à 1500 »).
     return { type: 'ambiguite_prix', nom, montant: dicte, quantite: qte };
   }
 

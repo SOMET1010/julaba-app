@@ -672,7 +672,12 @@ export function UniversalProfil({ role }: UniversalProfilProps) {
           <AcademyKeiwaRow
             color={color}
             onAcademy={() => navigate(routes.academy)}
-            onKeiwa={role === 'marchand' ? undefined : cheminKeiwa ? () => navigate(cheminKeiwa) : undefined}
+            // « Mon argent » / Keiwa (rapport de tests 17/11, anomalie 3) :
+            // keiwa est HORS PILOTE (config/modulesPilote.ts) — une rangée
+            // visible qui navigue rebondissait sur l'APK et passait pour un
+            // « bouton qui ne marche pas ». Même gate que RoleDashboard :
+            // hors drapeau, la rangée ne propose pas de navigation morte.
+            onKeiwa={role === 'marchand' ? undefined : cheminKeiwa && moduleVisible('keiwa') ? () => navigate(cheminKeiwa) : undefined}
           />
 
           {role === 'marchand' && <ProfilMarchandExtras color={color} navigate={navigate} sousProfil={appUser?.sousProfilMarchand ?? null} />}

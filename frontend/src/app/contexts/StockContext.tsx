@@ -28,7 +28,11 @@ export interface StockItem {
   suiviStock?: boolean;
   unite: string;
   prixUnitaire: number;
-  prixAchat?: number;   // alias prixUnitaire
+  /** Prix d'ACHAT du serveur (`prix_achat`). DISTINCT du prix de vente : le
+   *  réapprovisionnement estime le coût des achats avec lui (rapport de tests
+   *  17/11/2026, P2). undefined = prix d'achat non renseigné — jamais replié
+   *  vers le prix de vente. */
+  prixAchat?: number;
   prixVente?: number;
   seuilAlerte?: number; // seuil d'alerte de stock bas (par produit)
   categorie?: string;   // catégorie du produit
@@ -66,6 +70,17 @@ function normalize(s: StockServeur): StockItem {
     suiviStock: s.suivi_stock !== false && s.quantite != null && s.quantite !== '',
     unite: s.unite || 'unité',
     prixUnitaire: parseFloat(String(s.prix_unitaire ?? s.prix ?? '')) || 0,
+    // P2 (rapport 17/11/2026) — LE PRIX D'ACHAT DU SERVEUR N'EST PLUS PERDU.
+    // Le serveur renvoie `prix_achat` (stocks-rest), mais il n'était jamais
+    // mappé ici : `prixAchat` restait undefined, et le budget de
+    // réapprovisionnement tombait sur le prix de VENTE — la marchande
+    // prévoyait un budget trop grand (172 500 F affichés au lieu de 146 750 F
+    // dans le rapport). 0/nul = non renseigné, et JAMAIS de repli vers le
+    // prix de vente (voir reappro.utils.ts).
+    prixAchat: (() => {
+      const pa = parseFloat(String(s.prix_achat ?? ''));
+      return Number.isFinite(pa) && pa > 0 ? pa : undefined;
+    })(),
     seuilAlerte: s.seuil_alerte != null ? (parseFloat(String(s.seuil_alerte)) || 0) : undefined,
     categorie: s.categorie || undefined,
     image: s.image || null,

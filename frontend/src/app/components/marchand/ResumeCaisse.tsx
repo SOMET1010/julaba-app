@@ -336,7 +336,7 @@ export function ResumeCaisse() {
               details={[{ label: 'Nombre de dépenses', value: financialData.nombreCahier }]}
             />
             <UniversalKPI
-              label="Tu as gagné net"
+              label={financialData.beneficeNet >= 0 ? 'Tu as gagné net' : 'Tu as perdu net'}
               animatedTarget={Math.abs(financialData.beneficeNet)}
               suffix="FCFA"
               icon={Banknote}
