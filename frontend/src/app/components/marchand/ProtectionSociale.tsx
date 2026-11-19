@@ -93,9 +93,9 @@ export function ProtectionSociale() {
       setMontant('');
       toast.success(`Cotisation ${formOrg} enregistrée`);
     } catch (err) {
-      // Cas attendu le plus fréquent : mode keiwa + solde insuffisant (le
-      // backend refuse alors la cotisation entière, rien n'est enregistré).
-      // Message clair à l'utilisatrice plutôt qu'un crash silencieux.
+      // Défensif : le backend reste l'autorité (plafond, période, mode). Les
+      // modes proposés ici sont déclaratifs — aucun ne débite le wallet — mais
+      // un refus serveur doit toujours dire son nom plutôt que planter.
       const message =
         err instanceof HttpError ? err.message : "Impossible d'enregistrer ce versement pour le moment.";
       toast.error(message);
@@ -326,9 +326,14 @@ export function ProtectionSociale() {
                 style={{ boxSizing: 'border-box' }}
               />
 
+              {/* PAS DE MODE KEIWA : c'est LE mode qui débittait le wallet de
+                  l'utilisatrice hors du protocole de caisse — le motif du
+                  masquage hors pilote (décision du 07/10, arbitrage levé le
+                  19/11 en retirant l'option). Espèces et mobile money restent
+                  déclaratifs : aucun mouvement de wallet. */}
               <label className="block text-xs font-semibold text-gray-500 mb-1">Mode de paiement</label>
               <div className="flex gap-2 mb-4">
-                {['espèces', 'keiwa', 'mobile money'].map((mp) => (
+                {['espèces', 'mobile money'].map((mp) => (
                   <button
                     key={mp}
                     onClick={() => setMode(mp)}

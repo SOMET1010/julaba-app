@@ -90,6 +90,25 @@ console.log('\nLe téléphone ne reconnaît pas — le VRAI cas « ce n’est pa
   eq((await verifyWebAuthnForKeiwa()).etat, 'non_reconnue', 'le serveur dit non : c’est un verdict');
 }
 
+console.log('\nREC-19/11 — le moteur ne sait pas faire WebAuthn (WebView APK)');
+{
+  // La librairie jette CE message précis quand l'API WebAuthentication manque
+  // (WebView Android = le moteur de l'APK). Avant le correctif, ce texte
+  // anglais partait TEL QUEL dans le toast de la testrice (anomalies 3+4).
+  magasin.clear();
+  const original = navigateurWebAuthn.authentifier;
+  navigateurWebAuthn.authentifier = async () => {
+    const e = new Error('WebAuthn is not supported in this browser.');
+    throw e;
+  };
+  brancher(ME, OPTIONS, VERIF_OK);
+  const r = await verifyWebAuthnForKeiwa();
+  eq(r.etat, 'indisponible', 'l’état dit « indisponible »…');
+  eq(/empreinte/.test((r as any).message || ''), true, '…et le message parle FRANÇAIS et honnête (pas le message brut de la librairie)');
+  eq(/WebAuthn is not supported/.test((r as any).message || ''), false, '…et surtout PAS le message technique anglais');
+  navigateurWebAuthn.authentifier = original;
+}
+
 console.log('\nElle annule — ce n’est pas un échec, et ça ne se dit pas pareil');
 {
   magasin.clear();

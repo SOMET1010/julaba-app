@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
-import { Package, Check, RefreshCw } from 'lucide-react';
+import { Package, Check, RefreshCw, Users } from 'lucide-react';
 import { SubPageLayout } from '../layout/SubPageLayout';
 import { SelectWithAutre } from '../shared/SelectWithAutre';
 import { UNITES_COURANTES } from '../../config/unites';
@@ -9,12 +10,26 @@ import { toast } from 'sonner';
 import { CATALOGUE_PRODUITS } from '../../data/catalogue-produits';
 import { API_URL } from '../../utils/api';
 import { apiRequest } from '../../services/api/api-client';
+import { useCooperativesListe } from '../../hooks/useCooperativesListe';
+import { vibrerSucces } from '../../utils/haptique';
 
 const COLOR = 'var(--commerce-action)';
 
 export function BesoinMarchand() {
   const { speak } = useApp();
+  const navigate = useNavigate();
   const [cooperativeId, setCooperativeId] = useState('');
+  // REC-19/11 — l'anomalie recette : un détaillant HORS coopérative remplissait
+  // tout le formulaire pour buter au bout sur « Vous n'êtes pas membre ».
+  // Désormais, le verdict d'appartenance est CONNU au chargement (ci-dessous) et
+  // le formulaire n'est proposé qu'aux membres ; les autres reçoivent l'état
+  // honnête + LE PARCOURS D'ADHÉSION COMPLET ici même (l'écran « Ma
+  // coopérative » reste masqué hors pilote : il porte la cotisation payée).
+  const [chargementCoop, setChargementCoop] = useState(true);
+  const [statutMembre, setStatutMembre] = useState('');
+  const { cooperatives: cooperativesListe } = useCooperativesListe();
+  const [coopChoisie, setCoopChoisie] = useState('');
+  const [adhesionEnCours, setAdhesionEnCours] = useState(false);
   const [produit, setProduit] = useState('');
   const [categorie, setCategorie] = useState('');
   const [quantite, setQuantite] = useState('');
@@ -26,10 +41,35 @@ export function BesoinMarchand() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    apiRequest<{ id?: string } | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' })
-      .then(d => { if (d?.id) setCooperativeId(d.id); })
-      .catch((e: any) => console.warn('[BesoinMarchand] ma-cooperative failed:', e?.message));
+    apiRequest<{ id?: string; statut_membre?: string } | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' })
+      .then(d => {
+        if (d?.id) { setCooperativeId(d.id); setStatutMembre((d.statut_membre || 'actif').toLowerCase()); }
+        else { setCooperativeId(''); setStatutMembre(''); }
+      })
+      .catch((e: any) => console.warn('[BesoinMarchand] ma-cooperative failed:', e?.message))
+      .finally(() => setChargementCoop(false));
   }, []);
+
+  // REC-19/11 — LE RATTACHEMENT ICI MÊME : « Rejoindre » écrit une adhésion
+  // en_attente (POST /cooperatives/rejoindre/:id) puis relit l'état. La
+  // coopérative valide ensuite ; quand c'est fait, le formulaire apparaît.
+  const rejoindreCoop = async () => {
+    if (!coopChoisie) { toast.error('Choisis d\'abord ta coopérative'); return; }
+    setAdhesionEnCours(true);
+    try {
+      await apiRequest<unknown>(API_URL, `/cooperatives/rejoindre/${coopChoisie}`, { method: 'POST' });
+      toast.success('Demande envoyée à la coopérative');
+      vibrerSucces();
+      speak('Ta demande a été envoyée à la coopérative');
+      const d = await apiRequest<{ id?: string; statut_membre?: string } | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' }).catch(() => null);
+      if (d?.id) { setCooperativeId(d.id); setStatutMembre((d.statut_membre || 'en_attente').toLowerCase()); }
+    } catch (e: any) {
+      console.warn('[BesoinMarchand] rejoindre failed:', e?.message);
+      toast.error('Erreur lors de la demande. Réessaie.');
+    } finally {
+      setAdhesionEnCours(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!produit.trim() || !quantite) { toast.error('Produit et quantité obligatoires'); return; }
@@ -79,6 +119,83 @@ export function BesoinMarchand() {
               </div>
               <p className="text-xl font-bold text-gray-900">Besoin soumis !</p>
               <p className="text-sm text-gray-500 text-center">La coopérative a été notifiée de votre besoin.</p>
+            </motion.div>
+          ) : chargementCoop ? (
+            <motion.div key="chargement" className="flex justify-center py-16">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}>
+                <RefreshCw className="w-8 h-8" style={{ color: COLOR }} />
+              </motion.div>
+            </motion.div>
+          ) : !cooperativeId ? (
+            /* REC-19/11 — LE RATTACHEMENT D'ABORD, ICI MÊME : l'expression des
+               besoins est adressée À SA coopérative (résolue côté serveur,
+               jamais à un id client). Hors rattachement, on ne laisse PAS
+               remplir un formulaire qui ne peut pas aboutir : on donne la
+               liste des coopératives et l'adhésion se fait ici — l'écran « Ma
+               coopérative » reste masqué (il porte la cotisation payée). */
+            <motion.div key="pas-membre" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl border-2 p-6 shadow-sm"
+              style={{ borderColor: `${COLOR}40` }}>
+              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-3"
+                style={{ backgroundColor: `${COLOR}15` }}>
+                <Users className="w-8 h-8" style={{ color: COLOR }} />
+              </div>
+              <p className="text-lg font-bold text-gray-900 mb-1 text-center">Pas encore membre d'une coopérative</p>
+              <p className="text-sm text-gray-500 mb-4 text-center">
+                L'expression des besoins part à TA coopérative. Rejoins-en une ci-dessous&nbsp;:
+                une fois ta demande validée, tes besoins leur arriveront directement.
+              </p>
+              {cooperativesListe.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  Aucune coopérative n'est encore enregistrée. Reviens plus tard.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5">Ma coopérative</label>
+                    <select value={coopChoisie} onChange={e => setCoopChoisie(e.target.value)}
+                      className="w-full px-4 h-12 rounded-2xl border-2 border-gray-200 text-sm bg-white focus:outline-none"
+                      style={{ boxSizing: 'border-box' }}>
+                      <option value="">Choisir une coopérative…</option>
+                      {cooperativesListe.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.nom}{c.commune ? ` · ${c.commune}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button type="button" onClick={rejoindreCoop} disabled={adhesionEnCours || !coopChoisie}
+                    className="w-full py-3 rounded-2xl text-white font-bold text-sm disabled:opacity-60"
+                    style={{ backgroundColor: COLOR }}>
+                    {adhesionEnCours ? 'Envoi…' : 'Rejoindre cette coopérative'}
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          ) : statutMembre !== 'actif' ? (
+            /* REC-19/11 — DEMANDE EN ATTENTE : l'adhésion est écrite mais la
+               coopérative n'a pas encore validé. On ne cache pas l'état : la
+               formule honnête, sans formulaire qui ne pourrait pas aboutir. */
+            <motion.div key="en-attente" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl border-2 p-6 shadow-sm text-center"
+              style={{ borderColor: `${COLOR}40` }}>
+              <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-3"
+                style={{ backgroundColor: 'var(--herite-creme)' }}>
+                <Users className="w-8 h-8" style={{ color: 'var(--herite-ambre-fonce)' }} />
+              </div>
+              <p className="text-lg font-bold text-gray-900 mb-1">Demande en attente de validation</p>
+              <p className="text-sm text-gray-500 mb-2">
+                Ta demande a été envoyée à ta coopérative. Quand elle la valide,
+                tu pourras soumettre tes besoins ici.
+              </p>
+              <button type="button"
+                onClick={() => { apiRequest<{ id?: string; statut_membre?: string } | null>(API_URL, '/cooperatives/ma-cooperative', { method: 'GET' })
+                  .then(d => { if (d?.id) { setCooperativeId(d.id); setStatutMembre((d.statut_membre || 'en_attente').toLowerCase()); } })
+                  .catch(() => {}); }}
+                className="mt-2 px-5 py-2.5 rounded-2xl border-2 text-sm font-bold"
+                style={{ borderColor: COLOR, color: COLOR }}>
+                Vérifier si c'est validé
+              </button>
             </motion.div>
           ) : (
             <motion.div key="form" className="space-y-4">

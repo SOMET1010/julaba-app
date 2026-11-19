@@ -395,12 +395,12 @@ function ProfilProducteurExtras({ color }: { color: string }) {
   const actifs = cycles.filter((c) => c.status === 'active').length;
   const navigate = useNavigate();
   // PROD-04 — le producteur cotise lui aussi (CNPS/CNAM) : même page que la
-  // marchande, même garde hors pilote (le mode keiwa débite SON wallet).
-  const protectionVisible = moduleVisible('protection-sociale');
+  // marchande. 19/11/2026 : le module est SORTI du masquage hors pilote (le
+  // mode keiwa, seul motif monétaire, est retiré de l'écran) — la carte est
+  // donc visible sans condition, comme celle de la marchande.
   return (
     <div className="mb-4">
-      {protectionVisible && (
-        <motion.button
+      <motion.button
           type="button"
           onClick={() => navigate('/producteur/protection-sociale')}
           initial={{ opacity: 0, y: 20 }}
@@ -418,8 +418,7 @@ function ProfilProducteurExtras({ color }: { color: string }) {
             <p className="text-xs encre-3">Cotisations CNPS (retraite) & CNAM (santé)</p>
           </div>
           <ChevronRight className="w-6 h-6 encre-4 ml-auto" />
-        </motion.button>
-      )}
+      </motion.button>
       <div className="grid grid-cols-2 gap-3">
         <KPICard label="Récoltes" value={recoltes.length} color={color} />
         <KPICard label="Plantations actives" value={actifs} color={color} />

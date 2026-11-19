@@ -84,12 +84,15 @@ export const MODULES_HORS_PILOTE: readonly RegleMasque[] = [
   // TONTINES — « Cotiser » : épargne tournante en argent réel.
   { module: 'tontines', mode: 'prefixe', chemin: '/marchand/tontines' },
 
-  // PROTECTION SOCIALE — « Enregistrer un versement » CNPS/CNAM, dont le mode
-  // keiwa débite le wallet (le backend refuse sur solde insuffisant).
-  { module: 'protection-sociale', mode: 'prefixe', chemin: '/marchand/protection-sociale' },
-  // PROD-04 — la même page cotisations est routée pour le producteur (le mode
-  // keiwa débite son wallet : même garde hors pilote).
-  { module: 'protection-sociale', mode: 'prefixe', chemin: '/producteur/protection-sociale' },
+  // PROTECTION SOCIALE — RETIRÉE DE LA LISTE (19/11/2026, arbitrage Patrick
+  // devant l'anomalie recette « le clic renvoie à l'accueil »). Le SEUL motif
+  // du masquage était le mode « keiwa » de l'écran, qui débittait le wallet —
+  // ce mode est RETIRÉ DE L'ÉCRAN (ProtectionSociale.tsx). Espèces et mobile
+  // money sont déclaratifs : aucun mouvement de wallet. Le module ne fait plus
+  // bouger d'argent → il n'a plus sa place ici. Le backend garde sa garde
+  // keiwa (autorité, cérémonie transactionnelle) ; le front n'offre plus la
+  // voie. Si un jour un écran de ce module redevient monétaire, on remet SA
+  // ligne ici — et c'est tout.
 
   // MA COOPÉRATIVE (marchand) — « Payer ma cotisation : 25 000 FCFA »
   // (POST /cooperatives/cotisation, qui la marque payée). EXACT, pas préfixe :

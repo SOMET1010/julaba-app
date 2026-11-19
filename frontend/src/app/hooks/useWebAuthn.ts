@@ -52,6 +52,40 @@ export const navigateurWebAuthn = {
   enregistrer: startRegistration,
 };
 
+/**
+ * REC-19/11 — ANOMALIES 3+4 DE LA RECETTE APK : « WebAuthn is not supported
+ * in this browser. » à nu brut, en anglais technique, sur « Me faire
+ * reconnaître » et « Tester ma reconnaissance ».
+ *
+ * LA CAUSE RÉELLE : dans l'APK, la page tourne dans la WebView Android
+ * (Capacitor), qui N'IMPLÉMENTE PAS l'API WebAuthentication — contrairement
+ * à un vrai navigateur (Chrome). Sans garde, `startRegistration` jette son
+ * message interne, la couche le ramène tel quel (`indisponible`, message =
+ * e.message) et l'écran l'affiche à la testrice.
+ *
+ * LA GARDE : on demande la disponibilité AVANT d'appeler, et on dit la
+ * vérité en français — c'est un manque du moteur du téléphone, pas une faute
+ * de l'utilisatrice, et son code à 4 chiffres la protège partout en
+ * attendant. Les trois entrées du module (enrôlement, vérification keiwa,
+ * connexion par empreinte) passent par cette même couture.
+ */
+const MESSAGE_WEB_AUTHN_INDISPONIBLE =
+  "La reconnaissance par empreinte n'est pas encore disponible dans cette application : " +
+  "le moteur interne du téléphone ne l'offre pas encore. En attendant, ton code à 4 chiffres " +
+  'te protège partout.';
+
+/**
+ * La traduction du refus du moteur en vérité parlable. La librairie jette
+ * « WebAuthn is not supported in this browser. » quand l'API manque (WebView
+ * Android, runner de test) — ce message brut ne doit JAMAIS arriver à
+ * l'utilisatrice. Tout autre message (réseau, serveur) passe inchangé : la
+ * couche raconte déjà les siens.
+ */
+function messageHonnete(e: unknown): string | undefined {
+  const m = e instanceof Error ? e.message : undefined;
+  return m && /webauthn is not supported/i.test(m) ? MESSAGE_WEB_AUTHN_INDISPONIBLE : m;
+}
+
 /** Vrai quand l'erreur vient du navigateur/de l'appareil, pas du réseau. */
 function estEchecWebAuthn(e: unknown): e is Error {
   return e instanceof Error && (
@@ -93,7 +127,8 @@ export async function registerWebAuthn(): Promise<EtatBiometrie> {
   } catch (e) {
     if (estAnnulation(e)) return { etat: 'annulee' };
     if (estEchecWebAuthn(e)) return { etat: 'non_reconnue' };
-    return { etat: 'indisponible', message: e instanceof Error ? e.message : undefined };
+    // REC-19/11 : « WebAuthn is not supported… » → le message honnête en français.
+    return { etat: 'indisponible', message: messageHonnete(e) };
   }
 
   const ver = await appelerAuth<{ verified?: boolean }>('/auth/webauthn/register/verify',
@@ -201,7 +236,8 @@ export async function authenticateWebAuthn(phone: string, options?: { compteDesi
     if (verData.verified) return { success: true, user: verData.user, accessToken: verData.accessToken, refreshToken: verData.refreshToken };
     return { success: false, error: 'Ton téléphone ne t\'a pas reconnue.' };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    // REC-19/11 : « WebAuthn is not supported… » → le message honnête en français.
+    return { success: false, error: messageHonnete(e) || e.message };
   }
 }
 
@@ -223,7 +259,8 @@ export async function verifyWebAuthnForKeiwa(): Promise<EtatBiometrie> {
     // ICI, et seulement ici, l'échec vient du téléphone.
     if (estAnnulation(e)) return { etat: 'annulee' };
     if (estEchecWebAuthn(e)) return { etat: 'non_reconnue' };
-    return { etat: 'indisponible', message: e instanceof Error ? e.message : undefined };
+    // REC-19/11 : « WebAuthn is not supported… » → le message honnête en français.
+    return { etat: 'indisponible', message: messageHonnete(e) };
   }
 
   const ver = await appelerAuth<{ verified?: boolean }>('/auth/webauthn/authenticate/verify',

@@ -72,8 +72,10 @@ const MASQUEES: Array<[string, string]> = [
   ['/backoffice/keiwa', '/backoffice/dashboard'],
   ['/marchand/tontines', '/marchand'],
   ['/marchand/tontines/42', '/marchand'],
-  ['/marchand/protection-sociale', '/marchand'],
-  ['/producteur/protection-sociale', '/producteur'],
+  // PROTECTION SOCIALE — SORTIE DU MASQUAGE (19/11/2026, arbitrage Patrick) :
+  // le mode keiwa est retiré de l'écran (aucun mouvement de wallet), donc le
+  // module ne fait plus bouger d'argent. Les deux lignes sont reclassées dans
+  // OUVERTES ci-dessous — décision, pas érosion.
   ['/marchand/cooperative', '/marchand'],
   ['/marchand/cooperative/', '/marchand'],
   ['/marchand/commandes', '/marchand'],
@@ -94,6 +96,8 @@ const OUVERTES = [
   '/marchand/cahier', '/marchand/resume-caisse', '/marchand/ventes-passees',
   '/marchand/profil', '/marchand/parametres',
   '/marchand/cooperative/besoin',          // soumettre un besoin : aucun argent
+  '/marchand/protection-sociale',          // 19/11 : mode keiwa retiré de l'écran — déclaratif seul
+  '/producteur/protection-sociale',        // idem (PROD-04)
   '/marchand/keiwatch',                    // un préfixe n'avale pas un voisin
   '/producteur', '/producteur/production', '/producteur/recoltes',
   '/cooperative', '/cooperative/membres', '/cooperative/finances', '/cooperative/marche',
@@ -128,15 +132,20 @@ console.log('\n[5] Aucune route Keiwa / tontine / paiement de routes.tsx n\'éch
     if (enfant && parent) complets.push(`${parent}/${enfant[1]}`);
   }
   const argent = complets.filter((c) =>
-    /\/keiwa(\/|$)|\/tontines|\/protection-sociale|^\/marchand\/cooperative$|\/commandes$|^\/marchand\/marche$|^\/pay(\/|$)|^\/paiement(\/|$)/.test(c));
+    // 19/11/2026 : /protection-sociale SORT de la liste des routes d'argent
+    // hors pilote (mode keiwa retiré de l'écran, arbitrage Patrick) — décision,
+    // pas érosion : les écrans restent routés, OUVERTS ci-dessus.
+    /\/keiwa(\/|$)|\/tontines|^\/marchand\/cooperative$|\/commandes$|^\/marchand\/marche$|^\/pay(\/|$)|^\/paiement(\/|$)/.test(c));
   // PLANCHER RECALÉ (20/10) : 40 → 38. Le 19/10, IDENTIFICATEUR-16 (commit
   // b91f6a8) a retiré de l'espace identificateur ses 6 routes keiwa —
   // décision, pas érosion : « Keiwa retire de l'espace identificateur ».
+  // Recalé À NOUVEAU (19/11) : 38 → 36 — protection-sociale (2 routes) sort
+  // du masquage, mode keiwa retiré de l'écran (arbitrage Patrick).
   // Caisse, tontines, commandes, marché : tout est toujours là, et toutes
   // couvertes par MODULES_HORS_PILOTE (assertions ci-dessous). Le plancher
   // traque l'ÉROSION silencieuse : une route qui disparaît sans décision
   // recale la garde, elle ne la franchit pas.
-  ok(argent.length >= 38, `${argent.length} routes d'argent hors pilote trouvées dans routes.tsx`);
+  ok(argent.length >= 36, `${argent.length} routes d'argent hors pilote trouvées dans routes.tsx`);
   const echappees = argent.filter((c) => moduleDuChemin(c.replace(/:[a-zA-Z]+/g, 'x')) === null);
   ok(echappees.length === 0, `toutes couvertes par MODULES_HORS_PILOTE${echappees.length ? ' — ÉCHAPPENT : ' + echappees.join(', ') : ''}`);
   ok(complets.includes('/marchand/caisse') && complets.includes('/marchand/keiwa'),
