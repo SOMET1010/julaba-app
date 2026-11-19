@@ -89,6 +89,35 @@ jobs:
         with:
           ref: ${{ inputs.branche }}
 
+      # GARDE-FOU DE L'URL API — défaut déjà payé DEUX fois.
+      #
+      # Le serveur JULABA expose son API sous le préfixe `/api/v1` (backend/src/
+      # main.ts, setGlobalPrefix). La couche réseau du front (services/api/
+      # api-client.ts) concatène bêtement : fetch(`${API_URL}${endpoint}`), avec
+      # des endpoints du genre `/auth/login`. Une valeur SANS le préfixe fait
+      # donc atterrir les requêtes sur le repli SPA du serveur (index.html, 200)
+      # au lieu du JSON : l'app répond « Réponse inattendue » et la connexion
+      # échoue — payé le 1958d6a, puis À NOUVEAU le 18/11/2026 sur l'APK du
+      # pilote (VITE_API_URL=https://julaba-dev.ansut.ci, sans le préfixe :
+      # numéro 0700000009, code 1234, « problème de connexion »).
+      #
+      # On refuse donc la valeur au plus tôt, avant tout travail lourd. Si un
+      # jour un déploiement expose un AUTRE préfixe, éditer consciemment ce
+      # garde-fou et cette note — jamais le contourner en silence.
+      - name: Valider l URL de l API (préfixe /api/v1 requis)
+        env:
+          API_URL: ${{ inputs.api_url }}
+        run: |
+          if [[ "$API_URL" != *"/api/v1" ]]; then
+            echo "::error::VITE_API_URL doit se terminer par /api/v1 (préfixe global du backend JULABA)."
+            echo "Reçue : « $API_URL ». Le serveur ne répond en JSON que sous /api/v1 —"
+            echo "sans le préfixe, l'APK reçoit l'index.html du site et « Réponse inattendue » à la connexion."
+            echo "Exemples : https://julaba-dev.ansut.ci/api/v1 — https://julaba-api.onrender.com/api/v1"
+            echo "Relancer le workflow avec l'URL complète. (Défauts payés : 1958d6a et run APK 18/11/2026.)"
+            exit 1
+          fi
+          echo "✓ URL de l API conforme (préfixe /api/v1 présent) : $API_URL"
+
       - name: Setup Node.js 22 (LTS)
         uses: actions/setup-node@v5
         with:
